@@ -1,0 +1,37 @@
+# Environnement Python local
+.venv/
+venv/
+
+# Fichiers temporaires Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Variables secrètes et configuration locale
+.env
+.env.*
+!.env.example
+
+# Documents confidentiels
+data/documents/*
+data/exports/*
+
+# Autoriser seulement les fichiers qui conservent les dossiers
+!data/documents/.gitkeep
+!data/exports/.gitkeep
+
+# Fichiers temporaires et journaux
+temp/
+tmp/
+logs/
+*.log
+
+# Fichiers produits par l'OCR
+*.ocr.pdf
+
+# VS Code et système d'exploitation
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
