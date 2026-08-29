@@ -21,6 +21,9 @@ Première phase :
 - structure initiale créée;
 - protection des documents confidentiels configurée;
 - premier test automatique réussi.
+- extraction locale du texte des fichiers PDF;
+- validation du format et des fichiers introuvables;
+- quatre tests automatiques réussis.
 
 ## Lancer le programme
 
