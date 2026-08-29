@@ -27,6 +27,10 @@ Première phase :
 - interface en ligne de commande;
 - facture PDF fictive pour la démonstration;
 - chaîne complète d’extraction validée par cinq tests.
+- extraction structurée des factures;
+- détection du numéro, de la date, du fournisseur et du client;
+- extraction du sous-total, de la TPS, de la TVQ et du total;
+- prise en charge des montants avec un point ou une virgule.
 
 ## Lancer le programme
 

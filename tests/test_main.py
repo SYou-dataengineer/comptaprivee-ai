@@ -36,3 +36,6 @@ def test_analyser_pdf_affiche_le_document(tmp_path, capsys) -> None:
     assert "facture_integration.pdf" in resultat
     assert "FAC-TEST-001" in resultat
     assert "500.00 CAD" in resultat
+    assert "Données structurées" in resultat
+    assert "Numéro de facture : FAC-TEST-001" in resultat
+    assert "Total : 500.00 CAD" in resultat

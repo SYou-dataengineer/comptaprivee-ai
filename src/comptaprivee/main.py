@@ -1,8 +1,10 @@
 """Point d'entrée de ComptaPrivée AI."""
 
 import argparse
+from decimal import Decimal
 from pathlib import Path
 
+from .facture_parser import extraire_donnees_facture
 from .pdf_extractor import extraire_texte_pdf
 
 
@@ -16,8 +18,16 @@ def afficher_bienvenue() -> None:
     print("Confidentialité : aucune donnée envoyée sur Internet")
 
 
+def formater_montant(montant: Decimal | None) -> str:
+    """Formate un montant comptable pour l'affichage."""
+    if montant is None:
+        return "Non détecté"
+
+    return f"{montant:.2f} CAD"
+
+
 def analyser_pdf(chemin_fichier: str | Path) -> None:
-    """Extrait et affiche le texte d'un PDF local."""
+    """Extrait et affiche le texte et les champs structurés d'un PDF."""
     chemin = Path(chemin_fichier)
     texte = extraire_texte_pdf(chemin)
 
@@ -25,10 +35,25 @@ def analyser_pdf(chemin_fichier: str | Path) -> None:
     print(f"Document analysé : {chemin.name}")
     print("-" * 55)
 
-    if texte:
-        print(texte)
-    else:
+    if not texte:
         print("Aucun texte détecté dans ce document.")
+        return
+
+    print(texte)
+
+    facture = extraire_donnees_facture(texte)
+
+    print()
+    print("Données structurées")
+    print("-" * 55)
+    print(f"Numéro de facture : {facture.numero or 'Non détecté'}")
+    print(f"Date : {facture.date or 'Non détectée'}")
+    print(f"Fournisseur : {facture.fournisseur or 'Non détecté'}")
+    print(f"Client : {facture.client or 'Non détecté'}")
+    print(f"Sous-total : {formater_montant(facture.sous_total)}")
+    print(f"TPS : {formater_montant(facture.tps)}")
+    print(f"TVQ : {formater_montant(facture.tvq)}")
+    print(f"Total : {formater_montant(facture.total)}")
 
 
 def creer_analyseur_arguments() -> argparse.ArgumentParser:
