@@ -24,12 +24,39 @@ Première phase :
 - extraction locale du texte des fichiers PDF;
 - validation du format et des fichiers introuvables;
 - quatre tests automatiques réussis.
+- interface en ligne de commande;
+- facture PDF fictive pour la démonstration;
+- chaîne complète d’extraction validée par cinq tests.
 
 ## Lancer le programme
 
+Sans document :
+
 ```powershell
-python src\comptaprivee\main.py
+python -m src.comptaprivee.main
 ```
+
+Afficher l’aide :
+
+```powershell
+python -m src.comptaprivee.main --help
+```
+
+## Démonstration avec une facture fictive
+
+Générer la facture :
+
+```powershell
+python scripts\creer_facture_demo.py
+```
+
+Analyser la facture localement :
+
+```powershell
+python -m src.comptaprivee.main data\documents\facture_demo.pdf
+```
+
+Le PDF généré est fictif et demeure exclu du dépôt Git.
 
 ## Exécuter les tests
 
