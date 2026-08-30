@@ -35,6 +35,11 @@ Première phase :
 - compatibilité avec Excel grâce à l’encodage UTF-8;
 - protection automatique des fichiers exportés;
 - pipeline PDF vers CSV validé par dix tests.
+- lecture locale des documents Microsoft Word DOCX;
+- lecteur Word pur Python, sans DLL externe;
+- prise en charge des documents PDF et Word;
+- pipeline Word vers CSV validé automatiquement;
+- quatorze tests automatiques réussis.
 
 ## Lancer le programme
 
@@ -70,6 +75,19 @@ Exporter les données vers un CSV local :
 
 ```powershell
 python -m src.comptaprivee.main data\documents\facture_demo.pdf --export-csv data\exports\facture_demo.csv
+```
+## Démonstration avec un document Word
+
+Générer une facture Word fictive :
+
+```powershell
+python scripts\creer_word_demo.py
+```
+
+Analyser le document et exporter les données :
+
+```powershell
+python -m src.comptaprivee.main data\documents\facture_word_demo.docx --export-csv data\exports\facture_word_demo.csv
 ```
 ## Exécuter les tests
 

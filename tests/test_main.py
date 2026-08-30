@@ -1,8 +1,10 @@
 """Tests du point d'entrée de ComptaPrivée AI."""
 
+from zipfile import ZipFile
+
 import fitz
 
-from src.comptaprivee.main import analyser_pdf, afficher_bienvenue
+from src.comptaprivee.main import analyser_document, afficher_bienvenue
 
 
 def test_afficher_bienvenue(capsys) -> None:
@@ -29,13 +31,12 @@ def test_analyser_pdf_affiche_le_document(tmp_path, capsys) -> None:
     document.save(chemin_pdf)
     document.close()
 
-    analyser_pdf(chemin_pdf)
+    analyser_document(chemin_pdf)
 
     resultat = capsys.readouterr().out
 
     assert "facture_integration.pdf" in resultat
     assert "FAC-TEST-001" in resultat
-    assert "500.00 CAD" in resultat
     assert "Données structurées" in resultat
     assert "Numéro de facture : FAC-TEST-001" in resultat
     assert "Total : 500.00 CAD" in resultat
@@ -60,14 +61,45 @@ def test_analyser_pdf_exporte_un_csv(tmp_path, capsys) -> None:
     document.save(chemin_pdf)
     document.close()
 
-    analyser_pdf(chemin_pdf, chemin_csv)
+    analyser_document(chemin_pdf, chemin_csv)
 
     resultat = capsys.readouterr().out
+    contenu_csv = chemin_csv.read_text(encoding="utf-8-sig")
 
     assert chemin_csv.exists()
     assert "Export CSV créé" in resultat
-
-    contenu_csv = chemin_csv.read_text(encoding="utf-8-sig")
-
     assert "FAC-EXPORT-001" in contenu_csv
     assert "750.00" in contenu_csv
+
+
+def test_analyser_word_exporte_un_csv(tmp_path, capsys) -> None:
+    """Vérifie le pipeline complet du document Word jusqu'au CSV."""
+    chemin_docx = tmp_path / "facture_word.docx"
+    chemin_csv = tmp_path / "facture_word.csv"
+
+    contenu_xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <w:document
+        xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>
+            <w:p><w:r><w:t>FACTURE WORD FICTIVE</w:t></w:r></w:p>
+            <w:p><w:r><w:t>Numero : WORD-TEST-001</w:t></w:r></w:p>
+            <w:p><w:r><w:t>Date : 2026-08-30</w:t></w:r></w:p>
+            <w:p><w:r><w:t>Total : 925.00 CAD</w:t></w:r></w:p>
+        </w:body>
+    </w:document>
+    """
+
+    with ZipFile(chemin_docx, "w") as archive:
+        archive.writestr("word/document.xml", contenu_xml)
+
+    analyser_document(chemin_docx, chemin_csv)
+
+    resultat = capsys.readouterr().out
+    contenu_csv = chemin_csv.read_text(encoding="utf-8-sig")
+
+    assert chemin_csv.exists()
+    assert "WORD-TEST-001" in resultat
+    assert "Total : 925.00 CAD" in resultat
+    assert "Export CSV créé" in resultat
+    assert "WORD-TEST-001" in contenu_csv
+    assert "925.00" in contenu_csv

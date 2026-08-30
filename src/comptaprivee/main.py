@@ -7,7 +7,7 @@ from pathlib import Path
 from .csv_exporter import exporter_facture_csv
 from .facture_parser import extraire_donnees_facture
 from .pdf_extractor import extraire_texte_pdf
-
+from .word_extractor import extraire_texte_word
 
 def afficher_bienvenue() -> None:
     """Affiche les informations principales de l'application."""
@@ -26,14 +26,25 @@ def formater_montant(montant: Decimal | None) -> str:
 
     return f"{montant:.2f} CAD"
 
+def extraire_texte_document(chemin: Path) -> str:
+    """Sélectionne le lecteur local selon le format du document."""
+    extension = chemin.suffix.lower()
 
-def analyser_pdf(
+    if extension == ".pdf":
+        return extraire_texte_pdf(chemin)
+
+    if extension == ".docx":
+        return extraire_texte_word(chemin)
+
+    raise ValueError("Formats acceptés : PDF et DOCX.")
+
+def analyser_document(
     chemin_fichier: str | Path,
     chemin_csv: str | Path | None = None,
 ) -> None:
     """Extrait, affiche et exporte les données d'un PDF."""
     chemin = Path(chemin_fichier)
-    texte = extraire_texte_pdf(chemin)
+    texte = extraire_texte_document(chemin)
 
     print()
     print(f"Document analysé : {chemin.name}")
@@ -68,12 +79,12 @@ def analyser_pdf(
 def creer_analyseur_arguments() -> argparse.ArgumentParser:
     """Crée les arguments acceptés par la ligne de commande."""
     analyseur = argparse.ArgumentParser(
-        description="Extraction locale de documents comptables PDF."
+        description="Extraction locale de documents comptables PDF et Word DOCX."
     )
     analyseur.add_argument(
-        "pdf",
+        "document",
         nargs="?",
-        help="Chemin du fichier PDF à analyser.",
+        help="Chemin du document PDF ou DOCX à analyser.",
     )
     analyseur.add_argument(
         "--export-csv",
@@ -89,8 +100,8 @@ def main() -> None:
 
     afficher_bienvenue()
 
-    if arguments.pdf:
-        analyser_pdf(arguments.pdf, arguments.chemin_csv)
+    if arguments.document:
+        analyser_document(arguments.document, arguments.chemin_csv)
     else:
         print("État : environnement prêt")
         print("Utilisez --help pour afficher les commandes disponibles.")
