@@ -4,6 +4,7 @@ import argparse
 from decimal import Decimal
 from pathlib import Path
 
+from .csv_exporter import exporter_facture_csv
 from .facture_parser import extraire_donnees_facture
 from .pdf_extractor import extraire_texte_pdf
 
@@ -26,8 +27,11 @@ def formater_montant(montant: Decimal | None) -> str:
     return f"{montant:.2f} CAD"
 
 
-def analyser_pdf(chemin_fichier: str | Path) -> None:
-    """Extrait et affiche le texte et les champs structurés d'un PDF."""
+def analyser_pdf(
+    chemin_fichier: str | Path,
+    chemin_csv: str | Path | None = None,
+) -> None:
+    """Extrait, affiche et exporte les données d'un PDF."""
     chemin = Path(chemin_fichier)
     texte = extraire_texte_pdf(chemin)
 
@@ -55,6 +59,11 @@ def analyser_pdf(chemin_fichier: str | Path) -> None:
     print(f"TVQ : {formater_montant(facture.tvq)}")
     print(f"Total : {formater_montant(facture.total)}")
 
+    if chemin_csv is not None:
+        fichier_exporte = exporter_facture_csv(facture, chemin_csv)
+        print()
+        print(f"Export CSV créé : {fichier_exporte}")
+
 
 def creer_analyseur_arguments() -> argparse.ArgumentParser:
     """Crée les arguments acceptés par la ligne de commande."""
@@ -66,6 +75,11 @@ def creer_analyseur_arguments() -> argparse.ArgumentParser:
         nargs="?",
         help="Chemin du fichier PDF à analyser.",
     )
+    analyseur.add_argument(
+        "--export-csv",
+        dest="chemin_csv",
+        help="Chemin du fichier CSV à créer localement.",
+    )
     return analyseur
 
 
@@ -76,7 +90,7 @@ def main() -> None:
     afficher_bienvenue()
 
     if arguments.pdf:
-        analyser_pdf(arguments.pdf)
+        analyser_pdf(arguments.pdf, arguments.chemin_csv)
     else:
         print("État : environnement prêt")
         print("Utilisez --help pour afficher les commandes disponibles.")

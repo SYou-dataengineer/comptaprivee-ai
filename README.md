@@ -31,6 +31,10 @@ Première phase :
 - détection du numéro, de la date, du fournisseur et du client;
 - extraction du sous-total, de la TPS, de la TVQ et du total;
 - prise en charge des montants avec un point ou une virgule.
+- export local des données au format CSV;
+- compatibilité avec Excel grâce à l’encodage UTF-8;
+- protection automatique des fichiers exportés;
+- pipeline PDF vers CSV validé par dix tests.
 
 ## Lancer le programme
 
@@ -62,6 +66,11 @@ python -m src.comptaprivee.main data\documents\facture_demo.pdf
 
 Le PDF généré est fictif et demeure exclu du dépôt Git.
 
+Exporter les données vers un CSV local :
+
+```powershell
+python -m src.comptaprivee.main data\documents\facture_demo.pdf --export-csv data\exports\facture_demo.csv
+```
 ## Exécuter les tests
 
 ```powershell
