@@ -50,7 +50,12 @@ Première phase :
 - traitement mixte des PDF contenant du texte et des pages scannées;
 - suppression automatique des images OCR temporaires;
 - dix-huit tests automatiques réussis.
-
+- interface graphique Windows entièrement locale;
+- sélection de documents PDF, Word et images;
+- affichage du texte extrait;
+- champs comptables modifiables avant validation;
+- export CSV contrôlé par l’utilisateur;
+- vingt-et-un tests automatiques réussis.
 ## Lancer le programme
 
 Sans document :
@@ -140,3 +145,19 @@ python -m src.comptaprivee.main data\documents\facture_image_demo.png --export-c
 Lorsqu’une page PDF contient déjà du texte, ComptaPrivée AI utilise l’extraction directe.
 
 Lorsqu’aucun texte n’est détecté, la page est temporairement convertie en image et analysée localement avec Tesseract OCR. Aucun fichier temporaire n’est conservé après le traitement.
+
+## Interface graphique locale
+
+Lancer l’application :
+
+```powershell
+python -m src.comptaprivee.gui
+```
+
+L’interface permet de :
+
+- sélectionner un document comptable;
+- extraire automatiquement son contenu;
+- vérifier et corriger les champs détectés;
+- exporter les données validées en CSV;
+- conserver toutes les informations localement.
