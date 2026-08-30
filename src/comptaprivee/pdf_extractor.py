@@ -1,12 +1,15 @@
 """Extraction locale du texte contenu dans les fichiers PDF."""
 
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import fitz
 
+from .ocr_extractor import extraire_texte_image
+
 
 def extraire_texte_pdf(chemin_fichier: str | Path) -> str:
-    """Extrait localement le texte de toutes les pages d'un PDF."""
+    """Extrait le texte d'un PDF et utilise l'OCR si nécessaire."""
     chemin = Path(chemin_fichier)
 
     if chemin.suffix.lower() != ".pdf":
@@ -18,10 +21,25 @@ def extraire_texte_pdf(chemin_fichier: str | Path) -> str:
     textes_pages: list[str] = []
 
     with fitz.open(chemin) as document:
-        for page in document:
-            texte = page.get_text("text").strip()
+        with TemporaryDirectory(prefix="comptaprivee_ocr_") as dossier_temporaire:
+            for numero_page, page in enumerate(document, start=1):
+                texte = page.get_text("text").strip()
 
-            if texte:
-                textes_pages.append(texte)
+                if texte:
+                    textes_pages.append(texte)
+                    continue
+
+                chemin_image = (
+                    Path(dossier_temporaire)
+                    / f"page_{numero_page}.png"
+                )
+
+                image = page.get_pixmap(dpi=300, alpha=False)
+                image.save(chemin_image)
+
+                texte_ocr = extraire_texte_image(chemin_image).strip()
+
+                if texte_ocr:
+                    textes_pages.append(texte_ocr)
 
     return "\n".join(textes_pages)

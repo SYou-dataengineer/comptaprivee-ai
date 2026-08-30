@@ -1,5 +1,7 @@
 """Tests de l'extracteur PDF local."""
 
+import shutil
+
 import fitz
 import pytest
 
@@ -41,3 +43,44 @@ def test_signaler_un_pdf_introuvable(tmp_path) -> None:
 
     with pytest.raises(FileNotFoundError, match="Fichier introuvable"):
         extraire_texte_pdf(chemin_pdf)
+
+
+@pytest.mark.skipif(
+    shutil.which("tesseract") is None,
+    reason="Tesseract OCR n'est pas installé.",
+)
+def test_extraire_texte_pdf_numerise_avec_ocr(tmp_path) -> None:
+    """Vérifie l'OCR automatique d'un PDF sans texte sélectionnable."""
+    chemin_source = tmp_path / "source.pdf"
+    chemin_scan = tmp_path / "facture_numerisee.pdf"
+
+    source = fitz.open()
+    page_source = source.new_page(width=595, height=842)
+    page_source.insert_text(
+        (72, 100),
+        (
+            "FACTURE NUMERISEE\n"
+            "Numero : SCAN-2026-001\n"
+            "Total : 1450.00 CAD"
+        ),
+        fontsize=24,
+    )
+    source.save(chemin_source)
+
+    image = page_source.get_pixmap(dpi=300, alpha=False)
+    source.close()
+
+    scan = fitz.open()
+    page_scan = scan.new_page(width=595, height=842)
+    page_scan.insert_image(
+        page_scan.rect,
+        pixmap=image,
+    )
+    scan.save(chemin_scan)
+    scan.close()
+
+    texte = extraire_texte_pdf(chemin_scan)
+
+    assert "FACTURE NUMERISEE" in texte
+    assert "SCAN-2026-001" in texte
+    assert "1450.00 CAD" in texte

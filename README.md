@@ -45,6 +45,11 @@ Première phase :
 - prise en charge des images PNG, JPG, JPEG, TIFF et BMP;
 - extraction structurée et export CSV depuis une image;
 - dix-sept tests automatiques réussis.
+- détection automatique des pages PDF sans texte;
+- OCR automatique des PDF numérisés;
+- traitement mixte des PDF contenant du texte et des pages scannées;
+- suppression automatique des images OCR temporaires;
+- dix-huit tests automatiques réussis.
 
 ## Lancer le programme
 
@@ -129,3 +134,9 @@ Analyser l’image et exporter les données :
 ```powershell
 python -m src.comptaprivee.main data\documents\facture_image_demo.png --export-csv data\exports\facture_image_demo.csv
 ```
+
+## PDF numérisés
+
+Lorsqu’une page PDF contient déjà du texte, ComptaPrivée AI utilise l’extraction directe.
+
+Lorsqu’aucun texte n’est détecté, la page est temporairement convertie en image et analysée localement avec Tesseract OCR. Aucun fichier temporaire n’est conservé après le traitement.
