@@ -40,6 +40,11 @@ Première phase :
 - prise en charge des documents PDF et Word;
 - pipeline Word vers CSV validé automatiquement;
 - quatorze tests automatiques réussis.
+- OCR local avec Tesseract 5.5.3;
+- reconnaissance en français et en anglais;
+- prise en charge des images PNG, JPG, JPEG, TIFF et BMP;
+- extraction structurée et export CSV depuis une image;
+- dix-sept tests automatiques réussis.
 
 ## Lancer le programme
 
@@ -93,4 +98,34 @@ python -m src.comptaprivee.main data\documents\facture_word_demo.docx --export-c
 
 ```powershell
 python -m pytest -v
+```
+
+## Prérequis OCR
+
+Tesseract OCR doit être installé localement avec les langues suivantes :
+
+```text
+eng
+fra
+```
+
+Vérifier l’installation :
+
+```powershell
+tesseract --version
+tesseract --list-langs
+```
+
+## Démonstration avec une image
+
+Générer une facture PNG fictive :
+
+```powershell
+python scripts\creer_image_demo.py
+```
+
+Analyser l’image et exporter les données :
+
+```powershell
+python -m src.comptaprivee.main data\documents\facture_image_demo.png --export-csv data\exports\facture_image_demo.csv
 ```

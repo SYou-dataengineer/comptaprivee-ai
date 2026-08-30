@@ -6,8 +6,10 @@ from pathlib import Path
 
 from .csv_exporter import exporter_facture_csv
 from .facture_parser import extraire_donnees_facture
+from .ocr_extractor import FORMATS_IMAGES, extraire_texte_image
 from .pdf_extractor import extraire_texte_pdf
 from .word_extractor import extraire_texte_word
+
 
 def afficher_bienvenue() -> None:
     """Affiche les informations principales de l'application."""
@@ -26,6 +28,7 @@ def formater_montant(montant: Decimal | None) -> str:
 
     return f"{montant:.2f} CAD"
 
+
 def extraire_texte_document(chemin: Path) -> str:
     """Sélectionne le lecteur local selon le format du document."""
     extension = chemin.suffix.lower()
@@ -36,13 +39,17 @@ def extraire_texte_document(chemin: Path) -> str:
     if extension == ".docx":
         return extraire_texte_word(chemin)
 
-    raise ValueError("Formats acceptés : PDF et DOCX.")
+    if extension in FORMATS_IMAGES:
+        return extraire_texte_image(chemin)
+
+    raise ValueError("Formats acceptés : PDF, DOCX et images.")
+
 
 def analyser_document(
     chemin_fichier: str | Path,
     chemin_csv: str | Path | None = None,
 ) -> None:
-    """Extrait, affiche et exporte les données d'un PDF."""
+    """Extrait, affiche et exporte les données d'un document."""
     chemin = Path(chemin_fichier)
     texte = extraire_texte_document(chemin)
 
@@ -79,12 +86,12 @@ def analyser_document(
 def creer_analyseur_arguments() -> argparse.ArgumentParser:
     """Crée les arguments acceptés par la ligne de commande."""
     analyseur = argparse.ArgumentParser(
-        description="Extraction locale de documents comptables PDF et Word DOCX."
+        description="Extraction locale de documents PDF, Word et images."
     )
     analyseur.add_argument(
         "document",
         nargs="?",
-        help="Chemin du document PDF ou DOCX à analyser.",
+        help="Chemin du document PDF, DOCX ou image à analyser.",
     )
     analyseur.add_argument(
         "--export-csv",
