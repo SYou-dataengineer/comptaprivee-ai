@@ -1,4 +1,5 @@
 # ComptaPrivée AI
+[![Tests Python](https://github.com/SYou-dataengineer/comptaprivee-ai/actions/workflows/tests.yml/badge.svg)](https://github.com/SYou-dataengineer/comptaprivee-ai/actions/workflows/tests.yml)
 
 Agent local d’extraction de données depuis des documents comptables.
 
