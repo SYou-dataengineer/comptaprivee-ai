@@ -9,6 +9,11 @@ from tkinter.scrolledtext import ScrolledText
 from .batch_processor import traiter_et_exporter_documents
 from .csv_exporter import exporter_facture_csv
 from .facture_parser import DonneesFacture, extraire_donnees_facture
+from .invoice_validator import (
+    ResultatValidation,
+    StatutValidation,
+    valider_facture,
+)
 from .main import extraire_texte_document
 
 
@@ -24,8 +29,8 @@ class ApplicationComptaPrivee(tk.Tk):
         super().__init__()
 
         self.title("ComptaPrivée AI")
-        self.geometry("1100x750")
-        self.minsize(900, 650)
+        self.geometry("1100x780")
+        self.minsize(900, 680)
 
         self.chemin_document: Path | None = None
         self.chemins_lot: list[Path] = []
@@ -43,6 +48,9 @@ class ApplicationComptaPrivee(tk.Tk):
 
         self.nom_document = tk.StringVar(
             value="Aucun document sélectionné"
+        )
+        self.statut_validation = tk.StringVar(
+            value="Validation : aucun document analysé"
         )
         self.statut = tk.StringVar(
             value="Prêt — traitement entièrement local"
@@ -177,6 +185,20 @@ class ApplicationComptaPrivee(tk.Tk):
 
         panneau_champs.columnconfigure(1, weight=1)
 
+        self.etiquette_validation = ttk.Label(
+            panneau_champs,
+            textvariable=self.statut_validation,
+            font=("Segoe UI", 10, "bold"),
+            foreground="#475569",
+        )
+        self.etiquette_validation.grid(
+            row=len(champs),
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(15, 5),
+        )
+
         ttk.Label(
             panneau_champs,
             text=(
@@ -186,11 +208,25 @@ class ApplicationComptaPrivee(tk.Tk):
             foreground="#92400e",
             wraplength=330,
         ).grid(
-            row=len(champs),
+            row=len(champs) + 1,
             column=0,
             columnspan=2,
             sticky="w",
-            pady=(15, 10),
+            pady=(5, 10),
+        )
+
+        self.bouton_valider = ttk.Button(
+            panneau_champs,
+            text="Valider les données",
+            command=self.valider_formulaire,
+            state="disabled",
+        )
+        self.bouton_valider.grid(
+            row=len(champs) + 2,
+            column=0,
+            columnspan=2,
+            sticky="ew",
+            pady=(5, 0),
         )
 
         self.bouton_exporter = ttk.Button(
@@ -200,11 +236,11 @@ class ApplicationComptaPrivee(tk.Tk):
             state="disabled",
         )
         self.bouton_exporter.grid(
-            row=len(champs) + 1,
+            row=len(champs) + 3,
             column=0,
             columnspan=2,
             sticky="ew",
-            pady=(5, 0),
+            pady=(8, 0),
         )
 
         self.zone_texte = ScrolledText(
@@ -261,7 +297,7 @@ class ApplicationComptaPrivee(tk.Tk):
         self.analyser_document_selectionne()
 
     def selectionner_documents_lot(self) -> None:
-        """Sélectionne plusieurs documents et lance leur traitement."""
+        """Sélectionne plusieurs documents et lance le traitement."""
         chemins = filedialog.askopenfilenames(
             title="Sélectionner plusieurs documents comptables",
             filetypes=self.types_fichiers(),
@@ -282,6 +318,7 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         self.vider_formulaire()
+        self.bouton_valider.configure(state="disabled")
         self.bouton_exporter.configure(state="disabled")
 
         chemin_sortie = filedialog.asksaveasfilename(
@@ -302,7 +339,7 @@ class ApplicationComptaPrivee(tk.Tk):
         self.traiter_lot(Path(chemin_sortie))
 
     def traiter_lot(self, chemin_sortie: Path) -> None:
-        """Analyse les documents et crée un CSV regroupé."""
+        """Analyse, valide et exporte plusieurs documents."""
         self.statut.set(
             f"Traitement local de {len(self.chemins_lot)} documents…"
         )
@@ -327,8 +364,16 @@ class ApplicationComptaPrivee(tk.Tk):
             "",
             f"Documents sélectionnés : {len(self.chemins_lot)}",
             (
-                "Documents analysés avec succès : "
+                "Documents exportables : "
                 f"{resultat.nombre_documents_reussis}"
+            ),
+            (
+                "Factures valides : "
+                f"{resultat.nombre_factures_valides}"
+            ),
+            (
+                "Factures à vérifier : "
+                f"{resultat.nombre_factures_a_verifier}"
             ),
             (
                 "Documents en erreur : "
@@ -338,7 +383,7 @@ class ApplicationComptaPrivee(tk.Tk):
             f"Fichier CSV créé : {chemin_sortie}",
         ]
 
-        if resultat.factures:
+        if resultat.documents_traites:
             lignes_resume.extend(
                 [
                     "",
@@ -347,10 +392,12 @@ class ApplicationComptaPrivee(tk.Tk):
                 ]
             )
 
-            for position, facture in enumerate(
-                resultat.factures,
+            for position, document in enumerate(
+                resultat.documents_traites,
                 start=1,
             ):
+                facture = document.facture
+                validation = document.validation
                 numero = facture.numero or "Numéro non détecté"
                 total = self.montant_vers_texte(facture.total)
 
@@ -360,14 +407,28 @@ class ApplicationComptaPrivee(tk.Tk):
                     total_affiche = "Total non détecté"
 
                 lignes_resume.append(
-                    f"{position}. {numero} — {total_affiche}"
+                    f"{position}. {document.chemin.name}"
                 )
+                lignes_resume.append(
+                    f"   Numéro : {numero}"
+                )
+                lignes_resume.append(
+                    f"   Total : {total_affiche}"
+                )
+                lignes_resume.append(
+                    f"   Statut : {validation.statut.value}"
+                )
+
+                for avertissement in validation.avertissements:
+                    lignes_resume.append(
+                        f"   Avertissement : {avertissement}"
+                    )
 
         if resultat.erreurs:
             lignes_resume.extend(
                 [
                     "",
-                    "ERREURS",
+                    "DOCUMENTS BLOQUÉS",
                     "-" * 55,
                 ]
             )
@@ -379,19 +440,40 @@ class ApplicationComptaPrivee(tk.Tk):
 
         self.afficher_texte("\n".join(lignes_resume))
 
+        if resultat.nombre_documents_en_erreur:
+            couleur = "#92400e"
+            resume_validation = (
+                "Validation du lot : À VÉRIFIER"
+            )
+        elif resultat.nombre_factures_a_verifier:
+            couleur = "#92400e"
+            resume_validation = (
+                "Validation du lot : À VÉRIFIER"
+            )
+        else:
+            couleur = "#166534"
+            resume_validation = "Validation du lot : VALIDE"
+
+        self.statut_validation.set(resume_validation)
+        self.etiquette_validation.configure(
+            foreground=couleur
+        )
+
         self.statut.set(
             "Traitement par lot terminé — "
-            f"{resultat.nombre_documents_reussis} réussite(s), "
-            f"{resultat.nombre_documents_en_erreur} erreur(s)"
+            f"{resultat.nombre_documents_reussis} exportable(s), "
+            f"{resultat.nombre_documents_en_erreur} bloqué(s)"
         )
 
         messagebox.showinfo(
             "Traitement terminé",
             (
                 "Le traitement local est terminé.\n\n"
-                "Documents réussis : "
-                f"{resultat.nombre_documents_reussis}\n"
-                "Documents en erreur : "
+                "Factures valides : "
+                f"{resultat.nombre_factures_valides}\n"
+                "Factures à vérifier : "
+                f"{resultat.nombre_factures_a_verifier}\n"
+                "Documents bloqués : "
                 f"{resultat.nombre_documents_en_erreur}\n\n"
                 f"CSV créé :\n{chemin_sortie}"
             ),
@@ -418,13 +500,20 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             return
 
-        self.afficher_texte(texte)
         self.remplir_formulaire(facture)
 
-        self.bouton_exporter.configure(state="normal")
+        validation = valider_facture(facture)
+        self.appliquer_validation(validation)
+
+        rapport = self.formater_validation(validation)
+        self.afficher_texte(
+            f"{texte.rstrip()}\n\n{rapport}"
+        )
+
+        self.bouton_valider.configure(state="normal")
         self.statut.set(
             "Analyse terminée — "
-            "vérifiez les champs avant l'exportation"
+            "vérifiez les champs et la validation"
         )
 
     def afficher_texte(self, texte: str) -> None:
@@ -439,23 +528,24 @@ class ApplicationComptaPrivee(tk.Tk):
         for variable in self.variables.values():
             variable.set("")
 
+        self.statut_validation.set(
+            "Validation : aucun document analysé"
+        )
+        self.etiquette_validation.configure(
+            foreground="#475569"
+        )
+
     def remplir_formulaire(
         self,
         facture: DonneesFacture,
     ) -> None:
         """Place les données extraites dans le formulaire."""
-        self.variables["numero"].set(
-            facture.numero or ""
-        )
-        self.variables["date"].set(
-            facture.date or ""
-        )
+        self.variables["numero"].set(facture.numero or "")
+        self.variables["date"].set(facture.date or "")
         self.variables["fournisseur"].set(
             facture.fournisseur or ""
         )
-        self.variables["client"].set(
-            facture.client or ""
-        )
+        self.variables["client"].set(facture.client or "")
         self.variables["sous_total"].set(
             self.montant_vers_texte(facture.sous_total)
         )
@@ -535,10 +625,136 @@ class ApplicationComptaPrivee(tk.Tk):
             ),
         )
 
+    def appliquer_validation(
+        self,
+        validation: ResultatValidation,
+    ) -> None:
+        """Affiche visuellement le statut de validation."""
+        couleurs = {
+            StatutValidation.VALIDE: "#166534",
+            StatutValidation.A_VERIFIER: "#92400e",
+            StatutValidation.ERREUR: "#b91c1c",
+        }
+
+        self.statut_validation.set(
+            f"Validation : {validation.statut.value}"
+        )
+        self.etiquette_validation.configure(
+            foreground=couleurs[validation.statut]
+        )
+
+        if validation.autorise_export:
+            self.bouton_exporter.configure(state="normal")
+        else:
+            self.bouton_exporter.configure(state="disabled")
+
+    @staticmethod
+    def formater_validation(
+        validation: ResultatValidation,
+    ) -> str:
+        """Transforme la validation en texte lisible."""
+        lignes = [
+            "VALIDATION COMPTABLE",
+            "=" * 55,
+            f"Statut : {validation.statut.value}",
+        ]
+
+        if validation.erreurs:
+            lignes.extend(["", "Erreurs :"])
+
+            for erreur in validation.erreurs:
+                lignes.append(f"- {erreur}")
+
+        if validation.avertissements:
+            lignes.extend(["", "Avertissements :"])
+
+            for avertissement in validation.avertissements:
+                lignes.append(f"- {avertissement}")
+
+        if not validation.erreurs and not validation.avertissements:
+            lignes.extend(
+                [
+                    "",
+                    "Tous les contrôles comptables sont réussis.",
+                ]
+            )
+
+        return "\n".join(lignes)
+
+    def valider_formulaire(
+        self,
+        afficher_message: bool = True,
+    ) -> ResultatValidation | None:
+        """Valide les valeurs présentes dans le formulaire."""
+        try:
+            facture = self.lire_formulaire()
+        except ValueError as erreur:
+            messagebox.showerror(
+                "Donnée invalide",
+                str(erreur),
+            )
+            return None
+
+        validation = valider_facture(facture)
+        self.appliquer_validation(validation)
+
+        rapport = self.formater_validation(validation)
+        self.afficher_texte(rapport)
+
+        if afficher_message:
+            if validation.statut == StatutValidation.VALIDE:
+                messagebox.showinfo(
+                    "Validation réussie",
+                    "La facture est complète et cohérente.",
+                )
+            elif (
+                validation.statut
+                == StatutValidation.A_VERIFIER
+            ):
+                messagebox.showwarning(
+                    "Facture à vérifier",
+                    "\n".join(validation.avertissements),
+                )
+            else:
+                messagebox.showerror(
+                    "Erreur comptable",
+                    "\n".join(validation.erreurs),
+                )
+
+        return validation
+
     def exporter(self) -> None:
-        """Exporte une facture vérifiée dans un CSV."""
+        """Valide et exporte une facture dans un CSV."""
         if self.chemin_document is None:
             return
+
+        validation = self.valider_formulaire(
+            afficher_message=False
+        )
+
+        if validation is None:
+            return
+
+        if validation.statut == StatutValidation.ERREUR:
+            messagebox.showerror(
+                "Export bloqué",
+                "\n".join(validation.erreurs),
+            )
+            return
+
+        if validation.statut == StatutValidation.A_VERIFIER:
+            continuer = messagebox.askyesno(
+                "Confirmation requise",
+                (
+                    "Certains champs nécessitent une vérification :\n\n"
+                    + "\n".join(validation.avertissements)
+                    + "\n\nVoulez-vous quand même exporter "
+                    "la facture?"
+                ),
+            )
+
+            if not continuer:
+                return
 
         nom_initial = f"{self.chemin_document.stem}.csv"
 

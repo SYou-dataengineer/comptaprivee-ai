@@ -220,3 +220,14 @@ Trois statuts peuvent être produits :
 
 Lors d’un traitement par lot, une facture en erreur est exclue du CSV,
 mais les autres documents continuent d’être traités.
+
+### Validation dans l’interface graphique
+
+Après l’analyse d’un document, l’interface affiche son statut comptable :
+
+- `VALIDE` en vert;
+- `À VÉRIFIER` en orange;
+- `ERREUR` en rouge.
+
+L’utilisateur peut corriger les champs et relancer la validation.
+Une erreur comptable désactive automatiquement le bouton d’exportation.
