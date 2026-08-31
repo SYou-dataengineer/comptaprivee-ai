@@ -183,3 +183,20 @@ python -m src.comptaprivee.main --lot data\documents\facture_demo.pdf data\docum
 Le traitement demeure entièrement local. Si un document produit une
 erreur, les autres documents continuent d’être analysés et les erreurs
 sont affichées dans le résumé.
+
+### Traitement par lot dans l’interface
+
+L’interface graphique permet également de sélectionner plusieurs
+documents comptables en utilisant le bouton
+`Traiter plusieurs documents`.
+
+Après la sélection des fichiers, l’utilisateur choisit le nom du CSV
+regroupé. Le dossier `data/exports` est proposé automatiquement.
+
+L’interface affiche ensuite :
+
+- le nombre de documents sélectionnés;
+- le nombre de traitements réussis;
+- le nombre de documents en erreur;
+- les numéros et les totaux des factures détectées;
+- le chemin local du fichier CSV créé.
