@@ -200,3 +200,23 @@ L’interface affiche ensuite :
 - le nombre de documents en erreur;
 - les numéros et les totaux des factures détectées;
 - le chemin local du fichier CSV créé.
+
+## Validation comptable automatique
+
+Chaque facture extraite est contrôlée localement avant son export.
+
+Le validateur vérifie notamment :
+
+- la présence du numéro, de la date, du fournisseur et du total;
+- l’absence de montants négatifs;
+- la cohérence entre le sous-total, la TPS, la TVQ et le total;
+- que le total n’est pas inférieur au sous-total.
+
+Trois statuts peuvent être produits :
+
+- `VALIDE` : les données sont complètes et cohérentes;
+- `À VÉRIFIER` : certains champs sont manquants, mais l’export reste permis;
+- `ERREUR` : une incohérence importante bloque l’export de la facture.
+
+Lors d’un traitement par lot, une facture en erreur est exclue du CSV,
+mais les autres documents continuent d’être traités.
