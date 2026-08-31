@@ -78,20 +78,73 @@ def analyser_document(
     print(f"Total : {formater_montant(facture.total)}")
 
     if chemin_csv is not None:
-        fichier_exporte = exporter_facture_csv(facture, chemin_csv)
+        fichier_exporte = exporter_facture_csv(
+            facture,
+            chemin_csv,
+        )
         print()
         print(f"Export CSV créé : {fichier_exporte}")
+
+
+def analyser_documents_lot(
+    chemins_documents: list[str],
+    chemin_csv: str | Path,
+) -> None:
+    """Analyse plusieurs documents et crée un CSV regroupé."""
+    from .batch_processor import traiter_et_exporter_documents
+
+    print()
+    print("Traitement par lot")
+    print("-" * 55)
+    print(f"Documents sélectionnés : {len(chemins_documents)}")
+
+    resultat = traiter_et_exporter_documents(
+        chemins_documents,
+        chemin_csv,
+    )
+
+    print()
+    print("Résumé du traitement")
+    print("-" * 55)
+    print(
+        "Documents analysés avec succès : "
+        f"{resultat.nombre_documents_reussis}"
+    )
+    print(
+        "Documents en erreur : "
+        f"{resultat.nombre_documents_en_erreur}"
+    )
+
+    if resultat.erreurs:
+        print()
+        print("Erreurs rencontrées")
+        print("-" * 55)
+
+        for erreur in resultat.erreurs:
+            print(f"- {erreur.chemin.name} : {erreur.message}")
+
+    print()
+    print(f"Export CSV regroupé créé : {Path(chemin_csv)}")
 
 
 def creer_analyseur_arguments() -> argparse.ArgumentParser:
     """Crée les arguments acceptés par la ligne de commande."""
     analyseur = argparse.ArgumentParser(
-        description="Extraction locale de documents PDF, Word et images."
+        description=(
+            "Extraction locale de documents PDF, Word et images."
+        )
     )
     analyseur.add_argument(
         "document",
         nargs="?",
-        help="Chemin du document PDF, DOCX ou image à analyser.",
+        help="Chemin d'un document PDF, DOCX ou image à analyser.",
+    )
+    analyseur.add_argument(
+        "--lot",
+        nargs="+",
+        dest="documents_lot",
+        metavar="DOCUMENT",
+        help="Chemins de plusieurs documents à traiter ensemble.",
     )
     analyseur.add_argument(
         "--export-csv",
@@ -103,12 +156,31 @@ def creer_analyseur_arguments() -> argparse.ArgumentParser:
 
 def main() -> None:
     """Lance l'application."""
-    arguments = creer_analyseur_arguments().parse_args()
+    analyseur = creer_analyseur_arguments()
+    arguments = analyseur.parse_args()
 
     afficher_bienvenue()
 
-    if arguments.document:
-        analyser_document(arguments.document, arguments.chemin_csv)
+    if arguments.document and arguments.documents_lot:
+        analyseur.error(
+            "Choisissez un document unique ou l'option --lot."
+        )
+
+    if arguments.documents_lot:
+        if not arguments.chemin_csv:
+            analyseur.error(
+                "L'option --export-csv est obligatoire avec --lot."
+            )
+
+        analyser_documents_lot(
+            arguments.documents_lot,
+            arguments.chemin_csv,
+        )
+    elif arguments.document:
+        analyser_document(
+            arguments.document,
+            arguments.chemin_csv,
+        )
     else:
         print("État : environnement prêt")
         print("Utilisez --help pour afficher les commandes disponibles.")

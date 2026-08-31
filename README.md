@@ -55,7 +55,7 @@ Première phase :
 - affichage du texte extrait;
 - champs comptables modifiables avant validation;
 - export CSV contrôlé par l’utilisateur;
-- vingt-et-un tests automatiques réussis.
+- vingt-six tests automatiques réussis.
 ## Lancer le programme
 
 Sans document :
@@ -161,3 +161,25 @@ L’interface permet de :
 - vérifier et corriger les champs détectés;
 - exporter les données validées en CSV;
 - conserver toutes les informations localement.
+
+## Traitement de plusieurs factures
+
+ComptaPrivée AI peut analyser plusieurs documents dans une seule
+opération et regrouper les données extraites dans un fichier CSV.
+
+Les documents peuvent être de formats différents :
+
+- PDF avec texte sélectionnable;
+- PDF numérisé traité par OCR;
+- document Word DOCX;
+- image PNG, JPG, JPEG, TIFF ou BMP.
+
+Exemple de traitement par lot :
+
+```powershell
+python -m src.comptaprivee.main --lot data\documents\facture_demo.pdf data\documents\facture_word_demo.docx data\documents\facture_image_demo.png --export-csv data\exports\factures_lot_demo.csv
+```
+
+Le traitement demeure entièrement local. Si un document produit une
+erreur, les autres documents continuent d’être analysés et les erreurs
+sont affichées dans le résumé.
