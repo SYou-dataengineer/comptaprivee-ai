@@ -35,3 +35,10 @@ logs/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Bases de données comptables locales
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
