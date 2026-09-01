@@ -12,6 +12,7 @@ from tkinter.scrolledtext import ScrolledText
 from .batch_processor import traiter_et_exporter_documents
 from .csv_exporter import exporter_facture_csv
 from .pdf_exporter import exporter_facture_pdf
+from .dashboard import calculer_resume
 from .database import (
     enregistrer_facture,
     lister_factures,
@@ -163,6 +164,15 @@ class ApplicationComptaPrivee(tk.Tk):
             barre_document,
             text="Consulter l'historique",
             command=self.ouvrir_historique,
+        ).pack(
+            side="left",
+            padx=(10, 0),
+        )
+
+        ttk.Button(
+            barre_document,
+            text="Tableau de bord",
+            command=self.ouvrir_tableau_bord,
         ).pack(
             side="left",
             padx=(10, 0),
@@ -386,6 +396,185 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         return chemin
+
+    def ouvrir_tableau_bord(self) -> None:
+        """Ouvre un tableau de bord comptable local."""
+        try:
+            factures = lister_factures()
+            resume = calculer_resume(factures)
+        except Exception as erreur:
+            messagebox.showerror(
+                "Erreur du tableau de bord",
+                str(erreur),
+            )
+            return
+
+        fenetre = tk.Toplevel(self)
+        fenetre.title("Tableau de bord — ComptaPrivée AI")
+        fenetre.geometry("950x620")
+        fenetre.minsize(780, 500)
+
+        conteneur = ttk.Frame(
+            fenetre,
+            padding=20,
+        )
+        conteneur.pack(
+            fill="both",
+            expand=True,
+        )
+
+        ttk.Label(
+            conteneur,
+            text="Tableau de bord comptable",
+            font=("Segoe UI", 20, "bold"),
+        ).pack(
+            anchor="w",
+            pady=(0, 5),
+        )
+
+        ttk.Label(
+            conteneur,
+            text=(
+                "Indicateurs calculés uniquement à partir "
+                "de l'historique SQLite local."
+            ),
+            foreground="#166534",
+        ).pack(
+            anchor="w",
+            pady=(0, 18),
+        )
+
+        cartes = ttk.Frame(conteneur)
+        cartes.pack(
+            fill="x",
+            pady=(0, 20),
+        )
+
+        indicateurs = [
+            (
+                "Factures",
+                str(resume.nombre_factures),
+            ),
+            (
+                "Sous-total",
+                f"{resume.sous_total:.2f} CAD",
+            ),
+            (
+                "TPS",
+                f"{resume.tps:.2f} CAD",
+            ),
+            (
+                "TVQ",
+                f"{resume.tvq:.2f} CAD",
+            ),
+            (
+                "Total",
+                f"{resume.total:.2f} CAD",
+            ),
+        ]
+
+        for colonne, (titre, valeur) in enumerate(
+            indicateurs
+        ):
+            cadre = ttk.LabelFrame(
+                cartes,
+                text=titre,
+                padding=12,
+            )
+            cadre.grid(
+                row=0,
+                column=colonne,
+                sticky="nsew",
+                padx=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=valeur,
+                font=("Segoe UI", 13, "bold"),
+            ).pack()
+
+            cartes.columnconfigure(
+                colonne,
+                weight=1,
+            )
+
+        cadre_fournisseurs = ttk.LabelFrame(
+            conteneur,
+            text="Totaux par fournisseur",
+            padding=10,
+        )
+        cadre_fournisseurs.pack(
+            fill="both",
+            expand=True,
+        )
+
+        tableau = ttk.Treeview(
+            cadre_fournisseurs,
+            columns=("fournisseur", "total"),
+            show="headings",
+        )
+        tableau.heading(
+            "fournisseur",
+            text="Fournisseur",
+        )
+        tableau.heading(
+            "total",
+            text="Total",
+        )
+        tableau.column(
+            "fournisseur",
+            width=520,
+        )
+        tableau.column(
+            "total",
+            width=160,
+            anchor="e",
+        )
+        tableau.pack(
+            fill="both",
+            expand=True,
+        )
+
+        for fournisseur, total in (
+            resume.total_par_fournisseur
+        ):
+            tableau.insert(
+                "",
+                "end",
+                values=(
+                    fournisseur,
+                    f"{total:.2f} CAD",
+                ),
+            )
+
+        if not resume.total_par_fournisseur:
+            tableau.insert(
+                "",
+                "end",
+                values=(
+                    "Aucune facture enregistrée",
+                    "0.00 CAD",
+                ),
+            )
+
+        zone_bas = ttk.Frame(conteneur)
+        zone_bas.pack(
+            fill="x",
+            pady=(15, 0),
+        )
+
+        ttk.Button(
+            zone_bas,
+            text="Fermer",
+            command=fenetre.destroy,
+        ).pack(
+            side="right",
+        )
+
+        self.statut.set(
+            "Tableau de bord comptable affiché"
+        )
 
     def ouvrir_dossier_exports(self) -> None:
         """Ouvre le dossier local contenant les exports CSV et PDF."""
