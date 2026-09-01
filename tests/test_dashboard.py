@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from src.comptaprivee.dashboard import (
+    calculer_taxes_mensuelles,
     calculer_totaux_mensuels,
     ResumeTableauBord,
     calculer_resume,
@@ -341,6 +342,92 @@ def test_calculer_totaux_mensuels_ignore_dates_invalides() -> None:
     )
 
     assert calculer_totaux_mensuels(
+        [facture_invalide]
+    ) == ()
+
+def test_calculer_taxes_mensuelles() -> None:
+    """La TPS et la TVQ sont regroupées par mois."""
+    facture_a = facture(
+        1,
+        "Alpha",
+        "114.98",
+        "100.00",
+        "5.00",
+        "9.98",
+    )
+    facture_b = facture(
+        2,
+        "Beta",
+        "229.96",
+        "200.00",
+        "10.00",
+        "19.96",
+    )
+    facture_c = facture(
+        3,
+        "Gamma",
+        "57.49",
+        "50.00",
+        "2.50",
+        "4.99",
+    )
+
+    facture_a = FactureEnregistree(
+        **{
+            **facture_a.__dict__,
+            "date": "2026-08-05",
+        }
+    )
+    facture_b = FactureEnregistree(
+        **{
+            **facture_b.__dict__,
+            "date": "2026-08-20",
+        }
+    )
+    facture_c = FactureEnregistree(
+        **{
+            **facture_c.__dict__,
+            "date": "2026-09-01",
+        }
+    )
+
+    resultat = calculer_taxes_mensuelles(
+        [facture_c, facture_b, facture_a]
+    )
+
+    assert resultat == (
+        (
+            "2026-08",
+            Decimal("15.00"),
+            Decimal("29.94"),
+        ),
+        (
+            "2026-09",
+            Decimal("2.50"),
+            Decimal("4.99"),
+        ),
+    )
+
+
+def test_calculer_taxes_mensuelles_ignore_dates_invalides() -> None:
+    """Les dates invalides sont ignorées dans les taxes mensuelles."""
+    facture_invalide = facture(
+        1,
+        "Alpha",
+        "114.98",
+        "100.00",
+        "5.00",
+        "9.98",
+    )
+
+    facture_invalide = FactureEnregistree(
+        **{
+            **facture_invalide.__dict__,
+            "date": "invalide",
+        }
+    )
+
+    assert calculer_taxes_mensuelles(
         [facture_invalide]
     ) == ()
 

@@ -173,3 +173,38 @@ def calculer_totaux_mensuels(
         )
     )
 
+def calculer_taxes_mensuelles(
+    factures: list[FactureEnregistree],
+) -> tuple[tuple[str, Decimal, Decimal], ...]:
+    """Regroupe la TPS et la TVQ par mois AAAA-MM."""
+    taxes: dict[str, list[Decimal]] = defaultdict(
+        lambda: [Decimal("0"), Decimal("0")]
+    )
+
+    for facture in factures:
+        if not facture.date:
+            continue
+
+        try:
+            date_facture = date.fromisoformat(
+                facture.date
+            )
+        except ValueError:
+            continue
+
+        cle_mois = date_facture.strftime("%Y-%m")
+        taxes[cle_mois][0] += facture.tps or Decimal("0")
+        taxes[cle_mois][1] += facture.tvq or Decimal("0")
+
+    return tuple(
+        (
+            mois,
+            montants[0],
+            montants[1],
+        )
+        for mois, montants in sorted(
+            taxes.items(),
+            key=lambda element: element[0],
+        )
+    )
+

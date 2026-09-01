@@ -13,6 +13,7 @@ from .batch_processor import traiter_et_exporter_documents
 from .csv_exporter import exporter_facture_csv
 from .pdf_exporter import exporter_facture_pdf
 from .dashboard import (
+    calculer_taxes_mensuelles,
     calculer_totaux_mensuels,
     calculer_resume,
     filtrer_factures_fournisseur,
@@ -994,6 +995,271 @@ class ApplicationComptaPrivee(tk.Tk):
                 dessiner,
             )
 
+        def afficher_taxes_mensuelles() -> None:
+            try:
+                selection, _ = obtenir_selection()
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Filtre invalide",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            donnees = calculer_taxes_mensuelles(
+                selection
+            )
+
+            if not donnees:
+                messagebox.showinfo(
+                    "Taxes mensuelles",
+                    "Aucune donnée de taxes à afficher pour ces filtres.",
+                    parent=fenetre,
+                )
+                return
+
+            graphique = tk.Toplevel(fenetre)
+            graphique.title(
+                "TPS et TVQ mensuelles — ComptaPrivée AI"
+            )
+            graphique.geometry("940x580")
+            graphique.minsize(740, 460)
+
+            cadre = ttk.Frame(
+                graphique,
+                padding=20,
+            )
+            cadre.pack(
+                fill="both",
+                expand=True,
+            )
+
+            ttk.Label(
+                cadre,
+                text="TPS et TVQ par mois",
+                font=("Segoe UI", 18, "bold"),
+            ).pack(
+                anchor="w",
+                pady=(0, 5),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Taxes calculées à partir des factures "
+                    "correspondant aux filtres actifs."
+                ),
+                foreground="#166534",
+            ).pack(
+                anchor="w",
+                pady=(0, 15),
+            )
+
+            toile = tk.Canvas(
+                cadre,
+                background="white",
+                highlightthickness=1,
+                highlightbackground="#cbd5e1",
+            )
+            toile.pack(
+                fill="both",
+                expand=True,
+            )
+
+            def dessiner_taxes(_event=None) -> None:
+                toile.delete("all")
+
+                largeur = max(
+                    toile.winfo_width(),
+                    700,
+                )
+                hauteur = max(
+                    toile.winfo_height(),
+                    340,
+                )
+
+                marge_gauche = 80
+                marge_droite = 40
+                marge_haut = 55
+                marge_bas = 80
+
+                largeur_graphique = max(
+                    largeur - marge_gauche - marge_droite,
+                    100,
+                )
+                hauteur_graphique = max(
+                    hauteur - marge_haut - marge_bas,
+                    100,
+                )
+
+                maximum = max(
+                    max(float(tps), float(tvq))
+                    for _, tps, tvq in donnees
+                )
+
+                if maximum <= 0:
+                    maximum = 1.0
+
+                y_bas = hauteur - marge_bas
+                y_haut = marge_haut
+
+                toile.create_line(
+                    marge_gauche,
+                    y_haut,
+                    marge_gauche,
+                    y_bas,
+                    fill="#64748b",
+                )
+                toile.create_line(
+                    marge_gauche,
+                    y_bas,
+                    largeur - marge_droite,
+                    y_bas,
+                    fill="#64748b",
+                )
+
+                for division in range(5):
+                    valeur = maximum * division / 4
+                    y = (
+                        y_bas
+                        - hauteur_graphique * division / 4
+                    )
+
+                    toile.create_line(
+                        marge_gauche - 5,
+                        y,
+                        largeur - marge_droite,
+                        y,
+                        fill="#e2e8f0",
+                    )
+                    toile.create_text(
+                        marge_gauche - 10,
+                        y,
+                        text=f"{valeur:.0f}",
+                        anchor="e",
+                        font=("Segoe UI", 9),
+                    )
+
+                nombre = len(donnees)
+                largeur_groupe = (
+                    largeur_graphique / max(nombre, 1)
+                )
+                largeur_barre = min(
+                    36,
+                    largeur_groupe * 0.28,
+                )
+
+                for index, (mois, tps, tvq) in enumerate(
+                    donnees
+                ):
+                    centre = (
+                        marge_gauche
+                        + largeur_groupe * index
+                        + largeur_groupe / 2
+                    )
+
+                    valeurs = [
+                        ("TPS", tps, "#2563eb"),
+                        ("TVQ", tvq, "#16a34a"),
+                    ]
+
+                    for decalage, (
+                        libelle,
+                        montant,
+                        couleur,
+                    ) in enumerate(valeurs):
+                        ratio = float(montant) / maximum
+                        hauteur_barre = (
+                            hauteur_graphique * ratio
+                        )
+
+                        x1 = (
+                            centre
+                            - largeur_barre
+                            - 3
+                            if decalage == 0
+                            else centre + 3
+                        )
+                        x2 = x1 + largeur_barre
+                        y1 = y_bas - hauteur_barre
+
+                        toile.create_rectangle(
+                            x1,
+                            y1,
+                            x2,
+                            y_bas,
+                            fill=couleur,
+                            outline=couleur,
+                        )
+
+                        toile.create_text(
+                            (x1 + x2) / 2,
+                            max(y1 - 8, 12),
+                            text=f"{montant:.2f}",
+                            anchor="s",
+                            font=("Segoe UI", 8, "bold"),
+                        )
+
+                    toile.create_text(
+                        centre,
+                        y_bas + 24,
+                        text=mois,
+                        anchor="n",
+                        font=("Segoe UI", 9),
+                    )
+
+                legende_y = 18
+                toile.create_rectangle(
+                    marge_gauche,
+                    legende_y,
+                    marge_gauche + 16,
+                    legende_y + 12,
+                    fill="#2563eb",
+                    outline="#2563eb",
+                )
+                toile.create_text(
+                    marge_gauche + 24,
+                    legende_y + 6,
+                    text="TPS",
+                    anchor="w",
+                    font=("Segoe UI", 9),
+                )
+
+                toile.create_rectangle(
+                    marge_gauche + 80,
+                    legende_y,
+                    marge_gauche + 96,
+                    legende_y + 12,
+                    fill="#16a34a",
+                    outline="#16a34a",
+                )
+                toile.create_text(
+                    marge_gauche + 104,
+                    legende_y + 6,
+                    text="TVQ",
+                    anchor="w",
+                    font=("Segoe UI", 9),
+                )
+
+            toile.bind(
+                "<Configure>",
+                dessiner_taxes,
+            )
+
+            ttk.Button(
+                cadre,
+                text="Fermer",
+                command=graphique.destroy,
+            ).pack(
+                anchor="e",
+                pady=(12, 0),
+            )
+
+            graphique.after(
+                50,
+                dessiner_taxes,
+            )
+
         def afficher_evolution_mensuelle() -> None:
             try:
                 selection, _ = obtenir_selection()
@@ -1292,6 +1558,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_bas,
             text="Évolution mensuelle",
             command=afficher_evolution_mensuelle,
+        ).pack(
+            side="right",
+            padx=(0, 8),
+        )
+
+        ttk.Button(
+            zone_bas,
+            text="TPS / TVQ mensuelles",
+            command=afficher_taxes_mensuelles,
         ).pack(
             side="right",
             padx=(0, 8),
