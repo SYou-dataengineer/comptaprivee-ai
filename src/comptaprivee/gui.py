@@ -11,7 +11,10 @@ from .csv_exporter import exporter_facture_csv
 from .database import (
     enregistrer_facture,
     lister_factures,
-    supprimer_facture,
+    lister_factures_corbeille,
+    mettre_facture_corbeille,
+    restaurer_facture,
+    supprimer_facture_corbeille,
 )
 from .facture_parser import DonneesFacture, extraire_donnees_facture
 from .invoice_validator import (
@@ -1269,6 +1272,231 @@ class ApplicationComptaPrivee(tk.Tk):
             pady=(15, 0),
         )
 
+    def ouvrir_corbeille(self) -> None:
+        """Ouvre la corbeille locale des factures."""
+        fenetre = tk.Toplevel(self)
+        fenetre.title("Corbeille — ComptaPrivée AI")
+        fenetre.geometry("1150x600")
+        fenetre.minsize(900, 450)
+
+        conteneur = ttk.Frame(fenetre, padding=15)
+        conteneur.pack(fill="both", expand=True)
+
+        ttk.Label(
+            conteneur,
+            text="Corbeille locale",
+            font=("Segoe UI", 18, "bold"),
+        ).pack(anchor="w", pady=(0, 5))
+
+        ttk.Label(
+            conteneur,
+            text=(
+                "Les factures placées ici peuvent être restaurées. "
+                "La suppression définitive est irréversible."
+            ),
+            foreground="#92400e",
+        ).pack(anchor="w", pady=(0, 12))
+
+        cadre_tableau = ttk.Frame(conteneur)
+        cadre_tableau.pack(fill="both", expand=True)
+
+        colonnes = (
+            "id", "date", "numero", "fournisseur", "client",
+            "total", "date_suppression",
+        )
+        tableau = ttk.Treeview(
+            cadre_tableau, columns=colonnes, show="headings", selectmode="browse"
+        )
+
+        titres = {
+            "id": "ID",
+            "date": "Date",
+            "numero": "N° facture",
+            "fournisseur": "Fournisseur",
+            "client": "Client",
+            "total": "Total",
+            "date_suppression": "Supprimée le",
+        }
+        for colonne, titre in titres.items():
+            tableau.heading(colonne, text=titre)
+
+        tableau.column("id", width=60, anchor="center", stretch=False)
+        tableau.column("date", width=100, anchor="center", stretch=False)
+        tableau.column("numero", width=140)
+        tableau.column("fournisseur", width=220)
+        tableau.column("client", width=220)
+        tableau.column("total", width=110, anchor="e", stretch=False)
+        tableau.column("date_suppression", width=165, anchor="center")
+
+        barre_verticale = ttk.Scrollbar(
+            cadre_tableau, orient="vertical", command=tableau.yview
+        )
+        barre_horizontale = ttk.Scrollbar(
+            cadre_tableau, orient="horizontal", command=tableau.xview
+        )
+        tableau.configure(
+            yscrollcommand=barre_verticale.set,
+            xscrollcommand=barre_horizontale.set,
+        )
+        tableau.grid(row=0, column=0, sticky="nsew")
+        barre_verticale.grid(row=0, column=1, sticky="ns")
+        barre_horizontale.grid(row=1, column=0, sticky="ew")
+        cadre_tableau.rowconfigure(0, weight=1)
+        cadre_tableau.columnconfigure(0, weight=1)
+
+        texte_resume = tk.StringVar(value="")
+        factures_corbeille = []
+
+        def charger_corbeille() -> None:
+            nonlocal factures_corbeille
+            for element in tableau.get_children():
+                tableau.delete(element)
+
+            try:
+                factures_corbeille = lister_factures_corbeille()
+            except Exception as erreur:
+                messagebox.showerror(
+                    "Erreur de la corbeille", str(erreur), parent=fenetre
+                )
+                return
+
+            for facture in factures_corbeille:
+                total_affiche = "" if facture.total is None else f"{facture.total:.2f} CAD"
+                tableau.insert(
+                    "", "end", iid=str(facture.identifiant),
+                    values=(
+                        facture.identifiant, facture.date or "", facture.numero or "",
+                        facture.fournisseur or "", facture.client or "",
+                        total_affiche, facture.date_suppression,
+                    ),
+                )
+
+            nombre = len(factures_corbeille)
+            if nombre == 0:
+                texte_resume.set("La corbeille est vide.")
+            elif nombre == 1:
+                texte_resume.set("1 facture dans la corbeille.")
+            else:
+                texte_resume.set(f"{nombre} factures dans la corbeille.")
+
+        def facture_selectionnee():
+            selection = tableau.selection()
+            if not selection:
+                return None
+            identifiant = int(selection[0])
+            for facture in factures_corbeille:
+                if facture.identifiant == identifiant:
+                    return facture
+            return None
+
+        def restaurer_selection() -> None:
+            facture = facture_selectionnee()
+            if facture is None:
+                messagebox.showinfo(
+                    "Sélection requise",
+                    "Sélectionnez une facture à restaurer.",
+                    parent=fenetre,
+                )
+                return
+
+            numero = facture.numero or "Sans numéro"
+            if not messagebox.askyesno(
+                "Restaurer la facture",
+                f"Restaurer la facture {numero} dans l'historique actif ?",
+                parent=fenetre,
+            ):
+                return
+
+            try:
+                restauree = restaurer_facture(facture.identifiant)
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Restauration impossible", str(erreur), parent=fenetre
+                )
+                return
+            except Exception as erreur:
+                messagebox.showerror(
+                    "Erreur de restauration", str(erreur), parent=fenetre
+                )
+                return
+
+            if not restauree:
+                messagebox.showwarning(
+                    "Facture introuvable",
+                    "La facture n'est plus dans la corbeille.",
+                    parent=fenetre,
+                )
+                charger_corbeille()
+                return
+
+            charger_corbeille()
+            self.statut.set("Facture restaurée depuis la corbeille")
+            messagebox.showinfo(
+                "Facture restaurée",
+                f"La facture {numero} a été restaurée.",
+                parent=fenetre,
+            )
+
+        def supprimer_definitivement() -> None:
+            facture = facture_selectionnee()
+            if facture is None:
+                messagebox.showinfo(
+                    "Sélection requise",
+                    "Sélectionnez une facture à supprimer.",
+                    parent=fenetre,
+                )
+                return
+
+            numero = facture.numero or "Sans numéro"
+            if not messagebox.askyesno(
+                "Suppression définitive",
+                (
+                    f"Supprimer définitivement la facture {numero} ?\n\n"
+                    "Cette opération ne peut pas être annulée."
+                ),
+                parent=fenetre,
+            ):
+                return
+
+            if not messagebox.askyesno(
+                "Dernière confirmation",
+                (
+                    "ATTENTION\n\nLa facture sera définitivement effacée "
+                    "de la corbeille SQLite locale.\n\nConfirmer ?"
+                ),
+                parent=fenetre,
+            ):
+                return
+
+            try:
+                supprimee = supprimer_facture_corbeille(facture.identifiant)
+            except Exception as erreur:
+                messagebox.showerror(
+                    "Erreur de suppression", str(erreur), parent=fenetre
+                )
+                return
+
+            charger_corbeille()
+            if supprimee:
+                self.statut.set("Facture supprimée définitivement")
+                messagebox.showinfo(
+                    "Suppression terminée",
+                    f"La facture {numero} a été supprimée définitivement.",
+                    parent=fenetre,
+                )
+
+        zone_bas = ttk.Frame(conteneur)
+        zone_bas.pack(fill="x", pady=(12, 0))
+        ttk.Label(zone_bas, textvariable=texte_resume).pack(side="left")
+        ttk.Button(zone_bas, text="Actualiser", command=charger_corbeille).pack(side="right")
+        ttk.Button(zone_bas, text="Fermer", command=fenetre.destroy).pack(side="right", padx=(0, 10))
+        ttk.Button(
+            zone_bas, text="Supprimer définitivement", command=supprimer_definitivement
+        ).pack(side="right", padx=(0, 10))
+        ttk.Button(zone_bas, text="Restaurer", command=restaurer_selection).pack(side="right", padx=(0, 10))
+
+        charger_corbeille()
+
     def ouvrir_historique(self) -> None:
         """Ouvre la fenêtre de consultation de l'historique."""
         fenetre = tk.Toplevel(self)
@@ -1666,13 +1894,13 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def supprimer_selection() -> None:
-            """Supprime une facture après une double confirmation."""
+            """Déplace la facture sélectionnée vers la corbeille."""
             facture = obtenir_facture_selectionnee()
 
             if facture is None:
                 messagebox.showinfo(
                     "Sélection requise",
-                    "Sélectionnez d'abord une facture à supprimer.",
+                    "Sélectionnez d'abord une facture.",
                     parent=fenetre,
                 )
                 return
@@ -1681,14 +1909,13 @@ class ApplicationComptaPrivee(tk.Tk):
             fournisseur = facture.fournisseur or "Fournisseur non renseigné"
 
             confirmation = messagebox.askyesno(
-                "Confirmer la suppression",
+                "Mettre à la corbeille",
                 (
-                    "Voulez-vous supprimer cette facture ?\n\n"
+                    "Déplacer cette facture vers la corbeille ?\n\n"
                     f"Numéro : {numero}\n"
                     f"Fournisseur : {fournisseur}\n"
                     f"ID : {facture.identifiant}\n\n"
-                    "La facture sera supprimée uniquement "
-                    "de la base SQLite locale."
+                    "La facture pourra être restaurée plus tard."
                 ),
                 parent=fenetre,
             )
@@ -1696,49 +1923,31 @@ class ApplicationComptaPrivee(tk.Tk):
             if not confirmation:
                 return
 
-            confirmation_finale = messagebox.askyesno(
-                "Suppression définitive",
-                (
-                    "ATTENTION\n\n"
-                    "Cette suppression est définitive et "
-                    "ne peut pas être annulée.\n\n"
-                    "Confirmer la suppression ?"
-                ),
-                parent=fenetre,
-            )
-
-            if not confirmation_finale:
-                return
-
             try:
-                supprimee = supprimer_facture(facture.identifiant)
+                deplacee = mettre_facture_corbeille(facture.identifiant)
             except Exception as erreur:
                 messagebox.showerror(
-                    "Erreur de suppression",
-                    str(erreur),
-                    parent=fenetre,
+                    "Erreur", str(erreur), parent=fenetre
                 )
                 return
 
-            if not supprimee:
+            if not deplacee:
                 messagebox.showwarning(
                     "Facture introuvable",
-                    "Cette facture n'existe plus dans la base locale.",
+                    "La facture n'existe plus dans l'historique.",
                     parent=fenetre,
                 )
                 charger_factures()
                 return
 
             charger_factures()
-            self.statut.set("Facture supprimée de l'historique local")
-
+            self.statut.set("Facture déplacée vers la corbeille locale")
             messagebox.showinfo(
-                "Suppression terminée",
+                "Facture déplacée",
                 (
-                    "La facture a été supprimée "
-                    "de la base SQLite locale.\n\n"
-                    f"Numéro : {numero}\n"
-                    f"ID : {facture.identifiant}"
+                    "La facture a été placée dans la corbeille.\n\n"
+                    f"Numéro : {numero}\n\n"
+                    "Elle peut être restaurée depuis la corbeille."
                 ),
                 parent=fenetre,
             )
@@ -1803,8 +2012,17 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(
             zone_bas,
-            text="Supprimer",
+            text="Mettre à la corbeille",
             command=supprimer_selection,
+        ).pack(
+            side="right",
+            padx=(0, 10),
+        )
+
+        ttk.Button(
+            zone_bas,
+            text="Corbeille",
+            command=self.ouvrir_corbeille,
         ).pack(
             side="right",
             padx=(0, 10),

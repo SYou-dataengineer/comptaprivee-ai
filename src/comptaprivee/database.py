@@ -27,6 +27,23 @@ class FactureEnregistree:
     date_creation: str
 
 
+@dataclass(frozen=True)
+class FactureCorbeille:
+    """Représente une facture placée dans la corbeille locale."""
+
+    identifiant: int
+    numero: str | None
+    date: str | None
+    fournisseur: str | None
+    client: str | None
+    sous_total: Decimal | None
+    tps: Decimal | None
+    tvq: Decimal | None
+    total: Decimal | None
+    date_creation: str
+    date_suppression: str
+
+
 def ouvrir_connexion(
     chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
 ) -> sqlite3.Connection:
@@ -229,6 +246,187 @@ def supprimer_facture(
             DELETE FROM factures
             WHERE id = ?
             """,
+            (identifiant,),
+        )
+
+    return curseur.rowcount > 0
+
+def initialiser_corbeille(
+    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+) -> Path:
+    """Crée la table locale de corbeille si nécessaire."""
+    chemin = initialiser_base(chemin_base)
+
+    with ouvrir_connexion(chemin) as connexion:
+        connexion.execute(
+            """
+            CREATE TABLE IF NOT EXISTS factures_corbeille (
+                id INTEGER PRIMARY KEY,
+                numero TEXT,
+                date_facture TEXT,
+                fournisseur TEXT,
+                client TEXT,
+                sous_total TEXT,
+                tps TEXT,
+                tvq TEXT,
+                total TEXT,
+                date_creation TEXT NOT NULL,
+                date_suppression TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+    return chemin
+
+
+def ligne_vers_facture_corbeille(
+    ligne: sqlite3.Row,
+) -> FactureCorbeille:
+    """Transforme une ligne SQLite de corbeille en facture."""
+    return FactureCorbeille(
+        identifiant=ligne["id"],
+        numero=ligne["numero"],
+        date=ligne["date_facture"],
+        fournisseur=ligne["fournisseur"],
+        client=ligne["client"],
+        sous_total=texte_vers_decimal(ligne["sous_total"]),
+        tps=texte_vers_decimal(ligne["tps"]),
+        tvq=texte_vers_decimal(ligne["tvq"]),
+        total=texte_vers_decimal(ligne["total"]),
+        date_creation=ligne["date_creation"],
+        date_suppression=ligne["date_suppression"],
+    )
+
+
+def mettre_facture_corbeille(
+    identifiant: int,
+    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+) -> bool:
+    """Déplace une facture active vers la corbeille locale."""
+    initialiser_corbeille(chemin_base)
+
+    with ouvrir_connexion(chemin_base) as connexion:
+        ligne = connexion.execute(
+            """
+            SELECT *
+            FROM factures
+            WHERE id = ?
+            """,
+            (identifiant,),
+        ).fetchone()
+
+        if ligne is None:
+            return False
+
+        connexion.execute(
+            """
+            INSERT OR REPLACE INTO factures_corbeille (
+                id, numero, date_facture, fournisseur, client,
+                sous_total, tps, tvq, total, date_creation,
+                date_suppression
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """,
+            (
+                ligne["id"],
+                ligne["numero"],
+                ligne["date_facture"],
+                ligne["fournisseur"],
+                ligne["client"],
+                ligne["sous_total"],
+                ligne["tps"],
+                ligne["tvq"],
+                ligne["total"],
+                ligne["date_creation"],
+            ),
+        )
+        connexion.execute(
+            "DELETE FROM factures WHERE id = ?",
+            (identifiant,),
+        )
+
+    return True
+
+
+def lister_factures_corbeille(
+    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+) -> list[FactureCorbeille]:
+    """Retourne les factures présentes dans la corbeille."""
+    initialiser_corbeille(chemin_base)
+
+    with ouvrir_connexion(chemin_base) as connexion:
+        lignes = connexion.execute(
+            """
+            SELECT *
+            FROM factures_corbeille
+            ORDER BY date_suppression DESC, id DESC
+            """
+        ).fetchall()
+
+    return [ligne_vers_facture_corbeille(ligne) for ligne in lignes]
+
+
+def restaurer_facture(
+    identifiant: int,
+    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+) -> bool:
+    """Restaure une facture depuis la corbeille."""
+    initialiser_corbeille(chemin_base)
+
+    with ouvrir_connexion(chemin_base) as connexion:
+        ligne = connexion.execute(
+            "SELECT * FROM factures_corbeille WHERE id = ?",
+            (identifiant,),
+        ).fetchone()
+
+        if ligne is None:
+            return False
+
+        try:
+            connexion.execute(
+                """
+                INSERT INTO factures (
+                    numero, date_facture, fournisseur, client,
+                    sous_total, tps, tvq, total, date_creation
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    ligne["numero"],
+                    ligne["date_facture"],
+                    ligne["fournisseur"],
+                    ligne["client"],
+                    ligne["sous_total"],
+                    ligne["tps"],
+                    ligne["tvq"],
+                    ligne["total"],
+                    ligne["date_creation"],
+                ),
+            )
+        except sqlite3.IntegrityError as erreur:
+            raise ValueError(
+                "Impossible de restaurer la facture : une facture active "
+                "avec le même numéro existe déjà."
+            ) from erreur
+
+        connexion.execute(
+            "DELETE FROM factures_corbeille WHERE id = ?",
+            (identifiant,),
+        )
+
+    return True
+
+
+def supprimer_facture_corbeille(
+    identifiant: int,
+    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+) -> bool:
+    """Supprime définitivement une facture de la corbeille."""
+    initialiser_corbeille(chemin_base)
+
+    with ouvrir_connexion(chemin_base) as connexion:
+        curseur = connexion.execute(
+            "DELETE FROM factures_corbeille WHERE id = ?",
             (identifiant,),
         )
 
