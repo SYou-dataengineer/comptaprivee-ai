@@ -551,6 +551,66 @@ class ApplicationComptaPrivee(tk.Tk):
             sticky="e",
         )
 
+        date_export_debut = tk.StringVar()
+        date_export_fin = tk.StringVar()
+
+        ttk.Label(
+            zone_filtres,
+            text="Du :",
+        ).grid(
+            row=1,
+            column=0,
+            sticky="w",
+            pady=(10, 0),
+        )
+
+        champ_date_debut = ttk.Entry(
+            zone_filtres,
+            textvariable=date_export_debut,
+            width=14,
+        )
+        champ_date_debut.grid(
+            row=1,
+            column=1,
+            sticky="w",
+            padx=(8, 16),
+            pady=(10, 0),
+        )
+
+        ttk.Label(
+            zone_filtres,
+            text="Au :",
+        ).grid(
+            row=1,
+            column=2,
+            sticky="w",
+            pady=(10, 0),
+        )
+
+        champ_date_fin = ttk.Entry(
+            zone_filtres,
+            textvariable=date_export_fin,
+            width=14,
+        )
+        champ_date_fin.grid(
+            row=1,
+            column=3,
+            sticky="w",
+            padx=(8, 16),
+            pady=(10, 0),
+        )
+
+        ttk.Label(
+            zone_filtres,
+            text="Format : AAAA-MM-JJ",
+            foreground="#64748b",
+        ).grid(
+            row=1,
+            column=4,
+            sticky="e",
+            pady=(10, 0),
+        )
+
         zone_filtres.columnconfigure(
             1,
             weight=1,
@@ -598,11 +658,17 @@ class ApplicationComptaPrivee(tk.Tk):
             tous_exports = lister_exports(
                 self.dossier_exports()
             )
-            exports = filtrer_exports(
-                tous_exports,
-                recherche=recherche_export.get(),
-                type_fichier=type_export_selectionne.get(),
-            )
+            try:
+                exports = filtrer_exports(
+                    tous_exports,
+                    recherche=recherche_export.get(),
+                    type_fichier=type_export_selectionne.get(),
+                    date_debut=date_export_debut.get(),
+                    date_fin=date_export_fin.get(),
+                )
+            except ValueError as erreur:
+                compteur_exports.set(str(erreur))
+                return
 
             compte = compter_types(tous_exports)
             compteur_exports.set(
@@ -715,6 +781,8 @@ class ApplicationComptaPrivee(tk.Tk):
         def effacer_filtres() -> None:
             recherche_export.set("")
             type_export_selectionne.set("Tous")
+            date_export_debut.set("")
+            date_export_fin.set("")
             actualiser()
             champ_recherche.focus_set()
 
@@ -761,6 +829,14 @@ class ApplicationComptaPrivee(tk.Tk):
             lambda *_args: actualiser(),
         )
         type_export_selectionne.trace_add(
+            "write",
+            lambda *_args: actualiser(),
+        )
+        date_export_debut.trace_add(
+            "write",
+            lambda *_args: actualiser(),
+        )
+        date_export_fin.trace_add(
             "write",
             lambda *_args: actualiser(),
         )

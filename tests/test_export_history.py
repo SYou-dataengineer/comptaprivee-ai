@@ -130,3 +130,114 @@ def test_recherche_exports_insensible_casse(tmp_path) -> None:
     )
 
     assert len(filtres) == 1
+
+def test_filtrer_exports_par_date_debut(tmp_path) -> None:
+    from datetime import datetime
+    from src.comptaprivee.export_history import filtrer_exports
+
+    ancien = tmp_path / "ancien.pdf"
+    recent = tmp_path / "recent.pdf"
+    ancien.write_bytes(b"a")
+    recent.write_bytes(b"b")
+
+    os.utime(
+        ancien,
+        (
+            datetime(2026, 8, 1, 10, 0).timestamp(),
+            datetime(2026, 8, 1, 10, 0).timestamp(),
+        ),
+    )
+    os.utime(
+        recent,
+        (
+            datetime(2026, 9, 1, 10, 0).timestamp(),
+            datetime(2026, 9, 1, 10, 0).timestamp(),
+        ),
+    )
+
+    filtres = filtrer_exports(
+        lister_exports(tmp_path),
+        date_debut="2026-09-01",
+    )
+
+    assert [item.nom for item in filtres] == ["recent.pdf"]
+
+
+def test_filtrer_exports_par_plage_date(tmp_path) -> None:
+    from datetime import datetime
+    from src.comptaprivee.export_history import filtrer_exports
+
+    aout = tmp_path / "aout.pdf"
+    septembre = tmp_path / "septembre.pdf"
+    aout.write_bytes(b"a")
+    septembre.write_bytes(b"b")
+
+    os.utime(
+        aout,
+        (
+            datetime(2026, 8, 15, 12, 0).timestamp(),
+            datetime(2026, 8, 15, 12, 0).timestamp(),
+        ),
+    )
+    os.utime(
+        septembre,
+        (
+            datetime(2026, 9, 1, 12, 0).timestamp(),
+            datetime(2026, 9, 1, 12, 0).timestamp(),
+        ),
+    )
+
+    filtres = filtrer_exports(
+        lister_exports(tmp_path),
+        date_debut="2026-08-01",
+        date_fin="2026-08-31",
+    )
+
+    assert [item.nom for item in filtres] == ["aout.pdf"]
+
+
+def test_filtrer_exports_date_invalide(tmp_path) -> None:
+    import pytest
+    from src.comptaprivee.export_history import filtrer_exports
+
+    with pytest.raises(ValueError):
+        filtrer_exports(
+            lister_exports(tmp_path),
+            date_debut="01-09-2026",
+        )
+
+
+def test_filtrer_exports_date_debut_apres_fin(tmp_path) -> None:
+    import pytest
+    from src.comptaprivee.export_history import filtrer_exports
+
+    with pytest.raises(ValueError):
+        filtrer_exports(
+            lister_exports(tmp_path),
+            date_debut="2026-09-10",
+            date_fin="2026-09-01",
+        )
+
+
+def test_filtrer_exports_combine_nom_type_date(tmp_path) -> None:
+    from datetime import datetime
+    from src.comptaprivee.export_history import filtrer_exports
+
+    pdf = tmp_path / "resume_client.pdf"
+    csv = tmp_path / "resume_client.csv"
+    pdf.write_bytes(b"a")
+    csv.write_bytes(b"b")
+
+    instant = datetime(2026, 9, 1, 9, 0).timestamp()
+    os.utime(pdf, (instant, instant))
+    os.utime(csv, (instant, instant))
+
+    filtres = filtrer_exports(
+        lister_exports(tmp_path),
+        recherche="resume",
+        type_fichier="PDF",
+        date_debut="2026-09-01",
+        date_fin="2026-09-01",
+    )
+
+    assert [item.nom for item in filtres] == ["resume_client.pdf"]

@@ -73,10 +73,20 @@ def filtrer_exports(
     *,
     recherche: str = "",
     type_fichier: str = "Tous",
+    date_debut: str = "",
+    date_fin: str = "",
 ) -> list[ExportEnregistre]:
-    """Filtre une liste d'exports par nom et par type."""
+    """Filtre les exports par nom, type et date de modification."""
     terme = recherche.strip().casefold()
     type_demande = type_fichier.strip().upper()
+
+    debut = _lire_date_filtre(date_debut)
+    fin = _lire_date_filtre(date_fin)
+
+    if debut and fin and debut > fin:
+        raise ValueError(
+            "La date de début doit être antérieure ou égale à la date de fin."
+        )
 
     resultats = []
 
@@ -90,10 +100,34 @@ def filtrer_exports(
         ):
             continue
 
+        jour_export = export.modifie_le.date()
+
+        if debut and jour_export < debut:
+            continue
+
+        if fin and jour_export > fin:
+            continue
+
         resultats.append(export)
 
     return resultats
 
+
+def _lire_date_filtre(valeur: str):
+    """Lit une date AAAA-MM-JJ vide ou valide."""
+    from datetime import date
+
+    texte = valeur.strip()
+
+    if not texte:
+        return None
+
+    try:
+        return date.fromisoformat(texte)
+    except ValueError as erreur:
+        raise ValueError(
+            "Les dates doivent être au format AAAA-MM-JJ."
+        ) from erreur
 
 def compter_types(
     exports: list[ExportEnregistre],
