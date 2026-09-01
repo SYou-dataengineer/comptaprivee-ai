@@ -8,7 +8,7 @@ from tkinter.scrolledtext import ScrolledText
 
 from .batch_processor import traiter_et_exporter_documents
 from .csv_exporter import exporter_facture_csv
-from .database import enregistrer_facture
+from .database import enregistrer_facture, lister_factures
 from .facture_parser import DonneesFacture, extraire_donnees_facture
 from .invoice_validator import (
     ResultatValidation,
@@ -50,9 +50,11 @@ class ApplicationComptaPrivee(tk.Tk):
         self.nom_document = tk.StringVar(
             value="Aucun document sélectionné"
         )
+
         self.statut_validation = tk.StringVar(
             value="Validation : aucun document analysé"
         )
+
         self.statut = tk.StringVar(
             value="Prêt — traitement entièrement local"
         )
@@ -67,21 +69,30 @@ class ApplicationComptaPrivee(tk.Tk):
             "Titre.TLabel",
             font=("Segoe UI", 22, "bold"),
         )
+
         style.configure(
             "SousTitre.TLabel",
             font=("Segoe UI", 11),
         )
+
         style.configure(
             "Securite.TLabel",
             foreground="#166534",
         )
+
         style.configure(
             "Champ.TLabel",
             font=("Segoe UI", 10, "bold"),
         )
 
-        conteneur = ttk.Frame(self, padding=20)
-        conteneur.pack(fill="both", expand=True)
+        conteneur = ttk.Frame(
+            self,
+            padding=20,
+        )
+        conteneur.pack(
+            fill="both",
+            expand=True,
+        )
 
         entete = ttk.Frame(conteneur)
         entete.pack(fill="x")
@@ -99,7 +110,10 @@ class ApplicationComptaPrivee(tk.Tk):
                 "de documents comptables"
             ),
             style="SousTitre.TLabel",
-        ).pack(anchor="w", pady=(2, 0))
+        ).pack(
+            anchor="w",
+            pady=(2, 0),
+        )
 
         ttk.Label(
             entete,
@@ -108,10 +122,16 @@ class ApplicationComptaPrivee(tk.Tk):
                 "aucune donnée envoyée sur Internet"
             ),
             style="Securite.TLabel",
-        ).pack(anchor="w", pady=(8, 15))
+        ).pack(
+            anchor="w",
+            pady=(8, 15),
+        )
 
         barre_document = ttk.Frame(conteneur)
-        barre_document.pack(fill="x", pady=(0, 15))
+        barre_document.pack(
+            fill="x",
+            pady=(0, 15),
+        )
 
         ttk.Button(
             barre_document,
@@ -123,18 +143,36 @@ class ApplicationComptaPrivee(tk.Tk):
             barre_document,
             text="Traiter plusieurs documents",
             command=self.selectionner_documents_lot,
-        ).pack(side="left", padx=(10, 0))
+        ).pack(
+            side="left",
+            padx=(10, 0),
+        )
+
+        ttk.Button(
+            barre_document,
+            text="Consulter l'historique",
+            command=self.ouvrir_historique,
+        ).pack(
+            side="left",
+            padx=(10, 0),
+        )
 
         ttk.Label(
             barre_document,
             textvariable=self.nom_document,
-        ).pack(side="left", padx=12)
+        ).pack(
+            side="left",
+            padx=12,
+        )
 
         zone_principale = ttk.Panedwindow(
             conteneur,
             orient="horizontal",
         )
-        zone_principale.pack(fill="both", expand=True)
+        zone_principale.pack(
+            fill="both",
+            expand=True,
+        )
 
         panneau_champs = ttk.LabelFrame(
             zone_principale,
@@ -152,6 +190,7 @@ class ApplicationComptaPrivee(tk.Tk):
             panneau_champs,
             weight=1,
         )
+
         zone_principale.add(
             panneau_texte,
             weight=2,
@@ -203,6 +242,7 @@ class ApplicationComptaPrivee(tk.Tk):
             font=("Segoe UI", 10, "bold"),
             foreground="#475569",
         )
+
         self.etiquette_validation.grid(
             row=len(champs),
             column=0,
@@ -233,6 +273,7 @@ class ApplicationComptaPrivee(tk.Tk):
             command=self.valider_formulaire,
             state="disabled",
         )
+
         self.bouton_valider.grid(
             row=len(champs) + 2,
             column=0,
@@ -243,10 +284,11 @@ class ApplicationComptaPrivee(tk.Tk):
 
         self.bouton_enregistrer = ttk.Button(
             panneau_champs,
-            text="Enregistrer dans l’historique",
+            text="Enregistrer dans l'historique",
             command=self.enregistrer_dans_historique,
             state="disabled",
         )
+
         self.bouton_enregistrer.grid(
             row=len(champs) + 3,
             column=0,
@@ -261,6 +303,7 @@ class ApplicationComptaPrivee(tk.Tk):
             command=self.exporter,
             state="disabled",
         )
+
         self.bouton_exporter.grid(
             row=len(champs) + 4,
             column=0,
@@ -274,10 +317,12 @@ class ApplicationComptaPrivee(tk.Tk):
             wrap="word",
             font=("Consolas", 10),
         )
+
         self.zone_texte.pack(
             fill="both",
             expand=True,
         )
+
         self.zone_texte.configure(
             state="disabled"
         )
@@ -289,6 +334,7 @@ class ApplicationComptaPrivee(tk.Tk):
             anchor="w",
             padding=6,
         )
+
         barre_statut.pack(
             fill="x",
             pady=(15, 0),
@@ -312,10 +358,12 @@ class ApplicationComptaPrivee(tk.Tk):
     def dossier_exports() -> Path:
         """Retourne et crée le dossier local des exports."""
         chemin = Path.cwd() / "data" / "exports"
+
         chemin.mkdir(
             parents=True,
             exist_ok=True,
         )
+
         return chemin
 
     def selectionner_document(self) -> None:
@@ -367,6 +415,7 @@ class ApplicationComptaPrivee(tk.Tk):
         self.bouton_valider.configure(
             state="disabled"
         )
+
         self.bouton_exporter.configure(
             state="disabled"
         )
@@ -403,6 +452,7 @@ class ApplicationComptaPrivee(tk.Tk):
             f"Traitement local de "
             f"{len(self.chemins_lot)} documents…"
         )
+
         self.update_idletasks()
 
         try:
@@ -410,6 +460,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 self.chemins_lot,
                 chemin_sortie,
             )
+
         except Exception as erreur:
             self.statut.set(
                 "Échec du traitement par lot"
@@ -487,12 +538,15 @@ class ApplicationComptaPrivee(tk.Tk):
                     f"{position}. "
                     f"{document.chemin.name}"
                 )
+
                 lignes_resume.append(
                     f"   Numéro : {numero}"
                 )
+
                 lignes_resume.append(
                     f"   Total : {total_affiche}"
                 )
+
                 lignes_resume.append(
                     "   Statut : "
                     f"{validation.statut.value}"
@@ -581,6 +635,7 @@ class ApplicationComptaPrivee(tk.Tk):
         self.statut.set(
             "Analyse locale en cours…"
         )
+
         self.update_idletasks()
 
         try:
@@ -1007,10 +1062,8 @@ class ApplicationComptaPrivee(tk.Tk):
             return
 
         try:
-            facture_enregistree = (
-                enregistrer_facture(
-                    facture
-                )
+            facture_enregistree = enregistrer_facture(
+                facture
             )
 
         except ValueError as erreur:
@@ -1033,7 +1086,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
         self.statut.set(
             "Facture enregistrée dans "
-            "l’historique local"
+            "l'historique local"
         )
 
         messagebox.showinfo(
@@ -1049,6 +1102,297 @@ class ApplicationComptaPrivee(tk.Tk):
                 f"{facture_enregistree.fournisseur}"
             ),
         )
+
+    def ouvrir_historique(self) -> None:
+        """Ouvre la fenêtre de consultation de l'historique."""
+        fenetre = tk.Toplevel(self)
+
+        fenetre.title(
+            "Historique des factures — ComptaPrivée AI"
+        )
+
+        fenetre.geometry(
+            "1100x550"
+        )
+
+        fenetre.minsize(
+            850,
+            400,
+        )
+
+        conteneur = ttk.Frame(
+            fenetre,
+            padding=15,
+        )
+
+        conteneur.pack(
+            fill="both",
+            expand=True,
+        )
+
+        ttk.Label(
+            conteneur,
+            text="Historique local des factures",
+            font=("Segoe UI", 18, "bold"),
+        ).pack(
+            anchor="w",
+            pady=(0, 5),
+        )
+
+        ttk.Label(
+            conteneur,
+            text=(
+                "🔒 Les données affichées proviennent "
+                "uniquement de la base SQLite locale."
+            ),
+            foreground="#166534",
+        ).pack(
+            anchor="w",
+            pady=(0, 15),
+        )
+
+        cadre_tableau = ttk.Frame(
+            conteneur
+        )
+
+        cadre_tableau.pack(
+            fill="both",
+            expand=True,
+        )
+
+        colonnes = (
+            "id",
+            "date",
+            "numero",
+            "fournisseur",
+            "client",
+            "total",
+            "date_creation",
+        )
+
+        tableau = ttk.Treeview(
+            cadre_tableau,
+            columns=colonnes,
+            show="headings",
+            selectmode="browse",
+        )
+
+        tableau.heading(
+            "id",
+            text="ID",
+        )
+
+        tableau.heading(
+            "date",
+            text="Date",
+        )
+
+        tableau.heading(
+            "numero",
+            text="N° facture",
+        )
+
+        tableau.heading(
+            "fournisseur",
+            text="Fournisseur",
+        )
+
+        tableau.heading(
+            "client",
+            text="Client",
+        )
+
+        tableau.heading(
+            "total",
+            text="Total",
+        )
+
+        tableau.heading(
+            "date_creation",
+            text="Enregistrée le",
+        )
+
+        tableau.column(
+            "id",
+            width=60,
+            anchor="center",
+            stretch=False,
+        )
+
+        tableau.column(
+            "date",
+            width=100,
+            anchor="center",
+            stretch=False,
+        )
+
+        tableau.column(
+            "numero",
+            width=140,
+            anchor="w",
+        )
+
+        tableau.column(
+            "fournisseur",
+            width=220,
+            anchor="w",
+        )
+
+        tableau.column(
+            "client",
+            width=220,
+            anchor="w",
+        )
+
+        tableau.column(
+            "total",
+            width=110,
+            anchor="e",
+            stretch=False,
+        )
+
+        tableau.column(
+            "date_creation",
+            width=160,
+            anchor="center",
+        )
+
+        barre_verticale = ttk.Scrollbar(
+            cadre_tableau,
+            orient="vertical",
+            command=tableau.yview,
+        )
+
+        barre_horizontale = ttk.Scrollbar(
+            cadre_tableau,
+            orient="horizontal",
+            command=tableau.xview,
+        )
+
+        tableau.configure(
+            yscrollcommand=barre_verticale.set,
+            xscrollcommand=barre_horizontale.set,
+        )
+
+        tableau.grid(
+            row=0,
+            column=0,
+            sticky="nsew",
+        )
+
+        barre_verticale.grid(
+            row=0,
+            column=1,
+            sticky="ns",
+        )
+
+        barre_horizontale.grid(
+            row=1,
+            column=0,
+            sticky="ew",
+        )
+
+        cadre_tableau.rowconfigure(
+            0,
+            weight=1,
+        )
+
+        cadre_tableau.columnconfigure(
+            0,
+            weight=1,
+        )
+
+        texte_resume = tk.StringVar(
+            value=""
+        )
+
+        def charger_factures() -> None:
+            """Recharge les factures depuis SQLite."""
+            for element in tableau.get_children():
+                tableau.delete(element)
+
+            try:
+                factures = lister_factures()
+
+            except Exception as erreur:
+                messagebox.showerror(
+                    "Erreur de l'historique",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            for facture in factures:
+                if facture.total is None:
+                    total_affiche = ""
+                else:
+                    total_affiche = (
+                        f"{facture.total:.2f} CAD"
+                    )
+
+                tableau.insert(
+                    "",
+                    "end",
+                    values=(
+                        facture.identifiant,
+                        facture.date or "",
+                        facture.numero or "",
+                        facture.fournisseur or "",
+                        facture.client or "",
+                        total_affiche,
+                        facture.date_creation,
+                    ),
+                )
+
+            nombre = len(factures)
+
+            if nombre == 0:
+                texte_resume.set(
+                    "Aucune facture enregistrée."
+                )
+            elif nombre == 1:
+                texte_resume.set(
+                    "1 facture enregistrée localement."
+                )
+            else:
+                texte_resume.set(
+                    f"{nombre} factures enregistrées localement."
+                )
+
+        zone_bas = ttk.Frame(
+            conteneur
+        )
+
+        zone_bas.pack(
+            fill="x",
+            pady=(12, 0),
+        )
+
+        ttk.Label(
+            zone_bas,
+            textvariable=texte_resume,
+        ).pack(
+            side="left",
+        )
+
+        ttk.Button(
+            zone_bas,
+            text="Actualiser",
+            command=charger_factures,
+        ).pack(
+            side="right",
+        )
+
+        ttk.Button(
+            zone_bas,
+            text="Fermer",
+            command=fenetre.destroy,
+        ).pack(
+            side="right",
+            padx=(0, 10),
+        )
+
+        charger_factures()
 
     def exporter(self) -> None:
         """Valide et exporte une facture dans un CSV."""
@@ -1100,20 +1444,16 @@ class ApplicationComptaPrivee(tk.Tk):
             f"{self.chemin_document.stem}.csv"
         )
 
-        chemin_sortie = (
-            filedialog.asksaveasfilename(
-                title=(
-                    "Exporter les données en CSV"
-                ),
-                initialdir=str(
-                    self.dossier_exports()
-                ),
-                defaultextension=".csv",
-                initialfile=nom_initial,
-                filetypes=[
-                    ("Fichier CSV", "*.csv")
-                ],
-            )
+        chemin_sortie = filedialog.asksaveasfilename(
+            title="Exporter les données en CSV",
+            initialdir=str(
+                self.dossier_exports()
+            ),
+            defaultextension=".csv",
+            initialfile=nom_initial,
+            filetypes=[
+                ("Fichier CSV", "*.csv")
+            ],
         )
 
         if not chemin_sortie:
