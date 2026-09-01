@@ -16,6 +16,7 @@ from .dashboard import (
     calculer_resume,
     filtrer_factures_fournisseur,
     filtrer_factures_periode,
+    preparer_totaux_fournisseurs_graphique,
 )
 from .dashboard_exporter import (
     exporter_tableau_bord_csv,
@@ -815,6 +816,183 @@ class ApplicationComptaPrivee(tk.Tk):
                 parent=fenetre,
             )
 
+        def afficher_graphique_fournisseurs() -> None:
+            resume = resume_courant["resume"]
+
+            if resume is None:
+                actualiser_tableau_bord()
+                resume = resume_courant["resume"]
+
+            if resume is None:
+                return
+
+            donnees = preparer_totaux_fournisseurs_graphique(
+                resume,
+                limite=8,
+            )
+
+            if not donnees:
+                messagebox.showinfo(
+                    "Graphique",
+                    "Aucune donnée à afficher pour ces filtres.",
+                    parent=fenetre,
+                )
+                return
+
+            graphique = tk.Toplevel(fenetre)
+            graphique.title(
+                "Graphique fournisseurs — ComptaPrivée AI"
+            )
+            graphique.geometry("900x560")
+            graphique.minsize(700, 450)
+
+            cadre = ttk.Frame(
+                graphique,
+                padding=20,
+            )
+            cadre.pack(
+                fill="both",
+                expand=True,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Total par fournisseur",
+                font=("Segoe UI", 18, "bold"),
+            ).pack(
+                anchor="w",
+                pady=(0, 5),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Graphique calculé à partir des filtres "
+                    "actuellement appliqués."
+                ),
+                foreground="#166534",
+            ).pack(
+                anchor="w",
+                pady=(0, 15),
+            )
+
+            toile = tk.Canvas(
+                cadre,
+                background="white",
+                highlightthickness=1,
+                highlightbackground="#cbd5e1",
+            )
+            toile.pack(
+                fill="both",
+                expand=True,
+            )
+
+            def dessiner(_event=None) -> None:
+                toile.delete("all")
+
+                largeur = max(toile.winfo_width(), 650)
+                hauteur = max(toile.winfo_height(), 330)
+
+                marge_gauche = 220
+                marge_droite = 110
+                marge_haut = 35
+                marge_bas = 35
+
+                largeur_graphique = max(
+                    largeur - marge_gauche - marge_droite,
+                    100,
+                )
+                hauteur_graphique = max(
+                    hauteur - marge_haut - marge_bas,
+                    100,
+                )
+
+                maximum = max(
+                    float(total)
+                    for _, total in donnees
+                )
+
+                if maximum <= 0:
+                    maximum = 1.0
+
+                nombre = len(donnees)
+                espace = hauteur_graphique / nombre
+                hauteur_barre = min(34, espace * 0.6)
+
+                for index, (nom, total) in enumerate(donnees):
+                    centre_y = (
+                        marge_haut
+                        + espace * index
+                        + espace / 2
+                    )
+                    y1 = centre_y - hauteur_barre / 2
+                    y2 = centre_y + hauteur_barre / 2
+
+                    ratio = float(total) / maximum
+                    x1 = marge_gauche
+                    x2 = (
+                        marge_gauche
+                        + largeur_graphique * ratio
+                    )
+
+                    nom_affiche = nom
+                    if len(nom_affiche) > 28:
+                        nom_affiche = (
+                            nom_affiche[:25] + "..."
+                        )
+
+                    toile.create_text(
+                        marge_gauche - 12,
+                        centre_y,
+                        text=nom_affiche,
+                        anchor="e",
+                        font=("Segoe UI", 10),
+                    )
+
+                    toile.create_rectangle(
+                        x1,
+                        y1,
+                        x2,
+                        y2,
+                        fill="#2563eb",
+                        outline="#1d4ed8",
+                    )
+
+                    toile.create_text(
+                        min(x2 + 10, largeur - 10),
+                        centre_y,
+                        text=f"{total:.2f} CAD",
+                        anchor="w",
+                        font=("Segoe UI", 10, "bold"),
+                    )
+
+                toile.create_line(
+                    marge_gauche,
+                    marge_haut,
+                    marge_gauche,
+                    hauteur - marge_bas,
+                    fill="#64748b",
+                )
+
+            toile.bind(
+                "<Configure>",
+                dessiner,
+            )
+
+            ttk.Button(
+                cadre,
+                text="Fermer",
+                command=graphique.destroy,
+            ).pack(
+                anchor="e",
+                pady=(12, 0),
+            )
+
+            graphique.after(
+                50,
+                dessiner,
+            )
+
         ttk.Button(
             zone_filtres,
             text="Appliquer",
@@ -857,6 +1035,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_bas,
             text="Exporter en CSV",
             command=exporter_dashboard_csv,
+        ).pack(
+            side="right",
+            padx=(0, 8),
+        )
+
+        ttk.Button(
+            zone_bas,
+            text="Voir le graphique",
+            command=afficher_graphique_fournisseurs,
         ).pack(
             side="right",
             padx=(0, 8),

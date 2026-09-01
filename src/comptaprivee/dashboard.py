@@ -130,3 +130,15 @@ def filtrer_factures_fournisseur(
         == recherche
     ]
 
+def preparer_totaux_fournisseurs_graphique(
+    resume: ResumeTableauBord,
+    limite: int = 8,
+) -> tuple[tuple[str, Decimal], ...]:
+    """Prépare les principaux fournisseurs pour un graphique."""
+    if limite <= 0:
+        raise ValueError(
+            "La limite du graphique doit être supérieure à zéro."
+        )
+
+    return resume.total_par_fournisseur[:limite]
+

@@ -3,9 +3,11 @@
 from decimal import Decimal
 
 from src.comptaprivee.dashboard import (
+    ResumeTableauBord,
     calculer_resume,
     filtrer_factures_fournisseur,
     filtrer_factures_periode,
+    preparer_totaux_fournisseurs_graphique,
 )
 from src.comptaprivee.database import FactureEnregistree
 
@@ -214,4 +216,52 @@ def test_filtrer_factures_fournisseur_vide() -> None:
         factures,
         None,
     ) == factures
+
+def test_preparer_totaux_fournisseurs_graphique() -> None:
+    """Le graphique conserve les principaux fournisseurs."""
+    resume = ResumeTableauBord(
+        nombre_factures=3,
+        sous_total=Decimal("300.00"),
+        tps=Decimal("15.00"),
+        tvq=Decimal("29.93"),
+        total=Decimal("344.93"),
+        total_par_fournisseur=(
+            ("Alpha", Decimal("200.00")),
+            ("Beta", Decimal("100.00")),
+            ("Gamma", Decimal("44.93")),
+        ),
+    )
+
+    resultat = preparer_totaux_fournisseurs_graphique(
+        resume,
+        limite=2,
+    )
+
+    assert resultat == (
+        ("Alpha", Decimal("200.00")),
+        ("Beta", Decimal("100.00")),
+    )
+
+
+def test_refuser_limite_graphique_invalide() -> None:
+    """Une limite de graphique invalide est refusée."""
+    import pytest
+
+    resume = ResumeTableauBord(
+        nombre_factures=0,
+        sous_total=Decimal("0"),
+        tps=Decimal("0"),
+        tvq=Decimal("0"),
+        total=Decimal("0"),
+        total_par_fournisseur=(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="supérieure à zéro",
+    ):
+        preparer_totaux_fournisseurs_graphique(
+            resume,
+            limite=0,
+        )
 
