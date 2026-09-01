@@ -50,6 +50,7 @@ from .export_history import (
     filtrer_exports,
     formater_taille,
     lister_exports,
+    trier_exports,
 )
 from .invoice_validator import (
     ResultatValidation,
@@ -619,6 +620,9 @@ class ApplicationComptaPrivee(tk.Tk):
         zone_tableau = ttk.Frame(conteneur)
         zone_tableau.pack(fill="both", expand=True)
 
+        colonne_tri_export = tk.StringVar(value="date")
+        tri_decroissant_export = tk.BooleanVar(value=True)
+
         colonnes = ("nom", "type", "date", "taille")
         tableau = ttk.Treeview(
             zone_tableau,
@@ -670,6 +674,12 @@ class ApplicationComptaPrivee(tk.Tk):
                 compteur_exports.set(str(erreur))
                 return
 
+            exports = trier_exports(
+                exports,
+                colonne=colonne_tri_export.get(),
+                decroissant=tri_decroissant_export.get(),
+            )
+
             compte = compter_types(tous_exports)
             compteur_exports.set(
                 (
@@ -679,6 +689,8 @@ class ApplicationComptaPrivee(tk.Tk):
                     f"— CSV : {compte['CSV']}"
                 )
             )
+
+            actualiser_entetes_tri()
 
             for export in exports:
                 identifiant = tableau.insert(
@@ -768,6 +780,58 @@ class ApplicationComptaPrivee(tk.Tk):
                 f"Export supprimé : {chemin.name}"
             )
             actualiser()
+
+        def trier_par(colonne: str) -> None:
+            if colonne_tri_export.get() == colonne:
+                tri_decroissant_export.set(
+                    not tri_decroissant_export.get()
+                )
+            else:
+                colonne_tri_export.set(colonne)
+                tri_decroissant_export.set(
+                    colonne in {"date", "taille"}
+                )
+
+            actualiser()
+
+        def titre_colonne(
+            colonne: str,
+            libelle: str,
+        ) -> str:
+            if colonne_tri_export.get() != colonne:
+                return libelle
+
+            symbole = (
+                "▼"
+                if tri_decroissant_export.get()
+                else "▲"
+            )
+            return f"{libelle} {symbole}"
+
+        def actualiser_entetes_tri() -> None:
+            tableau.heading(
+                "nom",
+                text=titre_colonne("nom", "Fichier"),
+                command=lambda: trier_par("nom"),
+            )
+            tableau.heading(
+                "type",
+                text=titre_colonne("type", "Type"),
+                command=lambda: trier_par("type"),
+            )
+            tableau.heading(
+                "date",
+                text=titre_colonne(
+                    "date",
+                    "Créé / modifié",
+                ),
+                command=lambda: trier_par("date"),
+            )
+            tableau.heading(
+                "taille",
+                text=titre_colonne("taille", "Taille"),
+                command=lambda: trier_par("taille"),
+            )
 
         actions = ttk.Frame(conteneur)
         actions.pack(fill="x", pady=(14, 0))

@@ -241,3 +241,72 @@ def test_filtrer_exports_combine_nom_type_date(tmp_path) -> None:
     )
 
     assert [item.nom for item in filtres] == ["resume_client.pdf"]
+
+def test_trier_exports_par_nom(tmp_path) -> None:
+    from src.comptaprivee.export_history import trier_exports
+
+    (tmp_path / "zeta.pdf").write_bytes(b"a")
+    (tmp_path / "alpha.pdf").write_bytes(b"b")
+
+    tries = trier_exports(
+        lister_exports(tmp_path),
+        colonne="nom",
+        decroissant=False,
+    )
+
+    assert [item.nom for item in tries] == [
+        "alpha.pdf",
+        "zeta.pdf",
+    ]
+
+
+def test_trier_exports_par_taille(tmp_path) -> None:
+    from src.comptaprivee.export_history import trier_exports
+
+    (tmp_path / "petit.pdf").write_bytes(b"a")
+    (tmp_path / "grand.pdf").write_bytes(b"123456")
+
+    tries = trier_exports(
+        lister_exports(tmp_path),
+        colonne="taille",
+        decroissant=True,
+    )
+
+    assert tries[0].nom == "grand.pdf"
+
+
+def test_trier_exports_par_date(tmp_path) -> None:
+    from datetime import datetime
+    from src.comptaprivee.export_history import trier_exports
+
+    ancien = tmp_path / "ancien.pdf"
+    recent = tmp_path / "recent.pdf"
+    ancien.write_bytes(b"a")
+    recent.write_bytes(b"b")
+
+    instant_ancien = datetime(2026, 8, 1, 9, 0).timestamp()
+    instant_recent = datetime(2026, 9, 1, 9, 0).timestamp()
+    os.utime(ancien, (instant_ancien, instant_ancien))
+    os.utime(recent, (instant_recent, instant_recent))
+
+    tries = trier_exports(
+        lister_exports(tmp_path),
+        colonne="date",
+        decroissant=False,
+    )
+
+    assert [item.nom for item in tries] == [
+        "ancien.pdf",
+        "recent.pdf",
+    ]
+
+
+def test_trier_exports_colonne_invalide(tmp_path) -> None:
+    import pytest
+    from src.comptaprivee.export_history import trier_exports
+
+    with pytest.raises(ValueError):
+        trier_exports(
+            lister_exports(tmp_path),
+            colonne="inconnue",
+        )

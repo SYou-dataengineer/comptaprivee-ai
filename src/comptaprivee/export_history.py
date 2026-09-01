@@ -146,3 +146,25 @@ def compter_types(
             compte[type_fichier] += 1
 
     return compte
+
+def trier_exports(
+    exports: list[ExportEnregistre],
+    colonne: str = "date",
+    decroissant: bool = True,
+) -> list[ExportEnregistre]:
+    """Trie les exports selon une colonne de l'historique."""
+    cles = {
+        "nom": lambda item: item.nom.casefold(),
+        "type": lambda item: item.type_fichier.casefold(),
+        "date": lambda item: item.modifie_le,
+        "taille": lambda item: item.taille_octets,
+    }
+
+    if colonne not in cles:
+        raise ValueError(f"Colonne de tri inconnue : {colonne}")
+
+    return sorted(
+        exports,
+        key=cles[colonne],
+        reverse=decroissant,
+    )
