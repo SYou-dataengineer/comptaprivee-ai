@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from src.comptaprivee.dashboard import (
+    calculer_totaux_mensuels,
     ResumeTableauBord,
     calculer_resume,
     filtrer_factures_fournisseur,
@@ -264,4 +265,82 @@ def test_refuser_limite_graphique_invalide() -> None:
             resume,
             limite=0,
         )
+
+def test_calculer_totaux_mensuels() -> None:
+    """Les factures sont regroupées par mois dans l'ordre."""
+    facture_a = facture(
+        1,
+        "Alpha",
+        "114.98",
+        "100.00",
+        "5.00",
+        "9.98",
+    )
+    facture_b = facture(
+        2,
+        "Beta",
+        "229.96",
+        "200.00",
+        "10.00",
+        "19.96",
+    )
+    facture_c = facture(
+        3,
+        "Gamma",
+        "57.49",
+        "50.00",
+        "2.50",
+        "4.99",
+    )
+
+    facture_a = FactureEnregistree(
+        **{
+            **facture_a.__dict__,
+            "date": "2026-08-05",
+        }
+    )
+    facture_b = FactureEnregistree(
+        **{
+            **facture_b.__dict__,
+            "date": "2026-08-20",
+        }
+    )
+    facture_c = FactureEnregistree(
+        **{
+            **facture_c.__dict__,
+            "date": "2026-09-01",
+        }
+    )
+
+    resultat = calculer_totaux_mensuels(
+        [facture_c, facture_b, facture_a]
+    )
+
+    assert resultat == (
+        ("2026-08", Decimal("344.94")),
+        ("2026-09", Decimal("57.49")),
+    )
+
+
+def test_calculer_totaux_mensuels_ignore_dates_invalides() -> None:
+    """Les factures sans date exploitable sont ignorées."""
+    facture_invalide = facture(
+        1,
+        "Alpha",
+        "114.98",
+        "100.00",
+        "5.00",
+        "9.98",
+    )
+
+    facture_invalide = FactureEnregistree(
+        **{
+            **facture_invalide.__dict__,
+            "date": "date-invalide",
+        }
+    )
+
+    assert calculer_totaux_mensuels(
+        [facture_invalide]
+    ) == ()
 

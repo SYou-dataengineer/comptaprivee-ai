@@ -142,3 +142,34 @@ def preparer_totaux_fournisseurs_graphique(
 
     return resume.total_par_fournisseur[:limite]
 
+def calculer_totaux_mensuels(
+    factures: list[FactureEnregistree],
+) -> tuple[tuple[str, Decimal], ...]:
+    """Regroupe les totaux de factures par mois AAAA-MM."""
+    totaux: dict[str, Decimal] = defaultdict(
+        lambda: Decimal("0")
+    )
+
+    for facture in factures:
+        if not facture.date:
+            continue
+
+        try:
+            date_facture = date.fromisoformat(
+                facture.date
+            )
+        except ValueError:
+            continue
+
+        cle_mois = date_facture.strftime("%Y-%m")
+        totaux[cle_mois] += (
+            facture.total or Decimal("0")
+        )
+
+    return tuple(
+        sorted(
+            totaux.items(),
+            key=lambda element: element[0],
+        )
+    )
+

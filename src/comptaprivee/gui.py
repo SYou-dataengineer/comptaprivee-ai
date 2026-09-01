@@ -13,6 +13,7 @@ from .batch_processor import traiter_et_exporter_documents
 from .csv_exporter import exporter_facture_csv
 from .pdf_exporter import exporter_facture_pdf
 from .dashboard import (
+    calculer_totaux_mensuels,
     calculer_resume,
     filtrer_factures_fournisseur,
     filtrer_factures_periode,
@@ -993,6 +994,244 @@ class ApplicationComptaPrivee(tk.Tk):
                 dessiner,
             )
 
+        def afficher_evolution_mensuelle() -> None:
+            try:
+                selection, _ = obtenir_selection()
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Filtre invalide",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            donnees = calculer_totaux_mensuels(
+                selection
+            )
+
+            if not donnees:
+                messagebox.showinfo(
+                    "Évolution mensuelle",
+                    "Aucune donnée mensuelle à afficher pour ces filtres.",
+                    parent=fenetre,
+                )
+                return
+
+            graphique = tk.Toplevel(fenetre)
+            graphique.title(
+                "Évolution mensuelle — ComptaPrivée AI"
+            )
+            graphique.geometry("920x560")
+            graphique.minsize(720, 450)
+
+            cadre = ttk.Frame(
+                graphique,
+                padding=20,
+            )
+            cadre.pack(
+                fill="both",
+                expand=True,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Évolution mensuelle des montants",
+                font=("Segoe UI", 18, "bold"),
+            ).pack(
+                anchor="w",
+                pady=(0, 5),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Total facturé par mois selon les filtres "
+                    "actuellement appliqués."
+                ),
+                foreground="#166534",
+            ).pack(
+                anchor="w",
+                pady=(0, 15),
+            )
+
+            toile = tk.Canvas(
+                cadre,
+                background="white",
+                highlightthickness=1,
+                highlightbackground="#cbd5e1",
+            )
+            toile.pack(
+                fill="both",
+                expand=True,
+            )
+
+            def dessiner_mensuel(_event=None) -> None:
+                toile.delete("all")
+
+                largeur = max(
+                    toile.winfo_width(),
+                    680,
+                )
+                hauteur = max(
+                    toile.winfo_height(),
+                    330,
+                )
+
+                marge_gauche = 80
+                marge_droite = 40
+                marge_haut = 40
+                marge_bas = 70
+
+                largeur_graphique = max(
+                    largeur - marge_gauche - marge_droite,
+                    100,
+                )
+                hauteur_graphique = max(
+                    hauteur - marge_haut - marge_bas,
+                    100,
+                )
+
+                maximum = max(
+                    float(total)
+                    for _, total in donnees
+                )
+                if maximum <= 0:
+                    maximum = 1.0
+
+                x_gauche = marge_gauche
+                y_bas = hauteur - marge_bas
+                y_haut = marge_haut
+
+                toile.create_line(
+                    x_gauche,
+                    y_haut,
+                    x_gauche,
+                    y_bas,
+                    fill="#64748b",
+                )
+                toile.create_line(
+                    x_gauche,
+                    y_bas,
+                    largeur - marge_droite,
+                    y_bas,
+                    fill="#64748b",
+                )
+
+                for division in range(5):
+                    valeur = maximum * division / 4
+                    y = (
+                        y_bas
+                        - hauteur_graphique * division / 4
+                    )
+
+                    toile.create_line(
+                        x_gauche - 5,
+                        y,
+                        largeur - marge_droite,
+                        y,
+                        fill="#e2e8f0",
+                    )
+                    toile.create_text(
+                        x_gauche - 10,
+                        y,
+                        text=f"{valeur:.0f}",
+                        anchor="e",
+                        font=("Segoe UI", 9),
+                    )
+
+                nombre = len(donnees)
+
+                if nombre == 1:
+                    positions_x = [
+                        x_gauche + largeur_graphique / 2
+                    ]
+                else:
+                    positions_x = [
+                        (
+                            x_gauche
+                            + largeur_graphique
+                            * index
+                            / (nombre - 1)
+                        )
+                        for index in range(nombre)
+                    ]
+
+                points = []
+
+                for index, (mois, total) in enumerate(
+                    donnees
+                ):
+                    x = positions_x[index]
+                    ratio = float(total) / maximum
+                    y = (
+                        y_bas
+                        - hauteur_graphique * ratio
+                    )
+
+                    points.extend([x, y])
+
+                    toile.create_text(
+                        x,
+                        y_bas + 22,
+                        text=mois,
+                        anchor="n",
+                        font=("Segoe UI", 9),
+                    )
+
+                if len(points) >= 4:
+                    toile.create_line(
+                        *points,
+                        fill="#2563eb",
+                        width=3,
+                        smooth=False,
+                    )
+
+                for index, (mois, total) in enumerate(
+                    donnees
+                ):
+                    x = positions_x[index]
+                    ratio = float(total) / maximum
+                    y = (
+                        y_bas
+                        - hauteur_graphique * ratio
+                    )
+
+                    toile.create_oval(
+                        x - 5,
+                        y - 5,
+                        x + 5,
+                        y + 5,
+                        fill="#2563eb",
+                        outline="#1d4ed8",
+                    )
+
+                    toile.create_text(
+                        x,
+                        max(y - 12, 12),
+                        text=f"{total:.2f} CAD",
+                        anchor="s",
+                        font=("Segoe UI", 9, "bold"),
+                    )
+
+            toile.bind(
+                "<Configure>",
+                dessiner_mensuel,
+            )
+
+            ttk.Button(
+                cadre,
+                text="Fermer",
+                command=graphique.destroy,
+            ).pack(
+                anchor="e",
+                pady=(12, 0),
+            )
+
+            graphique.after(
+                50,
+                dessiner_mensuel,
+            )
+
         ttk.Button(
             zone_filtres,
             text="Appliquer",
@@ -1044,6 +1283,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_bas,
             text="Voir le graphique",
             command=afficher_graphique_fournisseurs,
+        ).pack(
+            side="right",
+            padx=(0, 8),
+        )
+
+        ttk.Button(
+            zone_bas,
+            text="Évolution mensuelle",
+            command=afficher_evolution_mensuelle,
         ).pack(
             side="right",
             padx=(0, 8),
