@@ -8,7 +8,11 @@ from tkinter.scrolledtext import ScrolledText
 
 from .batch_processor import traiter_et_exporter_documents
 from .csv_exporter import exporter_facture_csv
-from .database import enregistrer_facture, lister_factures
+from .database import (
+    enregistrer_facture,
+    lister_factures,
+    supprimer_facture,
+)
 from .facture_parser import DonneesFacture, extraire_donnees_facture
 from .invoice_validator import (
     ResultatValidation,
@@ -1661,6 +1665,84 @@ class ApplicationComptaPrivee(tk.Tk):
                 fenetre,
             )
 
+        def supprimer_selection() -> None:
+            """Supprime une facture après une double confirmation."""
+            facture = obtenir_facture_selectionnee()
+
+            if facture is None:
+                messagebox.showinfo(
+                    "Sélection requise",
+                    "Sélectionnez d'abord une facture à supprimer.",
+                    parent=fenetre,
+                )
+                return
+
+            numero = facture.numero or "Sans numéro"
+            fournisseur = facture.fournisseur or "Fournisseur non renseigné"
+
+            confirmation = messagebox.askyesno(
+                "Confirmer la suppression",
+                (
+                    "Voulez-vous supprimer cette facture ?\n\n"
+                    f"Numéro : {numero}\n"
+                    f"Fournisseur : {fournisseur}\n"
+                    f"ID : {facture.identifiant}\n\n"
+                    "La facture sera supprimée uniquement "
+                    "de la base SQLite locale."
+                ),
+                parent=fenetre,
+            )
+
+            if not confirmation:
+                return
+
+            confirmation_finale = messagebox.askyesno(
+                "Suppression définitive",
+                (
+                    "ATTENTION\n\n"
+                    "Cette suppression est définitive et "
+                    "ne peut pas être annulée.\n\n"
+                    "Confirmer la suppression ?"
+                ),
+                parent=fenetre,
+            )
+
+            if not confirmation_finale:
+                return
+
+            try:
+                supprimee = supprimer_facture(facture.identifiant)
+            except Exception as erreur:
+                messagebox.showerror(
+                    "Erreur de suppression",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            if not supprimee:
+                messagebox.showwarning(
+                    "Facture introuvable",
+                    "Cette facture n'existe plus dans la base locale.",
+                    parent=fenetre,
+                )
+                charger_factures()
+                return
+
+            charger_factures()
+            self.statut.set("Facture supprimée de l'historique local")
+
+            messagebox.showinfo(
+                "Suppression terminée",
+                (
+                    "La facture a été supprimée "
+                    "de la base SQLite locale.\n\n"
+                    f"Numéro : {numero}\n"
+                    f"ID : {facture.identifiant}"
+                ),
+                parent=fenetre,
+            )
+
         def double_clic(
             _evenement,
         ) -> None:
@@ -1714,6 +1796,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_bas,
             text="Fermer",
             command=fenetre.destroy,
+        ).pack(
+            side="right",
+            padx=(0, 10),
+        )
+
+        ttk.Button(
+            zone_bas,
+            text="Supprimer",
+            command=supprimer_selection,
         ).pack(
             side="right",
             padx=(0, 10),
