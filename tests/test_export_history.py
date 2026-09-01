@@ -47,3 +47,86 @@ def test_lister_exports_plus_recent_en_premier(tmp_path) -> None:
 def test_formater_taille() -> None:
     assert formater_taille(512) == "512 o"
     assert formater_taille(2048) == "2.0 Ko"
+
+def test_filtrer_exports_par_nom(tmp_path) -> None:
+    from src.comptaprivee.export_history import filtrer_exports
+
+    (tmp_path / "resume_client.pdf").write_bytes(b"a")
+    (tmp_path / "tableau_bord.csv").write_bytes(b"b")
+
+    exports = lister_exports(tmp_path)
+    filtres = filtrer_exports(
+        exports,
+        recherche="resume",
+    )
+
+    assert [item.nom for item in filtres] == [
+        "resume_client.pdf"
+    ]
+
+
+def test_filtrer_exports_par_type(tmp_path) -> None:
+    from src.comptaprivee.export_history import filtrer_exports
+
+    (tmp_path / "rapport.pdf").write_bytes(b"a")
+    (tmp_path / "rapport.csv").write_bytes(b"b")
+
+    exports = lister_exports(tmp_path)
+    filtres = filtrer_exports(
+        exports,
+        type_fichier="PDF",
+    )
+
+    assert len(filtres) == 1
+    assert filtres[0].type_fichier == "PDF"
+
+
+def test_filtrer_exports_nom_et_type(tmp_path) -> None:
+    from src.comptaprivee.export_history import filtrer_exports
+
+    (tmp_path / "resume.pdf").write_bytes(b"a")
+    (tmp_path / "resume.csv").write_bytes(b"b")
+    (tmp_path / "tableau.pdf").write_bytes(b"c")
+
+    exports = lister_exports(tmp_path)
+    filtres = filtrer_exports(
+        exports,
+        recherche="resume",
+        type_fichier="CSV",
+    )
+
+    assert [item.nom for item in filtres] == [
+        "resume.csv"
+    ]
+
+
+def test_compter_types(tmp_path) -> None:
+    from src.comptaprivee.export_history import compter_types
+
+    (tmp_path / "a.pdf").write_bytes(b"a")
+    (tmp_path / "b.pdf").write_bytes(b"b")
+    (tmp_path / "c.csv").write_bytes(b"c")
+
+    compte = compter_types(
+        lister_exports(tmp_path)
+    )
+
+    assert compte == {
+        "Tous": 3,
+        "PDF": 2,
+        "CSV": 1,
+    }
+
+
+def test_recherche_exports_insensible_casse(tmp_path) -> None:
+    from src.comptaprivee.export_history import filtrer_exports
+
+    (tmp_path / "Resume_Comptable.PDF").write_bytes(b"a")
+
+    exports = lister_exports(tmp_path)
+    filtres = filtrer_exports(
+        exports,
+        recherche="resume_comptable",
+    )
+
+    assert len(filtres) == 1

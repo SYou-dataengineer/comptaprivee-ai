@@ -46,6 +46,8 @@ from .summary_report import (
 )
 from .report_naming import nom_fichier_rapport
 from .export_history import (
+    compter_types,
+    filtrer_exports,
     formater_taille,
     lister_exports,
 )
@@ -478,6 +480,82 @@ class ApplicationComptaPrivee(tk.Tk):
             foreground="#166534",
         ).pack(anchor="w", pady=(3, 14))
 
+        zone_filtres = ttk.LabelFrame(
+            conteneur,
+            text="Recherche et filtres",
+            padding=10,
+        )
+        zone_filtres.pack(
+            fill="x",
+            pady=(0, 12),
+        )
+
+        recherche_export = tk.StringVar()
+        type_export_selectionne = tk.StringVar(
+            value="Tous"
+        )
+        compteur_exports = tk.StringVar(
+            value=""
+        )
+
+        ttk.Label(
+            zone_filtres,
+            text="Rechercher :",
+        ).grid(
+            row=0,
+            column=0,
+            sticky="w",
+        )
+
+        champ_recherche = ttk.Entry(
+            zone_filtres,
+            textvariable=recherche_export,
+            width=38,
+        )
+        champ_recherche.grid(
+            row=0,
+            column=1,
+            sticky="ew",
+            padx=(8, 16),
+        )
+
+        ttk.Label(
+            zone_filtres,
+            text="Type :",
+        ).grid(
+            row=0,
+            column=2,
+            sticky="w",
+        )
+
+        ttk.Combobox(
+            zone_filtres,
+            textvariable=type_export_selectionne,
+            values=("Tous", "PDF", "CSV"),
+            state="readonly",
+            width=10,
+        ).grid(
+            row=0,
+            column=3,
+            sticky="w",
+            padx=(8, 16),
+        )
+
+        ttk.Label(
+            zone_filtres,
+            textvariable=compteur_exports,
+            foreground="#475569",
+        ).grid(
+            row=0,
+            column=4,
+            sticky="e",
+        )
+
+        zone_filtres.columnconfigure(
+            1,
+            weight=1,
+        )
+
         zone_tableau = ttk.Frame(conteneur)
         zone_tableau.pack(fill="both", expand=True)
 
@@ -516,7 +594,25 @@ class ApplicationComptaPrivee(tk.Tk):
                 tableau.delete(item)
 
             chemins.clear()
-            exports = lister_exports(self.dossier_exports())
+
+            tous_exports = lister_exports(
+                self.dossier_exports()
+            )
+            exports = filtrer_exports(
+                tous_exports,
+                recherche=recherche_export.get(),
+                type_fichier=type_export_selectionne.get(),
+            )
+
+            compte = compter_types(tous_exports)
+            compteur_exports.set(
+                (
+                    f"{len(exports)} affiché(s) / "
+                    f"{compte['Tous']} total "
+                    f"— PDF : {compte['PDF']} "
+                    f"— CSV : {compte['CSV']}"
+                )
+            )
 
             for export in exports:
                 identifiant = tableau.insert(
@@ -532,10 +628,15 @@ class ApplicationComptaPrivee(tk.Tk):
                 chemins[identifiant] = export.chemin
 
             if not exports:
+                message = (
+                    "Aucun export correspondant"
+                    if tous_exports
+                    else "Aucun export local"
+                )
                 tableau.insert(
                     "",
                     "end",
-                    values=("Aucun export local", "", "", ""),
+                    values=(message, "", "", ""),
                 )
 
         def chemin_selectionne() -> Path | None:
@@ -611,6 +712,21 @@ class ApplicationComptaPrivee(tk.Tk):
             command=actualiser,
         ).pack(side="left")
 
+        def effacer_filtres() -> None:
+            recherche_export.set("")
+            type_export_selectionne.set("Tous")
+            actualiser()
+            champ_recherche.focus_set()
+
+        ttk.Button(
+            actions,
+            text="Effacer filtres",
+            command=effacer_filtres,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
         ttk.Button(
             actions,
             text="Ouvrir le fichier",
@@ -640,7 +756,22 @@ class ApplicationComptaPrivee(tk.Tk):
             lambda _event: ouvrir_selection(),
         )
 
+        recherche_export.trace_add(
+            "write",
+            lambda *_args: actualiser(),
+        )
+        type_export_selectionne.trace_add(
+            "write",
+            lambda *_args: actualiser(),
+        )
+
+        champ_recherche.bind(
+            "<Escape>",
+            lambda _event: effacer_filtres(),
+        )
+
         actualiser()
+        champ_recherche.focus_set()
 
     def ouvrir_parametres(self) -> None:
         """Ouvre les paramètres locaux de l'application."""

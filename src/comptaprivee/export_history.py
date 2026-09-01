@@ -67,3 +67,48 @@ def formater_taille(taille_octets: int) -> str:
         return f"{taille_octets / 1024:.1f} Ko"
 
     return f"{taille_octets / (1024 * 1024):.1f} Mo"
+
+def filtrer_exports(
+    exports: list[ExportEnregistre],
+    *,
+    recherche: str = "",
+    type_fichier: str = "Tous",
+) -> list[ExportEnregistre]:
+    """Filtre une liste d'exports par nom et par type."""
+    terme = recherche.strip().casefold()
+    type_demande = type_fichier.strip().upper()
+
+    resultats = []
+
+    for export in exports:
+        if terme and terme not in export.nom.casefold():
+            continue
+
+        if (
+            type_demande not in {"", "TOUS"}
+            and export.type_fichier.upper() != type_demande
+        ):
+            continue
+
+        resultats.append(export)
+
+    return resultats
+
+
+def compter_types(
+    exports: list[ExportEnregistre],
+) -> dict[str, int]:
+    """Compte rapidement le nombre de PDF et CSV."""
+    compte = {
+        "Tous": len(exports),
+        "PDF": 0,
+        "CSV": 0,
+    }
+
+    for export in exports:
+        type_fichier = export.type_fichier.upper()
+
+        if type_fichier in compte:
+            compte[type_fichier] += 1
+
+    return compte
