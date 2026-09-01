@@ -44,6 +44,7 @@ from .summary_report import (
     construire_resume_comptable,
     exporter_resume_comptable_pdf,
 )
+from .report_naming import nom_fichier_rapport
 from .invoice_validator import (
     ResultatValidation,
     StatutValidation,
@@ -1394,7 +1395,13 @@ class ApplicationComptaPrivee(tk.Tk):
                 title="Exporter le tableau de bord en CSV",
                 initialdir=str(self.dossier_exports()),
                 defaultextension=".csv",
-                initialfile="tableau_bord.csv",
+                initialfile=nom_fichier_rapport(
+                    lire_profil_societe().nom_societe,
+                    "Tableau_de_bord",
+                    "csv",
+                    date_debut=date_debut.get().strip() or None,
+                    date_fin=date_fin.get().strip() or None,
+                ),
                 filetypes=[("Fichier CSV", "*.csv")],
                 parent=fenetre,
             )
@@ -1448,7 +1455,13 @@ class ApplicationComptaPrivee(tk.Tk):
                 title="Exporter le tableau de bord en PDF",
                 initialdir=str(self.dossier_exports()),
                 defaultextension=".pdf",
-                initialfile="tableau_bord.pdf",
+                initialfile=nom_fichier_rapport(
+                    lire_profil_societe().nom_societe,
+                    "Tableau_de_bord",
+                    "pdf",
+                    date_debut=date_debut.get().strip() or None,
+                    date_fin=date_fin.get().strip() or None,
+                ),
                 filetypes=[("Fichier PDF", "*.pdf")],
                 parent=fenetre,
             )
@@ -1795,7 +1808,13 @@ class ApplicationComptaPrivee(tk.Tk):
                     title="Exporter le résumé comptable en PDF",
                     initialdir=str(self.dossier_exports()),
                     defaultextension=".pdf",
-                    initialfile="resume_comptable.pdf",
+                    initialfile=nom_fichier_rapport(
+                        lire_profil_societe().nom_societe,
+                        "Resume_comptable",
+                        "pdf",
+                        date_debut=date_debut.get().strip() or None,
+                        date_fin=date_fin.get().strip() or None,
+                    ),
                     filetypes=[("Fichier PDF", "*.pdf")],
                     parent=resume_fenetre,
                 )
