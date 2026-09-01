@@ -8,6 +8,7 @@ from tkinter.scrolledtext import ScrolledText
 
 from .batch_processor import traiter_et_exporter_documents
 from .csv_exporter import exporter_facture_csv
+from .pdf_exporter import exporter_facture_pdf
 from .database import (
     enregistrer_facture,
     lister_factures,
@@ -1893,6 +1894,73 @@ class ApplicationComptaPrivee(tk.Tk):
                 fenetre,
             )
 
+        def exporter_pdf_selection_historique() -> None:
+            """Exporte le detail de la facture selectionnee en PDF."""
+            facture = obtenir_facture_selectionnee()
+
+            if facture is None:
+                messagebox.showinfo(
+                    "Selection requise",
+                    "Selectionnez une facture a exporter en PDF.",
+                    parent=fenetre,
+                )
+                return
+
+            numero = facture.numero or f"facture_{facture.identifiant}"
+
+            chemin_sortie = filedialog.asksaveasfilename(
+                title="Exporter le detail de la facture en PDF",
+                initialdir=str(self.dossier_exports()),
+                defaultextension=".pdf",
+                initialfile=f"{numero}.pdf",
+                filetypes=[("Fichier PDF", "*.pdf")],
+                parent=fenetre,
+            )
+
+            if not chemin_sortie:
+                return
+
+            donnees = DonneesFacture(
+                numero=facture.numero,
+                date=facture.date,
+                fournisseur=facture.fournisseur,
+                client=facture.client,
+                sous_total=facture.sous_total,
+                tps=facture.tps,
+                tvq=facture.tvq,
+                total=facture.total,
+            )
+
+            try:
+                chemin = exporter_facture_pdf(
+                    donnees,
+                    chemin_sortie,
+                    identifiant=facture.identifiant,
+                    date_enregistrement=facture.date_creation,
+                )
+            except (OSError, ValueError) as erreur:
+                messagebox.showerror(
+                    "Erreur d'export PDF",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            self.statut.set(
+                f"Export PDF depuis l'historique : {chemin.name}"
+            )
+
+            messagebox.showinfo(
+                "Export PDF termine",
+                (
+                    "Le detail de la facture a ete exporte "
+                    "localement en PDF.\n\n"
+                    f"Numero : {numero}\n"
+                    f"Fichier : {chemin}"
+                ),
+                parent=fenetre,
+            )
+
         def exporter_selection_historique() -> None:
             """Exporte en CSV la facture sélectionnée dans l'historique."""
             facture = obtenir_facture_selectionnee()
@@ -2079,6 +2147,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_bas,
             text="Mettre à la corbeille",
             command=supprimer_selection,
+        ).pack(
+            side="right",
+            padx=(0, 10),
+        )
+
+        ttk.Button(
+            zone_bas,
+            text="Exporter en PDF",
+            command=exporter_pdf_selection_historique,
         ).pack(
             side="right",
             padx=(0, 10),
