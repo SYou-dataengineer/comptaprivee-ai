@@ -45,6 +45,10 @@ from .summary_report import (
     exporter_resume_comptable_pdf,
 )
 from .report_naming import nom_fichier_rapport
+from .export_history import (
+    formater_taille,
+    lister_exports,
+)
 from .invoice_validator import (
     ResultatValidation,
     StatutValidation,
@@ -214,6 +218,15 @@ class ApplicationComptaPrivee(tk.Tk):
             barre_document,
             text="Ouvrir le dossier des exports",
             command=self.ouvrir_dossier_exports,
+        ).pack(
+            side="left",
+            padx=(10, 0),
+        )
+
+        ttk.Button(
+            barre_document,
+            text="Historique exports",
+            command=self.ouvrir_historique_exports,
         ).pack(
             side="left",
             padx=(10, 0),
@@ -437,6 +450,197 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         return chemin
+
+
+    def ouvrir_historique_exports(self) -> None:
+        """Affiche les fichiers PDF/CSV présents dans data/exports."""
+        fenetre = tk.Toplevel(self)
+        fenetre.title("Historique des exports — ComptaPrivée AI")
+        fenetre.geometry("920x560")
+        fenetre.minsize(760, 460)
+        fenetre.transient(self)
+
+        conteneur = ttk.Frame(fenetre, padding=18)
+        conteneur.pack(fill="both", expand=True)
+
+        ttk.Label(
+            conteneur,
+            text="Historique des exports",
+            font=("Segoe UI", 19, "bold"),
+        ).pack(anchor="w")
+
+        ttk.Label(
+            conteneur,
+            text=(
+                "Liste calculée directement à partir du dossier "
+                "local data/exports."
+            ),
+            foreground="#166534",
+        ).pack(anchor="w", pady=(3, 14))
+
+        zone_tableau = ttk.Frame(conteneur)
+        zone_tableau.pack(fill="both", expand=True)
+
+        colonnes = ("nom", "type", "date", "taille")
+        tableau = ttk.Treeview(
+            zone_tableau,
+            columns=colonnes,
+            show="headings",
+            selectmode="browse",
+        )
+
+        tableau.heading("nom", text="Fichier")
+        tableau.heading("type", text="Type")
+        tableau.heading("date", text="Créé / modifié")
+        tableau.heading("taille", text="Taille")
+
+        tableau.column("nom", width=480, anchor="w")
+        tableau.column("type", width=80, anchor="center")
+        tableau.column("date", width=170, anchor="center")
+        tableau.column("taille", width=90, anchor="e")
+
+        barre = ttk.Scrollbar(
+            zone_tableau,
+            orient="vertical",
+            command=tableau.yview,
+        )
+        tableau.configure(yscrollcommand=barre.set)
+
+        tableau.pack(side="left", fill="both", expand=True)
+        barre.pack(side="right", fill="y")
+
+        chemins: dict[str, Path] = {}
+
+        def actualiser() -> None:
+            for item in tableau.get_children():
+                tableau.delete(item)
+
+            chemins.clear()
+            exports = lister_exports(self.dossier_exports())
+
+            for export in exports:
+                identifiant = tableau.insert(
+                    "",
+                    "end",
+                    values=(
+                        export.nom,
+                        export.type_fichier,
+                        export.modifie_le.strftime("%Y-%m-%d %H:%M"),
+                        formater_taille(export.taille_octets),
+                    ),
+                )
+                chemins[identifiant] = export.chemin
+
+            if not exports:
+                tableau.insert(
+                    "",
+                    "end",
+                    values=("Aucun export local", "", "", ""),
+                )
+
+        def chemin_selectionne() -> Path | None:
+            selection = tableau.selection()
+            if not selection:
+                return None
+            return chemins.get(selection[0])
+
+        def ouvrir_selection() -> None:
+            chemin = chemin_selectionne()
+
+            if chemin is None:
+                messagebox.showinfo(
+                    "Historique des exports",
+                    "Sélectionnez d'abord un fichier.",
+                    parent=fenetre,
+                )
+                return
+
+            try:
+                os.startfile(chemin)
+            except OSError as erreur:
+                messagebox.showerror(
+                    "Ouverture impossible",
+                    str(erreur),
+                    parent=fenetre,
+                )
+
+        def supprimer_selection() -> None:
+            chemin = chemin_selectionne()
+
+            if chemin is None:
+                messagebox.showinfo(
+                    "Historique des exports",
+                    "Sélectionnez d'abord un fichier.",
+                    parent=fenetre,
+                )
+                return
+
+            confirmer = messagebox.askyesno(
+                "Supprimer l'export",
+                (
+                    "Supprimer définitivement ce fichier local ?\n\n"
+                    f"{chemin.name}"
+                ),
+                parent=fenetre,
+            )
+
+            if not confirmer:
+                return
+
+            try:
+                chemin.unlink()
+            except OSError as erreur:
+                messagebox.showerror(
+                    "Suppression impossible",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            self.statut.set(
+                f"Export supprimé : {chemin.name}"
+            )
+            actualiser()
+
+        actions = ttk.Frame(conteneur)
+        actions.pack(fill="x", pady=(14, 0))
+
+        ttk.Button(
+            actions,
+            text="Actualiser",
+            command=actualiser,
+        ).pack(side="left")
+
+        ttk.Button(
+            actions,
+            text="Ouvrir le fichier",
+            command=ouvrir_selection,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            actions,
+            text="Supprimer",
+            command=supprimer_selection,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            actions,
+            text="Ouvrir le dossier",
+            command=self.ouvrir_dossier_exports,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            actions,
+            text="Fermer",
+            command=fenetre.destroy,
+        ).pack(side="right")
+
+        tableau.bind(
+            "<Double-1>",
+            lambda _event: ouvrir_selection(),
+        )
+
+        actualiser()
 
     def ouvrir_parametres(self) -> None:
         """Ouvre les paramètres locaux de l'application."""
