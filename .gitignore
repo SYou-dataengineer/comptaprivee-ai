@@ -43,3 +43,6 @@ desktop.ini
 *.sqlite
 *.sqlite3
 data/profil_comptable.json
+
+# Logo local du cabinet
+data/logo_societe.*

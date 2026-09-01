@@ -1,6 +1,9 @@
+import base64
+
 """Tests du profil local du cabinet comptable."""
 
 from src.comptaprivee.company_profile import (
+    copier_logo_societe,
     ProfilSociete,
     enregistrer_nom_societe,
     enregistrer_profil_societe,
@@ -72,3 +75,23 @@ def test_lignes_coordonnees() -> None:
     assert "Montréal, QC, H1H 1H1" in lignes
     assert "514-555-0100 | info@exemple.ca" in lignes
     assert "NEQ 1234567890" in lignes
+
+def test_copier_logo_societe(tmp_path) -> None:
+    source = tmp_path / "logo.png"
+    source.write_bytes(
+        base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB"
+            "CAQAAAC1HAwCAAAAC0lEQVR42mP8/x8A"
+            "AgMBApY9ZQAAAABJRU5ErkJggg=="
+        )
+    )
+
+    resultat = copier_logo_societe(
+        source,
+        tmp_path / "data",
+    )
+
+    assert resultat.exists()
+    assert resultat.name == "logo_societe.png"
+
+

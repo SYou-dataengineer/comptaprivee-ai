@@ -1,3 +1,8 @@
+import binascii
+import struct
+import zlib
+import base64
+
 """Tests de l'export du tableau de bord."""
 
 from decimal import Decimal
@@ -25,6 +30,42 @@ def creer_resume() -> ResumeTableauBord:
         ),
     )
 
+
+
+
+def _creer_png_test(chemin) -> None:
+    signature = b"\x89PNG\r\n\x1a\n"
+
+    def chunk(type_chunk: bytes, donnees: bytes) -> bytes:
+        crc = binascii.crc32(type_chunk + donnees) & 0xFFFFFFFF
+        return (
+            struct.pack(">I", len(donnees))
+            + type_chunk
+            + donnees
+            + struct.pack(">I", crc)
+        )
+
+    ihdr = struct.pack(
+        ">IIBBBBB",
+        1,
+        1,
+        8,
+        2,
+        0,
+        0,
+        0,
+    )
+
+    donnees_image = b"\x00\xff\xff\xff"
+
+    contenu = (
+        signature
+        + chunk(b"IHDR", ihdr)
+        + chunk(b"IDAT", zlib.compress(donnees_image))
+        + chunk(b"IEND", b"")
+    )
+
+    chemin.write_bytes(contenu)
 
 def test_exporter_tableau_bord_csv(tmp_path) -> None:
     chemin = tmp_path / "rapport.csv"
@@ -179,4 +220,33 @@ def test_export_dashboard_pdf_affiche_coordonnees(
 
     assert "123 rue Exemple" in texte
     assert "514-555-0100" in texte
+
+def test_export_dashboard_pdf_insere_logo(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from src.comptaprivee import dashboard_exporter
+    from src.comptaprivee.company_profile import ProfilSociete
+
+    logo = tmp_path / "logo.png"
+    _creer_png_test(logo)
+
+    monkeypatch.setattr(
+        dashboard_exporter,
+        "lire_profil_societe",
+        lambda: ProfilSociete(
+            nom_societe="Cabinet Exemple CPA Inc.",
+            logo_path=str(logo),
+        ),
+    )
+
+    chemin = tmp_path / "dashboard_logo.pdf"
+    exporter_tableau_bord_pdf(creer_resume(), chemin)
+
+    document = fitz.open(chemin)
+    try:
+        assert any(page.get_images(full=True) for page in document)
+    finally:
+        document.close()
+
 

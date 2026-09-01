@@ -13,6 +13,30 @@ from .company_profile import (
 from .dashboard import ResumeTableauBord
 
 
+def _inserer_logo_pdf(
+    page: fitz.Page,
+    logo_path: str,
+    rectangle: fitz.Rect,
+) -> None:
+    if not logo_path:
+        return
+
+    chemin = Path(logo_path)
+
+    if not chemin.exists() or not chemin.is_file():
+        return
+
+    try:
+        page.insert_image(
+            rectangle,
+            filename=str(chemin),
+            keep_proportion=True,
+            overlay=True,
+        )
+    except (OSError, RuntimeError, ValueError):
+        return
+
+
 def exporter_tableau_bord_csv(
     resume: ResumeTableauBord,
     chemin_sortie: str | Path,
@@ -103,6 +127,12 @@ def exporter_tableau_bord_pdf(
             fontname="helv",
         )
         profil_societe = lire_profil_societe()
+
+        _inserer_logo_pdf(
+            page,
+            profil_societe.logo_path,
+            fitz.Rect(215, 14, 335, 88),
+        )
         nom_societe = (
             lire_nom_societe()
             or profil_societe.nom_societe

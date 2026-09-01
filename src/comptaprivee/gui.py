@@ -14,6 +14,7 @@ from .batch_processor import traiter_et_exporter_documents
 from .csv_exporter import exporter_facture_csv
 from .company_profile import (
     ProfilSociete,
+    copier_logo_societe,
     enregistrer_profil_societe,
     lire_profil_societe,
 )
@@ -336,7 +337,7 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         self.bouton_valider.grid(
-            row=len(champs) + 2,
+            row=len(champs) + 3,
             column=0,
             columnspan=2,
             sticky="ew",
@@ -435,8 +436,8 @@ class ApplicationComptaPrivee(tk.Tk):
         fenetre.title(
             "Profil de la société — ComptaPrivée AI"
         )
-        fenetre.geometry("620x650")
-        fenetre.minsize(560, 600)
+        fenetre.geometry("680x720")
+        fenetre.minsize(620, 680)
         fenetre.transient(self)
         fenetre.grab_set()
 
@@ -528,7 +529,100 @@ class ApplicationComptaPrivee(tk.Tk):
             weight=1,
         )
 
+        logo_selectionne = tk.StringVar(
+            value=profil.logo_path
+        )
+
+        ligne_logo = len(champs) + 2
+
+        ttk.Label(
+            cadre,
+            text="Logo du cabinet",
+        ).grid(
+            row=ligne_logo,
+            column=0,
+            sticky="w",
+            pady=6,
+        )
+
+        zone_logo = ttk.Frame(cadre)
+        zone_logo.grid(
+            row=ligne_logo,
+            column=1,
+            sticky="ew",
+            padx=(15, 0),
+            pady=(10, 14),
+        )
+        zone_logo.columnconfigure(0, weight=1)
+
+        ttk.Entry(
+            zone_logo,
+            textvariable=logo_selectionne,
+            state="readonly",
+            width=34,
+        ).grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            padx=(0, 8),
+        )
+
+        def choisir_logo() -> None:
+            chemin = filedialog.askopenfilename(
+                title="Choisir le logo du cabinet",
+                filetypes=[
+                    ("Images", "*.png *.jpg *.jpeg"),
+                    ("PNG", "*.png"),
+                    ("JPEG", "*.jpg *.jpeg"),
+                ],
+                parent=fenetre,
+            )
+            if chemin:
+                logo_selectionne.set(chemin)
+
+        def retirer_logo() -> None:
+            logo_selectionne.set("")
+
+        boutons_logo = ttk.Frame(zone_logo)
+        boutons_logo.grid(
+            row=1,
+            column=0,
+            columnspan=3,
+            sticky="w",
+            pady=(8, 0),
+        )
+
+        ttk.Button(
+            boutons_logo,
+            text="Choisir un logo...",
+            command=choisir_logo,
+        ).pack(
+            side="left",
+        )
+
+        ttk.Button(
+            boutons_logo,
+            text="Retirer le logo",
+            command=retirer_logo,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
         def enregistrer() -> None:
+            logo_final = logo_selectionne.get().strip()
+
+            if logo_final and logo_final != profil.logo_path:
+                try:
+                    logo_final = str(copier_logo_societe(logo_final))
+                except (OSError, ValueError) as erreur:
+                    messagebox.showerror(
+                        "Erreur du logo",
+                        str(erreur),
+                        parent=fenetre,
+                    )
+                    return
+
             nouveau = ProfilSociete(
                 nom_societe=valeurs[
                     "nom_societe"
@@ -554,6 +648,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 site_web=valeurs[
                     "site_web"
                 ].get().strip(),
+                logo_path=logo_final,
                 neq=valeurs[
                     "neq"
                 ].get().strip(),

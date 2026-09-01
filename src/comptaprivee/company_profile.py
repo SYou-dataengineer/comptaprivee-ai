@@ -1,6 +1,7 @@
 """Profil local du cabinet comptable."""
 
 import json
+import shutil
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -20,6 +21,7 @@ class ProfilSociete:
     telephone: str = ""
     courriel: str = ""
     site_web: str = ""
+    logo_path: str = ""
     neq: str = ""
     numero_tps: str = ""
     numero_tvq: str = ""
@@ -105,6 +107,7 @@ def enregistrer_nom_societe(
         telephone=ancien.telephone,
         courriel=ancien.courriel,
         site_web=ancien.site_web,
+        logo_path=ancien.logo_path,
         neq=ancien.neq,
         numero_tps=ancien.numero_tps,
         numero_tvq=ancien.numero_tvq,
@@ -167,3 +170,35 @@ def lignes_coordonnees(
         lignes.append(inscriptions)
 
     return lignes
+
+FORMATS_LOGO = {".png", ".jpg", ".jpeg"}
+
+
+def copier_logo_societe(
+    chemin_source: str | Path,
+    dossier_destination: str | Path = "data",
+) -> Path:
+    source = Path(chemin_source)
+
+    if not source.exists() or not source.is_file():
+        raise FileNotFoundError(f"Logo introuvable : {source}")
+
+    extension = source.suffix.lower()
+
+    if extension not in FORMATS_LOGO:
+        raise ValueError(
+            "Le logo doit être au format PNG, JPG ou JPEG."
+        )
+
+    dossier = Path(dossier_destination)
+    dossier.mkdir(parents=True, exist_ok=True)
+    destination = dossier / f"logo_societe{extension}"
+
+    for ancien_logo in dossier.glob("logo_societe.*"):
+        if ancien_logo != destination and ancien_logo.is_file():
+            ancien_logo.unlink()
+
+    if source.resolve() != destination.resolve():
+        shutil.copy2(source, destination)
+
+    return destination

@@ -16,6 +16,30 @@ from .dashboard import ResumeTableauBord
 from .database import FactureEnregistree
 
 
+def _inserer_logo_pdf(
+    page: fitz.Page,
+    logo_path: str,
+    rectangle: fitz.Rect,
+) -> None:
+    if not logo_path:
+        return
+
+    chemin = Path(logo_path)
+
+    if not chemin.exists() or not chemin.is_file():
+        return
+
+    try:
+        page.insert_image(
+            rectangle,
+            filename=str(chemin),
+            keep_proportion=True,
+            overlay=True,
+        )
+    except (OSError, RuntimeError, ValueError):
+        return
+
+
 @dataclass(frozen=True)
 class ResumeComptableImprimable:
     """Résumé synthétique prêt à être affiché ou exporté."""
@@ -123,6 +147,12 @@ def exporter_resume_comptable_pdf(
             color=blanc,
         )
         profil_societe = lire_profil_societe()
+
+        _inserer_logo_pdf(
+            page,
+            profil_societe.logo_path,
+            fitz.Rect(215, 12, 335, 90),
+        )
         nom_societe = (
             profil_societe.nom_societe
             or resume.societe_comptable
