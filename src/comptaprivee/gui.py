@@ -39,6 +39,11 @@ from .database import (
     restaurer_facture,
     supprimer_facture_corbeille,
 )
+
+from .duplicate_detector import (
+    NiveauDoublon,
+    detecter_doublon,
+)
 from .facture_parser import DonneesFacture, extraire_donnees_facture
 from .summary_report import (
     construire_resume_comptable,
@@ -364,7 +369,7 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         self.bouton_valider.grid(
-            row=len(champs) + 3,
+            row=len(champs) + 2,
             column=0,
             columnspan=2,
             sticky="ew",
@@ -3899,6 +3904,70 @@ class ApplicationComptaPrivee(tk.Tk):
                 ),
             )
             return
+
+        resultat_doublon = detecter_doublon(
+            facture
+        )
+
+        if resultat_doublon.niveau is NiveauDoublon.CERTAIN:
+            existante = resultat_doublon.facture_existante
+
+            details = resultat_doublon.raison
+
+            if existante is not None:
+                details += (
+                    "\n\nFacture existante :"
+                    f"\nNuméro : {existante.numero or '-'}"
+                    f"\nFournisseur : {existante.fournisseur or '-'}"
+                    f"\nDate : {existante.date or '-'}"
+                    f"\nTotal : {existante.total or '-'}"
+                )
+
+            messagebox.showwarning(
+                "Doublon certain détecté",
+                (
+                    "Cette facture semble déjà être enregistrée.\n\n"
+                    f"{details}\n\n"
+                    "L'enregistrement est bloqué pour éviter un doublon."
+                ),
+                parent=self,
+            )
+
+            self.statut.set(
+                "Doublon certain détecté — enregistrement bloqué"
+            )
+            return
+
+        if resultat_doublon.niveau is NiveauDoublon.PROBABLE:
+            existante = resultat_doublon.facture_existante
+
+            details = resultat_doublon.raison
+
+            if existante is not None:
+                details += (
+                    "\n\nFacture similaire :"
+                    f"\nNuméro : {existante.numero or '-'}"
+                    f"\nFournisseur : {existante.fournisseur or '-'}"
+                    f"\nDate : {existante.date or '-'}"
+                    f"\nTotal : {existante.total or '-'}"
+                )
+
+            continuer = messagebox.askyesno(
+                "Doublon probable détecté",
+                (
+                    "Une facture similaire existe déjà.\n\n"
+                    f"{details}\n\n"
+                    "Voulez-vous quand même continuer "
+                    "l'enregistrement ?"
+                ),
+                parent=self,
+            )
+
+            if not continuer:
+                self.statut.set(
+                    "Enregistrement annulé — doublon probable"
+                )
+                return
 
         try:
             facture_enregistree = (
