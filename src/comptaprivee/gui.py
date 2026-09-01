@@ -17,6 +17,10 @@ from .dashboard import (
     filtrer_factures_fournisseur,
     filtrer_factures_periode,
 )
+from .dashboard_exporter import (
+    exporter_tableau_bord_csv,
+    exporter_tableau_bord_pdf,
+)
 from .database import (
     enregistrer_facture,
     lister_factures,
@@ -414,8 +418,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         fenetre = tk.Toplevel(self)
         fenetre.title("Tableau de bord — ComptaPrivée AI")
-        fenetre.geometry("1050x700")
-        fenetre.minsize(860, 580)
+        fenetre.geometry("1050x720")
+        fenetre.minsize(860, 600)
 
         conteneur = ttk.Frame(
             fenetre,
@@ -514,14 +518,13 @@ class ApplicationComptaPrivee(tk.Tk):
             *fournisseurs,
         ]
 
-        choix_fournisseur = ttk.Combobox(
+        ttk.Combobox(
             zone_filtres,
             textvariable=fournisseur_selectionne,
             values=liste_fournisseurs,
             state="readonly",
             width=28,
-        )
-        choix_fournisseur.pack(
+        ).pack(
             side="left",
             padx=(6, 10),
         )
@@ -612,30 +615,31 @@ class ApplicationComptaPrivee(tk.Tk):
             expand=True,
         )
 
+        resume_courant = {"resume": None}
+
+        def obtenir_selection():
+            selection = filtrer_factures_periode(
+                factures,
+                date_debut.get().strip() or None,
+                date_fin.get().strip() or None,
+            )
+
+            fournisseur = fournisseur_selectionne.get().strip()
+
+            if fournisseur == "Tous les fournisseurs":
+                fournisseur = None
+
+            selection = filtrer_factures_fournisseur(
+                selection,
+                fournisseur,
+            )
+
+            return selection, fournisseur
+
         def actualiser_tableau_bord() -> None:
             try:
-                selection = filtrer_factures_periode(
-                    factures,
-                    date_debut.get().strip() or None,
-                    date_fin.get().strip() or None,
-                )
-
-                fournisseur = (
-                    fournisseur_selectionne.get().strip()
-                )
-
-                if fournisseur == "Tous les fournisseurs":
-                    fournisseur = None
-
-                selection = filtrer_factures_fournisseur(
-                    selection,
-                    fournisseur,
-                )
-
-                resume = calculer_resume(
-                    selection
-                )
-
+                selection, _ = obtenir_selection()
+                resume = calculer_resume(selection)
             except ValueError as erreur:
                 messagebox.showerror(
                     "Filtre invalide",
@@ -648,31 +652,23 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 return
 
+            resume_courant["resume"] = resume
+
             variables_indicateurs[
                 "Factures"
-            ].set(
-                str(resume.nombre_factures)
-            )
+            ].set(str(resume.nombre_factures))
             variables_indicateurs[
                 "Sous-total"
-            ].set(
-                f"{resume.sous_total:.2f} CAD"
-            )
+            ].set(f"{resume.sous_total:.2f} CAD")
             variables_indicateurs[
                 "TPS"
-            ].set(
-                f"{resume.tps:.2f} CAD"
-            )
+            ].set(f"{resume.tps:.2f} CAD")
             variables_indicateurs[
                 "TVQ"
-            ].set(
-                f"{resume.tvq:.2f} CAD"
-            )
+            ].set(f"{resume.tvq:.2f} CAD")
             variables_indicateurs[
                 "Total"
-            ].set(
-                f"{resume.total:.2f} CAD"
-            )
+            ].set(f"{resume.total:.2f} CAD")
 
             for element in tableau.get_children():
                 tableau.delete(element)
@@ -711,6 +707,114 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             actualiser_tableau_bord()
 
+        def exporter_dashboard_csv() -> None:
+            try:
+                _, fournisseur = obtenir_selection()
+                resume = resume_courant["resume"]
+                if resume is None:
+                    actualiser_tableau_bord()
+                    resume = resume_courant["resume"]
+                if resume is None:
+                    return
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Filtre invalide",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            chemin = filedialog.asksaveasfilename(
+                title="Exporter le tableau de bord en CSV",
+                initialdir=str(self.dossier_exports()),
+                defaultextension=".csv",
+                initialfile="tableau_bord.csv",
+                filetypes=[("Fichier CSV", "*.csv")],
+                parent=fenetre,
+            )
+
+            if not chemin:
+                return
+
+            try:
+                sortie = exporter_tableau_bord_csv(
+                    resume,
+                    chemin,
+                    date_debut=date_debut.get().strip() or None,
+                    date_fin=date_fin.get().strip() or None,
+                    fournisseur=fournisseur,
+                )
+            except (OSError, ValueError) as erreur:
+                messagebox.showerror(
+                    "Erreur d'export CSV",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            self.statut.set(
+                f"Tableau de bord exporté : {sortie.name}"
+            )
+            messagebox.showinfo(
+                "Export CSV terminé",
+                f"Rapport créé localement :\n{sortie}",
+                parent=fenetre,
+            )
+
+        def exporter_dashboard_pdf() -> None:
+            try:
+                _, fournisseur = obtenir_selection()
+                resume = resume_courant["resume"]
+                if resume is None:
+                    actualiser_tableau_bord()
+                    resume = resume_courant["resume"]
+                if resume is None:
+                    return
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Filtre invalide",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            chemin = filedialog.asksaveasfilename(
+                title="Exporter le tableau de bord en PDF",
+                initialdir=str(self.dossier_exports()),
+                defaultextension=".pdf",
+                initialfile="tableau_bord.pdf",
+                filetypes=[("Fichier PDF", "*.pdf")],
+                parent=fenetre,
+            )
+
+            if not chemin:
+                return
+
+            try:
+                sortie = exporter_tableau_bord_pdf(
+                    resume,
+                    chemin,
+                    date_debut=date_debut.get().strip() or None,
+                    date_fin=date_fin.get().strip() or None,
+                    fournisseur=fournisseur,
+                )
+            except (OSError, ValueError) as erreur:
+                messagebox.showerror(
+                    "Erreur d'export PDF",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            self.statut.set(
+                f"Tableau de bord exporté : {sortie.name}"
+            )
+            messagebox.showinfo(
+                "Export PDF terminé",
+                f"Rapport créé localement :\n{sortie}",
+                parent=fenetre,
+            )
+
         ttk.Button(
             zone_filtres,
             text="Appliquer",
@@ -738,8 +842,24 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_bas,
             text="Fermer",
             command=fenetre.destroy,
+        ).pack(side="right")
+
+        ttk.Button(
+            zone_bas,
+            text="Exporter en PDF",
+            command=exporter_dashboard_pdf,
         ).pack(
             side="right",
+            padx=(0, 8),
+        )
+
+        ttk.Button(
+            zone_bas,
+            text="Exporter en CSV",
+            command=exporter_dashboard_csv,
+        ).pack(
+            side="right",
+            padx=(0, 8),
         )
 
         actualiser_tableau_bord()
