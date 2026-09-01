@@ -9,6 +9,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
+from .anomalies import detecter_anomalies
 from .batch_processor import traiter_et_exporter_documents
 from .csv_exporter import exporter_facture_csv
 from .pdf_exporter import exporter_facture_pdf
@@ -995,6 +996,153 @@ class ApplicationComptaPrivee(tk.Tk):
                 dessiner,
             )
 
+        def afficher_anomalies() -> None:
+            try:
+                selection, _ = obtenir_selection()
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Filtre invalide",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            anomalies = detecter_anomalies(
+                selection
+            )
+
+            controle = tk.Toplevel(fenetre)
+            controle.title(
+                "Contrôle des anomalies — ComptaPrivée AI"
+            )
+            controle.geometry("980x580")
+            controle.minsize(780, 460)
+
+            cadre = ttk.Frame(
+                controle,
+                padding=20,
+            )
+            cadre.pack(
+                fill="both",
+                expand=True,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Contrôle des anomalies",
+                font=("Segoe UI", 18, "bold"),
+            ).pack(
+                anchor="w",
+                pady=(0, 5),
+            )
+
+            if anomalies:
+                texte_resume = (
+                    f"{len(anomalies)} anomalie(s) détectée(s) "
+                    f"sur {len(selection)} facture(s)."
+                )
+                couleur_resume = "#b45309"
+            else:
+                texte_resume = (
+                    "Aucune anomalie détectée dans les "
+                    "factures correspondant aux filtres."
+                )
+                couleur_resume = "#166534"
+
+            ttk.Label(
+                cadre,
+                text=texte_resume,
+                foreground=couleur_resume,
+            ).pack(
+                anchor="w",
+                pady=(0, 15),
+            )
+
+            tableau_anomalies = ttk.Treeview(
+                cadre,
+                columns=(
+                    "id",
+                    "numero",
+                    "niveau",
+                    "message",
+                ),
+                show="headings",
+            )
+
+            tableau_anomalies.heading(
+                "id",
+                text="ID",
+            )
+            tableau_anomalies.heading(
+                "numero",
+                text="N° facture",
+            )
+            tableau_anomalies.heading(
+                "niveau",
+                text="Niveau",
+            )
+            tableau_anomalies.heading(
+                "message",
+                text="Anomalie",
+            )
+
+            tableau_anomalies.column(
+                "id",
+                width=60,
+                anchor="center",
+            )
+            tableau_anomalies.column(
+                "numero",
+                width=150,
+            )
+            tableau_anomalies.column(
+                "niveau",
+                width=110,
+                anchor="center",
+            )
+            tableau_anomalies.column(
+                "message",
+                width=600,
+            )
+
+            tableau_anomalies.pack(
+                fill="both",
+                expand=True,
+            )
+
+            for anomalie in anomalies:
+                tableau_anomalies.insert(
+                    "",
+                    "end",
+                    values=(
+                        anomalie.identifiant,
+                        anomalie.numero,
+                        anomalie.niveau,
+                        anomalie.message,
+                    ),
+                )
+
+            if not anomalies:
+                tableau_anomalies.insert(
+                    "",
+                    "end",
+                    values=(
+                        "",
+                        "",
+                        "OK",
+                        "Aucune anomalie détectée.",
+                    ),
+                )
+
+            ttk.Button(
+                cadre,
+                text="Fermer",
+                command=controle.destroy,
+            ).pack(
+                anchor="e",
+                pady=(12, 0),
+            )
+
         def afficher_taxes_mensuelles() -> None:
             try:
                 selection, _ = obtenir_selection()
@@ -1567,6 +1715,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_bas,
             text="TPS / TVQ mensuelles",
             command=afficher_taxes_mensuelles,
+        ).pack(
+            side="right",
+            padx=(0, 8),
+        )
+
+        ttk.Button(
+            zone_bas,
+            text="Contrôle anomalies",
+            command=afficher_anomalies,
         ).pack(
             side="right",
             padx=(0, 8),
