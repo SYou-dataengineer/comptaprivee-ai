@@ -50,11 +50,9 @@ class ApplicationComptaPrivee(tk.Tk):
         self.nom_document = tk.StringVar(
             value="Aucun document sélectionné"
         )
-
         self.statut_validation = tk.StringVar(
             value="Validation : aucun document analysé"
         )
-
         self.statut = tk.StringVar(
             value="Prêt — traitement entièrement local"
         )
@@ -69,30 +67,21 @@ class ApplicationComptaPrivee(tk.Tk):
             "Titre.TLabel",
             font=("Segoe UI", 22, "bold"),
         )
-
         style.configure(
             "SousTitre.TLabel",
             font=("Segoe UI", 11),
         )
-
         style.configure(
             "Securite.TLabel",
             foreground="#166534",
         )
-
         style.configure(
             "Champ.TLabel",
             font=("Segoe UI", 10, "bold"),
         )
 
-        conteneur = ttk.Frame(
-            self,
-            padding=20,
-        )
-        conteneur.pack(
-            fill="both",
-            expand=True,
-        )
+        conteneur = ttk.Frame(self, padding=20)
+        conteneur.pack(fill="both", expand=True)
 
         entete = ttk.Frame(conteneur)
         entete.pack(fill="x")
@@ -110,10 +99,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 "de documents comptables"
             ),
             style="SousTitre.TLabel",
-        ).pack(
-            anchor="w",
-            pady=(2, 0),
-        )
+        ).pack(anchor="w", pady=(2, 0))
 
         ttk.Label(
             entete,
@@ -122,16 +108,10 @@ class ApplicationComptaPrivee(tk.Tk):
                 "aucune donnée envoyée sur Internet"
             ),
             style="Securite.TLabel",
-        ).pack(
-            anchor="w",
-            pady=(8, 15),
-        )
+        ).pack(anchor="w", pady=(8, 15))
 
         barre_document = ttk.Frame(conteneur)
-        barre_document.pack(
-            fill="x",
-            pady=(0, 15),
-        )
+        barre_document.pack(fill="x", pady=(0, 15))
 
         ttk.Button(
             barre_document,
@@ -143,58 +123,38 @@ class ApplicationComptaPrivee(tk.Tk):
             barre_document,
             text="Traiter plusieurs documents",
             command=self.selectionner_documents_lot,
-        ).pack(
-            side="left",
-            padx=(10, 0),
-        )
+        ).pack(side="left", padx=(10, 0))
 
         ttk.Button(
             barre_document,
             text="Consulter l'historique",
             command=self.ouvrir_historique,
-        ).pack(
-            side="left",
-            padx=(10, 0),
-        )
+        ).pack(side="left", padx=(10, 0))
 
         ttk.Label(
             barre_document,
             textvariable=self.nom_document,
-        ).pack(
-            side="left",
-            padx=12,
-        )
+        ).pack(side="left", padx=12)
 
         zone_principale = ttk.Panedwindow(
             conteneur,
             orient="horizontal",
         )
-        zone_principale.pack(
-            fill="both",
-            expand=True,
-        )
+        zone_principale.pack(fill="both", expand=True)
 
         panneau_champs = ttk.LabelFrame(
             zone_principale,
             text="Données à vérifier",
             padding=15,
         )
-
         panneau_texte = ttk.LabelFrame(
             zone_principale,
             text="Texte extrait ou résumé du lot",
             padding=10,
         )
 
-        zone_principale.add(
-            panneau_champs,
-            weight=1,
-        )
-
-        zone_principale.add(
-            panneau_texte,
-            weight=2,
-        )
+        zone_principale.add(panneau_champs, weight=1)
+        zone_principale.add(panneau_texte, weight=2)
 
         champs = [
             ("Numéro de facture", "numero"),
@@ -231,10 +191,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=6,
             )
 
-        panneau_champs.columnconfigure(
-            1,
-            weight=1,
-        )
+        panneau_champs.columnconfigure(1, weight=1)
 
         self.etiquette_validation = ttk.Label(
             panneau_champs,
@@ -242,7 +199,6 @@ class ApplicationComptaPrivee(tk.Tk):
             font=("Segoe UI", 10, "bold"),
             foreground="#475569",
         )
-
         self.etiquette_validation.grid(
             row=len(champs),
             column=0,
@@ -273,7 +229,6 @@ class ApplicationComptaPrivee(tk.Tk):
             command=self.valider_formulaire,
             state="disabled",
         )
-
         self.bouton_valider.grid(
             row=len(champs) + 2,
             column=0,
@@ -288,7 +243,6 @@ class ApplicationComptaPrivee(tk.Tk):
             command=self.enregistrer_dans_historique,
             state="disabled",
         )
-
         self.bouton_enregistrer.grid(
             row=len(champs) + 3,
             column=0,
@@ -303,7 +257,6 @@ class ApplicationComptaPrivee(tk.Tk):
             command=self.exporter,
             state="disabled",
         )
-
         self.bouton_exporter.grid(
             row=len(champs) + 4,
             column=0,
@@ -317,15 +270,8 @@ class ApplicationComptaPrivee(tk.Tk):
             wrap="word",
             font=("Consolas", 10),
         )
-
-        self.zone_texte.pack(
-            fill="both",
-            expand=True,
-        )
-
-        self.zone_texte.configure(
-            state="disabled"
-        )
+        self.zone_texte.pack(fill="both", expand=True)
+        self.zone_texte.configure(state="disabled")
 
         barre_statut = ttk.Label(
             conteneur,
@@ -334,11 +280,7 @@ class ApplicationComptaPrivee(tk.Tk):
             anchor="w",
             padding=6,
         )
-
-        barre_statut.pack(
-            fill="x",
-            pady=(15, 0),
-        )
+        barre_statut.pack(fill="x", pady=(15, 0))
 
     @staticmethod
     def types_fichiers() -> list[tuple[str, str]]:
@@ -358,12 +300,7 @@ class ApplicationComptaPrivee(tk.Tk):
     def dossier_exports() -> Path:
         """Retourne et crée le dossier local des exports."""
         chemin = Path.cwd() / "data" / "exports"
-
-        chemin.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
+        chemin.mkdir(parents=True, exist_ok=True)
         return chemin
 
     def selectionner_document(self) -> None:
@@ -378,11 +315,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
         self.chemins_lot = []
         self.chemin_document = Path(chemin)
-
-        self.nom_document.set(
-            self.chemin_document.name
-        )
-
+        self.nom_document.set(self.chemin_document.name)
         self.analyser_document_selectionne()
 
     def selectionner_documents_lot(self) -> None:
@@ -396,40 +329,26 @@ class ApplicationComptaPrivee(tk.Tk):
             return
 
         self.chemin_document = None
-
         self.chemins_lot = [
             Path(chemin)
             for chemin in chemins
         ]
 
-        nombre_documents = len(
-            self.chemins_lot
-        )
-
+        nombre_documents = len(self.chemins_lot)
         self.nom_document.set(
             f"{nombre_documents} documents sélectionnés"
         )
 
         self.vider_formulaire()
-
-        self.bouton_valider.configure(
-            state="disabled"
-        )
-
-        self.bouton_exporter.configure(
-            state="disabled"
-        )
+        self.bouton_valider.configure(state="disabled")
+        self.bouton_exporter.configure(state="disabled")
 
         chemin_sortie = filedialog.asksaveasfilename(
             title="Enregistrer le CSV regroupé",
-            initialdir=str(
-                self.dossier_exports()
-            ),
+            initialdir=str(self.dossier_exports()),
             defaultextension=".csv",
             initialfile="factures_lot.csv",
-            filetypes=[
-                ("Fichier CSV", "*.csv")
-            ],
+            filetypes=[("Fichier CSV", "*.csv")],
         )
 
         if not chemin_sortie:
@@ -439,20 +358,13 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             return
 
-        self.traiter_lot(
-            Path(chemin_sortie)
-        )
+        self.traiter_lot(Path(chemin_sortie))
 
-    def traiter_lot(
-        self,
-        chemin_sortie: Path,
-    ) -> None:
+    def traiter_lot(self, chemin_sortie: Path) -> None:
         """Analyse, valide et exporte plusieurs documents."""
         self.statut.set(
-            f"Traitement local de "
-            f"{len(self.chemins_lot)} documents…"
+            f"Traitement local de {len(self.chemins_lot)} documents…"
         )
-
         self.update_idletasks()
 
         try:
@@ -460,12 +372,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 self.chemins_lot,
                 chemin_sortie,
             )
-
         except Exception as erreur:
-            self.statut.set(
-                "Échec du traitement par lot"
-            )
-
+            self.statut.set("Échec du traitement par lot")
             messagebox.showerror(
                 "Erreur du traitement par lot",
                 str(erreur),
@@ -476,10 +384,7 @@ class ApplicationComptaPrivee(tk.Tk):
             "TRAITEMENT PAR LOT TERMINÉ",
             "=" * 55,
             "",
-            (
-                "Documents sélectionnés : "
-                f"{len(self.chemins_lot)}"
-            ),
+            f"Documents sélectionnés : {len(self.chemins_lot)}",
             (
                 "Documents exportables : "
                 f"{resultat.nombre_documents_reussis}"
@@ -515,49 +420,30 @@ class ApplicationComptaPrivee(tk.Tk):
             ):
                 facture = document.facture
                 validation = document.validation
-
-                numero = (
-                    facture.numero
-                    or "Numéro non détecté"
-                )
-
-                total = self.montant_vers_texte(
-                    facture.total
-                )
+                numero = facture.numero or "Numéro non détecté"
+                total = self.montant_vers_texte(facture.total)
 
                 if total:
-                    total_affiche = (
-                        f"{total} CAD"
-                    )
+                    total_affiche = f"{total} CAD"
                 else:
-                    total_affiche = (
-                        "Total non détecté"
-                    )
+                    total_affiche = "Total non détecté"
 
                 lignes_resume.append(
-                    f"{position}. "
-                    f"{document.chemin.name}"
+                    f"{position}. {document.chemin.name}"
                 )
-
                 lignes_resume.append(
                     f"   Numéro : {numero}"
                 )
-
                 lignes_resume.append(
                     f"   Total : {total_affiche}"
                 )
-
                 lignes_resume.append(
-                    "   Statut : "
-                    f"{validation.statut.value}"
+                    f"   Statut : {validation.statut.value}"
                 )
 
-                for avertissement in (
-                    validation.avertissements
-                ):
+                for avertissement in validation.avertissements:
                     lignes_resume.append(
-                        "   Avertissement : "
-                        f"{avertissement}"
+                        f"   Avertissement : {avertissement}"
                     )
 
         if resultat.erreurs:
@@ -571,46 +457,30 @@ class ApplicationComptaPrivee(tk.Tk):
 
             for erreur in resultat.erreurs:
                 lignes_resume.append(
-                    f"- {erreur.chemin.name} : "
-                    f"{erreur.message}"
+                    f"- {erreur.chemin.name} : {erreur.message}"
                 )
 
-        self.afficher_texte(
-            "\n".join(lignes_resume)
-        )
+        self.afficher_texte("\n".join(lignes_resume))
 
         if resultat.nombre_documents_en_erreur:
             couleur = "#92400e"
-            resume_validation = (
-                "Validation du lot : À VÉRIFIER"
-            )
-
+            resume_validation = "Validation du lot : À VÉRIFIER"
         elif resultat.nombre_factures_a_verifier:
             couleur = "#92400e"
-            resume_validation = (
-                "Validation du lot : À VÉRIFIER"
-            )
-
+            resume_validation = "Validation du lot : À VÉRIFIER"
         else:
             couleur = "#166534"
-            resume_validation = (
-                "Validation du lot : VALIDE"
-            )
+            resume_validation = "Validation du lot : VALIDE"
 
-        self.statut_validation.set(
-            resume_validation
-        )
-
+        self.statut_validation.set(resume_validation)
         self.etiquette_validation.configure(
             foreground=couleur
         )
 
         self.statut.set(
             "Traitement par lot terminé — "
-            f"{resultat.nombre_documents_reussis} "
-            "exportable(s), "
-            f"{resultat.nombre_documents_en_erreur} "
-            "bloqué(s)"
+            f"{resultat.nombre_documents_reussis} exportable(s), "
+            f"{resultat.nombre_documents_en_erreur} bloqué(s)"
         )
 
         messagebox.showinfo(
@@ -632,83 +502,46 @@ class ApplicationComptaPrivee(tk.Tk):
         if self.chemin_document is None:
             return
 
-        self.statut.set(
-            "Analyse locale en cours…"
-        )
-
+        self.statut.set("Analyse locale en cours…")
         self.update_idletasks()
 
         try:
             texte = extraire_texte_document(
                 self.chemin_document
             )
-
             facture = extraire_donnees_facture(
                 texte
             )
-
         except Exception as erreur:
-            self.statut.set(
-                "Échec de l'analyse"
-            )
-
+            self.statut.set("Échec de l'analyse")
             messagebox.showerror(
                 "Erreur d'analyse",
                 str(erreur),
             )
             return
 
-        self.remplir_formulaire(
-            facture
-        )
+        self.remplir_formulaire(facture)
 
-        validation = valider_facture(
-            facture
-        )
+        validation = valider_facture(facture)
+        self.appliquer_validation(validation)
 
-        self.appliquer_validation(
-            validation
-        )
-
-        rapport = self.formater_validation(
-            validation
-        )
-
+        rapport = self.formater_validation(validation)
         self.afficher_texte(
             f"{texte.rstrip()}\n\n{rapport}"
         )
 
-        self.bouton_valider.configure(
-            state="normal"
-        )
-
+        self.bouton_valider.configure(state="normal")
         self.statut.set(
             "Analyse terminée — "
             "vérifiez les champs et la validation"
         )
 
-    def afficher_texte(
-        self,
-        texte: str,
-    ) -> None:
+    def afficher_texte(self, texte: str) -> None:
         """Affiche du texte dans la zone en lecture seule."""
-        self.zone_texte.configure(
-            state="normal"
-        )
-
-        self.zone_texte.delete(
-            "1.0",
-            "end",
-        )
-
-        self.zone_texte.insert(
-            "1.0",
-            texte,
-        )
-
-        self.zone_texte.configure(
-            state="disabled"
-        )
+        self.zone_texte.configure(state="normal")
+        self.zone_texte.delete("1.0", "end")
+        self.zone_texte.insert("1.0", texte)
+        self.zone_texte.configure(state="disabled")
 
     def vider_formulaire(self) -> None:
         """Efface tous les champs du formulaire."""
@@ -718,58 +551,33 @@ class ApplicationComptaPrivee(tk.Tk):
         self.statut_validation.set(
             "Validation : aucun document analysé"
         )
-
         self.etiquette_validation.configure(
             foreground="#475569"
         )
-
-        self.bouton_enregistrer.configure(
-            state="disabled"
-        )
+        self.bouton_enregistrer.configure(state="disabled")
 
     def remplir_formulaire(
         self,
         facture: DonneesFacture,
     ) -> None:
         """Place les données extraites dans le formulaire."""
-        self.variables["numero"].set(
-            facture.numero or ""
-        )
-
-        self.variables["date"].set(
-            facture.date or ""
-        )
-
+        self.variables["numero"].set(facture.numero or "")
+        self.variables["date"].set(facture.date or "")
         self.variables["fournisseur"].set(
             facture.fournisseur or ""
         )
-
-        self.variables["client"].set(
-            facture.client or ""
-        )
-
+        self.variables["client"].set(facture.client or "")
         self.variables["sous_total"].set(
-            self.montant_vers_texte(
-                facture.sous_total
-            )
+            self.montant_vers_texte(facture.sous_total)
         )
-
         self.variables["tps"].set(
-            self.montant_vers_texte(
-                facture.tps
-            )
+            self.montant_vers_texte(facture.tps)
         )
-
         self.variables["tvq"].set(
-            self.montant_vers_texte(
-                facture.tvq
-            )
+            self.montant_vers_texte(facture.tvq)
         )
-
         self.variables["total"].set(
-            self.montant_vers_texte(
-                facture.total
-            )
+            self.montant_vers_texte(facture.total)
         )
 
     @staticmethod
@@ -799,63 +607,42 @@ class ApplicationComptaPrivee(tk.Tk):
             return None
 
         try:
-            return Decimal(
-                valeur_normalisee
-            )
-
+            return Decimal(valeur_normalisee)
         except InvalidOperation as erreur:
             raise ValueError(
                 f"Montant invalide : {valeur}"
             ) from erreur
 
-    def lire_formulaire(
-        self,
-    ) -> DonneesFacture:
+    def lire_formulaire(self) -> DonneesFacture:
         """Transforme le formulaire en données structurées."""
         return DonneesFacture(
             numero=(
-                self.variables["numero"]
-                .get()
-                .strip()
+                self.variables["numero"].get().strip()
                 or None
             ),
             date=(
-                self.variables["date"]
-                .get()
-                .strip()
+                self.variables["date"].get().strip()
                 or None
             ),
             fournisseur=(
-                self.variables["fournisseur"]
-                .get()
-                .strip()
+                self.variables["fournisseur"].get().strip()
                 or None
             ),
             client=(
-                self.variables["client"]
-                .get()
-                .strip()
+                self.variables["client"].get().strip()
                 or None
             ),
             sous_total=self.texte_vers_montant(
-                self.variables[
-                    "sous_total"
-                ].get()
+                self.variables["sous_total"].get()
             ),
             tps=self.texte_vers_montant(
-                self.variables[
-                    "tps"
-                ].get()
+                self.variables["tps"].get()
             ),
             tvq=self.texte_vers_montant(
-                self.variables[
-                    "tvq"
-                ].get()
+                self.variables["tvq"].get()
             ),
             total=self.texte_vers_montant(
-                self.variables[
-                    "total"
-                ].get()
+                self.variables["total"].get()
             ),
         )
 
@@ -871,36 +658,21 @@ class ApplicationComptaPrivee(tk.Tk):
         }
 
         self.statut_validation.set(
-            f"Validation : "
-            f"{validation.statut.value}"
+            f"Validation : {validation.statut.value}"
         )
-
         self.etiquette_validation.configure(
-            foreground=couleurs[
-                validation.statut
-            ]
+            foreground=couleurs[validation.statut]
         )
 
-        if (
-            validation.statut
-            == StatutValidation.VALIDE
-        ):
-            self.bouton_enregistrer.configure(
-                state="normal"
-            )
+        if validation.statut == StatutValidation.VALIDE:
+            self.bouton_enregistrer.configure(state="normal")
         else:
-            self.bouton_enregistrer.configure(
-                state="disabled"
-            )
+            self.bouton_enregistrer.configure(state="disabled")
 
         if validation.autorise_export:
-            self.bouton_exporter.configure(
-                state="normal"
-            )
+            self.bouton_exporter.configure(state="normal")
         else:
-            self.bouton_exporter.configure(
-                state="disabled"
-            )
+            self.bouton_exporter.configure(state="disabled")
 
     @staticmethod
     def formater_validation(
@@ -910,51 +682,26 @@ class ApplicationComptaPrivee(tk.Tk):
         lignes = [
             "VALIDATION COMPTABLE",
             "=" * 55,
-            (
-                f"Statut : "
-                f"{validation.statut.value}"
-            ),
+            f"Statut : {validation.statut.value}",
         ]
 
         if validation.erreurs:
-            lignes.extend(
-                [
-                    "",
-                    "Erreurs :",
-                ]
-            )
+            lignes.extend(["", "Erreurs :"])
 
             for erreur in validation.erreurs:
-                lignes.append(
-                    f"- {erreur}"
-                )
+                lignes.append(f"- {erreur}")
 
         if validation.avertissements:
+            lignes.extend(["", "Avertissements :"])
+
+            for avertissement in validation.avertissements:
+                lignes.append(f"- {avertissement}")
+
+        if not validation.erreurs and not validation.avertissements:
             lignes.extend(
                 [
                     "",
-                    "Avertissements :",
-                ]
-            )
-
-            for avertissement in (
-                validation.avertissements
-            ):
-                lignes.append(
-                    f"- {avertissement}"
-                )
-
-        if (
-            not validation.erreurs
-            and not validation.avertissements
-        ):
-            lignes.extend(
-                [
-                    "",
-                    (
-                        "Tous les contrôles "
-                        "comptables sont réussis."
-                    ),
+                    "Tous les contrôles comptables sont réussis.",
                 ]
             )
 
@@ -967,7 +714,6 @@ class ApplicationComptaPrivee(tk.Tk):
         """Valide les valeurs présentes dans le formulaire."""
         try:
             facture = self.lire_formulaire()
-
         except ValueError as erreur:
             messagebox.showerror(
                 "Donnée invalide",
@@ -975,63 +721,38 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             return None
 
-        validation = valider_facture(
-            facture
-        )
+        validation = valider_facture(facture)
+        self.appliquer_validation(validation)
 
-        self.appliquer_validation(
-            validation
-        )
-
-        rapport = self.formater_validation(
-            validation
-        )
-
-        self.afficher_texte(
-            rapport
-        )
+        rapport = self.formater_validation(validation)
+        self.afficher_texte(rapport)
 
         if afficher_message:
-            if (
-                validation.statut
-                == StatutValidation.VALIDE
-            ):
+            if validation.statut == StatutValidation.VALIDE:
                 messagebox.showinfo(
                     "Validation réussie",
-                    (
-                        "La facture est complète "
-                        "et cohérente."
-                    ),
+                    "La facture est complète et cohérente.",
                 )
-
             elif (
                 validation.statut
                 == StatutValidation.A_VERIFIER
             ):
                 messagebox.showwarning(
                     "Facture à vérifier",
-                    "\n".join(
-                        validation.avertissements
-                    ),
+                    "\n".join(validation.avertissements),
                 )
-
             else:
                 messagebox.showerror(
                     "Erreur comptable",
-                    "\n".join(
-                        validation.erreurs
-                    ),
+                    "\n".join(validation.erreurs),
                 )
 
         return validation
 
-    def enregistrer_dans_historique(
-        self,
-    ) -> None:
+    def enregistrer_dans_historique(self) -> None:
         """Valide et enregistre la facture dans SQLite."""
         try:
             facture = self.lire_formulaire()
-
         except ValueError as erreur:
             messagebox.showerror(
                 "Donnée invalide",
@@ -1039,40 +760,27 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             return
 
-        validation = valider_facture(
-            facture
-        )
+        validation = valider_facture(facture)
+        self.appliquer_validation(validation)
 
-        self.appliquer_validation(
-            validation
-        )
-
-        if (
-            validation.statut
-            != StatutValidation.VALIDE
-        ):
+        if validation.statut != StatutValidation.VALIDE:
             messagebox.showerror(
                 "Enregistrement bloqué",
                 (
-                    "La facture doit être complète "
-                    "et valide avant son "
-                    "enregistrement."
+                    "La facture doit être complète et valide "
+                    "avant son enregistrement."
                 ),
             )
             return
 
         try:
-            facture_enregistree = enregistrer_facture(
-                facture
-            )
-
+            facture_enregistree = enregistrer_facture(facture)
         except ValueError as erreur:
             messagebox.showwarning(
                 "Facture déjà enregistrée",
                 str(erreur),
             )
             return
-
         except OSError as erreur:
             messagebox.showerror(
                 "Erreur de la base de données",
@@ -1080,26 +788,18 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             return
 
-        self.bouton_enregistrer.configure(
-            state="disabled"
-        )
-
+        self.bouton_enregistrer.configure(state="disabled")
         self.statut.set(
-            "Facture enregistrée dans "
-            "l'historique local"
+            "Facture enregistrée dans l'historique local"
         )
 
         messagebox.showinfo(
             "Facture enregistrée",
             (
-                "La facture a été enregistrée "
-                "localement.\n\n"
-                "Identifiant : "
-                f"{facture_enregistree.identifiant}\n"
-                "Numéro : "
-                f"{facture_enregistree.numero}\n"
-                "Fournisseur : "
-                f"{facture_enregistree.fournisseur}"
+                "La facture a été enregistrée localement.\n\n"
+                f"Identifiant : {facture_enregistree.identifiant}\n"
+                f"Numéro : {facture_enregistree.numero}\n"
+                f"Fournisseur : {facture_enregistree.fournisseur}"
             ),
         )
 
@@ -1110,21 +810,13 @@ class ApplicationComptaPrivee(tk.Tk):
         fenetre.title(
             "Historique des factures — ComptaPrivée AI"
         )
-
-        fenetre.geometry(
-            "1100x550"
-        )
-
-        fenetre.minsize(
-            850,
-            400,
-        )
+        fenetre.geometry("1150x600")
+        fenetre.minsize(900, 450)
 
         conteneur = ttk.Frame(
             fenetre,
             padding=15,
         )
-
         conteneur.pack(
             fill="both",
             expand=True,
@@ -1148,13 +840,34 @@ class ApplicationComptaPrivee(tk.Tk):
             foreground="#166534",
         ).pack(
             anchor="w",
-            pady=(0, 15),
+            pady=(0, 12),
         )
 
-        cadre_tableau = ttk.Frame(
-            conteneur
+        zone_recherche = ttk.Frame(conteneur)
+        zone_recherche.pack(
+            fill="x",
+            pady=(0, 12),
         )
 
+        ttk.Label(
+            zone_recherche,
+            text="Rechercher :",
+            font=("Segoe UI", 10, "bold"),
+        ).pack(side="left")
+
+        variable_recherche = tk.StringVar()
+
+        champ_recherche = ttk.Entry(
+            zone_recherche,
+            textvariable=variable_recherche,
+            width=45,
+        )
+        champ_recherche.pack(
+            side="left",
+            padx=(8, 8),
+        )
+
+        cadre_tableau = ttk.Frame(conteneur)
         cadre_tableau.pack(
             fill="both",
             expand=True,
@@ -1177,36 +890,21 @@ class ApplicationComptaPrivee(tk.Tk):
             selectmode="browse",
         )
 
-        tableau.heading(
-            "id",
-            text="ID",
-        )
-
-        tableau.heading(
-            "date",
-            text="Date",
-        )
-
-        tableau.heading(
-            "numero",
-            text="N° facture",
-        )
-
+        tableau.heading("id", text="ID")
+        tableau.heading("date", text="Date")
+        tableau.heading("numero", text="N° facture")
         tableau.heading(
             "fournisseur",
             text="Fournisseur",
         )
-
         tableau.heading(
             "client",
             text="Client",
         )
-
         tableau.heading(
             "total",
             text="Total",
         )
-
         tableau.heading(
             "date_creation",
             text="Enregistrée le",
@@ -1218,39 +916,33 @@ class ApplicationComptaPrivee(tk.Tk):
             anchor="center",
             stretch=False,
         )
-
         tableau.column(
             "date",
             width=100,
             anchor="center",
             stretch=False,
         )
-
         tableau.column(
             "numero",
             width=140,
             anchor="w",
         )
-
         tableau.column(
             "fournisseur",
             width=220,
             anchor="w",
         )
-
         tableau.column(
             "client",
             width=220,
             anchor="w",
         )
-
         tableau.column(
             "total",
             width=110,
             anchor="e",
             stretch=False,
         )
-
         tableau.column(
             "date_creation",
             width=160,
@@ -1302,25 +994,13 @@ class ApplicationComptaPrivee(tk.Tk):
             weight=1,
         )
 
-        texte_resume = tk.StringVar(
-            value=""
-        )
+        texte_resume = tk.StringVar(value="")
+        factures_chargees = []
 
-        def charger_factures() -> None:
-            """Recharge les factures depuis SQLite."""
+        def afficher_factures(factures) -> None:
+            """Affiche les factures dans le tableau."""
             for element in tableau.get_children():
                 tableau.delete(element)
-
-            try:
-                factures = lister_factures()
-
-            except Exception as erreur:
-                messagebox.showerror(
-                    "Erreur de l'historique",
-                    str(erreur),
-                    parent=fenetre,
-                )
-                return
 
             for facture in factures:
                 if facture.total is None:
@@ -1348,21 +1028,91 @@ class ApplicationComptaPrivee(tk.Tk):
 
             if nombre == 0:
                 texte_resume.set(
-                    "Aucune facture enregistrée."
+                    "Aucune facture trouvée."
                 )
             elif nombre == 1:
                 texte_resume.set(
-                    "1 facture enregistrée localement."
+                    "1 facture affichée."
                 )
             else:
                 texte_resume.set(
-                    f"{nombre} factures enregistrées localement."
+                    f"{nombre} factures affichées."
                 )
 
-        zone_bas = ttk.Frame(
-            conteneur
+        def charger_factures() -> None:
+            """Recharge toutes les factures depuis SQLite."""
+            nonlocal factures_chargees
+
+            try:
+                factures_chargees = lister_factures()
+            except Exception as erreur:
+                messagebox.showerror(
+                    "Erreur de l'historique",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            rechercher_factures()
+
+        def rechercher_factures(*_) -> None:
+            """Filtre localement les factures affichées."""
+            recherche = (
+                variable_recherche
+                .get()
+                .strip()
+                .lower()
+            )
+
+            if not recherche:
+                afficher_factures(
+                    factures_chargees
+                )
+                return
+
+            resultats = []
+
+            for facture in factures_chargees:
+                valeurs = (
+                    str(facture.identifiant),
+                    facture.numero or "",
+                    facture.date or "",
+                    facture.fournisseur or "",
+                    facture.client or "",
+                    str(facture.total or ""),
+                    facture.date_creation or "",
+                )
+
+                texte = " ".join(
+                    valeurs
+                ).lower()
+
+                if recherche in texte:
+                    resultats.append(
+                        facture
+                    )
+
+            afficher_factures(
+                resultats
+            )
+
+        def effacer_recherche() -> None:
+            """Efface le filtre de recherche."""
+            variable_recherche.set("")
+            champ_recherche.focus_set()
+
+        ttk.Button(
+            zone_recherche,
+            text="Effacer",
+            command=effacer_recherche,
+        ).pack(side="left")
+
+        variable_recherche.trace_add(
+            "write",
+            rechercher_factures,
         )
 
+        zone_bas = ttk.Frame(conteneur)
         zone_bas.pack(
             fill="x",
             pady=(12, 0),
@@ -1371,17 +1121,13 @@ class ApplicationComptaPrivee(tk.Tk):
         ttk.Label(
             zone_bas,
             textvariable=texte_resume,
-        ).pack(
-            side="left",
-        )
+        ).pack(side="left")
 
         ttk.Button(
             zone_bas,
             text="Actualiser",
             command=charger_factures,
-        ).pack(
-            side="right",
-        )
+        ).pack(side="right")
 
         ttk.Button(
             zone_bas,
@@ -1393,6 +1139,7 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         charger_factures()
+        champ_recherche.focus_set()
 
     def exporter(self) -> None:
         """Valide et exporte une facture dans un CSV."""
@@ -1406,54 +1153,35 @@ class ApplicationComptaPrivee(tk.Tk):
         if validation is None:
             return
 
-        if (
-            validation.statut
-            == StatutValidation.ERREUR
-        ):
+        if validation.statut == StatutValidation.ERREUR:
             messagebox.showerror(
                 "Export bloqué",
-                "\n".join(
-                    validation.erreurs
-                ),
+                "\n".join(validation.erreurs),
             )
             return
 
-        if (
-            validation.statut
-            == StatutValidation.A_VERIFIER
-        ):
+        if validation.statut == StatutValidation.A_VERIFIER:
             continuer = messagebox.askyesno(
                 "Confirmation requise",
                 (
-                    "Certains champs nécessitent "
-                    "une vérification :\n\n"
-                    + "\n".join(
-                        validation.avertissements
-                    )
-                    + (
-                        "\n\nVoulez-vous quand même "
-                        "exporter la facture?"
-                    )
+                    "Certains champs nécessitent une vérification :\n\n"
+                    + "\n".join(validation.avertissements)
+                    + "\n\nVoulez-vous quand même exporter "
+                    "la facture?"
                 ),
             )
 
             if not continuer:
                 return
 
-        nom_initial = (
-            f"{self.chemin_document.stem}.csv"
-        )
+        nom_initial = f"{self.chemin_document.stem}.csv"
 
         chemin_sortie = filedialog.asksaveasfilename(
             title="Exporter les données en CSV",
-            initialdir=str(
-                self.dossier_exports()
-            ),
+            initialdir=str(self.dossier_exports()),
             defaultextension=".csv",
             initialfile=nom_initial,
-            filetypes=[
-                ("Fichier CSV", "*.csv")
-            ],
+            filetypes=[("Fichier CSV", "*.csv")],
         )
 
         if not chemin_sortie:
@@ -1466,7 +1194,6 @@ class ApplicationComptaPrivee(tk.Tk):
                 facture,
                 chemin_sortie,
             )
-
         except ValueError as erreur:
             messagebox.showerror(
                 "Donnée invalide",
@@ -1475,15 +1202,13 @@ class ApplicationComptaPrivee(tk.Tk):
             return
 
         self.statut.set(
-            f"Export CSV terminé : "
-            f"{chemin.name}"
+            f"Export CSV terminé : {chemin.name}"
         )
 
         messagebox.showinfo(
             "Export terminé",
             (
-                "Le fichier CSV a été créé "
-                "localement :\n"
+                "Le fichier CSV a été créé localement :\n"
                 f"{chemin}"
             ),
         )
