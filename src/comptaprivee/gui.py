@@ -1893,6 +1893,71 @@ class ApplicationComptaPrivee(tk.Tk):
                 fenetre,
             )
 
+        def exporter_selection_historique() -> None:
+            """Exporte en CSV la facture sélectionnée dans l'historique."""
+            facture = obtenir_facture_selectionnee()
+
+            if facture is None:
+                messagebox.showinfo(
+                    "Sélection requise",
+                    "Sélectionnez une facture à exporter.",
+                    parent=fenetre,
+                )
+                return
+
+            numero = facture.numero or f"facture_{facture.identifiant}"
+            nom_initial = f"{numero}.csv"
+
+            chemin_sortie = filedialog.asksaveasfilename(
+                title="Exporter la facture de l'historique en CSV",
+                initialdir=str(self.dossier_exports()),
+                defaultextension=".csv",
+                initialfile=nom_initial,
+                filetypes=[("Fichier CSV", "*.csv")],
+                parent=fenetre,
+            )
+
+            if not chemin_sortie:
+                return
+
+            donnees = DonneesFacture(
+                numero=facture.numero,
+                date=facture.date,
+                fournisseur=facture.fournisseur,
+                client=facture.client,
+                sous_total=facture.sous_total,
+                tps=facture.tps,
+                tvq=facture.tvq,
+                total=facture.total,
+            )
+
+            try:
+                chemin = exporter_facture_csv(
+                    donnees,
+                    chemin_sortie,
+                )
+            except (OSError, ValueError) as erreur:
+                messagebox.showerror(
+                    "Erreur d'export",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            self.statut.set(
+                f"Export CSV depuis l'historique : {chemin.name}"
+            )
+
+            messagebox.showinfo(
+                "Export terminé",
+                (
+                    "La facture a été exportée localement en CSV.\n\n"
+                    f"Numéro : {numero}\n"
+                    f"Fichier : {chemin}"
+                ),
+                parent=fenetre,
+            )
+
         def supprimer_selection() -> None:
             """Déplace la facture sélectionnée vers la corbeille."""
             facture = obtenir_facture_selectionnee()
@@ -2014,6 +2079,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_bas,
             text="Mettre à la corbeille",
             command=supprimer_selection,
+        ).pack(
+            side="right",
+            padx=(0, 10),
+        )
+
+        ttk.Button(
+            zone_bas,
+            text="Exporter en CSV",
+            command=exporter_selection_historique,
         ).pack(
             side="right",
             padx=(0, 10),
