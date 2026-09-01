@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 
 from .database import FactureEnregistree
@@ -17,6 +18,53 @@ class ResumeTableauBord:
     tvq: Decimal
     total: Decimal
     total_par_fournisseur: tuple[tuple[str, Decimal], ...]
+
+
+def filtrer_factures_periode(
+    factures: list[FactureEnregistree],
+    date_debut: str | None = None,
+    date_fin: str | None = None,
+) -> list[FactureEnregistree]:
+    """Filtre les factures selon une période ISO AAAA-MM-JJ."""
+    debut = (
+        date.fromisoformat(date_debut)
+        if date_debut
+        else None
+    )
+    fin = (
+        date.fromisoformat(date_fin)
+        if date_fin
+        else None
+    )
+
+    if debut and fin and debut > fin:
+        raise ValueError(
+            "La date de début doit être antérieure "
+            "ou égale à la date de fin."
+        )
+
+    resultat = []
+
+    for facture in factures:
+        if not facture.date:
+            continue
+
+        try:
+            date_facture = date.fromisoformat(
+                facture.date
+            )
+        except ValueError:
+            continue
+
+        if debut and date_facture < debut:
+            continue
+
+        if fin and date_facture > fin:
+            continue
+
+        resultat.append(facture)
+
+    return resultat
 
 
 def calculer_resume(

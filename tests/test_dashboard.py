@@ -2,7 +2,10 @@
 
 from decimal import Decimal
 
-from src.comptaprivee.dashboard import calculer_resume
+from src.comptaprivee.dashboard import (
+    calculer_resume,
+    filtrer_factures_periode,
+)
 from src.comptaprivee.database import FactureEnregistree
 
 
@@ -79,3 +82,80 @@ def test_calculer_resume_vide() -> None:
     assert resume.nombre_factures == 0
     assert resume.total == Decimal("0")
     assert resume.total_par_fournisseur == ()
+
+def test_filtrer_factures_periode() -> None:
+    """Les factures hors période sont exclues."""
+    factures = [
+        facture(
+            1,
+            "Alpha",
+            "114.98",
+            "100.00",
+            "5.00",
+            "9.98",
+        ),
+        facture(
+            2,
+            "Beta",
+            "229.96",
+            "200.00",
+            "10.00",
+            "19.96",
+        ),
+    ]
+
+    factures[0] = FactureEnregistree(
+        **{
+            **factures[0].__dict__,
+            "date": "2026-08-15",
+        }
+    )
+    factures[1] = FactureEnregistree(
+        **{
+            **factures[1].__dict__,
+            "date": "2026-09-10",
+        }
+    )
+
+    resultat = filtrer_factures_periode(
+        factures,
+        "2026-09-01",
+        "2026-09-30",
+    )
+
+    assert len(resultat) == 1
+    assert resultat[0].identifiant == 2
+
+
+def test_filtrer_factures_sans_bornes() -> None:
+    """Sans dates, toutes les factures datées sont conservées."""
+    factures = [
+        facture(
+            1,
+            "Alpha",
+            "114.98",
+            "100.00",
+            "5.00",
+            "9.98",
+        )
+    ]
+
+    assert filtrer_factures_periode(
+        factures
+    ) == factures
+
+
+def test_refuser_periode_inversee() -> None:
+    """Une période inversée est refusée."""
+    import pytest
+
+    with pytest.raises(
+        ValueError,
+        match="date de début",
+    ):
+        filtrer_factures_periode(
+            [],
+            "2026-09-30",
+            "2026-09-01",
+        )
+

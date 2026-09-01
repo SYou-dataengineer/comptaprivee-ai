@@ -12,7 +12,10 @@ from tkinter.scrolledtext import ScrolledText
 from .batch_processor import traiter_et_exporter_documents
 from .csv_exporter import exporter_facture_csv
 from .pdf_exporter import exporter_facture_pdf
-from .dashboard import calculer_resume
+from .dashboard import (
+    calculer_resume,
+    filtrer_factures_periode,
+)
 from .database import (
     enregistrer_facture,
     lister_factures,
@@ -398,10 +401,9 @@ class ApplicationComptaPrivee(tk.Tk):
         return chemin
 
     def ouvrir_tableau_bord(self) -> None:
-        """Ouvre un tableau de bord comptable local."""
+        """Ouvre un tableau de bord comptable local avec filtres."""
         try:
             factures = lister_factures()
-            resume = calculer_resume(factures)
         except Exception as erreur:
             messagebox.showerror(
                 "Erreur du tableau de bord",
@@ -411,8 +413,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         fenetre = tk.Toplevel(self)
         fenetre.title("Tableau de bord — ComptaPrivée AI")
-        fenetre.geometry("950x620")
-        fenetre.minsize(780, 500)
+        fenetre.geometry("980x680")
+        fenetre.minsize(820, 560)
 
         conteneur = ttk.Frame(
             fenetre,
@@ -441,7 +443,61 @@ class ApplicationComptaPrivee(tk.Tk):
             foreground="#166534",
         ).pack(
             anchor="w",
-            pady=(0, 18),
+            pady=(0, 15),
+        )
+
+        zone_filtres = ttk.LabelFrame(
+            conteneur,
+            text="Filtrer par période",
+            padding=10,
+        )
+        zone_filtres.pack(
+            fill="x",
+            pady=(0, 15),
+        )
+
+        date_debut = tk.StringVar()
+        date_fin = tk.StringVar()
+
+        ttk.Label(
+            zone_filtres,
+            text="Du :",
+        ).pack(
+            side="left",
+        )
+
+        ttk.Entry(
+            zone_filtres,
+            textvariable=date_debut,
+            width=14,
+        ).pack(
+            side="left",
+            padx=(6, 15),
+        )
+
+        ttk.Label(
+            zone_filtres,
+            text="Au :",
+        ).pack(
+            side="left",
+        )
+
+        ttk.Entry(
+            zone_filtres,
+            textvariable=date_fin,
+            width=14,
+        ).pack(
+            side="left",
+            padx=(6, 15),
+        )
+
+        ttk.Label(
+            zone_filtres,
+            text="Format : AAAA-MM-JJ",
+            foreground="#475569",
+        ).pack(
+            side="left",
+            padx=(0, 15),
         )
 
         cartes = ttk.Frame(conteneur)
@@ -450,31 +506,16 @@ class ApplicationComptaPrivee(tk.Tk):
             pady=(0, 20),
         )
 
-        indicateurs = [
-            (
-                "Factures",
-                str(resume.nombre_factures),
-            ),
-            (
-                "Sous-total",
-                f"{resume.sous_total:.2f} CAD",
-            ),
-            (
-                "TPS",
-                f"{resume.tps:.2f} CAD",
-            ),
-            (
-                "TVQ",
-                f"{resume.tvq:.2f} CAD",
-            ),
-            (
-                "Total",
-                f"{resume.total:.2f} CAD",
-            ),
-        ]
+        variables_indicateurs = {
+            "Factures": tk.StringVar(),
+            "Sous-total": tk.StringVar(),
+            "TPS": tk.StringVar(),
+            "TVQ": tk.StringVar(),
+            "Total": tk.StringVar(),
+        }
 
-        for colonne, (titre, valeur) in enumerate(
-            indicateurs
+        for colonne, (titre, variable) in enumerate(
+            variables_indicateurs.items()
         ):
             cadre = ttk.LabelFrame(
                 cartes,
@@ -490,7 +531,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
             ttk.Label(
                 cadre,
-                text=valeur,
+                textvariable=variable,
                 font=("Segoe UI", 13, "bold"),
             ).pack()
 
@@ -524,7 +565,7 @@ class ApplicationComptaPrivee(tk.Tk):
         )
         tableau.column(
             "fournisseur",
-            width=520,
+            width=560,
         )
         tableau.column(
             "total",
@@ -536,27 +577,103 @@ class ApplicationComptaPrivee(tk.Tk):
             expand=True,
         )
 
-        for fournisseur, total in (
-            resume.total_par_fournisseur
-        ):
-            tableau.insert(
-                "",
-                "end",
-                values=(
-                    fournisseur,
-                    f"{total:.2f} CAD",
-                ),
+        def actualiser_tableau_bord() -> None:
+            try:
+                selection = filtrer_factures_periode(
+                    factures,
+                    date_debut.get().strip() or None,
+                    date_fin.get().strip() or None,
+                )
+                resume = calculer_resume(
+                    selection
+                )
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Période invalide",
+                    (
+                        "Utilisez le format AAAA-MM-JJ.\n\n"
+                        f"{erreur}"
+                    ),
+                    parent=fenetre,
+                )
+                return
+
+            variables_indicateurs[
+                "Factures"
+            ].set(
+                str(resume.nombre_factures)
+            )
+            variables_indicateurs[
+                "Sous-total"
+            ].set(
+                f"{resume.sous_total:.2f} CAD"
+            )
+            variables_indicateurs[
+                "TPS"
+            ].set(
+                f"{resume.tps:.2f} CAD"
+            )
+            variables_indicateurs[
+                "TVQ"
+            ].set(
+                f"{resume.tvq:.2f} CAD"
+            )
+            variables_indicateurs[
+                "Total"
+            ].set(
+                f"{resume.total:.2f} CAD"
             )
 
-        if not resume.total_par_fournisseur:
-            tableau.insert(
-                "",
-                "end",
-                values=(
-                    "Aucune facture enregistrée",
-                    "0.00 CAD",
-                ),
+            for element in tableau.get_children():
+                tableau.delete(element)
+
+            for fournisseur, total in (
+                resume.total_par_fournisseur
+            ):
+                tableau.insert(
+                    "",
+                    "end",
+                    values=(
+                        fournisseur,
+                        f"{total:.2f} CAD",
+                    ),
+                )
+
+            if not resume.total_par_fournisseur:
+                tableau.insert(
+                    "",
+                    "end",
+                    values=(
+                        "Aucune facture pour cette période",
+                        "0.00 CAD",
+                    ),
+                )
+
+            self.statut.set(
+                "Tableau de bord comptable actualisé"
             )
+
+        def effacer_periode() -> None:
+            date_debut.set("")
+            date_fin.set("")
+            actualiser_tableau_bord()
+
+        ttk.Button(
+            zone_filtres,
+            text="Appliquer",
+            command=actualiser_tableau_bord,
+        ).pack(
+            side="left",
+            padx=(0, 8),
+        )
+
+        ttk.Button(
+            zone_filtres,
+            text="Effacer",
+            command=effacer_periode,
+        ).pack(
+            side="left",
+        )
 
         zone_bas = ttk.Frame(conteneur)
         zone_bas.pack(
@@ -572,9 +689,7 @@ class ApplicationComptaPrivee(tk.Tk):
             side="right",
         )
 
-        self.statut.set(
-            "Tableau de bord comptable affiché"
-        )
+        actualiser_tableau_bord()
 
     def ouvrir_dossier_exports(self) -> None:
         """Ouvre le dossier local contenant les exports CSV et PDF."""
