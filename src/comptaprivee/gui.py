@@ -34,6 +34,10 @@ from .database import (
     supprimer_facture_corbeille,
 )
 from .facture_parser import DonneesFacture, extraire_donnees_facture
+from .summary_report import (
+    construire_resume_comptable,
+    exporter_resume_comptable_pdf,
+)
 from .invoice_validator import (
     ResultatValidation,
     StatutValidation,
@@ -996,6 +1000,196 @@ class ApplicationComptaPrivee(tk.Tk):
                 dessiner,
             )
 
+        def afficher_resume_comptable() -> None:
+            try:
+                selection, _ = obtenir_selection()
+                resume = calculer_resume(selection)
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Filtre invalide",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            resume_imprimable = construire_resume_comptable(
+                selection,
+                resume,
+                date_debut=date_debut.get().strip() or None,
+                date_fin=date_fin.get().strip() or None,
+            )
+
+            resume_fenetre = tk.Toplevel(fenetre)
+            resume_fenetre.title(
+                "Résumé comptable — ComptaPrivée AI"
+            )
+            resume_fenetre.geometry("760x600")
+            resume_fenetre.minsize(650, 520)
+
+            cadre = ttk.Frame(
+                resume_fenetre,
+                padding=20,
+            )
+            cadre.pack(
+                fill="both",
+                expand=True,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Résumé comptable",
+                font=("Segoe UI", 20, "bold"),
+            ).pack(
+                anchor="w",
+                pady=(0, 5),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Vue synthétique calculée localement "
+                    "à partir des filtres actifs."
+                ),
+                foreground="#166534",
+            ).pack(
+                anchor="w",
+                pady=(0, 15),
+            )
+
+            informations = [
+                ("Période", resume_imprimable.periode),
+                (
+                    "Nombre de factures",
+                    str(resume_imprimable.nombre_factures),
+                ),
+                (
+                    "Sous-total",
+                    f"{resume_imprimable.sous_total:.2f} CAD",
+                ),
+                (
+                    "TPS",
+                    f"{resume_imprimable.tps:.2f} CAD",
+                ),
+                (
+                    "TVQ",
+                    f"{resume_imprimable.tvq:.2f} CAD",
+                ),
+                (
+                    "Total",
+                    f"{resume_imprimable.total:.2f} CAD",
+                ),
+                (
+                    "Nombre d'anomalies",
+                    str(resume_imprimable.nombre_anomalies),
+                ),
+                (
+                    "Fournisseur principal",
+                    resume_imprimable.fournisseur_principal,
+                ),
+                (
+                    "Total fournisseur principal",
+                    f"{resume_imprimable.total_fournisseur_principal:.2f} CAD",
+                ),
+            ]
+
+            zone = ttk.LabelFrame(
+                cadre,
+                text="Synthèse",
+                padding=15,
+            )
+            zone.pack(
+                fill="both",
+                expand=True,
+            )
+
+            for ligne, (libelle, valeur) in enumerate(
+                informations
+            ):
+                ttk.Label(
+                    zone,
+                    text=f"{libelle} :",
+                    font=("Segoe UI", 10, "bold"),
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    sticky="w",
+                    padx=(0, 25),
+                    pady=8,
+                )
+
+                ttk.Label(
+                    zone,
+                    text=valeur,
+                ).grid(
+                    row=ligne,
+                    column=1,
+                    sticky="w",
+                    pady=8,
+                )
+
+            zone.columnconfigure(
+                1,
+                weight=1,
+            )
+
+            def exporter_resume_pdf() -> None:
+                chemin = filedialog.asksaveasfilename(
+                    title="Exporter le résumé comptable en PDF",
+                    initialdir=str(self.dossier_exports()),
+                    defaultextension=".pdf",
+                    initialfile="resume_comptable.pdf",
+                    filetypes=[("Fichier PDF", "*.pdf")],
+                    parent=resume_fenetre,
+                )
+
+                if not chemin:
+                    return
+
+                try:
+                    sortie = exporter_resume_comptable_pdf(
+                        resume_imprimable,
+                        chemin,
+                    )
+                except (OSError, ValueError) as erreur:
+                    messagebox.showerror(
+                        "Erreur d'export PDF",
+                        str(erreur),
+                        parent=resume_fenetre,
+                    )
+                    return
+
+                self.statut.set(
+                    f"Résumé comptable exporté : {sortie.name}"
+                )
+                messagebox.showinfo(
+                    "Export terminé",
+                    f"Résumé créé localement :\n{sortie}",
+                    parent=resume_fenetre,
+                )
+
+            boutons = ttk.Frame(cadre)
+            boutons.pack(
+                fill="x",
+                pady=(15, 0),
+            )
+
+            ttk.Button(
+                boutons,
+                text="Fermer",
+                command=resume_fenetre.destroy,
+            ).pack(
+                side="right",
+            )
+
+            ttk.Button(
+                boutons,
+                text="Exporter en PDF",
+                command=exporter_resume_pdf,
+            ).pack(
+                side="right",
+                padx=(0, 8),
+            )
+
         def afficher_anomalies() -> None:
             try:
                 selection, _ = obtenir_selection()
@@ -1661,6 +1855,15 @@ class ApplicationComptaPrivee(tk.Tk):
             command=effacer_filtres,
         ).pack(
             side="left",
+        )
+
+        ttk.Button(
+            zone_filtres,
+            text="Résumé comptable",
+            command=afficher_resume_comptable,
+        ).pack(
+            side="left",
+            padx=(8, 0),
         )
 
         zone_bas = ttk.Frame(conteneur)
