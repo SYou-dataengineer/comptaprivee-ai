@@ -118,7 +118,7 @@ def test_exporter_resume_comptable_pdf(tmp_path) -> None:
     finally:
         document.close()
 
-    assert "Resume comptable" in texte
+    assert "RESUME COMPTABLE" in texte
     assert "114.98 CAD" in texte
     assert "Alpha" in texte
 
@@ -141,3 +141,117 @@ def test_refuser_extension_resume_pdf_invalide(tmp_path) -> None:
             resume,
             tmp_path / "resume.txt",
         )
+
+def test_export_pdf_resume_professionnel(tmp_path) -> None:
+    resume = construire_resume_comptable(
+        [creer_facture()],
+        ResumeTableauBord(
+            nombre_factures=1,
+            sous_total=Decimal("100.00"),
+            tps=Decimal("5.00"),
+            tvq=Decimal("9.98"),
+            total=Decimal("114.98"),
+            total_par_fournisseur=(
+                ("Alpha", Decimal("114.98")),
+            ),
+        ),
+    )
+
+    chemin = tmp_path / "resume_professionnel.pdf"
+
+    exporter_resume_comptable_pdf(
+        resume,
+        chemin,
+    )
+
+    document = fitz.open(chemin)
+    try:
+        texte = " ".join(
+            page.get_text()
+            for page in document
+        )
+    finally:
+        document.close()
+
+    assert "RESUME COMPTABLE" in texte
+    assert "CONTROLE DES ANOMALIES" in texte
+    assert "Aucune anomalie detectee" in texte
+    assert "Traitement local" in texte
+
+def test_resume_utilise_nom_societe_local(monkeypatch) -> None:
+    from src.comptaprivee import summary_report
+
+    monkeypatch.setattr(
+        summary_report,
+        "lire_nom_societe",
+        lambda: "Cabinet Exemple CPA Inc.",
+    )
+
+    resultat = construire_resume_comptable(
+        [],
+        ResumeTableauBord(
+            nombre_factures=0,
+            sous_total=Decimal("0"),
+            tps=Decimal("0"),
+            tvq=Decimal("0"),
+            total=Decimal("0"),
+            total_par_fournisseur=(),
+        ),
+    )
+
+    assert resultat.societe_comptable == "Cabinet Exemple CPA Inc."
+
+def test_pdf_resume_affiche_coordonnees_societe(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from src.comptaprivee import summary_report
+    from src.comptaprivee.company_profile import ProfilSociete
+
+    monkeypatch.setattr(
+        summary_report,
+        "lire_profil_societe",
+        lambda: ProfilSociete(
+            nom_societe="Cabinet Exemple CPA Inc.",
+            adresse="123 rue Exemple",
+            ville="Montréal",
+            province="QC",
+            code_postal="H1H 1H1",
+            telephone="514-555-0100",
+            courriel="info@exemple.ca",
+        ),
+    )
+
+    resume = construire_resume_comptable(
+        [creer_facture()],
+        ResumeTableauBord(
+            nombre_factures=1,
+            sous_total=Decimal("100.00"),
+            tps=Decimal("5.00"),
+            tvq=Decimal("9.98"),
+            total=Decimal("114.98"),
+            total_par_fournisseur=(
+                ("Alpha", Decimal("114.98")),
+            ),
+        ),
+    )
+
+    chemin = tmp_path / "resume_coordonnees.pdf"
+    exporter_resume_comptable_pdf(
+        resume,
+        chemin,
+    )
+
+    document = fitz.open(chemin)
+    try:
+        texte = " ".join(
+            page.get_text()
+            for page in document
+        )
+    finally:
+        document.close()
+
+    assert "123 rue Exemple" in texte
+    assert "514-555-0100" in texte
+    assert "info@exemple.ca" in texte
+

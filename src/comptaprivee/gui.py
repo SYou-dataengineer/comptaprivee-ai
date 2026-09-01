@@ -6,12 +6,17 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 
 from .anomalies import detecter_anomalies
 from .batch_processor import traiter_et_exporter_documents
 from .csv_exporter import exporter_facture_csv
+from .company_profile import (
+    ProfilSociete,
+    enregistrer_profil_societe,
+    lire_profil_societe,
+)
 from .pdf_exporter import exporter_facture_pdf
 from .dashboard import (
     calculer_taxes_mensuelles,
@@ -198,6 +203,15 @@ class ApplicationComptaPrivee(tk.Tk):
             barre_document,
             text="Ouvrir le dossier des exports",
             command=self.ouvrir_dossier_exports,
+        ).pack(
+            side="left",
+            padx=(10, 0),
+        )
+
+        ttk.Button(
+            barre_document,
+            text="Configurer la société",
+            command=self.configurer_societe_comptable,
         ).pack(
             side="left",
             padx=(10, 0),
@@ -412,6 +426,197 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         return chemin
+
+    def configurer_societe_comptable(self) -> None:
+        """Configure le profil local du cabinet comptable."""
+        profil = lire_profil_societe()
+
+        fenetre = tk.Toplevel(self)
+        fenetre.title(
+            "Profil de la société — ComptaPrivée AI"
+        )
+        fenetre.geometry("620x650")
+        fenetre.minsize(560, 600)
+        fenetre.transient(self)
+        fenetre.grab_set()
+
+        cadre = ttk.Frame(
+            fenetre,
+            padding=20,
+        )
+        cadre.pack(
+            fill="both",
+            expand=True,
+        )
+
+        ttk.Label(
+            cadre,
+            text="Profil de la société",
+            font=("Segoe UI", 18, "bold"),
+        ).grid(
+            row=0,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(0, 5),
+        )
+
+        ttk.Label(
+            cadre,
+            text=(
+                "Ces informations restent locales et seront "
+                "ajoutées automatiquement aux rapports."
+            ),
+            foreground="#166534",
+        ).grid(
+            row=1,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(0, 15),
+        )
+
+        champs = [
+            ("Nom de la société *", "nom_societe"),
+            ("Adresse", "adresse"),
+            ("Ville", "ville"),
+            ("Province", "province"),
+            ("Code postal", "code_postal"),
+            ("Téléphone", "telephone"),
+            ("Courriel", "courriel"),
+            ("Site Web", "site_web"),
+            ("NEQ", "neq"),
+            ("N° TPS", "numero_tps"),
+            ("N° TVQ", "numero_tvq"),
+        ]
+
+        valeurs = {
+            cle: tk.StringVar(
+                value=getattr(profil, cle)
+            )
+            for _, cle in champs
+        }
+
+        for ligne, (libelle, cle) in enumerate(
+            champs,
+            start=2,
+        ):
+            ttk.Label(
+                cadre,
+                text=libelle,
+            ).grid(
+                row=ligne,
+                column=0,
+                sticky="w",
+                pady=6,
+            )
+
+            ttk.Entry(
+                cadre,
+                textvariable=valeurs[cle],
+                width=42,
+            ).grid(
+                row=ligne,
+                column=1,
+                sticky="ew",
+                padx=(15, 0),
+                pady=6,
+            )
+
+        cadre.columnconfigure(
+            1,
+            weight=1,
+        )
+
+        def enregistrer() -> None:
+            nouveau = ProfilSociete(
+                nom_societe=valeurs[
+                    "nom_societe"
+                ].get().strip(),
+                adresse=valeurs[
+                    "adresse"
+                ].get().strip(),
+                ville=valeurs[
+                    "ville"
+                ].get().strip(),
+                province=valeurs[
+                    "province"
+                ].get().strip(),
+                code_postal=valeurs[
+                    "code_postal"
+                ].get().strip(),
+                telephone=valeurs[
+                    "telephone"
+                ].get().strip(),
+                courriel=valeurs[
+                    "courriel"
+                ].get().strip(),
+                site_web=valeurs[
+                    "site_web"
+                ].get().strip(),
+                neq=valeurs[
+                    "neq"
+                ].get().strip(),
+                numero_tps=valeurs[
+                    "numero_tps"
+                ].get().strip(),
+                numero_tvq=valeurs[
+                    "numero_tvq"
+                ].get().strip(),
+            )
+
+            try:
+                enregistrer_profil_societe(
+                    nouveau
+                )
+            except (OSError, ValueError) as erreur:
+                messagebox.showerror(
+                    "Erreur de configuration",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            self.statut.set(
+                "Profil société enregistré localement"
+            )
+
+            messagebox.showinfo(
+                "Profil enregistré",
+                (
+                    "Les coordonnées de la société ont "
+                    "été enregistrées localement."
+                ),
+                parent=fenetre,
+            )
+
+            fenetre.destroy()
+
+        boutons = ttk.Frame(cadre)
+        boutons.grid(
+            row=len(champs) + 2,
+            column=0,
+            columnspan=2,
+            sticky="e",
+            pady=(20, 0),
+        )
+
+        ttk.Button(
+            boutons,
+            text="Annuler",
+            command=fenetre.destroy,
+        ).pack(
+            side="right",
+        )
+
+        ttk.Button(
+            boutons,
+            text="Enregistrer",
+            command=enregistrer,
+        ).pack(
+            side="right",
+            padx=(0, 8),
+        )
 
     def ouvrir_tableau_bord(self) -> None:
         """Ouvre un tableau de bord comptable local avec filtres."""

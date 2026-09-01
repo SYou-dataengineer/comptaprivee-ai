@@ -42,3 +42,4 @@ desktop.ini
 *.db-shm
 *.sqlite
 *.sqlite3
+data/profil_comptable.json

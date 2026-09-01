@@ -5,6 +5,11 @@ from pathlib import Path
 
 import fitz
 
+from .company_profile import (
+    lignes_coordonnees,
+    lire_nom_societe,
+    lire_profil_societe,
+)
 from .dashboard import ResumeTableauBord
 
 
@@ -35,6 +40,9 @@ def exporter_tableau_bord_csv(
 
         writer.writerow(
             ["Rapport tableau de bord ComptaPrivee AI"]
+        )
+        writer.writerow(
+            ["Societe comptable", lire_nom_societe() or "Societe comptable"]
         )
         writer.writerow(["Date debut", date_debut or "Toutes"])
         writer.writerow(["Date fin", date_fin or "Toutes"])
@@ -94,6 +102,29 @@ def exporter_tableau_bord_pdf(
             fontsize=13,
             fontname="helv",
         )
+        profil_societe = lire_profil_societe()
+        nom_societe = (
+            lire_nom_societe()
+            or profil_societe.nom_societe
+            or "Societe comptable"
+        )
+        page.insert_textbox(
+            fitz.Rect(320, 28, 550, 48),
+            nom_societe,
+            fontsize=10,
+            fontname="helv",
+            align=fitz.TEXT_ALIGN_RIGHT,
+        )
+        y_societe = 50
+        for ligne_societe in lignes_coordonnees(profil_societe)[:3]:
+            page.insert_textbox(
+                fitz.Rect(320, y_societe, 550, y_societe + 12),
+                ligne_societe,
+                fontsize=7,
+                fontname="helv",
+                align=fitz.TEXT_ALIGN_RIGHT,
+            )
+            y_societe += 11
         page.draw_line((45, 96), (550, 96), width=0.8)
 
         filtres = [
