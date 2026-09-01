@@ -47,6 +47,7 @@ from .summary_report import (
 from .report_naming import nom_fichier_rapport
 from .export_history import (
     compter_types,
+    exporter_historique_csv,
     filtrer_exports,
     formater_taille,
     lister_exports,
@@ -833,6 +834,81 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=lambda: trier_par("taille"),
             )
 
+        def obtenir_exports_affiches() -> list:
+            tous_exports = lister_exports(
+                self.dossier_exports()
+            )
+
+            exports = filtrer_exports(
+                tous_exports,
+                recherche=recherche_export.get(),
+                type_fichier=type_export_selectionne.get(),
+                date_debut=date_export_debut.get(),
+                date_fin=date_export_fin.get(),
+            )
+
+            return trier_exports(
+                exports,
+                colonne=colonne_tri_export.get(),
+                decroissant=tri_decroissant_export.get(),
+            )
+
+        def exporter_liste_csv() -> None:
+            try:
+                exports = obtenir_exports_affiches()
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Historique des exports",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            if not exports:
+                messagebox.showinfo(
+                    "Historique des exports",
+                    "Aucun export correspondant à enregistrer.",
+                    parent=fenetre,
+                )
+                return
+
+            chemin = filedialog.asksaveasfilename(
+                parent=fenetre,
+                title="Exporter l'historique filtré en CSV",
+                initialdir=self.dossier_exports(),
+                initialfile="historique_exports_filtre.csv",
+                defaultextension=".csv",
+                filetypes=[("Fichier CSV", "*.csv")],
+            )
+
+            if not chemin:
+                return
+
+            try:
+                destination = exporter_historique_csv(
+                    exports,
+                    chemin,
+                )
+            except (OSError, ValueError) as erreur:
+                messagebox.showerror(
+                    "Export impossible",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            self.statut.set(
+                f"Historique exporté : {destination.name}"
+            )
+            messagebox.showinfo(
+                "Historique des exports",
+                (
+                    "Export CSV créé avec succès.\n\n"
+                    f"{destination}"
+                ),
+                parent=fenetre,
+            )
+
         actions = ttk.Frame(conteneur)
         actions.pack(fill="x", pady=(14, 0))
 
@@ -876,6 +952,15 @@ class ApplicationComptaPrivee(tk.Tk):
             text="Ouvrir le dossier",
             command=self.ouvrir_dossier_exports,
         ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            actions,
+            text="Exporter la liste en CSV",
+            command=exporter_liste_csv,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
 
         ttk.Button(
             actions,

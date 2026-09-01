@@ -310,3 +310,43 @@ def test_trier_exports_colonne_invalide(tmp_path) -> None:
             lister_exports(tmp_path),
             colonne="inconnue",
         )
+
+def test_exporter_historique_csv(tmp_path) -> None:
+    from src.comptaprivee.export_history import exporter_historique_csv
+
+    (tmp_path / "a.pdf").write_bytes(b"a")
+    (tmp_path / "b.csv").write_bytes(b"bb")
+
+    exports = lister_exports(tmp_path)
+    chemin = tmp_path / "historique.csv"
+
+    resultat = exporter_historique_csv(exports, chemin)
+
+    assert resultat == chemin
+    contenu = chemin.read_text(encoding="utf-8-sig")
+    assert "Fichier,Type,Cree_modifie,Taille_octets" in contenu
+    assert "a.pdf,PDF" in contenu
+    assert "b.csv,CSV" in contenu
+
+
+def test_exporter_historique_csv_refuse_extension(tmp_path) -> None:
+    import pytest
+    from src.comptaprivee.export_history import exporter_historique_csv
+
+    with pytest.raises(ValueError):
+        exporter_historique_csv(
+            [],
+            tmp_path / "historique.txt",
+        )
+
+
+def test_exporter_historique_csv_liste_vide(tmp_path) -> None:
+    from src.comptaprivee.export_history import exporter_historique_csv
+
+    chemin = tmp_path / "vide.csv"
+    exporter_historique_csv([], chemin)
+
+    contenu = chemin.read_text(encoding="utf-8-sig")
+    assert contenu.strip() == (
+        "Fichier,Type,Cree_modifie,Taille_octets"
+    )

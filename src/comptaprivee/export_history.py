@@ -168,3 +168,51 @@ def trier_exports(
         key=cles[colonne],
         reverse=decroissant,
     )
+
+def exporter_historique_csv(
+    exports: list[ExportEnregistre],
+    chemin: str | Path,
+) -> Path:
+    # Exporte une liste d'exports vers un fichier CSV UTF-8.
+    import csv
+
+    destination = Path(chemin)
+
+    if destination.suffix.lower() != ".csv":
+        raise ValueError(
+            "Le fichier d'historique doit avoir l'extension .csv."
+        )
+
+    destination.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with destination.open(
+        "w",
+        newline="",
+        encoding="utf-8-sig",
+    ) as fichier:
+        writer = csv.writer(fichier)
+        writer.writerow(
+            [
+                "Fichier",
+                "Type",
+                "Cree_modifie",
+                "Taille_octets",
+            ]
+        )
+
+        for export in exports:
+            writer.writerow(
+                [
+                    export.nom,
+                    export.type_fichier,
+                    export.modifie_le.strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
+                    export.taille_octets,
+                ]
+            )
+
+    return destination
