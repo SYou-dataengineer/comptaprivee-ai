@@ -11,6 +11,12 @@ from .company_profile import (
     lire_profil_societe,
 )
 from .dashboard import ResumeTableauBord
+from .settings import (
+    couleur_hex_vers_pdf,
+    formater_date_rapport,
+    lire_parametres,
+    texte_rapport,
+)
 
 
 def _inserer_logo_pdf(
@@ -55,6 +61,9 @@ def exporter_tableau_bord_csv(
 
     chemin.parent.mkdir(parents=True, exist_ok=True)
 
+    parametres = lire_parametres()
+    devise = parametres.devise
+
     with chemin.open(
         "w",
         newline="",
@@ -83,7 +92,7 @@ def exporter_tableau_bord_csv(
         writer.writerow(["Total", f"{resume.total:.2f}"])
         writer.writerow([])
 
-        writer.writerow(["Fournisseur", "Total CAD"])
+        writer.writerow(["Fournisseur", f"Total {devise}"])
 
         for nom, total in resume.total_par_fournisseur:
             writer.writerow([nom, f"{total:.2f}"])
@@ -114,17 +123,26 @@ def exporter_tableau_bord_pdf(
     try:
         page = document.new_page(width=595, height=842)
 
+        parametres = lire_parametres()
+        langue = parametres.langue_rapports
+        devise = parametres.devise
+        couleur_principale = couleur_hex_vers_pdf(
+            parametres.couleur_pdf
+        )
+
         page.insert_text(
             (45, 55),
             "ComptaPrivee AI",
             fontsize=20,
             fontname="helv",
+            color=couleur_principale,
         )
         page.insert_text(
             (45, 82),
-            "Rapport du tableau de bord comptable",
+            texte_rapport("dashboard", langue),
             fontsize=13,
             fontname="helv",
+            color=couleur_principale,
         )
         profil_societe = lire_profil_societe()
 
@@ -155,14 +173,31 @@ def exporter_tableau_bord_pdf(
                 align=fitz.TEXT_ALIGN_RIGHT,
             )
             y_societe += 11
-        page.draw_line((45, 96), (550, 96), width=0.8)
+        page.draw_line(
+            (45, 96),
+            (550, 96),
+            color=couleur_principale,
+            width=0.8,
+        )
 
         filtres = [
-            ("Date debut", date_debut or "Toutes"),
-            ("Date fin", date_fin or "Toutes"),
             (
-                "Fournisseur",
-                fournisseur or "Tous les fournisseurs",
+                texte_rapport("date_debut", langue),
+                formater_date_rapport(
+                    date_debut,
+                    parametres.format_date,
+                ) if date_debut else texte_rapport("toutes", langue),
+            ),
+            (
+                texte_rapport("date_fin", langue),
+                formater_date_rapport(
+                    date_fin,
+                    parametres.format_date,
+                ) if date_fin else texte_rapport("toutes", langue),
+            ),
+            (
+                texte_rapport("fournisseur", langue),
+                fournisseur or texte_rapport("tous_fournisseurs", langue),
             ),
         ]
 
@@ -179,7 +214,7 @@ def exporter_tableau_bord_pdf(
         y += 15
         page.insert_text(
             (50, y),
-            "Indicateurs",
+            texte_rapport("indicateurs", langue),
             fontsize=13,
             fontname="helv",
         )
@@ -187,10 +222,10 @@ def exporter_tableau_bord_pdf(
 
         indicateurs = [
             ("Factures", str(resume.nombre_factures)),
-            ("Sous-total", f"{resume.sous_total:.2f} CAD"),
-            ("TPS", f"{resume.tps:.2f} CAD"),
-            ("TVQ", f"{resume.tvq:.2f} CAD"),
-            ("Total", f"{resume.total:.2f} CAD"),
+            ("Sous-total", f"{resume.sous_total:.2f} {devise}"),
+            ("TPS", f"{resume.tps:.2f} {devise}"),
+            ("TVQ", f"{resume.tvq:.2f} {devise}"),
+            ("Total", f"{resume.total:.2f} {devise}"),
         ]
 
         for libelle, valeur in indicateurs:
@@ -205,7 +240,7 @@ def exporter_tableau_bord_pdf(
         y += 15
         page.insert_text(
             (50, y),
-            "Totaux par fournisseur",
+            texte_rapport("totaux_fournisseur", langue),
             fontsize=13,
             fontname="helv",
         )
@@ -228,7 +263,7 @@ def exporter_tableau_bord_pdf(
                 )
                 page.insert_text(
                     (410, y),
-                    f"{total:.2f} CAD",
+                    f"{total:.2f} {devise}",
                     fontsize=10,
                     fontname="helv",
                 )
@@ -236,7 +271,7 @@ def exporter_tableau_bord_pdf(
         else:
             page.insert_text(
                 (60, y),
-                "Aucune facture pour les filtres selectionnes.",
+                texte_rapport("aucune_facture", langue),
                 fontsize=10,
                 fontname="helv",
             )

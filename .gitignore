@@ -46,3 +46,6 @@ data/profil_comptable.json
 
 # Logo local du cabinet
 data/logo_societe.*
+
+# Paramètres locaux de l'application
+data/parametres.json

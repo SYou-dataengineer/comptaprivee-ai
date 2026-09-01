@@ -6,7 +6,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from tkinter import filedialog, messagebox, simpledialog, ttk
+from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 
 from .anomalies import detecter_anomalies
@@ -50,6 +50,15 @@ from .invoice_validator import (
     valider_facture,
 )
 from .main import extraire_texte_document
+from .settings import (
+    DEVISES,
+    FORMATS_DATE,
+    LANGUES_RAPPORTS,
+    ParametresApplication,
+    enregistrer_parametres,
+    lire_parametres,
+    normaliser_couleur_hex,
+)
 
 
 FORMATS_DOCUMENTS = (
@@ -211,8 +220,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(
             barre_document,
-            text="Configurer la société",
-            command=self.configurer_societe_comptable,
+            text="Paramètres",
+            command=self.ouvrir_parametres,
         ).pack(
             side="left",
             padx=(10, 0),
@@ -427,6 +436,355 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         return chemin
+
+    def ouvrir_parametres(self) -> None:
+        """Ouvre les paramètres locaux de l'application."""
+        parametres = lire_parametres()
+        profil = lire_profil_societe()
+
+        fenetre = tk.Toplevel(self)
+        fenetre.title("Paramètres — ComptaPrivée AI")
+        fenetre.geometry("720x560")
+        fenetre.minsize(650, 520)
+        fenetre.transient(self)
+        fenetre.grab_set()
+
+        conteneur = ttk.Frame(
+            fenetre,
+            padding=20,
+        )
+        conteneur.pack(
+            fill="both",
+            expand=True,
+        )
+
+        ttk.Label(
+            conteneur,
+            text="Paramètres",
+            font=("Segoe UI", 20, "bold"),
+        ).pack(
+            anchor="w",
+            pady=(0, 4),
+        )
+
+        ttk.Label(
+            conteneur,
+            text=(
+                "Toutes les préférences sont conservées "
+                "uniquement sur cet ordinateur."
+            ),
+            foreground="#166534",
+        ).pack(
+            anchor="w",
+            pady=(0, 15),
+        )
+
+        onglets = ttk.Notebook(conteneur)
+        onglets.pack(
+            fill="both",
+            expand=True,
+        )
+
+        onglet_rapports = ttk.Frame(
+            onglets,
+            padding=20,
+        )
+        onglet_cabinet = ttk.Frame(
+            onglets,
+            padding=20,
+        )
+
+        onglets.add(
+            onglet_rapports,
+            text="Rapports",
+        )
+        onglets.add(
+            onglet_cabinet,
+            text="Cabinet",
+        )
+
+        devise = tk.StringVar(
+            value=parametres.devise
+        )
+        langue = tk.StringVar(
+            value=parametres.langue_rapports
+        )
+        format_date = tk.StringVar(
+            value=parametres.format_date
+        )
+        couleur_pdf = tk.StringVar(
+            value=parametres.couleur_pdf
+        )
+
+        champs_rapports = [
+            ("Devise", devise, DEVISES),
+            (
+                "Langue des rapports",
+                langue,
+                LANGUES_RAPPORTS,
+            ),
+            (
+                "Format de date",
+                format_date,
+                FORMATS_DATE,
+            ),
+        ]
+
+        for ligne, (
+            libelle,
+            variable,
+            valeurs,
+        ) in enumerate(champs_rapports):
+            ttk.Label(
+                onglet_rapports,
+                text=libelle,
+            ).grid(
+                row=ligne,
+                column=0,
+                sticky="w",
+                pady=10,
+            )
+
+            ttk.Combobox(
+                onglet_rapports,
+                textvariable=variable,
+                values=valeurs,
+                state="readonly",
+                width=24,
+            ).grid(
+                row=ligne,
+                column=1,
+                sticky="w",
+                padx=(20, 0),
+                pady=10,
+            )
+
+        ttk.Label(
+            onglet_rapports,
+            text="Couleur principale PDF",
+        ).grid(
+            row=3,
+            column=0,
+            sticky="w",
+            pady=10,
+        )
+
+        zone_couleur = ttk.Frame(
+            onglet_rapports,
+        )
+        zone_couleur.grid(
+            row=3,
+            column=1,
+            sticky="w",
+            padx=(20, 0),
+            pady=10,
+        )
+
+        ttk.Entry(
+            zone_couleur,
+            textvariable=couleur_pdf,
+            width=16,
+        ).pack(
+            side="left",
+        )
+
+        def choisir_couleur_pdf() -> None:
+            couleur_actuelle = couleur_pdf.get().strip()
+
+            try:
+                couleur_actuelle = normaliser_couleur_hex(
+                    couleur_actuelle
+                )
+            except ValueError:
+                couleur_actuelle = "#1A408C"
+
+            resultat = colorchooser.askcolor(
+                color=couleur_actuelle,
+                title="Choisir la couleur principale du PDF",
+                parent=fenetre,
+            )
+
+            couleur_hex = resultat[1]
+
+            if couleur_hex:
+                couleur_pdf.set(couleur_hex.upper())
+
+        ttk.Button(
+            zone_couleur,
+            text="Choisir une couleur...",
+            command=choisir_couleur_pdf,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        ttk.Label(
+            onglet_rapports,
+            text="Vous pouvez aussi saisir une couleur au format #RRGGBB.",
+            foreground="#64748b",
+        ).grid(
+            row=4,
+            column=1,
+            sticky="w",
+            padx=(20, 0),
+        )
+
+        apercu_couleur_pdf = tk.Canvas(
+            onglet_rapports,
+            width=170,
+            height=38,
+            highlightthickness=1,
+            highlightbackground="#cbd5e1",
+        )
+        apercu_couleur_pdf.grid(
+            row=5,
+            column=1,
+            sticky="w",
+            padx=(20, 0),
+            pady=(10, 0),
+        )
+
+        def actualiser_apercu_couleur(*_args) -> None:
+            couleur = couleur_pdf.get().strip()
+            try:
+                couleur = normaliser_couleur_hex(couleur)
+            except ValueError:
+                couleur = "#E5E7EB"
+            apercu_couleur_pdf.configure(background=couleur)
+
+        couleur_pdf.trace_add(
+            "write",
+            actualiser_apercu_couleur,
+        )
+        actualiser_apercu_couleur()
+
+        nom_cabinet = (
+            profil.nom_societe
+            or "Aucun cabinet configuré"
+        )
+
+        ttk.Label(
+            onglet_cabinet,
+            text="Profil du cabinet",
+            font=("Segoe UI", 12, "bold"),
+        ).pack(
+            anchor="w",
+            pady=(0, 10),
+        )
+
+        ttk.Label(
+            onglet_cabinet,
+            text=nom_cabinet,
+            font=("Segoe UI", 11),
+        ).pack(
+            anchor="w",
+            pady=(0, 5),
+        )
+
+        details = [
+            profil.adresse,
+            ", ".join(
+                valeur
+                for valeur in (
+                    profil.ville,
+                    profil.province,
+                    profil.code_postal,
+                )
+                if valeur
+            ),
+            profil.telephone,
+            profil.courriel,
+            profil.site_web,
+        ]
+
+        for detail in details:
+            if detail:
+                ttk.Label(
+                    onglet_cabinet,
+                    text=detail,
+                ).pack(
+                    anchor="w",
+                    pady=2,
+                )
+
+        ttk.Button(
+            onglet_cabinet,
+            text="Modifier le profil du cabinet",
+            command=self.configurer_societe_comptable,
+        ).pack(
+            anchor="w",
+            pady=(20, 0),
+        )
+
+        ttk.Label(
+            onglet_cabinet,
+            text=(
+                "Le profil, les coordonnées et le logo "
+                "restent enregistrés localement."
+            ),
+            foreground="#166534",
+        ).pack(
+            anchor="w",
+            pady=(15, 0),
+        )
+
+        def enregistrer() -> None:
+            nouveaux = ParametresApplication(
+                devise=devise.get(),
+                langue_rapports=langue.get(),
+                format_date=format_date.get(),
+                couleur_pdf=couleur_pdf.get(),
+            )
+
+            try:
+                enregistrer_parametres(
+                    nouveaux
+                )
+            except (OSError, ValueError) as erreur:
+                messagebox.showerror(
+                    "Erreur des paramètres",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            self.statut.set(
+                "Paramètres enregistrés localement"
+            )
+
+            messagebox.showinfo(
+                "Paramètres enregistrés",
+                (
+                    "Les préférences ont été "
+                    "enregistrées localement."
+                ),
+                parent=fenetre,
+            )
+
+            fenetre.destroy()
+
+        barre_actions = ttk.Frame(conteneur)
+        barre_actions.pack(
+            fill="x",
+            pady=(18, 0),
+        )
+
+        ttk.Button(
+            barre_actions,
+            text="Annuler",
+            command=fenetre.destroy,
+        ).pack(
+            side="right",
+        )
+
+        ttk.Button(
+            barre_actions,
+            text="Enregistrer",
+            command=enregistrer,
+        ).pack(
+            side="right",
+            padx=(0, 8),
+        )
 
     def configurer_societe_comptable(self) -> None:
         """Configure le profil local du cabinet comptable."""

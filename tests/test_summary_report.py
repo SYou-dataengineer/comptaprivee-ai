@@ -18,6 +18,21 @@ from src.comptaprivee.summary_report import (
 )
 
 
+
+@pytest.fixture(autouse=True)
+def parametres_rapport_par_defaut(monkeypatch) -> None:
+    # Les tests historiques ne doivent jamais dépendre de
+    # data/parametres.json présent sur la machine du développeur.
+    from src.comptaprivee import summary_report
+    from src.comptaprivee.settings import ParametresApplication
+
+    monkeypatch.setattr(
+        summary_report,
+        "lire_parametres",
+        lambda: ParametresApplication(),
+    )
+
+
 def creer_facture(
     identifiant: int = 1,
     fournisseur: str = "Alpha",

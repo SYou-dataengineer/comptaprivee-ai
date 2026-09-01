@@ -14,6 +14,12 @@ from .company_profile import (
 )
 from .dashboard import ResumeTableauBord
 from .database import FactureEnregistree
+from .settings import (
+    couleur_hex_vers_pdf,
+    formater_date_rapport,
+    lire_parametres,
+    texte_rapport,
+)
 
 
 def _inserer_logo_pdf(
@@ -74,13 +80,32 @@ def construire_resume_comptable(
         fournisseur_principal = "Aucun"
         total_principal = Decimal("0")
 
-    debut = date_debut or "Toutes"
-    fin = date_fin or "Toutes"
+    parametres = lire_parametres()
+    debut = (
+        formater_date_rapport(
+            date_debut,
+            parametres.format_date,
+        )
+        if date_debut
+        else texte_rapport("toutes", parametres.langue_rapports)
+    )
+    fin = (
+        formater_date_rapport(
+            date_fin,
+            parametres.format_date,
+        )
+        if date_fin
+        else texte_rapport("toutes", parametres.langue_rapports)
+    )
 
     if date_debut or date_fin:
-        periode = f"{debut} au {fin}"
+        liaison = texte_rapport("au", parametres.langue_rapports)
+        periode = f"{debut} {liaison} {fin}"
     else:
-        periode = "Toutes les périodes"
+        periode = texte_rapport(
+            "toutes_periodes",
+            parametres.langue_rapports,
+        )
 
     return ResumeComptableImprimable(
         nombre_factures=resume.nombre_factures,
@@ -117,7 +142,11 @@ def exporter_resume_comptable_pdf(
     try:
         page = document.new_page(width=595, height=842)
 
-        bleu = (0.10, 0.25, 0.55)
+        parametres = lire_parametres()
+        langue = parametres.langue_rapports
+        devise = parametres.devise
+
+        bleu = couleur_hex_vers_pdf(parametres.couleur_pdf)
         bleu_clair = (0.93, 0.96, 1.00)
         vert = (0.08, 0.45, 0.22)
         orange = (0.78, 0.36, 0.06)
@@ -141,7 +170,7 @@ def exporter_resume_comptable_pdf(
         )
         page.insert_text(
             (42, 76),
-            "RESUME COMPTABLE",
+            texte_rapport("resume", langue),
             fontsize=13,
             fontname="helv",
             color=blanc,
@@ -188,7 +217,7 @@ def exporter_resume_comptable_pdf(
             y_societe += 11
         page.insert_text(
             (42, 94),
-            "Traitement local - aucune donnee envoyee sur Internet",
+            texte_rapport("traitement_local", langue),
             fontsize=7.5,
             fontname="helv",
             color=blanc,
@@ -202,7 +231,7 @@ def exporter_resume_comptable_pdf(
         )
         page.insert_text(
             (56, 143),
-            "PERIODE ANALYSEE",
+            texte_rapport("periode", langue),
             fontsize=9,
             fontname="helv",
             color=gris,
@@ -218,24 +247,24 @@ def exporter_resume_comptable_pdf(
         # Cartes des indicateurs.
         cartes = [
             (
-                "FACTURES",
+                texte_rapport("factures", langue),
                 str(resume.nombre_factures),
             ),
             (
-                "SOUS-TOTAL",
-                f"{resume.sous_total:.2f} CAD",
+                texte_rapport("sous_total", langue),
+                f"{resume.sous_total:.2f} {devise}",
             ),
             (
                 "TPS",
-                f"{resume.tps:.2f} CAD",
+                f"{resume.tps:.2f} {devise}",
             ),
             (
                 "TVQ",
-                f"{resume.tvq:.2f} CAD",
+                f"{resume.tvq:.2f} {devise}",
             ),
             (
-                "TOTAL",
-                f"{resume.total:.2f} CAD",
+                texte_rapport("total", langue),
+                f"{resume.total:.2f} {devise}",
             ),
         ]
 
@@ -275,7 +304,7 @@ def exporter_resume_comptable_pdf(
         # Bloc fournisseur principal.
         page.insert_text(
             (42, 305),
-            "FOURNISSEUR PRINCIPAL",
+            texte_rapport("fournisseur_principal", langue),
             fontsize=10,
             fontname="helv",
             color=gris,
@@ -296,7 +325,7 @@ def exporter_resume_comptable_pdf(
         )
         page.insert_textbox(
             fitz.Rect(395, 338, 535, 368),
-            f"{resume.total_fournisseur_principal:.2f} CAD",
+            f"{resume.total_fournisseur_principal:.2f} {devise}",
             fontsize=12,
             fontname="helv",
             color=bleu,
@@ -306,14 +335,14 @@ def exporter_resume_comptable_pdf(
         # Bloc contrôle / anomalies.
         page.insert_text(
             (42, 425),
-            "CONTROLE DES ANOMALIES",
+            texte_rapport("controle_anomalies", langue),
             fontsize=10,
             fontname="helv",
             color=gris,
         )
 
         if resume.nombre_anomalies == 0:
-            statut = "Aucune anomalie detectee"
+            statut = texte_rapport("aucune_anomalie", langue)
             couleur_statut = vert
             fond_statut = (0.92, 0.98, 0.94)
         else:

@@ -17,6 +17,20 @@ from src.comptaprivee.dashboard_exporter import (
 )
 
 
+
+@pytest.fixture(autouse=True)
+def parametres_dashboard_par_defaut(monkeypatch) -> None:
+    # Isole les tests du fichier local data/parametres.json.
+    from src.comptaprivee import dashboard_exporter
+    from src.comptaprivee.settings import ParametresApplication
+
+    monkeypatch.setattr(
+        dashboard_exporter,
+        "lire_parametres",
+        lambda: ParametresApplication(),
+    )
+
+
 def creer_resume() -> ResumeTableauBord:
     return ResumeTableauBord(
         nombre_factures=2,
