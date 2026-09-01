@@ -109,3 +109,24 @@ def calculer_resume(
         total=total,
         total_par_fournisseur=classement,
     )
+
+def filtrer_factures_fournisseur(
+    factures: list[FactureEnregistree],
+    fournisseur: str | None = None,
+) -> list[FactureEnregistree]:
+    """Filtre les factures selon le fournisseur choisi."""
+    if not fournisseur:
+        return list(factures)
+
+    recherche = fournisseur.strip().casefold()
+
+    if not recherche:
+        return list(factures)
+
+    return [
+        facture
+        for facture in factures
+        if (facture.fournisseur or "").strip().casefold()
+        == recherche
+    ]
+

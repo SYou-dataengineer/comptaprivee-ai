@@ -14,6 +14,7 @@ from .csv_exporter import exporter_facture_csv
 from .pdf_exporter import exporter_facture_pdf
 from .dashboard import (
     calculer_resume,
+    filtrer_factures_fournisseur,
     filtrer_factures_periode,
 )
 from .database import (
@@ -413,8 +414,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         fenetre = tk.Toplevel(self)
         fenetre.title("Tableau de bord — ComptaPrivée AI")
-        fenetre.geometry("980x680")
-        fenetre.minsize(820, 560)
+        fenetre.geometry("1050x700")
+        fenetre.minsize(860, 580)
 
         conteneur = ttk.Frame(
             fenetre,
@@ -448,7 +449,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
         zone_filtres = ttk.LabelFrame(
             conteneur,
-            text="Filtrer par période",
+            text="Filtres",
             padding=10,
         )
         zone_filtres.pack(
@@ -458,46 +459,80 @@ class ApplicationComptaPrivee(tk.Tk):
 
         date_debut = tk.StringVar()
         date_fin = tk.StringVar()
+        fournisseur_selectionne = tk.StringVar(
+            value="Tous les fournisseurs"
+        )
 
         ttk.Label(
             zone_filtres,
             text="Du :",
-        ).pack(
-            side="left",
-        )
+        ).pack(side="left")
 
         ttk.Entry(
             zone_filtres,
             textvariable=date_debut,
-            width=14,
+            width=12,
         ).pack(
             side="left",
-            padx=(6, 15),
+            padx=(6, 10),
         )
 
         ttk.Label(
             zone_filtres,
             text="Au :",
-        ).pack(
-            side="left",
-        )
+        ).pack(side="left")
 
         ttk.Entry(
             zone_filtres,
             textvariable=date_fin,
-            width=14,
+            width=12,
         ).pack(
             side="left",
-            padx=(6, 15),
+            padx=(6, 10),
         )
 
         ttk.Label(
             zone_filtres,
-            text="Format : AAAA-MM-JJ",
+            text="Fournisseur :",
+        ).pack(
+            side="left",
+            padx=(5, 0),
+        )
+
+        fournisseurs = sorted(
+            {
+                facture.fournisseur.strip()
+                for facture in factures
+                if facture.fournisseur
+                and facture.fournisseur.strip()
+            },
+            key=str.casefold,
+        )
+
+        liste_fournisseurs = [
+            "Tous les fournisseurs",
+            *fournisseurs,
+        ]
+
+        choix_fournisseur = ttk.Combobox(
+            zone_filtres,
+            textvariable=fournisseur_selectionne,
+            values=liste_fournisseurs,
+            state="readonly",
+            width=28,
+        )
+        choix_fournisseur.pack(
+            side="left",
+            padx=(6, 10),
+        )
+
+        ttk.Label(
+            zone_filtres,
+            text="Dates : AAAA-MM-JJ",
             foreground="#475569",
         ).pack(
             side="left",
-            padx=(0, 15),
+            padx=(0, 10),
         )
 
         cartes = ttk.Frame(conteneur)
@@ -565,11 +600,11 @@ class ApplicationComptaPrivee(tk.Tk):
         )
         tableau.column(
             "fournisseur",
-            width=560,
+            width=600,
         )
         tableau.column(
             "total",
-            width=160,
+            width=170,
             anchor="e",
         )
         tableau.pack(
@@ -584,14 +619,29 @@ class ApplicationComptaPrivee(tk.Tk):
                     date_debut.get().strip() or None,
                     date_fin.get().strip() or None,
                 )
+
+                fournisseur = (
+                    fournisseur_selectionne.get().strip()
+                )
+
+                if fournisseur == "Tous les fournisseurs":
+                    fournisseur = None
+
+                selection = filtrer_factures_fournisseur(
+                    selection,
+                    fournisseur,
+                )
+
                 resume = calculer_resume(
                     selection
                 )
+
             except ValueError as erreur:
                 messagebox.showerror(
-                    "Période invalide",
+                    "Filtre invalide",
                     (
-                        "Utilisez le format AAAA-MM-JJ.\n\n"
+                        "Utilisez le format AAAA-MM-JJ "
+                        "pour les dates.\n\n"
                         f"{erreur}"
                     ),
                     parent=fenetre,
@@ -627,14 +677,14 @@ class ApplicationComptaPrivee(tk.Tk):
             for element in tableau.get_children():
                 tableau.delete(element)
 
-            for fournisseur, total in (
+            for nom_fournisseur, total in (
                 resume.total_par_fournisseur
             ):
                 tableau.insert(
                     "",
                     "end",
                     values=(
-                        fournisseur,
+                        nom_fournisseur,
                         f"{total:.2f} CAD",
                     ),
                 )
@@ -644,7 +694,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     "",
                     "end",
                     values=(
-                        "Aucune facture pour cette période",
+                        "Aucune facture pour ces filtres",
                         "0.00 CAD",
                     ),
                 )
@@ -653,9 +703,12 @@ class ApplicationComptaPrivee(tk.Tk):
                 "Tableau de bord comptable actualisé"
             )
 
-        def effacer_periode() -> None:
+        def effacer_filtres() -> None:
             date_debut.set("")
             date_fin.set("")
+            fournisseur_selectionne.set(
+                "Tous les fournisseurs"
+            )
             actualiser_tableau_bord()
 
         ttk.Button(
@@ -670,7 +723,7 @@ class ApplicationComptaPrivee(tk.Tk):
         ttk.Button(
             zone_filtres,
             text="Effacer",
-            command=effacer_periode,
+            command=effacer_filtres,
         ).pack(
             side="left",
         )
