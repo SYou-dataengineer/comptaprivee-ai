@@ -2,6 +2,9 @@
 
 import tkinter as tk
 from decimal import Decimal, InvalidOperation
+import os
+import subprocess
+import sys
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
@@ -164,6 +167,16 @@ class ApplicationComptaPrivee(tk.Tk):
             side="left",
             padx=(10, 0),
         )
+
+        ttk.Button(
+            barre_document,
+            text="Ouvrir le dossier des exports",
+            command=self.ouvrir_dossier_exports,
+        ).pack(
+            side="left",
+            padx=(10, 0),
+        )
+
 
         ttk.Label(
             barre_document,
@@ -373,6 +386,40 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         return chemin
+
+    def ouvrir_dossier_exports(self) -> None:
+        """Ouvre le dossier local contenant les exports CSV et PDF."""
+        chemin = self.dossier_exports()
+
+        try:
+            if sys.platform.startswith("win"):
+                os.startfile(chemin)  # type: ignore[attr-defined]
+            elif sys.platform == "darwin":
+                subprocess.run(
+                    ["open", str(chemin)],
+                    check=True,
+                )
+            else:
+                subprocess.run(
+                    ["xdg-open", str(chemin)],
+                    check=True,
+                )
+
+        except (OSError, subprocess.SubprocessError) as erreur:
+            messagebox.showerror(
+                "Impossible d'ouvrir le dossier",
+                (
+                    "Le dossier des exports existe, mais "
+                    "ComptaPrivée AI n'a pas pu l'ouvrir.\n\n"
+                    f"Chemin : {chemin}\n"
+                    f"Détail : {erreur}"
+                ),
+            )
+            return
+
+        self.statut.set(
+            f"Dossier des exports ouvert : {chemin}"
+        )
 
     def selectionner_document(self) -> None:
         """Permet de sélectionner et d'analyser un document."""
