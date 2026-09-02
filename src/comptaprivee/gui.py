@@ -64,6 +64,7 @@ from .invoice_validator import (
     valider_facture,
 )
 from .main import extraire_texte_document
+from .tax_validator import appliquer_validation_fiscale
 from .settings import (
     DEVISES,
     FORMATS_DATE,
@@ -3821,6 +3822,10 @@ class ApplicationComptaPrivee(tk.Tk):
 
         validation = valider_facture(
             facture
+        )
+        validation = appliquer_validation_fiscale(
+            facture,
+            validation,
         )
 
         self.appliquer_validation(
