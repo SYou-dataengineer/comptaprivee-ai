@@ -11,6 +11,10 @@ from tkinter.scrolledtext import ScrolledText
 
 from .anomalies import detecter_anomalies
 from .batch_processor import traiter_et_exporter_documents
+from .backup_manager import (
+    creer_sauvegarde,
+    restaurer_sauvegarde,
+)
 from .csv_exporter import exporter_facture_csv
 from .company_profile import (
     ProfilSociete,
@@ -1311,6 +1315,176 @@ class ApplicationComptaPrivee(tk.Tk):
         onglets.add(
             onglet_cabinet,
             text="Cabinet",
+        )
+
+
+        onglet_sauvegarde = ttk.Frame(
+            onglets,
+            padding=20,
+        )
+
+        onglets.add(
+            onglet_sauvegarde,
+            text="Sauvegarde",
+        )
+
+        ttk.Label(
+            onglet_sauvegarde,
+            text="Sauvegarde et restauration locales",
+            font=("Segoe UI", 12, "bold"),
+        ).pack(anchor="w")
+
+        ttk.Label(
+            onglet_sauvegarde,
+            text=(
+                "Créez une copie locale de la base SQLite, "
+                "des paramètres et du profil du cabinet."
+            ),
+            foreground="#166534",
+            wraplength=560,
+        ).pack(
+            anchor="w",
+            pady=(6, 18),
+        )
+
+        def creer_sauvegarde_depuis_interface() -> None:
+            chemin = filedialog.asksaveasfilename(
+                parent=fenetre,
+                title="Créer une sauvegarde ComptaPrivée AI",
+                initialfile="ComptaPrivee_sauvegarde.zip",
+                defaultextension=".zip",
+                filetypes=[
+                    ("Sauvegarde ZIP", "*.zip"),
+                ],
+            )
+
+            if not chemin:
+                return
+
+            try:
+                destination = creer_sauvegarde(chemin)
+            except (OSError, ValueError) as erreur:
+                messagebox.showerror(
+                    "Sauvegarde impossible",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            self.statut.set(
+                f"Sauvegarde créée : {destination.name}"
+            )
+            messagebox.showinfo(
+                "Sauvegarde créée",
+                (
+                    "La sauvegarde locale a été créée avec succès.\n\n"
+                    f"{destination}"
+                ),
+                parent=fenetre,
+            )
+
+        def restaurer_sauvegarde_depuis_interface() -> None:
+            chemin = filedialog.askopenfilename(
+                parent=fenetre,
+                title="Choisir une sauvegarde ComptaPrivée AI",
+                filetypes=[
+                    ("Sauvegarde ZIP", "*.zip"),
+                ],
+            )
+
+            if not chemin:
+                return
+
+            confirmer = messagebox.askyesno(
+                "Restaurer la sauvegarde",
+                (
+                    "La restauration remplacera les données locales "
+                    "présentes par celles de la sauvegarde sélectionnée.\n\n"
+                    "Voulez-vous continuer ?"
+                ),
+                parent=fenetre,
+            )
+
+            if not confirmer:
+                return
+
+            try:
+                fichiers = restaurer_sauvegarde(
+                    chemin,
+                    racine=Path.cwd(),
+                )
+            except (OSError, ValueError, FileNotFoundError) as erreur:
+                messagebox.showerror(
+                    "Restauration impossible",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            self.statut.set(
+                "Sauvegarde restaurée — redémarrage recommandé"
+            )
+            messagebox.showinfo(
+                "Restauration terminée",
+                (
+                    f"{len(fichiers)} fichier(s) restauré(s).\n\n"
+                    "Fermez puis relancez ComptaPrivée AI afin "
+                    "de recharger toutes les données restaurées."
+                ),
+                parent=fenetre,
+            )
+
+        cadre_sauvegarde = ttk.LabelFrame(
+            onglet_sauvegarde,
+            text="Créer une sauvegarde",
+            padding=16,
+        )
+        cadre_sauvegarde.pack(
+            fill="x",
+            pady=(0, 14),
+        )
+
+        ttk.Label(
+            cadre_sauvegarde,
+            text=(
+                "Enregistre les données essentielles dans "
+                "une archive ZIP locale."
+            ),
+            wraplength=520,
+        ).pack(anchor="w")
+
+        ttk.Button(
+            cadre_sauvegarde,
+            text="Créer une sauvegarde...",
+            command=creer_sauvegarde_depuis_interface,
+        ).pack(
+            anchor="w",
+            pady=(12, 0),
+        )
+
+        cadre_restauration = ttk.LabelFrame(
+            onglet_sauvegarde,
+            text="Restaurer une sauvegarde",
+            padding=16,
+        )
+        cadre_restauration.pack(fill="x")
+
+        ttk.Label(
+            cadre_restauration,
+            text=(
+                "Restaure une archive créée par ComptaPrivée AI. "
+                "Une confirmation est demandée avant le remplacement."
+            ),
+            wraplength=520,
+        ).pack(anchor="w")
+
+        ttk.Button(
+            cadre_restauration,
+            text="Restaurer une sauvegarde...",
+            command=restaurer_sauvegarde_depuis_interface,
+        ).pack(
+            anchor="w",
+            pady=(12, 0),
         )
 
         devise = tk.StringVar(
