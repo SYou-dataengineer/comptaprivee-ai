@@ -50,6 +50,10 @@ from .summary_report import (
     exporter_resume_comptable_pdf,
 )
 from .report_naming import nom_fichier_rapport
+from .review_queue import (
+    NiveauVerification,
+    analyser_factures_a_verifier,
+)
 from .export_history import (
     compter_types,
     exporter_historique_csv,
@@ -237,6 +241,15 @@ class ApplicationComptaPrivee(tk.Tk):
             barre_document,
             text="Historique exports",
             command=self.ouvrir_historique_exports,
+        ).pack(
+            side="left",
+            padx=(10, 0),
+        )
+
+        ttk.Button(
+            barre_document,
+            text="À vérifier",
+            command=self.ouvrir_a_verifier,
         ).pack(
             side="left",
             padx=(10, 0),
@@ -461,6 +474,236 @@ class ApplicationComptaPrivee(tk.Tk):
 
         return chemin
 
+
+    def ouvrir_a_verifier(self) -> None:
+        """Affiche les factures qui nécessitent une vérification humaine."""
+        fenetre = tk.Toplevel(self)
+        fenetre.title("À vérifier — ComptaPrivée AI")
+        fenetre.geometry("1050x620")
+        fenetre.minsize(850, 500)
+        fenetre.transient(self)
+
+        conteneur = ttk.Frame(fenetre, padding=18)
+        conteneur.pack(fill="both", expand=True)
+
+        ttk.Label(
+            conteneur,
+            text="Factures à vérifier",
+            font=("Segoe UI", 19, "bold"),
+        ).pack(anchor="w")
+
+        compteur = tk.StringVar(value="")
+        ttk.Label(
+            conteneur,
+            textvariable=compteur,
+            foreground="#92400e",
+        ).pack(anchor="w", pady=(3, 12))
+
+        colonnes = (
+            "niveau",
+            "numero",
+            "fournisseur",
+            "date",
+            "total",
+            "raisons",
+        )
+
+        tableau = ttk.Treeview(
+            conteneur,
+            columns=colonnes,
+            show="headings",
+        )
+
+        titres = {
+            "niveau": "Priorité",
+            "numero": "N° facture",
+            "fournisseur": "Fournisseur",
+            "date": "Date",
+            "total": "Total",
+            "raisons": "Motif principal",
+        }
+
+        largeurs = {
+            "niveau": 95,
+            "numero": 125,
+            "fournisseur": 210,
+            "date": 105,
+            "total": 100,
+            "raisons": 330,
+        }
+
+        for colonne in colonnes:
+            tableau.heading(
+                colonne,
+                text=titres[colonne],
+            )
+            tableau.column(
+                colonne,
+                width=largeurs[colonne],
+                anchor="w",
+            )
+
+        barre = ttk.Scrollbar(
+            conteneur,
+            orient="vertical",
+            command=tableau.yview,
+        )
+        tableau.configure(yscrollcommand=barre.set)
+
+        tableau.pack(
+            side="left",
+            fill="both",
+            expand=True,
+        )
+        barre.pack(
+            side="left",
+            fill="y",
+        )
+
+        panneau_droit = ttk.Frame(
+            conteneur,
+            padding=(15, 0, 0, 0),
+        )
+        panneau_droit.pack(
+            side="right",
+            fill="y",
+        )
+
+        ttk.Label(
+            panneau_droit,
+            text="Détails",
+            font=("Segoe UI", 11, "bold"),
+        ).pack(anchor="w")
+
+        details = ScrolledText(
+            panneau_droit,
+            width=38,
+            height=23,
+            wrap="word",
+            font=("Segoe UI", 9),
+        )
+        details.pack(
+            fill="both",
+            expand=True,
+            pady=(6, 10),
+        )
+        details.configure(state="disabled")
+
+        elements_par_iid = {}
+
+        def actualiser() -> None:
+            for iid in tableau.get_children():
+                tableau.delete(iid)
+
+            elements = analyser_factures_a_verifier(
+                lister_factures()
+            )
+
+            for index, element in enumerate(elements):
+                facture = element.facture
+                iid = f"verification-{index}"
+                elements_par_iid[iid] = element
+
+                priorite = (
+                    "ERREUR"
+                    if element.niveau is NiveauVerification.ERREUR
+                    else "À VÉRIFIER"
+                )
+
+                motif = (
+                    element.raisons[0]
+                    if element.raisons
+                    else ""
+                )
+
+                tableau.insert(
+                    "",
+                    "end",
+                    iid=iid,
+                    values=(
+                        priorite,
+                        facture.numero or "-",
+                        facture.fournisseur or "-",
+                        facture.date or "-",
+                        (
+                            f"{facture.total:.2f}"
+                            if facture.total is not None
+                            else "-"
+                        ),
+                        motif,
+                    ),
+                )
+
+            compteur.set(
+                f"{len(elements)} facture(s) nécessitent une vérification."
+            )
+
+            details.configure(state="normal")
+            details.delete("1.0", "end")
+            details.insert(
+                "1.0",
+                "Sélectionnez une facture pour afficher tous les motifs.",
+            )
+            details.configure(state="disabled")
+
+        def afficher_details(_event=None) -> None:
+            selection = tableau.selection()
+
+            if not selection:
+                return
+
+            element = elements_par_iid.get(selection[0])
+            if element is None:
+                return
+
+            facture = element.facture
+            lignes = [
+                f"Facture : {facture.numero or '-'}",
+                f"Fournisseur : {facture.fournisseur or '-'}",
+                f"Date : {facture.date or '-'}",
+                (
+                    f"Total : {facture.total:.2f}"
+                    if facture.total is not None
+                    else "Total : -"
+                ),
+                "",
+                "Motifs :",
+            ]
+
+            lignes.extend(
+                f"• {raison}"
+                for raison in element.raisons
+            )
+
+            details.configure(state="normal")
+            details.delete("1.0", "end")
+            details.insert(
+                "1.0",
+                "\n".join(lignes),
+            )
+            details.configure(state="disabled")
+
+        tableau.bind(
+            "<<TreeviewSelect>>",
+            afficher_details,
+        )
+
+        zone_boutons = ttk.Frame(panneau_droit)
+        zone_boutons.pack(fill="x")
+
+        ttk.Button(
+            zone_boutons,
+            text="Actualiser",
+            command=actualiser,
+        ).pack(side="left")
+
+        ttk.Button(
+            zone_boutons,
+            text="Fermer",
+            command=fenetre.destroy,
+        ).pack(side="right")
+
+        actualiser()
 
     def ouvrir_historique_exports(self) -> None:
         """Affiche les fichiers PDF/CSV présents dans data/exports."""
