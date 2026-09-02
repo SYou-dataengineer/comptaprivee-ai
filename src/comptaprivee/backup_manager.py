@@ -78,6 +78,14 @@ def creer_sauvegarde(
                 arcname=fichier.as_posix(),
             )
 
+    from .audit_log import journaliser_sans_bloquer
+
+    journaliser_sans_bloquer(
+        "Sauvegarde créée",
+        "sauvegarde",
+        reference=destination.name,
+    )
+
     return destination
 
 
@@ -156,5 +164,15 @@ def restaurer_sauvegarde(
                     destination,
                 )
                 fichiers_restaures.append(destination)
+
+    from .audit_log import journaliser_sans_bloquer
+
+    journaliser_sans_bloquer(
+        "Sauvegarde restaurée",
+        "sauvegarde",
+        details=f"{len(fichiers_restaures)} fichier(s) restauré(s)",
+        reference=source.name,
+        chemin_base=racine / CHEMIN_BASE_PAR_DEFAUT,
+    )
 
     return fichiers_restaures

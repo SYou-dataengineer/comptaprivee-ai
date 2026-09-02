@@ -181,7 +181,22 @@ def enregistrer_facture(
             "La facture a été enregistrée, mais elle est introuvable."
         )
 
-    return ligne_vers_facture(ligne)
+    resultat = ligne_vers_facture(ligne)
+
+    from .audit_log import journaliser_sans_bloquer
+
+    journaliser_sans_bloquer(
+        "Facture enregistrée",
+        "facture",
+        details=(
+            f"Fournisseur : {resultat.fournisseur or '-'}; "
+            f"Total : {resultat.total if resultat.total is not None else '-'}"
+        ),
+        reference=resultat.numero,
+        chemin_base=chemin_base,
+    )
+
+    return resultat
 
 
 def lister_factures(
@@ -345,6 +360,17 @@ def mettre_facture_corbeille(
             (identifiant,),
         )
 
+        reference_audit = ligne["numero"]
+
+    from .audit_log import journaliser_sans_bloquer
+
+    journaliser_sans_bloquer(
+        "Facture mise à la corbeille",
+        "facture",
+        reference=reference_audit,
+        chemin_base=chemin_base,
+    )
+
     return True
 
 
@@ -413,6 +439,17 @@ def restaurer_facture(
             "DELETE FROM factures_corbeille WHERE id = ?",
             (identifiant,),
         )
+
+        reference_audit = ligne["numero"]
+
+    from .audit_log import journaliser_sans_bloquer
+
+    journaliser_sans_bloquer(
+        "Facture restaurée",
+        "facture",
+        reference=reference_audit,
+        chemin_base=chemin_base,
+    )
 
     return True
 

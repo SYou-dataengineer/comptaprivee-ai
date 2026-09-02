@@ -10,6 +10,10 @@ from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 
 from .anomalies import detecter_anomalies
+from .audit_log import (
+    lister_evenements,
+    rechercher_evenements,
+)
 from .batch_processor import traiter_et_exporter_documents
 from .backup_manager import (
     creer_sauvegarde,
@@ -261,6 +265,15 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(
             barre_document,
+            text="Journal d'audit",
+            command=self.ouvrir_journal_audit,
+        ).pack(
+            side="left",
+            padx=(10, 0),
+        )
+
+        ttk.Button(
+            barre_document,
             text="Paramètres",
             command=self.ouvrir_parametres,
         ).pack(
@@ -478,6 +491,166 @@ class ApplicationComptaPrivee(tk.Tk):
 
         return chemin
 
+
+    def ouvrir_journal_audit(self) -> None:
+        """Affiche le journal d'audit local."""
+        fenetre = tk.Toplevel(self)
+        fenetre.title("Journal d'audit — ComptaPrivée AI")
+        fenetre.geometry("1000x600")
+        fenetre.minsize(850, 500)
+        fenetre.transient(self)
+
+        conteneur = ttk.Frame(fenetre, padding=18)
+        conteneur.pack(fill="both", expand=True)
+
+        ttk.Label(
+            conteneur,
+            text="Journal d'audit local",
+            font=("Segoe UI", 19, "bold"),
+        ).pack(anchor="w")
+
+        ttk.Label(
+            conteneur,
+            text=(
+                "Historique local des actions importantes. "
+                "Aucune donnée n'est envoyée sur Internet."
+            ),
+            foreground="#166534",
+        ).pack(anchor="w", pady=(3, 12))
+
+        zone_recherche = ttk.Frame(conteneur)
+        zone_recherche.pack(fill="x", pady=(0, 12))
+
+        ttk.Label(
+            zone_recherche,
+            text="Rechercher :",
+        ).pack(side="left")
+
+        variable_recherche = tk.StringVar()
+
+        champ_recherche = ttk.Entry(
+            zone_recherche,
+            textvariable=variable_recherche,
+            width=45,
+        )
+        champ_recherche.pack(side="left", padx=(8, 8))
+
+        compteur = tk.StringVar(value="")
+        ttk.Label(
+            zone_recherche,
+            textvariable=compteur,
+            foreground="#475569",
+        ).pack(side="right")
+
+        colonnes = (
+            "date",
+            "categorie",
+            "action",
+            "reference",
+            "details",
+        )
+
+        tableau = ttk.Treeview(
+            conteneur,
+            columns=colonnes,
+            show="headings",
+        )
+
+        titres = {
+            "date": "Date / heure",
+            "categorie": "Catégorie",
+            "action": "Action",
+            "reference": "Référence",
+            "details": "Détails",
+        }
+
+        for colonne in colonnes:
+            tableau.heading(
+                colonne,
+                text=titres[colonne],
+            )
+
+        tableau.column("date", width=150, anchor="w")
+        tableau.column("categorie", width=110, anchor="w")
+        tableau.column("action", width=190, anchor="w")
+        tableau.column("reference", width=150, anchor="w")
+        tableau.column("details", width=320, anchor="w")
+
+        tableau.pack(fill="both", expand=True)
+
+        evenements_par_iid = {}
+
+        def charger() -> None:
+            recherche = variable_recherche.get().strip()
+
+            if recherche:
+                evenements = rechercher_evenements(recherche)
+            else:
+                evenements = lister_evenements(limite=500)
+
+            for iid in tableau.get_children():
+                tableau.delete(iid)
+
+            evenements_par_iid.clear()
+
+            for index, evenement in enumerate(evenements):
+                iid = f"audit-{index}"
+                evenements_par_iid[iid] = evenement
+
+                tableau.insert(
+                    "",
+                    "end",
+                    iid=iid,
+                    values=(
+                        evenement.date_creation,
+                        evenement.categorie,
+                        evenement.action,
+                        evenement.reference or "-",
+                        evenement.details or "-",
+                    ),
+                )
+
+            compteur.set(
+                f"{len(evenements)} événement(s) affiché(s)"
+            )
+
+        tableau.bind(
+            "<<TreeviewSelect>>",
+            lambda _event: None,
+        )
+
+        zone_boutons = ttk.Frame(conteneur)
+        zone_boutons.pack(fill="x", pady=(10, 0))
+
+        ttk.Button(
+            zone_boutons,
+            text="Actualiser",
+            command=charger,
+        ).pack(side="left")
+
+        def effacer_recherche() -> None:
+            variable_recherche.set("")
+            charger()
+
+        ttk.Button(
+            zone_boutons,
+            text="Effacer recherche",
+            command=effacer_recherche,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            zone_boutons,
+            text="Fermer",
+            command=fenetre.destroy,
+        ).pack(side="right")
+
+        champ_recherche.bind(
+            "<Return>",
+            lambda _event: charger(),
+        )
+
+        charger()
+        champ_recherche.focus_set()
 
     def ouvrir_a_verifier(self) -> None:
         """Affiche les factures qui nécessitent une vérification humaine."""
