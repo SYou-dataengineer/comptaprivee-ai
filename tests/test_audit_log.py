@@ -182,3 +182,104 @@ def test_corbeille_cree_evenement_audit(tmp_path) -> None:
         and e.reference == "AUDIT-CORB-001"
         for e in evenements
     )
+
+def test_exporter_journal_audit_csv(tmp_path) -> None:
+    import csv
+
+    from src.comptaprivee.audit_log import (
+        exporter_journal_audit_csv,
+    )
+
+    chemin_base = tmp_path / "audit.db"
+    destination = tmp_path / "journal.csv"
+
+    enregistrer_evenement(
+        "Alerte OCR résolue",
+        "ocr",
+        reference="FAC-N05",
+        details="page=1; ligne=6",
+        chemin_base=chemin_base,
+    )
+
+    resultat = exporter_journal_audit_csv(
+        destination,
+        chemin_base,
+    )
+
+    assert resultat == destination
+    assert destination.exists()
+
+    with destination.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        lignes = list(csv.reader(fichier))
+
+    assert lignes[0] == [
+        "Date / heure",
+        "Catégorie",
+        "Action",
+        "Référence",
+        "Détails",
+    ]
+    assert lignes[1][1] == "ocr"
+    assert lignes[1][2] == "Alerte OCR résolue"
+    assert lignes[1][3] == "FAC-N05"
+
+
+def test_exporter_journal_audit_csv_respecte_recherche(
+    tmp_path,
+) -> None:
+    import csv
+
+    from src.comptaprivee.audit_log import (
+        exporter_journal_audit_csv,
+    )
+
+    chemin_base = tmp_path / "audit.db"
+    destination = tmp_path / "ocr.csv"
+
+    enregistrer_evenement(
+        "Document converti",
+        "conversion",
+        reference="document.xlsx",
+        chemin_base=chemin_base,
+    )
+    enregistrer_evenement(
+        "Alerte OCR résolue",
+        "ocr",
+        reference="FAC-N05",
+        chemin_base=chemin_base,
+    )
+
+    exporter_journal_audit_csv(
+        destination,
+        chemin_base,
+        recherche="Alerte OCR résolue",
+    )
+
+    with destination.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        lignes = list(csv.reader(fichier))
+
+    assert len(lignes) == 2
+    assert lignes[1][1] == "ocr"
+    assert lignes[1][3] == "FAC-N05"
+
+
+def test_exporter_journal_audit_refuse_extension_non_csv(
+    tmp_path,
+) -> None:
+    from src.comptaprivee.audit_log import (
+        exporter_journal_audit_csv,
+    )
+
+    with pytest.raises(ValueError):
+        exporter_journal_audit_csv(
+            tmp_path / "journal.xlsx",
+            tmp_path / "audit.db",
+        )

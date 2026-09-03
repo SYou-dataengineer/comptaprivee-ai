@@ -11,6 +11,7 @@ from tkinter.scrolledtext import ScrolledText
 
 from .anomalies import detecter_anomalies
 from .audit_log import (
+    exporter_journal_audit_csv,
     journaliser_sans_bloquer,
     lister_evenements,
     rechercher_evenements,
@@ -1211,10 +1212,68 @@ class ApplicationComptaPrivee(tk.Tk):
             variable_recherche.set("")
             charger()
 
+        def afficher_resolutions_ocr() -> None:
+            variable_recherche.set(
+                "Alerte OCR résolue"
+            )
+            charger()
+
+        def exporter_journal_csv() -> None:
+            destination = filedialog.asksaveasfilename(
+                parent=fenetre,
+                title="Exporter le journal d'audit",
+                initialdir=self.dossier_exports(),
+                initialfile="journal_audit.csv",
+                defaultextension=".csv",
+                filetypes=[
+                    ("Fichier CSV", "*.csv"),
+                ],
+            )
+
+            if not destination:
+                return
+
+            recherche = variable_recherche.get().strip()
+
+            try:
+                chemin = exporter_journal_audit_csv(
+                    destination,
+                    recherche=recherche or None,
+                    limite=500,
+                )
+            except (OSError, ValueError) as erreur:
+                messagebox.showerror(
+                    "Export impossible",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            messagebox.showinfo(
+                "Export terminé",
+                (
+                    "Le journal d'audit a été exporté localement.\n\n"
+                    f"Fichier : {chemin}"
+                ),
+                parent=fenetre,
+            )
+
         ttk.Button(
             zone_boutons,
             text="Effacer recherche",
             command=effacer_recherche,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            zone_boutons,
+            text="Résolutions OCR",
+            command=afficher_resolutions_ocr,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            zone_boutons,
+            text="Exporter CSV",
+            command=exporter_journal_csv,
         ).pack(side="left", padx=(8, 0))
 
         ttk.Button(

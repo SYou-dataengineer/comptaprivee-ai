@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -206,3 +207,65 @@ def journaliser_sans_bloquer(
         )
     except Exception:
         return
+
+def exporter_journal_audit_csv(
+    destination: str | Path,
+    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    *,
+    recherche: str | None = None,
+    limite: int | None = 500,
+) -> Path:
+    """Exporte localement le journal d'audit dans un CSV compatible Excel."""
+    chemin_destination = Path(destination)
+
+    if chemin_destination.suffix.lower() != ".csv":
+        raise ValueError(
+            "Le journal d'audit doit être exporté dans un fichier .csv."
+        )
+
+    terme = (recherche or "").strip()
+
+    if terme:
+        evenements = rechercher_evenements(
+            terme,
+            chemin_base,
+        )
+    else:
+        evenements = lister_evenements(
+            chemin_base,
+            limite=limite,
+        )
+
+    chemin_destination.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with chemin_destination.open(
+        "w",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        writer = csv.writer(fichier)
+        writer.writerow(
+            [
+                "Date / heure",
+                "Catégorie",
+                "Action",
+                "Référence",
+                "Détails",
+            ]
+        )
+
+        for evenement in evenements:
+            writer.writerow(
+                [
+                    evenement.date_creation,
+                    evenement.categorie,
+                    evenement.action,
+                    evenement.reference or "",
+                    evenement.details or "",
+                ]
+            )
+
+    return chemin_destination
