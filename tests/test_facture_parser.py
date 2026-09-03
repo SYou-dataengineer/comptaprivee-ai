@@ -43,3 +43,62 @@ def test_accepter_les_montants_avec_virgule() -> None:
     assert facture.numero == "FAC-002"
     assert facture.total == Decimal("1149.75")
     assert facture.tps is None
+
+def test_facture_multi_page_ne_melange_pas_les_pages() -> None:
+    from src.comptaprivee.facture_parser import extraire_donnees_facture
+
+    texte = (
+        "Fournisseur : Page Un Inc.\n"
+        "Total : 344.93 CAD"
+        "\n\n--- Page suivante ---\n\n"
+        "Facture : FAC-SCAN-001\n"
+        "Fournisseur : Fournisseur Scan Inc.\n"
+        "Date : 2026-09-02\n"
+        "Sous-total : 250.00 CAD\n"
+        "TPS : 12.50 CAD\n"
+        "TVQ : 24.94 CAD\n"
+        "Total : 287.44 CAD"
+    )
+
+    facture = extraire_donnees_facture(texte)
+
+    assert facture.numero == "FAC-SCAN-001"
+    assert facture.fournisseur == "Fournisseur Scan Inc."
+    assert str(facture.sous_total) == "250.00"
+    assert str(facture.tvq) == "24.94"
+    assert str(facture.total) == "287.44"
+
+
+def test_facture_alias_facture_devient_numero() -> None:
+    from src.comptaprivee.facture_parser import extraire_donnees_facture
+
+    facture = extraire_donnees_facture(
+        "Facture : FAC-777\n"
+        "Total : 10.00 CAD"
+    )
+
+    assert facture.numero == "FAC-777"
+
+
+def test_facture_page_coherente_est_preferee() -> None:
+    from src.comptaprivee.facture_parser import extraire_donnees_facture
+
+    texte = (
+        "Facture : MAUVAISE\n"
+        "Sous-total : 250.00 CAD\n"
+        "TPS : 12.50 CAD\n"
+        "TVQ : 24.94 CAD\n"
+        "Total : 344.93 CAD"
+        "\n\n--- Page suivante ---\n\n"
+        "Facture : BONNE\n"
+        "Sous-total : 250.00 CAD\n"
+        "TPS : 12.50 CAD\n"
+        "TVQ : 24.94 CAD\n"
+        "Total : 287.44 CAD"
+    )
+
+    facture = extraire_donnees_facture(texte)
+
+    assert facture.numero == "BONNE"
+    assert str(facture.total) == "287.44"
+

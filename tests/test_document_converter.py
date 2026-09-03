@@ -259,3 +259,121 @@ def test_pdf_vers_word_evite_dupliquer_texte_tableau(tmp_path) -> None:
     assert "Rapport comptable" in texte_paragraphes
     assert len(doc.tables) == 1
     assert "FAC-001" not in texte_paragraphes
+
+def test_pdf_vers_word_fallback_ocr(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    import fitz
+    from docx import Document
+    import src.comptaprivee.document_converter as dc
+
+    source = tmp_path / "scan.pdf"
+    destination = tmp_path / "scan.docx"
+
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(source)
+    doc.close()
+
+    monkeypatch.setattr(
+        dc,
+        "_extraire_ocr_pages_pdf",
+        lambda _source: {
+            1: "Facture FAC-OCR-001\nTotal 114.98 CAD"
+        },
+    )
+
+    dc.pdf_vers_word(
+        source,
+        destination,
+    )
+
+    word = Document(destination)
+    texte = "\n".join(
+        p.text for p in word.paragraphs
+    )
+
+    assert "FAC-OCR-001" in texte
+    assert "114.98" in texte
+
+
+def test_pdf_vers_csv_fallback_ocr(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    import fitz
+    import src.comptaprivee.document_converter as dc
+
+    source = tmp_path / "scan.pdf"
+    destination = tmp_path / "scan.csv"
+
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(source)
+    doc.close()
+
+    monkeypatch.setattr(
+        dc,
+        "_extraire_ocr_pages_pdf",
+        lambda _source: {
+            1: "Facture FAC-OCR-001\nTotal 114.98 CAD"
+        },
+    )
+
+    dc.pdf_vers_csv(
+        source,
+        destination,
+    )
+
+    contenu = destination.read_text(
+        encoding="utf-8-sig"
+    )
+
+    assert "Texte OCR" in contenu
+    assert "FAC-OCR-001" in contenu
+    assert "114.98" in contenu
+
+
+def test_pdf_vers_excel_fallback_ocr(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    import fitz
+    from openpyxl import load_workbook
+    import src.comptaprivee.document_converter as dc
+
+    source = tmp_path / "scan.pdf"
+    destination = tmp_path / "scan.xlsx"
+
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(source)
+    doc.close()
+
+    monkeypatch.setattr(
+        dc,
+        "_extraire_ocr_pages_pdf",
+        lambda _source: {
+            1: "Facture FAC-OCR-001\nTotal 114.98 CAD"
+        },
+    )
+
+    dc.pdf_vers_excel(
+        source,
+        destination,
+    )
+
+    wb = load_workbook(destination)
+    try:
+        assert "OCR_Page_1" in wb.sheetnames
+        ws = wb["OCR_Page_1"]
+        valeurs = [
+            str(ws.cell(row=i, column=3).value or "")
+            for i in range(1, ws.max_row + 1)
+        ]
+        texte = "\n".join(valeurs)
+        assert "FAC-OCR-001" in texte
+        assert "114.98" in texte
+    finally:
+        wb.close()

@@ -46,10 +46,20 @@ def extraire_montant(libelle: str, texte: str) -> Decimal | None:
     return Decimal(valeur)
 
 
-def extraire_donnees_facture(texte: str) -> DonneesFacture:
-    """Extrait les principaux champs comptables d'une facture."""
+def _extraire_premier_libelle(libelles: tuple[str, ...], texte: str) -> str | None:
+    for libelle in libelles:
+        valeur = extraire_texte_ligne(libelle, texte)
+        if valeur:
+            return valeur
+    return None
+
+
+def _parser_bloc_facture(texte: str) -> DonneesFacture:
     return DonneesFacture(
-        numero=extraire_texte_ligne("Numero", texte),
+        numero=_extraire_premier_libelle(
+            ("Numero", "Numéro", "N° facture", "No facture", "Facture"),
+            texte,
+        ),
         date=extraire_texte_ligne("Date", texte),
         fournisseur=extraire_texte_ligne("Fournisseur", texte),
         client=extraire_texte_ligne("Client", texte),
@@ -58,3 +68,46 @@ def extraire_donnees_facture(texte: str) -> DonneesFacture:
         tvq=extraire_montant("TVQ", texte),
         total=extraire_montant("Total", texte),
     )
+
+
+def _score_facture(facture: DonneesFacture) -> int:
+    valeurs = (
+        facture.numero,
+        facture.date,
+        facture.fournisseur,
+        facture.client,
+        facture.sous_total,
+        facture.tps,
+        facture.tvq,
+        facture.total,
+    )
+    score = sum(v is not None for v in valeurs)
+
+    if (
+        facture.sous_total is not None
+        and facture.tps is not None
+        and facture.tvq is not None
+        and facture.total is not None
+    ):
+        calcule = facture.sous_total + facture.tps + facture.tvq
+        if abs(calcule - facture.total) <= Decimal("0.02"):
+            score += 5
+
+    return score
+
+
+def extraire_donnees_facture(texte: str) -> DonneesFacture:
+    blocs = [
+        bloc.strip()
+        for bloc in texte.split("\n\n--- Page suivante ---\n\n")
+        if bloc.strip()
+    ]
+
+    if not blocs:
+        return _parser_bloc_facture("")
+
+    if len(blocs) == 1:
+        return _parser_bloc_facture(blocs[0])
+
+    factures = [_parser_bloc_facture(bloc) for bloc in blocs]
+    return max(factures, key=_score_facture)

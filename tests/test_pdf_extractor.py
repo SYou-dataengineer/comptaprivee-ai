@@ -84,3 +84,39 @@ def test_extraire_texte_pdf_numerise_avec_ocr(tmp_path) -> None:
     assert "FACTURE NUMERISEE" in texte
     assert "SCAN-2026-001" in texte
     assert "1450.00 CAD" in texte
+
+def test_pdf_multi_pages_affiche_separateur_sans_perdre_limite_logique(
+    tmp_path,
+) -> None:
+    import fitz
+
+    from src.comptaprivee.pdf_extractor import extraire_texte_pdf
+
+    chemin = tmp_path / "deux_pages.pdf"
+
+    doc = fitz.open()
+    page1 = doc.new_page()
+    page1.insert_text(
+        (72, 72),
+        "Facture : PAGE-1 avec suffisamment de texte pour extraction native.",
+    )
+    page2 = doc.new_page()
+    page2.insert_text(
+        (72, 72),
+        "Facture : PAGE-2 avec suffisamment de texte pour extraction native.",
+    )
+    doc.save(chemin)
+    doc.close()
+
+    texte = extraire_texte_pdf(chemin)
+
+    assert "PAGE-1" in texte
+    assert "PAGE-2" in texte
+    assert "--- Page suivante ---" in texte
+    assert "\f" not in texte
+
+    blocs = texte.split("\n\n--- Page suivante ---\n\n")
+    assert len(blocs) == 2
+    assert "PAGE-1" in blocs[0]
+    assert "PAGE-2" in blocs[1]
+

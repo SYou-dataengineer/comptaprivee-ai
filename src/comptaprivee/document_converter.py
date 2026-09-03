@@ -559,46 +559,165 @@ def csv_vers_excel(
 
 
 def _extraire_tableaux_pdf(source_path: Path):
+    """Extrait les tableaux natifs détectables dans un PDF."""
     document = fitz.open(source_path)
     resultats = []
+
     try:
         for page_no, page in enumerate(document, start=1):
             detection = page.find_tables()
-            for table_no, table in enumerate(detection.tables, start=1):
+
+            for table_no, table in enumerate(
+                detection.tables,
+                start=1,
+            ):
                 data = table.extract()
-                if data and any(any(v not in (None, "") for v in row) for row in data):
-                    resultats.append((page_no, table_no, data))
+
+                if data and any(
+                    any(v not in (None, "") for v in row)
+                    for row in data
+                ):
+                    resultats.append(
+                        (page_no, table_no, data)
+                    )
     finally:
         document.close()
+
     return resultats
+
+
+def _extraire_ocr_pages_pdf(
+    source_path: Path,
+) -> dict[int, str]:
+    """OCR local uniquement des pages PDF qui en ont besoin."""
+    from tempfile import TemporaryDirectory
+
+    from .ocr_extractor import extraire_texte_image
+    from .ocr_normalizer import normaliser_montants_ocr
+    from .pdf_type_detector import analyser_pdf
+
+    analyse = analyser_pdf(source_path)
+
+    if not analyse.necessite_ocr:
+        return {}
+
+    pages_ocr = set(analyse.pages_ocr)
+    textes: dict[int, str] = {}
+
+    with fitz.open(source_path) as document:
+        with TemporaryDirectory(
+            prefix="comptaprivee_conversion_ocr_"
+        ) as dossier_temporaire:
+            dossier = Path(dossier_temporaire)
+
+            for numero_page, page in enumerate(
+                document,
+                start=1,
+            ):
+                if numero_page not in pages_ocr:
+                    continue
+
+                image_path = dossier / f"page_{numero_page}.png"
+
+                pixmap = page.get_pixmap(
+                    dpi=300,
+                    alpha=False,
+                )
+                pixmap.save(image_path)
+
+                texte = normaliser_montants_ocr(
+                    extraire_texte_image(
+                        image_path
+                    ).strip()
+                )
+
+                if texte:
+                    textes[numero_page] = texte
+
+    return textes
 
 
 def pdf_vers_csv(
     source: str | Path,
     destination: str | Path | None = None,
 ) -> ResultatConversion:
-    source_path = _verifier_source(source, {".pdf"})
-    destination_path = _preparer_destination(
-        source_path, destination, ".csv"
+    """Convertit les tableaux PDF en CSV avec fallback OCR local."""
+    source_path = _verifier_source(
+        source,
+        {".pdf"},
     )
+    destination_path = _preparer_destination(
+        source_path,
+        destination,
+        ".csv",
+    )
+
     tables = _extraire_tableaux_pdf(source_path)
-    if not tables:
+    textes_ocr = _extraire_ocr_pages_pdf(source_path)
+
+    if not tables and not textes_ocr:
         raise ErreurConversion(
-            "Aucun tableau structuré détecté. "
-            "Un PDF scanné nécessitera l'OCR local."
+            "Aucun tableau structuré ni texte OCR exploitable "
+            "n'a été détecté dans ce PDF."
         )
 
     with destination_path.open(
-        "w", encoding="utf-8-sig", newline=""
-    ) as f:
-        writer = csv.writer(f)
-        for idx, (page_no, table_no, data) in enumerate(tables):
-            if len(tables) > 1:
-                writer.writerow([f"Page {page_no} - Tableau {table_no}"])
+        "w",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        writer = csv.writer(fichier)
+
+        for idx, (
+            page_no,
+            table_no,
+            data,
+        ) in enumerate(tables):
+            if len(tables) > 1 or textes_ocr:
+                writer.writerow(
+                    [
+                        f"Page {page_no} - "
+                        f"Tableau {table_no}"
+                    ]
+                )
+
             for row in data:
-                writer.writerow(["" if v is None else v for v in row])
-            if idx < len(tables) - 1:
-                writer.writerow([])
+                writer.writerow(
+                    [
+                        "" if valeur is None else valeur
+                        for valeur in row
+                    ]
+                )
+
+            writer.writerow([])
+
+        # Un scan sans structure de tableau fiable est exporté
+        # sous forme Page / Ligne / Texte OCR plutôt que d'inventer
+        # des colonnes comptables.
+        for page_no in sorted(textes_ocr):
+            writer.writerow(
+                ["Page", "Ligne", "Texte OCR"]
+            )
+
+            lignes = [
+                ligne.strip()
+                for ligne in textes_ocr[page_no].splitlines()
+                if ligne.strip()
+            ]
+
+            for numero_ligne, ligne in enumerate(
+                lignes,
+                start=1,
+            ):
+                writer.writerow(
+                    [
+                        page_no,
+                        numero_ligne,
+                        ligne,
+                    ]
+                )
+
+            writer.writerow([])
 
     return ResultatConversion(
         source=source_path,
@@ -611,29 +730,96 @@ def pdf_vers_excel(
     source: str | Path,
     destination: str | Path | None = None,
 ) -> ResultatConversion:
-    source_path = _verifier_source(source, {".pdf"})
-    destination_path = _preparer_destination(
-        source_path, destination, ".xlsx"
+    """Convertit tableaux PDF et pages OCR en classeur Excel."""
+    source_path = _verifier_source(
+        source,
+        {".pdf"},
     )
+    destination_path = _preparer_destination(
+        source_path,
+        destination,
+        ".xlsx",
+    )
+
+    from copy import copy
     from openpyxl import Workbook
 
     tables = _extraire_tableaux_pdf(source_path)
-    if not tables:
+    textes_ocr = _extraire_ocr_pages_pdf(source_path)
+
+    if not tables and not textes_ocr:
         raise ErreurConversion(
-            "Aucun tableau structuré détecté. "
-            "Un PDF scanné nécessitera l'OCR local."
+            "Aucun tableau structuré ni texte OCR exploitable "
+            "n'a été détecté dans ce PDF."
         )
 
     wb = Workbook()
     wb.remove(wb.active)
 
     for page_no, table_no, data in tables:
-        ws = wb.create_sheet(title=f"P{page_no}_T{table_no}"[:31])
+        ws = wb.create_sheet(
+            title=f"P{page_no}_T{table_no}"[:31]
+        )
+
         for row in data:
-            ws.append(["" if v is None else v for v in row])
+            ws.append(
+                [
+                    "" if valeur is None else valeur
+                    for valeur in row
+                ]
+            )
+
         if ws.max_row:
             for cell in ws[1]:
-                cell.font = cell.font.copy(bold=True)
+                nouvelle_police = copy(cell.font)
+                nouvelle_police.bold = True
+                cell.font = nouvelle_police
+
+        for colonne in ws.columns:
+            largeur = max(
+                len(str(cell.value or ""))
+                for cell in colonne
+            )
+            lettre = colonne[0].column_letter
+            ws.column_dimensions[lettre].width = min(
+                max(10, largeur + 2),
+                45,
+            )
+
+    for page_no in sorted(textes_ocr):
+        ws = wb.create_sheet(
+            title=f"OCR_Page_{page_no}"[:31]
+        )
+        ws.append(
+            ["Page", "Ligne", "Texte OCR"]
+        )
+
+        lignes = [
+            ligne.strip()
+            for ligne in textes_ocr[page_no].splitlines()
+            if ligne.strip()
+        ]
+
+        for numero_ligne, ligne in enumerate(
+            lignes,
+            start=1,
+        ):
+            ws.append(
+                [
+                    page_no,
+                    numero_ligne,
+                    ligne,
+                ]
+            )
+
+        for cell in ws[1]:
+            nouvelle_police = copy(cell.font)
+            nouvelle_police.bold = True
+            cell.font = nouvelle_police
+
+        ws.column_dimensions["A"].width = 10
+        ws.column_dimensions["B"].width = 10
+        ws.column_dimensions["C"].width = 80
 
     wb.save(destination_path)
 
@@ -648,8 +834,11 @@ def pdf_vers_word(
     source: str | Path,
     destination: str | Path | None = None,
 ) -> ResultatConversion:
-    """Convertit un PDF texte en Word en recréant les tableaux détectés."""
-    source_path = _verifier_source(source, {".pdf"})
+    """Convertit PDF natif/mixte/scanné en Word avec OCR local."""
+    source_path = _verifier_source(
+        source,
+        {".pdf"},
+    )
     destination_path = _preparer_destination(
         source_path,
         destination,
@@ -665,6 +854,9 @@ def pdf_vers_word(
             "PDF → Word nécessite python-docx."
         ) from erreur
 
+    textes_ocr = _extraire_ocr_pages_pdf(
+        source_path
+    )
     pdf = fitz.open(source_path)
 
     try:
@@ -672,6 +864,8 @@ def pdf_vers_word(
         contenu_trouve = False
 
         for index_page, page in enumerate(pdf):
+            numero_page = index_page + 1
+
             if index_page > 0:
                 document_word.add_page_break()
 
@@ -681,6 +875,7 @@ def pdf_vers_word(
 
             for tableau in detection.tables:
                 donnees = tableau.extract()
+
                 if not donnees:
                     continue
 
@@ -690,14 +885,22 @@ def pdf_vers_word(
                 ):
                     continue
 
-                zones_tableaux.append(fitz.Rect(tableau.bbox))
+                zones_tableaux.append(
+                    fitz.Rect(tableau.bbox)
+                )
                 tableaux.append(donnees)
 
-            blocs = page.get_text("blocks", sort=True)
+            blocs = page.get_text(
+                "blocks",
+                sort=True,
+            )
 
             for bloc in blocs:
                 rect_bloc = fitz.Rect(
-                    bloc[0], bloc[1], bloc[2], bloc[3]
+                    bloc[0],
+                    bloc[1],
+                    bloc[2],
+                    bloc[3],
                 )
 
                 if any(
@@ -707,6 +910,7 @@ def pdf_vers_word(
                     continue
 
                 texte = str(bloc[4]).strip()
+
                 if not texte:
                     continue
 
@@ -714,47 +918,91 @@ def pdf_vers_word(
 
                 for ligne in texte.splitlines():
                     ligne = ligne.strip()
+
                     if ligne:
-                        document_word.add_paragraph(ligne)
+                        document_word.add_paragraph(
+                            ligne
+                        )
 
             for donnees in tableaux:
-                nb_colonnes = max(len(ligne) for ligne in donnees)
+                nb_colonnes = max(
+                    len(ligne)
+                    for ligne in donnees
+                )
 
                 tableau_word = document_word.add_table(
                     rows=0,
                     cols=nb_colonnes,
                 )
                 tableau_word.style = "Table Grid"
-                tableau_word.alignment = WD_TABLE_ALIGNMENT.CENTER
+                tableau_word.alignment = (
+                    WD_TABLE_ALIGNMENT.CENTER
+                )
 
-                for numero_ligne, ligne in enumerate(donnees):
+                for numero_ligne, ligne in enumerate(
+                    donnees
+                ):
                     cellules = tableau_word.add_row().cells
 
-                    for numero_colonne in range(nb_colonnes):
+                    for numero_colonne in range(
+                        nb_colonnes
+                    ):
                         valeur = (
                             ligne[numero_colonne]
                             if numero_colonne < len(ligne)
                             else ""
                         )
-                        cellules[numero_colonne].text = (
-                            "" if valeur is None else str(valeur)
+                        cellules[
+                            numero_colonne
+                        ].text = (
+                            ""
+                            if valeur is None
+                            else str(valeur)
                         )
 
-                        for paragraphe in cellules[numero_colonne].paragraphs:
-                            paragraphe.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                        for paragraphe in cellules[
+                            numero_colonne
+                        ].paragraphs:
+                            paragraphe.alignment = (
+                                WD_ALIGN_PARAGRAPH.LEFT
+                            )
+
                             if numero_ligne == 0:
                                 for run in paragraphe.runs:
                                     run.bold = True
 
                 contenu_trouve = True
 
+            # Si la page est un scan, ajouter son texte OCR.
+            texte_ocr = textes_ocr.get(
+                numero_page,
+                "",
+            ).strip()
+
+            if texte_ocr:
+                document_word.add_paragraph(
+                    "Texte reconnu par OCR"
+                ).runs[0].bold = True
+
+                for ligne in texte_ocr.splitlines():
+                    ligne = ligne.strip()
+
+                    if ligne:
+                        document_word.add_paragraph(
+                            ligne
+                        )
+
+                contenu_trouve = True
+
         if not contenu_trouve:
             raise ErreurConversion(
-                "Aucun texte éditable ni tableau n'a été détecté. "
-                "Le PDF semble scanné; une étape OCR sera nécessaire."
+                "Aucun texte, tableau ou résultat OCR "
+                "n'a été détecté dans ce PDF."
             )
 
-        document_word.save(destination_path)
+        document_word.save(
+            destination_path
+        )
 
     except ErreurConversion:
         raise
