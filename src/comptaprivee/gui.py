@@ -71,6 +71,10 @@ from .review_queue import (
     NiveauVerification,
     analyser_factures_a_verifier,
 )
+from .ocr_review_queue import (
+    lister_alertes_ocr_a_verifier,
+    synchroniser_export_ocr_a_verifier,
+)
 from .export_history import (
     compter_types,
     exporter_historique_csv,
@@ -990,6 +994,31 @@ class ApplicationComptaPrivee(tk.Tk):
                 source_path,
                 destination,
             )
+
+            if type_conversion in {
+                "PDF → CSV",
+                "PDF → Excel",
+            }:
+                try:
+                    synchroniser_export_ocr_a_verifier(
+                        resultat.source,
+                        resultat.destination,
+                        type_conversion,
+                    )
+                except (
+                    OSError,
+                    ValueError,
+                    RuntimeError,
+                ) as erreur_file_ocr:
+                    messagebox.showwarning(
+                        "File À vérifier",
+                        (
+                            "La conversion a réussi, mais la file "
+                            "À vérifier n'a pas pu être synchronisée.\n\n"
+                            f"Détail : {erreur_file_ocr}"
+                        ),
+                        parent=self,
+                    )
         except (
             ErreurConversion,
             FileNotFoundError,
@@ -1321,9 +1350,12 @@ class ApplicationComptaPrivee(tk.Tk):
             for iid in tableau.get_children():
                 tableau.delete(iid)
 
-            elements = analyser_factures_a_verifier(
-                lister_factures()
-            )
+            elements = [
+                *analyser_factures_a_verifier(
+                    lister_factures()
+                ),
+                *lister_alertes_ocr_a_verifier(),
+            ]
 
             for index, element in enumerate(elements):
                 facture = element.facture

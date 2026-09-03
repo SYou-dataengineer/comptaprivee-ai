@@ -51,3 +51,4 @@ data/logo_societe.*
 data/parametres.json
 .local_cleanup_archive/
 *.bak
+data/ocr_review_queue.json
