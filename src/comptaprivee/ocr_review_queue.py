@@ -573,3 +573,21 @@ def lister_alertes_ocr_a_verifier(
         )
 
     return resultats
+
+def marquer_alerte_ocr_resolue(
+    identifiant: int,
+    chemin_file: str | Path = CHEMIN_FILE_OCR_PAR_DEFAUT,
+) -> bool:
+    """Retire une anomalie OCR de la file locale après validation humaine."""
+    elements = _charger(chemin_file)
+    restants = [
+        element
+        for element in elements
+        if int(element.get("identifiant") or 0) != identifiant
+    ]
+
+    if len(restants) == len(elements):
+        return False
+
+    _enregistrer(restants, chemin_file)
+    return True

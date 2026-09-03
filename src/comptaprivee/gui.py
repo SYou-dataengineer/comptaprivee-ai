@@ -73,6 +73,7 @@ from .review_queue import (
 )
 from .ocr_review_queue import (
     lister_alertes_ocr_a_verifier,
+    marquer_alerte_ocr_resolue,
     synchroniser_export_ocr_a_verifier,
 )
 from .export_history import (
@@ -1350,6 +1351,8 @@ class ApplicationComptaPrivee(tk.Tk):
             for iid in tableau.get_children():
                 tableau.delete(iid)
 
+            elements_par_iid.clear()
+
             elements = [
                 *analyser_factures_a_verifier(
                     lister_factures()
@@ -1446,6 +1449,121 @@ class ApplicationComptaPrivee(tk.Tk):
             afficher_details,
         )
 
+        def element_selectionne():
+            selection = tableau.selection()
+
+            if not selection:
+                messagebox.showinfo(
+                    "À vérifier",
+                    "Sélectionnez d'abord une ligne.",
+                    parent=fenetre,
+                )
+                return None
+
+            return elements_par_iid.get(selection[0])
+
+        def ouvrir_chemin_ocr(attribut: str, titre: str) -> None:
+            element = element_selectionne()
+
+            if element is None:
+                return
+
+            facture = element.facture
+            valeur = getattr(facture, attribut, "")
+
+            if not valeur:
+                messagebox.showinfo(
+                    titre,
+                    "Cette action est disponible uniquement pour les alertes OCR.",
+                    parent=fenetre,
+                )
+                return
+
+            chemin = Path(valeur)
+
+            if not chemin.exists():
+                messagebox.showwarning(
+                    titre,
+                    f"Le fichier n'existe plus à cet emplacement :\n\n{chemin}",
+                    parent=fenetre,
+                )
+                return
+
+            try:
+                os.startfile(chemin)
+            except OSError as erreur:
+                messagebox.showwarning(
+                    titre,
+                    str(erreur),
+                    parent=fenetre,
+                )
+
+        def ouvrir_source_ocr() -> None:
+            ouvrir_chemin_ocr(
+                "source_document",
+                "Ouvrir le document source",
+            )
+
+        def ouvrir_export_ocr() -> None:
+            ouvrir_chemin_ocr(
+                "destination_export",
+                "Ouvrir l'export OCR",
+            )
+
+        def marquer_selection_resolue() -> None:
+            element = element_selectionne()
+
+            if element is None:
+                return
+
+            facture = element.facture
+
+            if not getattr(facture, "source_document", ""):
+                messagebox.showinfo(
+                    "Marquer comme résolue",
+                    "Cette action est disponible uniquement pour les alertes OCR.",
+                    parent=fenetre,
+                )
+                return
+
+            confirmer = messagebox.askyesno(
+                "Marquer comme résolue",
+                (
+                    "Retirer cette anomalie OCR de la file À vérifier ?\n\n"
+                    f"Facture : {facture.numero or '-'}\n"
+                    f"Fournisseur : {facture.fournisseur or '-'}"
+                ),
+                parent=fenetre,
+            )
+
+            if not confirmer:
+                return
+
+            retiree = marquer_alerte_ocr_resolue(
+                facture.identifiant
+            )
+
+            if not retiree:
+                messagebox.showwarning(
+                    "Marquer comme résolue",
+                    "L'alerte OCR n'a pas été trouvée dans la file locale.",
+                    parent=fenetre,
+                )
+                return
+
+            actualiser()
+
+            details.configure(state="normal")
+            details.delete("1.0", "end")
+            details.insert(
+                "1.0",
+                (
+                    "Alerte OCR marquée comme résolue.\n"
+                    "Elle a été retirée de la file À vérifier."
+                ),
+            )
+            details.configure(state="disabled")
+
         zone_boutons = ttk.Frame(panneau_droit)
         zone_boutons.pack(fill="x")
 
@@ -1454,6 +1572,24 @@ class ApplicationComptaPrivee(tk.Tk):
             text="Actualiser",
             command=actualiser,
         ).pack(side="left")
+
+        ttk.Button(
+            zone_boutons,
+            text="Ouvrir source",
+            command=ouvrir_source_ocr,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            zone_boutons,
+            text="Ouvrir export",
+            command=ouvrir_export_ocr,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            zone_boutons,
+            text="Marquer résolue",
+            command=marquer_selection_resolue,
+        ).pack(side="left", padx=(8, 0))
 
         ttk.Button(
             zone_boutons,
