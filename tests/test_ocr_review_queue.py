@@ -242,3 +242,141 @@ def test_marquer_derniere_alerte_ocr_laisse_file_vide(tmp_path) -> None:
     identifiant = lister_alertes_ocr_a_verifier(chemin_file)[0].facture.identifiant
     assert marquer_alerte_ocr_resolue(identifiant, chemin_file) is True
     assert lister_alertes_ocr_a_verifier(chemin_file) == []
+
+def test_resoudre_alerte_ocr_journalise_resolution(tmp_path) -> None:
+    from src.comptaprivee.audit_log import lister_evenements
+    from src.comptaprivee.ocr_review_queue import (
+        resoudre_alerte_ocr_et_journaliser,
+    )
+
+    source = tmp_path / "scan_resolution.pdf"
+    source.write_bytes(b"%PDF-test")
+    destination = tmp_path / "scan_resolution.csv"
+    chemin_file = tmp_path / "queue.json"
+    chemin_audit = tmp_path / "audit.db"
+
+    with destination.open(
+        "w",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        writer = csv.writer(fichier)
+        writer.writerow(ENTETE)
+        writer.writerow([
+            "2026-09-05",
+            "Fournisseur F",
+            "FAC-N05",
+            "1200.00",
+            "40.00",
+            "119.70",
+            "1279.70",
+            "À VÉRIFIER",
+        ])
+
+    synchroniser_export_ocr_a_verifier(
+        source,
+        destination,
+        "PDF → CSV",
+        chemin_file,
+    )
+
+    identifiant = lister_alertes_ocr_a_verifier(
+        chemin_file
+    )[0].facture.identifiant
+
+    assert resoudre_alerte_ocr_et_journaliser(
+        identifiant,
+        chemin_file,
+        chemin_base_audit=chemin_audit,
+    ) is True
+
+    assert lister_alertes_ocr_a_verifier(
+        chemin_file
+    ) == []
+
+    evenements = lister_evenements(
+        chemin_audit
+    )
+
+    assert len(evenements) == 1
+    assert evenements[0].action == "Alerte OCR résolue"
+    assert evenements[0].categorie == "ocr"
+    assert evenements[0].reference == "FAC-N05"
+    assert "scan_resolution.pdf" in (evenements[0].details or "")
+    assert "page=1" in (evenements[0].details or "")
+    assert "ligne=2" in (evenements[0].details or "")
+
+
+def test_resoudre_alerte_ocr_absente_ne_journalise_pas(tmp_path) -> None:
+    from src.comptaprivee.audit_log import lister_evenements
+    from src.comptaprivee.ocr_review_queue import (
+        resoudre_alerte_ocr_et_journaliser,
+    )
+
+    chemin_file = tmp_path / "queue.json"
+    chemin_audit = tmp_path / "audit.db"
+
+    assert resoudre_alerte_ocr_et_journaliser(
+        -999,
+        chemin_file,
+        chemin_base_audit=chemin_audit,
+    ) is False
+
+    assert lister_evenements(
+        chemin_audit
+    ) == []
+
+
+def test_resolution_ocr_reste_possible_si_journal_indisponible(
+    tmp_path,
+) -> None:
+    from src.comptaprivee.ocr_review_queue import (
+        resoudre_alerte_ocr_et_journaliser,
+    )
+
+    source = tmp_path / "scan.pdf"
+    source.write_bytes(b"%PDF-test")
+    destination = tmp_path / "scan.csv"
+    chemin_file = tmp_path / "queue.json"
+
+    with destination.open(
+        "w",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        writer = csv.writer(fichier)
+        writer.writerow(ENTETE)
+        writer.writerow([
+            "2026-09-05",
+            "Fournisseur F",
+            "FAC-N05",
+            "1200.00",
+            "40.00",
+            "119.70",
+            "1279.70",
+            "À VÉRIFIER",
+        ])
+
+    synchroniser_export_ocr_a_verifier(
+        source,
+        destination,
+        "PDF → CSV",
+        chemin_file,
+    )
+
+    identifiant = lister_alertes_ocr_a_verifier(
+        chemin_file
+    )[0].facture.identifiant
+
+    chemin_audit_invalide = tmp_path / "dossier"
+    chemin_audit_invalide.mkdir()
+
+    assert resoudre_alerte_ocr_et_journaliser(
+        identifiant,
+        chemin_file,
+        chemin_base_audit=chemin_audit_invalide,
+    ) is True
+
+    assert lister_alertes_ocr_a_verifier(
+        chemin_file
+    ) == []

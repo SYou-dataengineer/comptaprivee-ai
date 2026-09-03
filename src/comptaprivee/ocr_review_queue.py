@@ -23,6 +23,7 @@ from .review_queue import (
     ElementAVerifier,
     NiveauVerification,
 )
+from .audit_log import journaliser_sans_bloquer
 
 
 CHEMIN_FILE_OCR_PAR_DEFAUT = (
@@ -590,4 +591,83 @@ def marquer_alerte_ocr_resolue(
         return False
 
     _enregistrer(restants, chemin_file)
+    return True
+
+def resoudre_alerte_ocr_et_journaliser(
+    identifiant: int,
+    chemin_file: str | Path = CHEMIN_FILE_OCR_PAR_DEFAUT,
+    *,
+    chemin_base_audit: str | Path | None = None,
+) -> bool:
+    """Résout une alerte OCR et conserve une trace dans le journal d'audit.
+
+    La disparition de la file reste prioritaire : un problème de journal
+    d'audit ne bloque jamais la résolution.
+    """
+    elements = _charger(chemin_file)
+
+    cible = next(
+        (
+            element
+            for element in elements
+            if int(element.get("identifiant") or 0) == identifiant
+        ),
+        None,
+    )
+
+    if cible is None:
+        return False
+
+    retiree = marquer_alerte_ocr_resolue(
+        identifiant,
+        chemin_file,
+    )
+
+    if not retiree:
+        return False
+
+    numero = str(cible.get("numero") or "").strip()
+    source = str(cible.get("source_document") or "").strip()
+    destination = str(cible.get("destination_export") or "").strip()
+    total = str(cible.get("total") or "").strip()
+    page = int(cible.get("numero_page") or 1)
+    tableau = int(cible.get("numero_tableau") or 1)
+    ligne = int(cible.get("numero_ligne") or 1)
+
+    raisons = [
+        str(raison).strip()
+        for raison in cible.get("raisons", [])
+        if str(raison).strip()
+    ]
+
+    reference = (
+        numero
+        or (Path(source).name if source else "")
+        or str(identifiant)
+    )
+
+    details = (
+        f"source={Path(source).name if source else '-'}; "
+        f"export={Path(destination).name if destination else '-'}; "
+        f"page={page}; tableau={tableau}; ligne={ligne}; "
+        f"total={total or '-'}"
+    )
+
+    if raisons:
+        details += "; motifs=" + " | ".join(raisons)
+
+    arguments = {
+        "details": details,
+        "reference": reference,
+    }
+
+    if chemin_base_audit is not None:
+        arguments["chemin_base"] = chemin_base_audit
+
+    journaliser_sans_bloquer(
+        "Alerte OCR résolue",
+        "ocr",
+        **arguments,
+    )
+
     return True

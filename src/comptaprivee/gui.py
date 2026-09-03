@@ -73,7 +73,7 @@ from .review_queue import (
 )
 from .ocr_review_queue import (
     lister_alertes_ocr_a_verifier,
-    marquer_alerte_ocr_resolue,
+    resoudre_alerte_ocr_et_journaliser,
     synchroniser_export_ocr_a_verifier,
 )
 from .export_history import (
@@ -1539,7 +1539,7 @@ class ApplicationComptaPrivee(tk.Tk):
             if not confirmer:
                 return
 
-            retiree = marquer_alerte_ocr_resolue(
+            retiree = resoudre_alerte_ocr_et_journaliser(
                 facture.identifiant
             )
 
@@ -1559,7 +1559,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 "1.0",
                 (
                     "Alerte OCR marquée comme résolue.\n"
-                    "Elle a été retirée de la file À vérifier."
+                    "Elle a été retirée de la file À vérifier.\n"
+                    "La résolution est conservée dans le Journal d'audit."
                 ),
             )
             details.configure(state="disabled")
