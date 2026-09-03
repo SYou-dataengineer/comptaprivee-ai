@@ -25,6 +25,9 @@ from .document_converter import (
     CONVERSIONS_SUPPORTEES,
     ErreurConversion,
     convertir_document,
+    images_vers_pdf,
+    fusionner_pdfs,
+    pdf_vers_images,
 )
 from .company_profile import (
     ProfilSociete,
@@ -521,11 +524,366 @@ class ApplicationComptaPrivee(tk.Tk):
         return chemin
 
 
+    def convertir_images_depuis_interface(self) -> None:
+        """Sélectionne autant d'images que nécessaire et crée un seul PDF."""
+        chemins: list[Path] = []
+
+        while True:
+            sources = filedialog.askopenfilenames(
+                parent=self,
+                title=(
+                    "Choisir une ou plusieurs images "
+                    f"(actuellement : {len(chemins)})"
+                ),
+                filetypes=[
+                    (
+                        "Images",
+                        "*.png *.jpg *.jpeg *.bmp *.tif *.tiff",
+                    ),
+                    ("Tous les fichiers", "*.*"),
+                ],
+            )
+
+            if sources:
+                for source in sources:
+                    chemin = Path(source)
+
+                    if chemin not in chemins:
+                        chemins.append(chemin)
+
+            if not chemins:
+                return
+
+            ajouter = messagebox.askyesno(
+                "Ajouter d'autres images ?",
+                (
+                    f"{len(chemins)} image(s) sélectionnée(s).\n\n"
+                    "Voulez-vous ouvrir de nouveau la fenêtre "
+                    "pour ajouter d'autres images ?"
+                ),
+                parent=self,
+            )
+
+            if not ajouter:
+                break
+
+        destination = filedialog.asksaveasfilename(
+            parent=self,
+            title="Enregistrer le PDF regroupé",
+            defaultextension=".pdf",
+            initialfile=f"{chemins[0].stem}_images.pdf",
+            filetypes=[("PDF", "*.pdf")],
+        )
+
+        if not destination:
+            return
+
+        self.statut.set(
+            f"Conversion de {len(chemins)} image(s) en PDF..."
+        )
+        self.update_idletasks()
+
+        try:
+            resultat = images_vers_pdf(
+                chemins,
+                destination,
+            )
+
+        except (ErreurConversion, ValueError, FileNotFoundError) as erreur:
+            self.statut.set(
+                "Échec de conversion : Images → PDF"
+            )
+            messagebox.showerror(
+                "Conversion impossible",
+                str(erreur),
+                parent=self,
+            )
+            return
+
+        except Exception as erreur:
+            self.statut.set(
+                "Échec de conversion : Images → PDF"
+            )
+            messagebox.showerror(
+                "Conversion impossible",
+                f"Erreur inattendue : {erreur}",
+                parent=self,
+            )
+            return
+
+        journaliser_sans_bloquer(
+            "Document converti",
+            "conversion",
+            details=(
+                f"Images → PDF | "
+                f"{len(chemins)} image(s)"
+            ),
+            reference=resultat.destination.name,
+        )
+
+        self.statut.set(
+            f"Conversion terminée : {resultat.destination.name}"
+        )
+
+        messagebox.showinfo(
+            "Conversion terminée",
+            (
+                f"{len(chemins)} image(s) ont été regroupées "
+                f"dans un seul PDF.\n\n"
+                f"Fichier : {resultat.destination}"
+            ),
+            parent=self,
+        )
+
+    def fusionner_pdfs_depuis_interface(self) -> None:
+        """Sélectionne plusieurs PDF et les fusionne dans un seul fichier."""
+        chemins: list[Path] = []
+
+        while True:
+            sources = filedialog.askopenfilenames(
+                parent=self,
+                title=(
+                    "Choisir un ou plusieurs PDF "
+                    f"(actuellement : {len(chemins)})"
+                ),
+                filetypes=[
+                    ("Documents PDF", "*.pdf"),
+                    ("Tous les fichiers", "*.*"),
+                ],
+            )
+
+            if sources:
+                for source in sources:
+                    chemin = Path(source)
+                    if chemin not in chemins:
+                        chemins.append(chemin)
+
+            if not chemins:
+                return
+
+            ajouter = messagebox.askyesno(
+                "Ajouter d'autres PDF ?",
+                (
+                    f"{len(chemins)} PDF sélectionné(s).\n\n"
+                    "Voulez-vous ouvrir de nouveau la fenêtre "
+                    "pour ajouter d'autres PDF ?"
+                ),
+                parent=self,
+            )
+
+            if not ajouter:
+                break
+
+        destination = filedialog.asksaveasfilename(
+            parent=self,
+            title="Enregistrer le PDF fusionné",
+            defaultextension=".pdf",
+            initialfile=f"{chemins[0].stem}_fusion.pdf",
+            filetypes=[("PDF", "*.pdf")],
+        )
+
+        if not destination:
+            return
+
+        self.statut.set(
+            f"Fusion de {len(chemins)} PDF..."
+        )
+        self.update_idletasks()
+
+        try:
+            resultat = fusionner_pdfs(
+                chemins,
+                destination,
+            )
+
+        except (ErreurConversion, ValueError, FileNotFoundError) as erreur:
+            self.statut.set(
+                "Échec de conversion : PDFs → PDF"
+            )
+            messagebox.showerror(
+                "Fusion impossible",
+                str(erreur),
+                parent=self,
+            )
+            return
+
+        except Exception as erreur:
+            self.statut.set(
+                "Échec de conversion : PDFs → PDF"
+            )
+            messagebox.showerror(
+                "Fusion impossible",
+                f"Erreur inattendue : {erreur}",
+                parent=self,
+            )
+            return
+
+        journaliser_sans_bloquer(
+            "Document converti",
+            "conversion",
+            details=(
+                f"PDFs → PDF | "
+                f"{len(chemins)} PDF"
+            ),
+            reference=resultat.destination.name,
+        )
+
+        self.statut.set(
+            f"Fusion terminée : {resultat.destination.name}"
+        )
+
+        messagebox.showinfo(
+            "Fusion terminée",
+            (
+                f"{len(chemins)} PDF ont été fusionnés "
+                f"dans un seul fichier.\n\n"
+                f"Fichier : {resultat.destination}"
+            ),
+            parent=self,
+        )
+
+    def convertir_pdf_vers_images_depuis_interface(
+        self,
+        format_image: str,
+    ) -> None:
+        """Convertit les pages choisies d'un PDF en images PNG ou JPG."""
+        source = filedialog.askopenfilename(
+            parent=self,
+            title="Choisir un PDF à convertir en images",
+            filetypes=[
+                ("Documents PDF", "*.pdf"),
+                ("Tous les fichiers", "*.*"),
+            ],
+        )
+
+        if not source:
+            return
+
+        pages = simpledialog.askstring(
+            "Pages à convertir",
+            (
+                "Quelles pages voulez-vous convertir ?\n\n"
+                "Exemples : 1 | 2-5 | 1,3,5 | 1,3-5,8\n"
+                "Laissez vide pour convertir toutes les pages."
+            ),
+            parent=self,
+        )
+
+        if pages is None:
+            return
+
+        dossier = filedialog.askdirectory(
+            parent=self,
+            title="Choisir le dossier de destination des images",
+        )
+
+        if not dossier:
+            return
+
+        dpi = simpledialog.askinteger(
+            "Qualité des images",
+            (
+                "Résolution DPI (72 à 600).\n"
+                "150 = qualité standard, 300 = haute qualité."
+            ),
+            parent=self,
+            initialvalue=150,
+            minvalue=72,
+            maxvalue=600,
+        )
+
+        if dpi is None:
+            return
+
+        type_conversion = (
+            "PDF → Images (PNG)"
+            if format_image.lower() == "png"
+            else "PDF → Images (JPG)"
+        )
+
+        self.statut.set(
+            f"Conversion en cours : {type_conversion}"
+        )
+        self.update_idletasks()
+
+        try:
+            sorties = pdf_vers_images(
+                source,
+                dossier,
+                format_image=format_image,
+                dpi=dpi,
+                pages=pages,
+            )
+
+        except (ErreurConversion, ValueError, FileNotFoundError) as erreur:
+            self.statut.set(
+                f"Échec de conversion : {type_conversion}"
+            )
+            messagebox.showerror(
+                "Conversion impossible",
+                str(erreur),
+                parent=self,
+            )
+            return
+
+        except Exception as erreur:
+            self.statut.set(
+                f"Échec de conversion : {type_conversion}"
+            )
+            messagebox.showerror(
+                "Conversion impossible",
+                f"Erreur inattendue : {erreur}",
+                parent=self,
+            )
+            return
+
+        journaliser_sans_bloquer(
+            "Document converti",
+            "conversion",
+            details=(
+                f"{type_conversion} | "
+                f"{len(sorties)} image(s) | "
+                f"{dpi} DPI | "
+                f"pages={pages.strip() or 'toutes'}"
+            ),
+            reference=Path(source).name,
+        )
+
+        self.statut.set(
+            f"Conversion terminée : {len(sorties)} image(s) créées"
+        )
+
+        messagebox.showinfo(
+            "Conversion terminée",
+            (
+                f"{len(sorties)} image(s) ont été créées.\n\n"
+                f"Pages : {pages.strip() or 'toutes'}\n"
+                f"Dossier : {Path(dossier)}"
+            ),
+            parent=self,
+        )
+
     def convertir_depuis_interface(
         self,
         type_conversion: str,
     ) -> None:
         """Sélectionne un fichier puis lance une conversion locale."""
+        if type_conversion == "Images → PDF":
+            self.convertir_images_depuis_interface()
+            return
+
+        if type_conversion == "PDFs → PDF":
+            self.fusionner_pdfs_depuis_interface()
+            return
+
+        if type_conversion == "PDF → Images (PNG)":
+            self.convertir_pdf_vers_images_depuis_interface("png")
+            return
+
+        if type_conversion == "PDF → Images (JPG)":
+            self.convertir_pdf_vers_images_depuis_interface("jpg")
+            return
+
         configurations = {
             "Word → PDF": {
                 "types": [("Documents Word", "*.doc *.docx")],

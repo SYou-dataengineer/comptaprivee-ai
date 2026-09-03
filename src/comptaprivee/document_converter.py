@@ -9,6 +9,8 @@ from pathlib import Path
 
 import fitz
 
+from .pdf_table_extractor import extraire_tableaux_pdf
+
 
 EXTENSIONS_WORD = {".doc", ".docx"}
 EXTENSIONS_EXCEL = {".xls", ".xlsx", ".xlsm"}
@@ -19,7 +21,10 @@ CONVERSIONS_SUPPORTEES = (
     "Excel → PDF",
     "Excel → CSV",
     "CSV → Excel",
-    "Image → PDF",
+    "Images → PDF",
+    "PDFs → PDF",
+    "PDF → Images (PNG)",
+    "PDF → Images (JPG)",
     "PDF → CSV",
     "PDF → Excel",
     "PDF → Word",
@@ -520,6 +525,309 @@ def image_vers_pdf(
     )
 
 
+def images_vers_pdf(
+    sources: list[str | Path] | tuple[str | Path, ...],
+    destination: str | Path | None = None,
+) -> ResultatConversion:
+    # Regroupe plusieurs images dans un seul PDF, dans l'ordre fourni.
+    if not sources:
+        raise ValueError(
+            "Sélectionnez au moins une image à convertir."
+        )
+
+    chemins = [
+        _verifier_source(source, EXTENSIONS_IMAGES)
+        for source in sources
+    ]
+
+    premiere_source = chemins[0]
+
+    if destination is None:
+        destination_path = premiere_source.with_name(
+            f"{premiere_source.stem}_images.pdf"
+        )
+    else:
+        destination_path = Path(destination)
+
+    if destination_path.suffix.lower() != ".pdf":
+        raise ValueError(
+            "Le fichier de destination doit avoir l'extension .pdf."
+        )
+
+    destination_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    document = fitz.open()
+
+    try:
+        for chemin_image in chemins:
+            image = fitz.open(chemin_image)
+
+            try:
+                pdf_bytes = image.convert_to_pdf()
+            finally:
+                image.close()
+
+            pdf_image = fitz.open(
+                "pdf",
+                pdf_bytes,
+            )
+
+            try:
+                document.insert_pdf(pdf_image)
+            finally:
+                pdf_image.close()
+
+        if document.page_count == 0:
+            raise ErreurConversion(
+                "Aucune page n'a été créée à partir des images."
+            )
+
+        document.save(destination_path)
+
+    except ErreurConversion:
+        raise
+
+    except Exception as erreur:
+        raise ErreurConversion(
+            f"Impossible de regrouper les images en PDF : {erreur}"
+        ) from erreur
+
+    finally:
+        document.close()
+
+    return ResultatConversion(
+        source=premiere_source,
+        destination=destination_path,
+        type_conversion="Images → PDF",
+    )
+
+
+def fusionner_pdfs(
+    sources: list[str | Path] | tuple[str | Path, ...],
+    destination: str | Path | None = None,
+) -> ResultatConversion:
+    # Fusionne plusieurs PDF dans l'ordre fourni.
+    if not sources:
+        raise ValueError(
+            "Sélectionnez au moins un fichier PDF à fusionner."
+        )
+
+    chemins = [
+        _verifier_source(source, {".pdf"})
+        for source in sources
+    ]
+
+    premiere_source = chemins[0]
+
+    if destination is None:
+        destination_path = premiere_source.with_name(
+            f"{premiere_source.stem}_fusion.pdf"
+        )
+    else:
+        destination_path = Path(destination)
+
+    if destination_path.suffix.lower() != ".pdf":
+        raise ValueError(
+            "Le fichier de destination doit avoir l'extension .pdf."
+        )
+
+    destination_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    document = fitz.open()
+
+    try:
+        for chemin_pdf in chemins:
+            pdf = fitz.open(chemin_pdf)
+
+            try:
+                if pdf.page_count == 0:
+                    continue
+
+                document.insert_pdf(pdf)
+
+            finally:
+                pdf.close()
+
+        if document.page_count == 0:
+            raise ErreurConversion(
+                "Aucune page PDF valide n'a été trouvée."
+            )
+
+        document.save(destination_path)
+
+    except ErreurConversion:
+        raise
+
+    except Exception as erreur:
+        raise ErreurConversion(
+            f"Impossible de fusionner les PDF : {erreur}"
+        ) from erreur
+
+    finally:
+        document.close()
+
+    return ResultatConversion(
+        source=premiere_source,
+        destination=destination_path,
+        type_conversion="PDFs → PDF",
+    )
+
+
+def _normaliser_pages_selection(
+    selection: str,
+    nombre_pages: int,
+) -> list[int]:
+    # Convertit "1,3-5" en indices 0-based ordonnés et uniques.
+    texte = selection.strip()
+
+    if not texte:
+        return list(range(nombre_pages))
+
+    pages: list[int] = []
+
+    for morceau in texte.split(","):
+        morceau = morceau.strip()
+        if not morceau:
+            continue
+
+        if "-" in morceau:
+            debut_txt, fin_txt = morceau.split("-", 1)
+
+            if not debut_txt.strip().isdigit() or not fin_txt.strip().isdigit():
+                raise ValueError(
+                    "Sélection de pages invalide. Exemple accepté : 1,3-5"
+                )
+
+            debut = int(debut_txt)
+            fin = int(fin_txt)
+
+            if debut > fin:
+                raise ValueError(
+                    "Une plage de pages doit aller du plus petit au plus grand."
+                )
+
+            numeros = range(debut, fin + 1)
+
+        else:
+            if not morceau.isdigit():
+                raise ValueError(
+                    "Sélection de pages invalide. Exemple accepté : 1,3-5"
+                )
+
+            numeros = [int(morceau)]
+
+        for numero in numeros:
+            if numero < 1 or numero > nombre_pages:
+                raise ValueError(
+                    f"La page {numero} n'existe pas. "
+                    f"Le document contient {nombre_pages} page(s)."
+                )
+
+            index = numero - 1
+
+            if index not in pages:
+                pages.append(index)
+
+    if not pages:
+        raise ValueError(
+            "Aucune page valide n'a été sélectionnée."
+        )
+
+    return pages
+
+
+def pdf_vers_images(
+    source: str | Path,
+    dossier_destination: str | Path | None = None,
+    *,
+    format_image: str = "png",
+    dpi: int = 150,
+    pages: str = "",
+) -> list[Path]:
+    # Convertit les pages PDF choisies en images séparées.
+    source_path = _verifier_source(source, {".pdf"})
+
+    format_normalise = format_image.strip().lower()
+    if format_normalise == "jpeg":
+        format_normalise = "jpg"
+
+    if format_normalise not in {"png", "jpg"}:
+        raise ValueError(
+            "Le format image doit être 'png' ou 'jpg'."
+        )
+
+    if dpi < 72 or dpi > 600:
+        raise ValueError(
+            "Le DPI doit être compris entre 72 et 600."
+        )
+
+    if dossier_destination is None:
+        destination_dir = source_path.with_name(
+            f"{source_path.stem}_images"
+        )
+    else:
+        destination_dir = Path(dossier_destination)
+
+    destination_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    zoom = dpi / 72
+    matrice = fitz.Matrix(zoom, zoom)
+    sorties: list[Path] = []
+
+    try:
+        with fitz.open(source_path) as document:
+            if document.page_count == 0:
+                raise ErreurConversion(
+                    "Le PDF ne contient aucune page."
+                )
+
+            pages_selectionnees = _normaliser_pages_selection(
+                pages,
+                document.page_count,
+            )
+
+            largeur_numero = max(
+                3,
+                len(str(document.page_count)),
+            )
+
+            for index in pages_selectionnees:
+                page = document[index]
+
+                pixmap = page.get_pixmap(
+                    matrix=matrice,
+                    alpha=False,
+                )
+
+                destination = destination_dir / (
+                    f"{source_path.stem}_page_"
+                    f"{index + 1:0{largeur_numero}d}."
+                    f"{format_normalise}"
+                )
+
+                pixmap.save(destination)
+                sorties.append(destination)
+
+    except (ErreurConversion, ValueError):
+        raise
+
+    except Exception as erreur:
+        raise ErreurConversion(
+            f"Impossible de convertir le PDF en images : {erreur}"
+        ) from erreur
+
+    return sorties
+
+
 def csv_vers_excel(
     source: str | Path,
     destination: str | Path | None = None,
@@ -637,87 +945,101 @@ def _extraire_ocr_pages_pdf(
     return textes
 
 
+def _extraire_pages_pdf_avec_ocr(
+    source: str | Path,
+) -> list[str]:
+    # Réutilise l'extracteur PDF intelligent déjà validé par ComptaPrivée AI
+    # puis restitue une liste page par page pour les fallbacks CSV / Excel.
+    from .pdf_extractor import extraire_texte_pdf
+
+    texte = extraire_texte_pdf(source)
+
+    if not texte.strip():
+        return [""]
+
+    separateur = "\n\n--- Page suivante ---\n\n"
+
+    return [
+        bloc.strip()
+        for bloc in texte.split(separateur)
+    ]
+
+
+def _extraire_pages_pdf_fallback(
+    source_path: Path,
+) -> dict[int, str]:
+    # Combine le texte natif de chaque page et l'OCR uniquement
+    # pour les pages qui en ont besoin.
+    pages: dict[int, str] = {}
+
+    with fitz.open(source_path) as document:
+        for numero_page, page in enumerate(document, start=1):
+            texte = page.get_text("text").strip()
+            if texte:
+                pages[numero_page] = texte
+
+    # L'ancien moteur OCR reste la source prioritaire pour les pages
+    # scannées / image. Les tests historiques peuvent aussi le monkeypatcher.
+    pages_ocr = _extraire_ocr_pages_pdf(source_path)
+
+    for numero_page, texte_ocr in pages_ocr.items():
+        if texte_ocr and texte_ocr.strip():
+            pages[numero_page] = texte_ocr.strip()
+
+    return pages
+
+
 def pdf_vers_csv(
     source: str | Path,
     destination: str | Path | None = None,
 ) -> ResultatConversion:
-    """Convertit les tableaux PDF en CSV avec fallback OCR local."""
-    source_path = _verifier_source(
-        source,
-        {".pdf"},
-    )
+    source_path = _verifier_source(source, {".pdf"})
     destination_path = _preparer_destination(
-        source_path,
-        destination,
-        ".csv",
+        source_path, destination, ".csv"
     )
 
-    tables = _extraire_tableaux_pdf(source_path)
-    textes_ocr = _extraire_ocr_pages_pdf(source_path)
-
-    if not tables and not textes_ocr:
-        raise ErreurConversion(
-            "Aucun tableau structuré ni texte OCR exploitable "
-            "n'a été détecté dans ce PDF."
-        )
+    tableaux = extraire_tableaux_pdf(source_path)
 
     with destination_path.open(
         "w",
         encoding="utf-8-sig",
         newline="",
-    ) as fichier:
-        writer = csv.writer(fichier)
+    ) as fichier_csv:
+        writer = csv.writer(fichier_csv)
 
-        for idx, (
-            page_no,
-            table_no,
-            data,
-        ) in enumerate(tables):
-            if len(tables) > 1 or textes_ocr:
-                writer.writerow(
-                    [
-                        f"Page {page_no} - "
-                        f"Tableau {table_no}"
-                    ]
-                )
+        if tableaux:
+            plusieurs = len(tableaux) > 1
 
-            for row in data:
-                writer.writerow(
-                    [
-                        "" if valeur is None else valeur
-                        for valeur in row
-                    ]
-                )
+            for index, tableau in enumerate(tableaux, start=1):
+                if plusieurs:
+                    writer.writerow(
+                        [
+                            f"Page {tableau.numero_page}",
+                            f"Tableau {tableau.numero_tableau}",
+                        ]
+                    )
 
-            writer.writerow([])
+                for ligne in _preparer_tableau_ocr_pour_csv(tableau.lignes):
+                    writer.writerow(ligne)
 
-        # Un scan sans structure de tableau fiable est exporté
-        # sous forme Page / Ligne / Texte OCR plutôt que d'inventer
-        # des colonnes comptables.
-        for page_no in sorted(textes_ocr):
-            writer.writerow(
-                ["Page", "Ligne", "Texte OCR"]
-            )
+                if plusieurs and index < len(tableaux):
+                    writer.writerow([])
 
-            lignes = [
-                ligne.strip()
-                for ligne in textes_ocr[page_no].splitlines()
-                if ligne.strip()
-            ]
+        else:
+            pages_ocr = _extraire_pages_pdf_fallback(source_path)
+            writer.writerow(["Page", "Ligne", "Texte OCR"])
 
-            for numero_ligne, ligne in enumerate(
-                lignes,
-                start=1,
-            ):
-                writer.writerow(
-                    [
-                        page_no,
-                        numero_ligne,
-                        ligne,
-                    ]
-                )
+            for numero_page, texte in sorted(pages_ocr.items()):
+                lignes = [
+                    ligne.strip()
+                    for ligne in texte.splitlines()
+                    if ligne.strip()
+                ]
 
-            writer.writerow([])
+                for numero_ligne, ligne in enumerate(lignes, start=1):
+                    writer.writerow(
+                        [numero_page, numero_ligne, ligne]
+                    )
 
     return ResultatConversion(
         source=source_path,
@@ -726,100 +1048,152 @@ def pdf_vers_csv(
     )
 
 
+def _preparer_tableau_ocr_pour_excel(
+    lignes: list[list[str]],
+) -> list[list[str]]:
+    """Prépare un tableau OCR pour Excel sans inventer de valeurs.
+
+    - normalise seulement les montants sûrs ;
+    - ajoute une colonne « Validation OCR » ;
+    - marque « À VÉRIFIER » si les montants sont incohérents ;
+    - laisse fournisseur et numéro de facture exactement tels que lus.
+    """
+    from .ocr_table_validator import (
+        detecter_anomalies_comptables,
+        normaliser_tableau_comptable,
+    )
+
+    if not lignes:
+        return lignes
+
+    normalise = normaliser_tableau_comptable(
+        lignes,
+    )
+
+    anomalies = detecter_anomalies_comptables(
+        normalise,
+    )
+
+    lignes_a_verifier = {
+        anomalie.numero_ligne
+        for anomalie in anomalies
+    }
+
+    entete = list(normalise[0])
+
+    if not any(
+        cellule.strip().lower() == "validation ocr"
+        for cellule in entete
+    ):
+        entete.append("Validation OCR")
+
+    resultat = [entete]
+
+    for numero_ligne, ligne in enumerate(
+        normalise[1:],
+        start=2,
+    ):
+        copie = list(ligne)
+
+        statut = (
+            "À VÉRIFIER"
+            if numero_ligne in lignes_a_verifier
+            else "OK"
+        )
+
+        copie.append(statut)
+        resultat.append(copie)
+
+    return resultat
+
+
+def _preparer_tableau_ocr_pour_csv(
+    lignes: list[list[str]],
+) -> list[list[str]]:
+    """Prépare un tableau OCR pour CSV avec les mêmes contrôles que l'Excel.
+
+    Réutilise volontairement la logique validée de PDF -> Excel afin que
+    les deux formats aient exactement le même comportement :
+    normalisation prudente + colonne Validation OCR.
+    """
+    return _preparer_tableau_ocr_pour_excel(
+        lignes,
+    )
+
+
 def pdf_vers_excel(
     source: str | Path,
     destination: str | Path | None = None,
 ) -> ResultatConversion:
-    """Convertit tableaux PDF et pages OCR en classeur Excel."""
-    source_path = _verifier_source(
-        source,
-        {".pdf"},
-    )
+    source_path = _verifier_source(source, {".pdf"})
     destination_path = _preparer_destination(
-        source_path,
-        destination,
-        ".xlsx",
+        source_path, destination, ".xlsx"
     )
 
-    from copy import copy
     from openpyxl import Workbook
+    from openpyxl.styles import Font
 
-    tables = _extraire_tableaux_pdf(source_path)
-    textes_ocr = _extraire_ocr_pages_pdf(source_path)
-
-    if not tables and not textes_ocr:
-        raise ErreurConversion(
-            "Aucun tableau structuré ni texte OCR exploitable "
-            "n'a été détecté dans ce PDF."
-        )
+    tableaux = extraire_tableaux_pdf(source_path)
 
     wb = Workbook()
-    wb.remove(wb.active)
+    ws = wb.active
 
-    for page_no, table_no, data in tables:
-        ws = wb.create_sheet(
-            title=f"P{page_no}_T{table_no}"[:31]
-        )
+    if tableaux:
+        wb.remove(ws)
 
-        for row in data:
-            ws.append(
-                [
-                    "" if valeur is None else valeur
-                    for valeur in row
+        for tableau in tableaux:
+            titre = f"P{tableau.numero_page}_T{tableau.numero_tableau}"
+            ws = wb.create_sheet(title=titre[:31])
+
+            for ligne in _preparer_tableau_ocr_pour_excel(tableau.lignes):
+                ws.append(ligne)
+
+            if ws.max_row >= 1:
+                for cell in ws[1]:
+                    cell.font = Font(bold=True)
+
+            for colonne in ws.columns:
+                largeur = max(
+                    len(str(cell.value)) if cell.value is not None else 0
+                    for cell in colonne
+                )
+                ws.column_dimensions[colonne[0].column_letter].width = min(
+                    max(largeur + 2, 10),
+                    45,
+                )
+
+    else:
+        pages_ocr = _extraire_pages_pdf_fallback(source_path)
+
+        wb.remove(ws)
+
+        if not pages_ocr:
+            ws = wb.create_sheet(title="OCR_Page_1")
+            ws.append(["Ligne", "Texte OCR"])
+        else:
+            for numero_page, texte in sorted(pages_ocr.items()):
+                ws = wb.create_sheet(
+                    title=f"OCR_Page_{numero_page}"[:31]
+                )
+                ws.append(["Page", "Ligne", "Texte OCR"])
+
+                lignes = [
+                    ligne.strip()
+                    for ligne in texte.splitlines()
+                    if ligne.strip()
                 ]
-            )
 
-        if ws.max_row:
-            for cell in ws[1]:
-                nouvelle_police = copy(cell.font)
-                nouvelle_police.bold = True
-                cell.font = nouvelle_police
+                for numero_ligne, ligne in enumerate(lignes, start=1):
+                    ws.append(
+                        [numero_page, numero_ligne, ligne]
+                    )
 
-        for colonne in ws.columns:
-            largeur = max(
-                len(str(cell.value or ""))
-                for cell in colonne
-            )
-            lettre = colonne[0].column_letter
-            ws.column_dimensions[lettre].width = min(
-                max(10, largeur + 2),
-                45,
-            )
+                for cell in ws[1]:
+                    cell.font = Font(bold=True)
 
-    for page_no in sorted(textes_ocr):
-        ws = wb.create_sheet(
-            title=f"OCR_Page_{page_no}"[:31]
-        )
-        ws.append(
-            ["Page", "Ligne", "Texte OCR"]
-        )
-
-        lignes = [
-            ligne.strip()
-            for ligne in textes_ocr[page_no].splitlines()
-            if ligne.strip()
-        ]
-
-        for numero_ligne, ligne in enumerate(
-            lignes,
-            start=1,
-        ):
-            ws.append(
-                [
-                    page_no,
-                    numero_ligne,
-                    ligne,
-                ]
-            )
-
-        for cell in ws[1]:
-            nouvelle_police = copy(cell.font)
-            nouvelle_police.bold = True
-            cell.font = nouvelle_police
-
-        ws.column_dimensions["A"].width = 10
-        ws.column_dimensions["B"].width = 10
-        ws.column_dimensions["C"].width = 80
+                ws.column_dimensions["A"].width = 10
+                ws.column_dimensions["B"].width = 10
+                ws.column_dimensions["C"].width = 80
 
     wb.save(destination_path)
 

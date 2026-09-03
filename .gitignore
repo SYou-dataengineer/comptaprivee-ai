@@ -49,3 +49,5 @@ data/logo_societe.*
 
 # Paramètres locaux de l'application
 data/parametres.json
+.local_cleanup_archive/
+*.bak
