@@ -11,6 +11,7 @@ from tkinter.scrolledtext import ScrolledText
 
 from .anomalies import detecter_anomalies
 from .audit_log import (
+    journaliser_sans_bloquer,
     lister_evenements,
     rechercher_evenements,
 )
@@ -20,6 +21,11 @@ from .backup_manager import (
     restaurer_sauvegarde,
 )
 from .csv_exporter import exporter_facture_csv
+from .document_converter import (
+    CONVERSIONS_SUPPORTEES,
+    ErreurConversion,
+    convertir_document,
+)
 from .company_profile import (
     ProfilSociete,
     copier_logo_societe,
@@ -214,6 +220,29 @@ class ApplicationComptaPrivee(tk.Tk):
             text="Traiter plusieurs documents",
             command=self.selectionner_documents_lot,
         ).pack(
+            side="left",
+            padx=(10, 0),
+        )
+
+        menu_conversion = tk.Menu(
+            barre_document,
+            tearoff=False,
+        )
+
+        for type_conversion in CONVERSIONS_SUPPORTEES:
+            menu_conversion.add_command(
+                label=type_conversion,
+                command=lambda conversion=type_conversion: (
+                    self.convertir_depuis_interface(conversion)
+                ),
+            )
+
+        bouton_conversion = ttk.Menubutton(
+            barre_document,
+            text="Convertir ▼",
+            menu=menu_conversion,
+        )
+        bouton_conversion.pack(
             side="left",
             padx=(10, 0),
         )
@@ -491,6 +520,168 @@ class ApplicationComptaPrivee(tk.Tk):
 
         return chemin
 
+
+    def convertir_depuis_interface(
+        self,
+        type_conversion: str,
+    ) -> None:
+        """Sélectionne un fichier puis lance une conversion locale."""
+        configurations = {
+            "Word → PDF": {
+                "types": [("Documents Word", "*.doc *.docx")],
+                "extension": ".pdf",
+                "type_sortie": ("PDF", "*.pdf"),
+            },
+            "Excel → PDF": {
+                "types": [("Fichiers Excel", "*.xls *.xlsx *.xlsm")],
+                "extension": ".pdf",
+                "type_sortie": ("PDF", "*.pdf"),
+            },
+            "Excel → CSV": {
+                "types": [("Fichiers Excel", "*.xls *.xlsx *.xlsm")],
+                "extension": ".csv",
+                "type_sortie": ("CSV", "*.csv"),
+            },
+            "Image → PDF": {
+                "types": [
+                    ("Images", "*.png *.jpg *.jpeg *.bmp *.tif *.tiff"),
+                ],
+                "extension": ".pdf",
+                "type_sortie": ("PDF", "*.pdf"),
+            },
+            "CSV → Excel": {
+                "types": [
+                    ("Fichiers CSV", "*.csv"),
+                ],
+                "extension": ".xlsx",
+                "type_sortie": ("Excel", "*.xlsx"),
+            },
+            "PDF → CSV": {
+                "types": [
+                    ("Documents PDF", "*.pdf"),
+                ],
+                "extension": ".csv",
+                "type_sortie": ("CSV", "*.csv"),
+            },
+            "PDF → Excel": {
+                "types": [
+                    ("Documents PDF", "*.pdf"),
+                ],
+                "extension": ".xlsx",
+                "type_sortie": ("Excel", "*.xlsx"),
+            },
+            "PDF → Word": {
+                "types": [
+                    ("Documents PDF", "*.pdf"),
+                ],
+                "extension": ".docx",
+                "type_sortie": ("Word", "*.docx"),
+            },
+        }
+
+        configuration = configurations.get(type_conversion)
+
+        if configuration is None:
+            messagebox.showerror(
+                "Conversion non prise en charge",
+                f"Conversion inconnue : {type_conversion}",
+                parent=self,
+            )
+            return
+
+        source = filedialog.askopenfilename(
+            parent=self,
+            title=f"Choisir le fichier — {type_conversion}",
+            filetypes=[
+                *configuration["types"],
+                ("Tous les fichiers", "*.*"),
+            ],
+        )
+
+        if not source:
+            return
+
+        source_path = Path(source)
+        dossier_exports = self.dossier_exports()
+        nom_propose = (
+            source_path.stem
+            + "_converti"
+            + configuration["extension"]
+        )
+
+        destination = filedialog.asksaveasfilename(
+            parent=self,
+            title=f"Enregistrer — {type_conversion}",
+            initialdir=dossier_exports,
+            initialfile=nom_propose,
+            defaultextension=configuration["extension"],
+            filetypes=[configuration["type_sortie"]],
+        )
+
+        if not destination:
+            return
+
+        self.statut.set(
+            f"Conversion en cours : {type_conversion}..."
+        )
+        self.update_idletasks()
+
+        try:
+            resultat = convertir_document(
+                type_conversion,
+                source_path,
+                destination,
+            )
+        except (
+            ErreurConversion,
+            FileNotFoundError,
+            ValueError,
+            OSError,
+        ) as erreur:
+            self.statut.set(
+                f"Échec de conversion : {type_conversion}"
+            )
+            messagebox.showerror(
+                "Conversion impossible",
+                str(erreur),
+                parent=self,
+            )
+            return
+
+        journaliser_sans_bloquer(
+            "Document converti",
+            "conversion",
+            details=(
+                f"{type_conversion}; "
+                f"source={resultat.source.name}; "
+                f"destination={resultat.destination.name}"
+            ),
+            reference=resultat.destination.name,
+        )
+
+        self.statut.set(
+            f"Conversion terminée : {resultat.destination.name}"
+        )
+
+        ouvrir = messagebox.askyesno(
+            "Conversion terminée",
+            (
+                f"{type_conversion} terminé avec succès.\n\n"
+                f"Fichier créé :\n{resultat.destination}\n\n"
+                "Voulez-vous ouvrir le fichier ?"
+            ),
+            parent=self,
+        )
+
+        if ouvrir:
+            try:
+                os.startfile(resultat.destination)
+            except OSError as erreur:
+                messagebox.showwarning(
+                    "Ouverture impossible",
+                    str(erreur),
+                    parent=self,
+                )
 
     def ouvrir_journal_audit(self) -> None:
         """Affiche le journal d'audit local."""
