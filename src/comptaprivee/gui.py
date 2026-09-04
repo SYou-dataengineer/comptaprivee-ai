@@ -18,6 +18,7 @@ from .audit_log import (
     lister_evenements,
     periode_rapide_audit,
     rechercher_evenements,
+    trier_evenements_audit,
 )
 from .batch_processor import traiter_et_exporter_documents
 from .backup_manager import (
@@ -1293,10 +1294,46 @@ class ApplicationComptaPrivee(tk.Tk):
             "reference": "Référence",
         }
 
+        colonne_tri_audit: str | None = None
+        tri_descendant_audit = False
+
+        def mettre_a_jour_entetes_tri() -> None:
+            for colonne in colonnes:
+                titre = titres[colonne]
+
+                if colonne == colonne_tri_audit:
+                    symbole = (
+                        " ▼"
+                        if tri_descendant_audit
+                        else " ▲"
+                    )
+                    titre += symbole
+
+                tableau.heading(
+                    colonne,
+                    text=titre,
+                )
+
+        def trier_colonne_audit(colonne: str) -> None:
+            nonlocal colonne_tri_audit
+            nonlocal tri_descendant_audit
+
+            if colonne_tri_audit == colonne:
+                tri_descendant_audit = (
+                    not tri_descendant_audit
+                )
+            else:
+                colonne_tri_audit = colonne
+                tri_descendant_audit = False
+
+            mettre_a_jour_entetes_tri()
+            charger()
+
         for colonne in colonnes:
             tableau.heading(
                 colonne,
                 text=titres[colonne],
+                command=lambda c=colonne: trier_colonne_audit(c),
             )
 
         tableau.column("date", width=155, anchor="w")
@@ -1371,6 +1408,13 @@ class ApplicationComptaPrivee(tk.Tk):
                     parent=fenetre,
                 )
                 return
+
+            if colonne_tri_audit is not None:
+                evenements = trier_evenements_audit(
+                    evenements,
+                    colonne_tri_audit,
+                    descendant=tri_descendant_audit,
+                )
 
             for iid in tableau.get_children():
                 tableau.delete(iid)

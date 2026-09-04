@@ -285,6 +285,36 @@ def filtrer_evenements_audit(
 
     return resultat
 
+def trier_evenements_audit(
+    evenements: list[EvenementAudit],
+    colonne: str,
+    *,
+    descendant: bool = False,
+) -> list[EvenementAudit]:
+    """Trie une copie des événements selon une colonne visible du journal."""
+    cles = {
+        "date": lambda evenement: evenement.date_creation,
+        "categorie": lambda evenement: evenement.categorie.casefold(),
+        "action": lambda evenement: evenement.action.casefold(),
+        "reference": lambda evenement: (
+            evenement.reference or ""
+        ).casefold(),
+    }
+
+    cle = cles.get(colonne)
+
+    if cle is None:
+        raise ValueError(
+            "Colonne de tri inconnue. "
+            "Utilisez date, categorie, action ou reference."
+        )
+
+    return sorted(
+        evenements,
+        key=cle,
+        reverse=descendant,
+    )
+
 def periode_rapide_audit(
     mode: str,
     *,

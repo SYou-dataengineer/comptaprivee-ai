@@ -683,3 +683,140 @@ def test_exporter_journal_audit_csv_respecte_action(
     assert len(lignes) == 2
     assert lignes[1][2] == "Alerte OCR résolue"
     assert lignes[1][3] == "FAC-N05"
+
+def test_trier_evenements_audit_date_ascendante() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        trier_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            identifiant=1,
+            action="A",
+            categorie="test",
+            details=None,
+            reference="B",
+            date_creation="2026-09-03 12:00:00",
+        ),
+        EvenementAudit(
+            identifiant=2,
+            action="B",
+            categorie="test",
+            details=None,
+            reference="A",
+            date_creation="2026-09-01 08:00:00",
+        ),
+    ]
+
+    resultat = trier_evenements_audit(
+        evenements,
+        "date",
+    )
+
+    assert [e.identifiant for e in resultat] == [2, 1]
+
+
+def test_trier_evenements_audit_action_sans_casse() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        trier_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            identifiant=1,
+            action="Sauvegarde créée",
+            categorie="systeme",
+            details=None,
+            reference=None,
+            date_creation="2026-09-03 12:00:00",
+        ),
+        EvenementAudit(
+            identifiant=2,
+            action="alerte OCR résolue",
+            categorie="ocr",
+            details=None,
+            reference="FAC-N05",
+            date_creation="2026-09-03 13:00:00",
+        ),
+        EvenementAudit(
+            identifiant=3,
+            action="Document converti",
+            categorie="conversion",
+            details=None,
+            reference="a.xlsx",
+            date_creation="2026-09-03 14:00:00",
+        ),
+    ]
+
+    resultat = trier_evenements_audit(
+        evenements,
+        "action",
+    )
+
+    assert [e.identifiant for e in resultat] == [2, 3, 1]
+
+
+def test_trier_evenements_audit_reference_descendante() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        trier_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            identifiant=1,
+            action="A",
+            categorie="test",
+            details=None,
+            reference=None,
+            date_creation="2026-09-03 12:00:00",
+        ),
+        EvenementAudit(
+            identifiant=2,
+            action="B",
+            categorie="test",
+            details=None,
+            reference="FAC-001",
+            date_creation="2026-09-03 13:00:00",
+        ),
+        EvenementAudit(
+            identifiant=3,
+            action="C",
+            categorie="test",
+            details=None,
+            reference="Zeta",
+            date_creation="2026-09-03 14:00:00",
+        ),
+    ]
+
+    resultat = trier_evenements_audit(
+        evenements,
+        "reference",
+        descendant=True,
+    )
+
+    assert [e.identifiant for e in resultat] == [3, 2, 1]
+
+
+def test_trier_evenements_audit_refuse_colonne_inconnue() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        trier_evenements_audit,
+    )
+
+    evenement = EvenementAudit(
+        identifiant=1,
+        action="Test",
+        categorie="test",
+        details=None,
+        reference=None,
+        date_creation="2026-09-03 12:00:00",
+    )
+
+    with pytest.raises(ValueError):
+        trier_evenements_audit(
+            [evenement],
+            "details",
+        )
