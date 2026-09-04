@@ -285,6 +285,29 @@ def filtrer_evenements_audit(
 
     return resultat
 
+def resumer_evenements_audit(
+    evenements: list[EvenementAudit],
+) -> dict[str, int]:
+    """Retourne un résumé simple de la vue courante du journal d'audit."""
+    total = len(evenements)
+    conversions = 0
+    ocr = 0
+
+    for evenement in evenements:
+        categorie = evenement.categorie.strip().casefold()
+
+        if categorie == "conversion":
+            conversions += 1
+        elif categorie == "ocr":
+            ocr += 1
+
+    return {
+        "total": total,
+        "conversions": conversions,
+        "ocr": ocr,
+        "autres": total - conversions - ocr,
+    }
+
 def trier_evenements_audit(
     evenements: list[EvenementAudit],
     colonne: str,

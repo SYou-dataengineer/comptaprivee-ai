@@ -952,3 +952,99 @@ def test_exporter_evenements_audit_csv_refuse_extension_non_csv(
             tmp_path / "vue.xlsx",
             [],
         )
+
+def test_resumer_evenements_audit_compte_categories() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        resumer_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            1, "Document converti", "conversion", None,
+            "a.xlsx", "2026-09-03 10:00:00",
+        ),
+        EvenementAudit(
+            2, "Document converti", "conversion", None,
+            "b.xlsx", "2026-09-03 11:00:00",
+        ),
+        EvenementAudit(
+            3, "Alerte OCR résolue", "ocr", None,
+            "FAC-N05", "2026-09-03 12:00:00",
+        ),
+        EvenementAudit(
+            4, "Sauvegarde créée", "sauvegarde", None,
+            "backup.zip", "2026-09-03 13:00:00",
+        ),
+    ]
+
+    resume = resumer_evenements_audit(evenements)
+
+    assert resume == {
+        "total": 4,
+        "conversions": 2,
+        "ocr": 1,
+        "autres": 1,
+    }
+
+
+def test_resumer_evenements_audit_est_insensible_a_la_casse() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        resumer_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            1, "A", " Conversion ", None,
+            None, "2026-09-03 10:00:00",
+        ),
+        EvenementAudit(
+            2, "B", "OCR", None,
+            None, "2026-09-03 11:00:00",
+        ),
+    ]
+
+    resume = resumer_evenements_audit(evenements)
+
+    assert resume["conversions"] == 1
+    assert resume["ocr"] == 1
+    assert resume["autres"] == 0
+
+
+def test_resumer_evenements_audit_vue_vide() -> None:
+    from src.comptaprivee.audit_log import (
+        resumer_evenements_audit,
+    )
+
+    resume = resumer_evenements_audit([])
+
+    assert resume == {
+        "total": 0,
+        "conversions": 0,
+        "ocr": 0,
+        "autres": 0,
+    }
+
+
+def test_resumer_evenements_audit_classe_categories_inconnues_autres() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        resumer_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            1, "Facture enregistrée", "facture", None,
+            "FAC-001", "2026-09-03 10:00:00",
+        ),
+        EvenementAudit(
+            2, "Sauvegarde créée", "sauvegarde", None,
+            "backup.zip", "2026-09-03 11:00:00",
+        ),
+    ]
+
+    resume = resumer_evenements_audit(evenements)
+
+    assert resume["total"] == 2
+    assert resume["autres"] == 2

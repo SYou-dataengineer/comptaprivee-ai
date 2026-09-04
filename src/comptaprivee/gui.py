@@ -19,6 +19,7 @@ from .audit_log import (
     lister_evenements,
     periode_rapide_audit,
     rechercher_evenements,
+    resumer_evenements_audit,
     trier_evenements_audit,
 )
 from .batch_processor import traiter_et_exporter_documents
@@ -1442,8 +1443,17 @@ class ApplicationComptaPrivee(tk.Tk):
                     ),
                 )
 
+            resume_audit = resumer_evenements_audit(
+                evenements
+            )
+
             compteur.set(
-                f"{len(evenements)} événement(s) affiché(s)"
+                (
+                    f"Affichés : {resume_audit['total']}"
+                    f"  |  Conversions : {resume_audit['conversions']}"
+                    f"  |  OCR : {resume_audit['ocr']}"
+                    f"  |  Autres : {resume_audit['autres']}"
+                )
             )
 
             details_audit.configure(state="normal")
