@@ -92,6 +92,7 @@ from .export_history import (
     lister_exports,
     periode_rapide_exports,
     trier_exports,
+    type_rapide_export,
 )
 from .invoice_validator import (
     ResultatValidation,
@@ -2073,8 +2074,11 @@ class ApplicationComptaPrivee(tk.Tk):
             value="Tous"
         )
         compteur_exports = tk.StringVar(
-            value=""
+            value="Affichés : 0"
         )
+        compteur_tous_exports = tk.StringVar(value="Tous : 0")
+        compteur_pdf_exports = tk.StringVar(value="PDF : 0")
+        compteur_csv_exports = tk.StringVar(value="CSV : 0")
 
         ttk.Label(
             zone_filtres,
@@ -2119,15 +2123,42 @@ class ApplicationComptaPrivee(tk.Tk):
             padx=(8, 16),
         )
 
-        ttk.Label(
-            zone_filtres,
-            textvariable=compteur_exports,
-            foreground="#475569",
-        ).grid(
+        zone_compteurs_exports = ttk.Frame(zone_filtres)
+        zone_compteurs_exports.grid(
             row=0,
             column=4,
+            columnspan=3,
             sticky="e",
         )
+
+        ttk.Label(
+            zone_compteurs_exports,
+            textvariable=compteur_exports,
+            foreground="#475569",
+        ).pack(side="left", padx=(0, 6))
+
+        def appliquer_type_rapide_export(mode: str) -> None:
+            type_export_selectionne.set(
+                type_rapide_export(mode)
+            )
+
+        ttk.Button(
+            zone_compteurs_exports,
+            textvariable=compteur_tous_exports,
+            command=lambda: appliquer_type_rapide_export("Tous"),
+        ).pack(side="left", padx=2)
+
+        ttk.Button(
+            zone_compteurs_exports,
+            textvariable=compteur_pdf_exports,
+            command=lambda: appliquer_type_rapide_export("PDF"),
+        ).pack(side="left", padx=2)
+
+        ttk.Button(
+            zone_compteurs_exports,
+            textvariable=compteur_csv_exports,
+            command=lambda: appliquer_type_rapide_export("CSV"),
+        ).pack(side="left", padx=(2, 0))
 
         date_export_debut = tk.StringVar()
         date_export_fin = tk.StringVar()
@@ -2224,16 +2255,6 @@ class ApplicationComptaPrivee(tk.Tk):
             pady=(10, 0),
         )
 
-        ttk.Label(
-            zone_filtres,
-            text="Format : AAAA-MM-JJ",
-            foreground="#64748b",
-        ).grid(
-            row=1,
-            column=4,
-            sticky="e",
-            pady=(10, 0),
-        )
 
         zone_filtres.columnconfigure(
             1,
@@ -2286,6 +2307,13 @@ class ApplicationComptaPrivee(tk.Tk):
                 self.dossier_exports()
             )
             try:
+                exports_base_compteurs = filtrer_exports(
+                    tous_exports,
+                    recherche=recherche_export.get(),
+                    type_fichier="Tous",
+                    date_debut=date_export_debut.get(),
+                    date_fin=date_export_fin.get(),
+                )
                 exports = filtrer_exports(
                     tous_exports,
                     recherche=recherche_export.get(),
@@ -2295,6 +2323,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
             except ValueError as erreur:
                 compteur_exports.set(str(erreur))
+                compteur_tous_exports.set("Tous : 0")
+                compteur_pdf_exports.set("PDF : 0")
+                compteur_csv_exports.set("CSV : 0")
                 return
 
             exports = trier_exports(
@@ -2303,14 +2334,20 @@ class ApplicationComptaPrivee(tk.Tk):
                 decroissant=tri_decroissant_export.get(),
             )
 
-            compte = compter_types(tous_exports)
+            compte = compter_types(
+                exports_base_compteurs
+            )
             compteur_exports.set(
-                (
-                    f"{len(exports)} affiché(s) / "
-                    f"{compte['Tous']} total "
-                    f"— PDF : {compte['PDF']} "
-                    f"— CSV : {compte['CSV']}"
-                )
+                f"Affichés : {len(exports)}"
+            )
+            compteur_tous_exports.set(
+                f"Tous : {compte['Tous']}"
+            )
+            compteur_pdf_exports.set(
+                f"PDF : {compte['PDF']}"
+            )
+            compteur_csv_exports.set(
+                f"CSV : {compte['CSV']}"
             )
 
             actualiser_entetes_tri()

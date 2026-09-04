@@ -96,6 +96,21 @@ def periode_rapide_exports(
 
     return debut.isoformat(), fin.isoformat()
 
+def type_rapide_export(mode: str) -> str:
+    """Normalise le type choisi par un compteur rapide de l'historique."""
+    mode_normalise = mode.strip().casefold()
+
+    if mode_normalise in {"tous", "tout", "all"}:
+        return "Tous"
+    if mode_normalise == "pdf":
+        return "PDF"
+    if mode_normalise == "csv":
+        return "CSV"
+
+    raise ValueError(
+        "Type rapide inconnu. Utilisez Tous, PDF ou CSV."
+    )
+
 def filtrer_exports(
     exports: list[ExportEnregistre],
     *,

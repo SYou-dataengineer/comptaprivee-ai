@@ -400,3 +400,25 @@ def test_periode_rapide_exports_refuse_mode_inconnu() -> None:
             "30 jours",
             aujourd_hui=date(2026, 9, 4),
         )
+
+def test_type_rapide_export_tous() -> None:
+    from src.comptaprivee.export_history import type_rapide_export
+    assert type_rapide_export("Tous") == "Tous"
+
+
+def test_type_rapide_export_pdf_insensible_casse() -> None:
+    from src.comptaprivee.export_history import type_rapide_export
+    assert type_rapide_export("pdf") == "PDF"
+
+
+def test_type_rapide_export_csv_ignore_espaces() -> None:
+    from src.comptaprivee.export_history import type_rapide_export
+    assert type_rapide_export("  CSV  ") == "CSV"
+
+
+def test_type_rapide_export_refuse_type_inconnu() -> None:
+    import pytest
+    from src.comptaprivee.export_history import type_rapide_export
+
+    with pytest.raises(ValueError):
+        type_rapide_export("Excel")
