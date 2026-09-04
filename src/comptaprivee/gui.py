@@ -11,6 +11,7 @@ from tkinter.scrolledtext import ScrolledText
 
 from .anomalies import detecter_anomalies
 from .audit_log import (
+    exporter_evenements_audit_csv,
     exporter_journal_audit_csv,
     filtrer_evenements_audit,
     formater_evenement_audit_details,
@@ -1361,6 +1362,7 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         evenements_par_iid = {}
+        evenements_affiches = []
 
         def afficher_details_audit(_event=None) -> None:
             selection = tableau.selection()
@@ -1415,6 +1417,9 @@ class ApplicationComptaPrivee(tk.Tk):
                     colonne_tri_audit,
                     descendant=tri_descendant_audit,
                 )
+
+            evenements_affiches.clear()
+            evenements_affiches.extend(evenements)
 
             for iid in tableau.get_children():
                 tableau.delete(iid)
@@ -1502,17 +1507,10 @@ class ApplicationComptaPrivee(tk.Tk):
             if not destination:
                 return
 
-            recherche = variable_recherche.get().strip()
-
             try:
-                chemin = exporter_journal_audit_csv(
+                chemin = exporter_evenements_audit_csv(
                     destination,
-                    recherche=recherche or None,
-                    categorie=variable_categorie.get(),
-                    action=variable_action.get(),
-                    date_debut=variable_date_debut.get(),
-                    date_fin=variable_date_fin.get(),
-                    limite=500,
+                    list(evenements_affiches),
                 )
             except (OSError, ValueError) as erreur:
                 messagebox.showerror(
@@ -1552,7 +1550,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(
             zone_boutons,
-            text="Exporter CSV",
+            text="Exporter vue CSV",
             command=exporter_journal_csv,
         ).pack(side="left", padx=(8, 0))
 

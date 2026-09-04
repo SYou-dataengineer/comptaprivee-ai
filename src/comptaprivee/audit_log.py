@@ -353,6 +353,52 @@ def periode_rapide_audit(
 
     return debut.isoformat(), fin.isoformat()
 
+def exporter_evenements_audit_csv(
+    destination: str | Path,
+    evenements: list[EvenementAudit],
+) -> Path:
+    """Exporte exactement les événements fournis, dans l'ordre reçu."""
+    chemin_destination = Path(destination)
+
+    if chemin_destination.suffix.lower() != ".csv":
+        raise ValueError(
+            "Le journal d'audit doit être exporté dans un fichier .csv."
+        )
+
+    chemin_destination.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with chemin_destination.open(
+        "w",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        writer = csv.writer(fichier)
+        writer.writerow(
+            [
+                "Date / heure",
+                "Catégorie",
+                "Action",
+                "Référence",
+                "Détails",
+            ]
+        )
+
+        for evenement in evenements:
+            writer.writerow(
+                [
+                    evenement.date_creation,
+                    evenement.categorie,
+                    evenement.action,
+                    evenement.reference or "",
+                    evenement.details or "",
+                ]
+            )
+
+    return chemin_destination
+
 def exporter_journal_audit_csv(
     destination: str | Path,
     chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
@@ -393,39 +439,10 @@ def exporter_journal_audit_csv(
         date_fin=date_fin,
     )
 
-    chemin_destination.parent.mkdir(
-        parents=True,
-        exist_ok=True,
+    return exporter_evenements_audit_csv(
+        chemin_destination,
+        evenements,
     )
-
-    with chemin_destination.open(
-        "w",
-        encoding="utf-8-sig",
-        newline="",
-    ) as fichier:
-        writer = csv.writer(fichier)
-        writer.writerow(
-            [
-                "Date / heure",
-                "Catégorie",
-                "Action",
-                "Référence",
-                "Détails",
-            ]
-        )
-
-        for evenement in evenements:
-            writer.writerow(
-                [
-                    evenement.date_creation,
-                    evenement.categorie,
-                    evenement.action,
-                    evenement.reference or "",
-                    evenement.details or "",
-                ]
-            )
-
-    return chemin_destination
 
 def formater_evenement_audit_details(
     evenement: EvenementAudit,

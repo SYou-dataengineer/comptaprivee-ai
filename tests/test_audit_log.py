@@ -820,3 +820,135 @@ def test_trier_evenements_audit_refuse_colonne_inconnue() -> None:
             [evenement],
             "details",
         )
+
+def test_exporter_evenements_audit_csv_conserve_ordre_affiche(
+    tmp_path,
+) -> None:
+    import csv
+
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        exporter_evenements_audit_csv,
+    )
+
+    evenements = [
+        EvenementAudit(
+            identifiant=2,
+            action="Document converti",
+            categorie="conversion",
+            details="deuxieme",
+            reference="B.xlsx",
+            date_creation="2026-09-03 12:00:00",
+        ),
+        EvenementAudit(
+            identifiant=1,
+            action="Alerte OCR résolue",
+            categorie="ocr",
+            details="premier",
+            reference="FAC-N05",
+            date_creation="2026-09-03 11:00:00",
+        ),
+    ]
+
+    destination = tmp_path / "vue.csv"
+
+    exporter_evenements_audit_csv(
+        destination,
+        evenements,
+    )
+
+    with destination.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        lignes = list(csv.reader(fichier))
+
+    assert lignes[1][3] == "B.xlsx"
+    assert lignes[2][3] == "FAC-N05"
+
+
+def test_exporter_evenements_audit_csv_exporte_seulement_vue(
+    tmp_path,
+) -> None:
+    import csv
+
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        exporter_evenements_audit_csv,
+    )
+
+    evenement_visible = EvenementAudit(
+        identifiant=7,
+        action="Alerte OCR résolue",
+        categorie="ocr",
+        details=None,
+        reference="FAC-N05",
+        date_creation="2026-09-03 22:26:22",
+    )
+
+    destination = tmp_path / "vue_filtree.csv"
+
+    exporter_evenements_audit_csv(
+        destination,
+        [evenement_visible],
+    )
+
+    with destination.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        lignes = list(csv.reader(fichier))
+
+    assert len(lignes) == 2
+    assert lignes[1][1] == "ocr"
+    assert lignes[1][3] == "FAC-N05"
+
+
+def test_exporter_evenements_audit_csv_vue_vide_garde_entete(
+    tmp_path,
+) -> None:
+    import csv
+
+    from src.comptaprivee.audit_log import (
+        exporter_evenements_audit_csv,
+    )
+
+    destination = tmp_path / "vue_vide.csv"
+
+    exporter_evenements_audit_csv(
+        destination,
+        [],
+    )
+
+    with destination.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        lignes = list(csv.reader(fichier))
+
+    assert lignes == [
+        [
+            "Date / heure",
+            "Catégorie",
+            "Action",
+            "Référence",
+            "Détails",
+        ]
+    ]
+
+
+def test_exporter_evenements_audit_csv_refuse_extension_non_csv(
+    tmp_path,
+) -> None:
+    from src.comptaprivee.audit_log import (
+        exporter_evenements_audit_csv,
+    )
+
+    with pytest.raises(ValueError):
+        exporter_evenements_audit_csv(
+            tmp_path / "vue.xlsx",
+            [],
+        )
