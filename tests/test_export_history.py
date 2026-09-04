@@ -350,3 +350,53 @@ def test_exporter_historique_csv_liste_vide(tmp_path) -> None:
     assert contenu.strip() == (
         "Fichier,Type,Cree_modifie,Taille_octets"
     )
+
+def test_periode_rapide_exports_aujourdhui() -> None:
+    from datetime import date
+    from src.comptaprivee.export_history import periode_rapide_exports
+
+    debut, fin = periode_rapide_exports(
+        "Aujourd'hui",
+        aujourd_hui=date(2026, 9, 4),
+    )
+
+    assert debut == "2026-09-04"
+    assert fin == "2026-09-04"
+
+
+def test_periode_rapide_exports_7_jours() -> None:
+    from datetime import date
+    from src.comptaprivee.export_history import periode_rapide_exports
+
+    debut, fin = periode_rapide_exports(
+        "7 jours",
+        aujourd_hui=date(2026, 9, 4),
+    )
+
+    assert debut == "2026-08-29"
+    assert fin == "2026-09-04"
+
+
+def test_periode_rapide_exports_ce_mois() -> None:
+    from datetime import date
+    from src.comptaprivee.export_history import periode_rapide_exports
+
+    debut, fin = periode_rapide_exports(
+        "Ce mois",
+        aujourd_hui=date(2026, 9, 4),
+    )
+
+    assert debut == "2026-09-01"
+    assert fin == "2026-09-04"
+
+
+def test_periode_rapide_exports_refuse_mode_inconnu() -> None:
+    import pytest
+    from datetime import date
+    from src.comptaprivee.export_history import periode_rapide_exports
+
+    with pytest.raises(ValueError):
+        periode_rapide_exports(
+            "30 jours",
+            aujourd_hui=date(2026, 9, 4),
+        )

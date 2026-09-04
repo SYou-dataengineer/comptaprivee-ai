@@ -68,6 +68,34 @@ def formater_taille(taille_octets: int) -> str:
 
     return f"{taille_octets / (1024 * 1024):.1f} Mo"
 
+def periode_rapide_exports(
+    mode: str,
+    *,
+    aujourd_hui=None,
+) -> tuple[str, str]:
+    """Retourne une période rapide AAAA-MM-JJ pour l'historique des exports."""
+    from datetime import date, timedelta
+
+    jour = aujourd_hui or date.today()
+    mode_normalise = mode.strip().casefold()
+
+    if mode_normalise in {"aujourd'hui", "aujourdhui", "today"}:
+        debut = jour
+        fin = jour
+    elif mode_normalise in {"7 jours", "7j", "7 days"}:
+        debut = jour - timedelta(days=6)
+        fin = jour
+    elif mode_normalise in {"ce mois", "mois", "this month"}:
+        debut = jour.replace(day=1)
+        fin = jour
+    else:
+        raise ValueError(
+            "Période rapide inconnue. "
+            "Utilisez Aujourd'hui, 7 jours ou Ce mois."
+        )
+
+    return debut.isoformat(), fin.isoformat()
+
 def filtrer_exports(
     exports: list[ExportEnregistre],
     *,

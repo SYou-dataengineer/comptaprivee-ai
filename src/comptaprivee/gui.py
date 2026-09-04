@@ -90,6 +90,7 @@ from .export_history import (
     filtrer_exports,
     formater_taille,
     lister_exports,
+    periode_rapide_exports,
     trier_exports,
 )
 from .invoice_validator import (
@@ -2174,6 +2175,52 @@ class ApplicationComptaPrivee(tk.Tk):
             column=3,
             sticky="w",
             padx=(8, 16),
+            pady=(10, 0),
+        )
+
+        def appliquer_periode_rapide_export(mode: str) -> None:
+            debut, fin = periode_rapide_exports(mode)
+            date_export_debut.set(debut)
+            date_export_fin.set(fin)
+
+        ttk.Button(
+            zone_filtres,
+            text="Aujourd'hui",
+            command=lambda: appliquer_periode_rapide_export(
+                "Aujourd'hui"
+            ),
+        ).grid(
+            row=1,
+            column=4,
+            sticky="w",
+            padx=(0, 6),
+            pady=(10, 0),
+        )
+
+        ttk.Button(
+            zone_filtres,
+            text="7 jours",
+            command=lambda: appliquer_periode_rapide_export(
+                "7 jours"
+            ),
+        ).grid(
+            row=1,
+            column=5,
+            sticky="w",
+            padx=(0, 6),
+            pady=(10, 0),
+        )
+
+        ttk.Button(
+            zone_filtres,
+            text="Ce mois",
+            command=lambda: appliquer_periode_rapide_export(
+                "Ce mois"
+            ),
+        ).grid(
+            row=1,
+            column=6,
+            sticky="w",
             pady=(10, 0),
         )
 
