@@ -269,3 +269,19 @@ def exporter_journal_audit_csv(
             )
 
     return chemin_destination
+
+def formater_evenement_audit_details(
+    evenement: EvenementAudit,
+) -> str:
+    """Prépare une vue lisible d'un événement pour l'interface."""
+    return "\n".join(
+        [
+            f"Date / heure : {evenement.date_creation}",
+            f"Catégorie : {evenement.categorie}",
+            f"Action : {evenement.action}",
+            f"Référence : {evenement.reference or '-'}",
+            "",
+            "Détails :",
+            evenement.details or "-",
+        ]
+    )

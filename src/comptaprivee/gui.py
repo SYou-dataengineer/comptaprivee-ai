@@ -12,6 +12,7 @@ from tkinter.scrolledtext import ScrolledText
 from .anomalies import detecter_anomalies
 from .audit_log import (
     exporter_journal_audit_csv,
+    formater_evenement_audit_details,
     journaliser_sans_bloquer,
     lister_evenements,
     rechercher_evenements,
@@ -1076,8 +1077,8 @@ class ApplicationComptaPrivee(tk.Tk):
         """Affiche le journal d'audit local."""
         fenetre = tk.Toplevel(self)
         fenetre.title("Journal d'audit — ComptaPrivée AI")
-        fenetre.geometry("1000x600")
-        fenetre.minsize(850, 500)
+        fenetre.geometry("1250x650")
+        fenetre.minsize(1000, 550)
         fenetre.transient(self)
 
         conteneur = ttk.Frame(fenetre, padding=18)
@@ -1122,16 +1123,54 @@ class ApplicationComptaPrivee(tk.Tk):
             foreground="#475569",
         ).pack(side="right")
 
+        zone_contenu = ttk.Frame(conteneur)
+        zone_contenu.pack(fill="both", expand=True)
+
+        panneau_liste = ttk.Frame(zone_contenu)
+        panneau_liste.pack(
+            side="left",
+            fill="both",
+            expand=True,
+        )
+
+        panneau_details = ttk.Frame(
+            zone_contenu,
+            padding=(15, 0, 0, 0),
+        )
+        panneau_details.pack(
+            side="right",
+            fill="both",
+        )
+
+        ttk.Label(
+            panneau_details,
+            text="Détails de l'événement",
+            font=("Segoe UI", 11, "bold"),
+        ).pack(anchor="w")
+
+        details_audit = ScrolledText(
+            panneau_details,
+            width=52,
+            height=25,
+            wrap="word",
+            font=("Segoe UI", 9),
+        )
+        details_audit.pack(
+            fill="both",
+            expand=True,
+            pady=(6, 0),
+        )
+        details_audit.configure(state="disabled")
+
         colonnes = (
             "date",
             "categorie",
             "action",
             "reference",
-            "details",
         )
 
         tableau = ttk.Treeview(
-            conteneur,
+            panneau_liste,
             columns=colonnes,
             show="headings",
         )
@@ -1141,7 +1180,6 @@ class ApplicationComptaPrivee(tk.Tk):
             "categorie": "Catégorie",
             "action": "Action",
             "reference": "Référence",
-            "details": "Détails",
         }
 
         for colonne in colonnes:
@@ -1150,15 +1188,54 @@ class ApplicationComptaPrivee(tk.Tk):
                 text=titres[colonne],
             )
 
-        tableau.column("date", width=150, anchor="w")
-        tableau.column("categorie", width=110, anchor="w")
-        tableau.column("action", width=190, anchor="w")
-        tableau.column("reference", width=150, anchor="w")
-        tableau.column("details", width=320, anchor="w")
+        tableau.column("date", width=155, anchor="w")
+        tableau.column("categorie", width=105, anchor="w")
+        tableau.column("action", width=210, anchor="w")
+        tableau.column("reference", width=180, anchor="w")
 
-        tableau.pack(fill="both", expand=True)
+        barre_audit = ttk.Scrollbar(
+            panneau_liste,
+            orient="vertical",
+            command=tableau.yview,
+        )
+        tableau.configure(
+            yscrollcommand=barre_audit.set
+        )
+
+        tableau.pack(
+            side="left",
+            fill="both",
+            expand=True,
+        )
+        barre_audit.pack(
+            side="right",
+            fill="y",
+        )
 
         evenements_par_iid = {}
+
+        def afficher_details_audit(_event=None) -> None:
+            selection = tableau.selection()
+
+            if not selection:
+                return
+
+            evenement = evenements_par_iid.get(
+                selection[0]
+            )
+
+            if evenement is None:
+                return
+
+            details_audit.configure(state="normal")
+            details_audit.delete("1.0", "end")
+            details_audit.insert(
+                "1.0",
+                formater_evenement_audit_details(
+                    evenement
+                ),
+            )
+            details_audit.configure(state="disabled")
 
         def charger() -> None:
             recherche = variable_recherche.get().strip()
@@ -1186,7 +1263,6 @@ class ApplicationComptaPrivee(tk.Tk):
                         evenement.categorie,
                         evenement.action,
                         evenement.reference or "-",
-                        evenement.details or "-",
                     ),
                 )
 
@@ -1194,9 +1270,20 @@ class ApplicationComptaPrivee(tk.Tk):
                 f"{len(evenements)} événement(s) affiché(s)"
             )
 
+            details_audit.configure(state="normal")
+            details_audit.delete("1.0", "end")
+            details_audit.insert(
+                "1.0",
+                (
+                    "Sélectionnez un événement pour afficher "
+                    "tous ses détails."
+                ),
+            )
+            details_audit.configure(state="disabled")
+
         tableau.bind(
             "<<TreeviewSelect>>",
-            lambda _event: None,
+            afficher_details_audit,
         )
 
         zone_boutons = ttk.Frame(conteneur)

@@ -283,3 +283,73 @@ def test_exporter_journal_audit_refuse_extension_non_csv(
             tmp_path / "journal.xlsx",
             tmp_path / "audit.db",
         )
+
+def test_formater_evenement_audit_details_complet() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        formater_evenement_audit_details,
+    )
+
+    evenement = EvenementAudit(
+        identifiant=1,
+        action="Alerte OCR résolue",
+        categorie="ocr",
+        details="source=scan.pdf; page=1; ligne=6",
+        reference="FAC-N05",
+        date_creation="2026-09-03 22:26:22",
+    )
+
+    texte = formater_evenement_audit_details(
+        evenement
+    )
+
+    assert "Date / heure : 2026-09-03 22:26:22" in texte
+    assert "Catégorie : ocr" in texte
+    assert "Action : Alerte OCR résolue" in texte
+    assert "Référence : FAC-N05" in texte
+    assert "source=scan.pdf; page=1; ligne=6" in texte
+
+
+def test_formater_evenement_audit_details_valeurs_absentes() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        formater_evenement_audit_details,
+    )
+
+    evenement = EvenementAudit(
+        identifiant=2,
+        action="Test",
+        categorie="test",
+        details=None,
+        reference=None,
+        date_creation="2026-09-03 12:00:00",
+    )
+
+    texte = formater_evenement_audit_details(
+        evenement
+    )
+
+    assert "Référence : -" in texte
+    assert texte.endswith("Détails :\n-")
+
+
+def test_formater_evenement_audit_details_conserve_multiligne() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        formater_evenement_audit_details,
+    )
+
+    evenement = EvenementAudit(
+        identifiant=3,
+        action="Document converti",
+        categorie="conversion",
+        details="source=a.pdf\nexport=a.xlsx",
+        reference="a.xlsx",
+        date_creation="2026-09-03 12:10:00",
+    )
+
+    texte = formater_evenement_audit_details(
+        evenement
+    )
+
+    assert "source=a.pdf\nexport=a.xlsx" in texte
