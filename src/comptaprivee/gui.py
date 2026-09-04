@@ -1121,12 +1121,49 @@ class ApplicationComptaPrivee(tk.Tk):
         )
         champ_recherche.pack(side="left", padx=(8, 8))
 
-        compteur = tk.StringVar(value="")
+        resume_total = tk.StringVar(value="Affichés : 0")
+        resume_conversions = tk.StringVar(value="Conversions : 0")
+        resume_ocr = tk.StringVar(value="OCR : 0")
+        resume_autres = tk.StringVar(value="Autres : 0")
+
+        def appliquer_filtre_resume(categorie: str) -> None:
+            variable_recherche.set("")
+            variable_categorie.set(categorie)
+            variable_action.set("Toutes")
+            charger()
+
+        zone_resume = ttk.Frame(zone_recherche)
+        zone_resume.pack(side="right")
+
         ttk.Label(
-            zone_recherche,
-            textvariable=compteur,
+            zone_resume,
+            textvariable=resume_total,
             foreground="#475569",
-        ).pack(side="right")
+        ).pack(side="left", padx=(0, 4))
+
+        ttk.Button(
+            zone_resume,
+            textvariable=resume_conversions,
+            command=lambda: appliquer_filtre_resume(
+                "conversion"
+            ),
+        ).pack(side="left", padx=2)
+
+        ttk.Button(
+            zone_resume,
+            textvariable=resume_ocr,
+            command=lambda: appliquer_filtre_resume(
+                "ocr"
+            ),
+        ).pack(side="left", padx=2)
+
+        ttk.Button(
+            zone_resume,
+            textvariable=resume_autres,
+            command=lambda: appliquer_filtre_resume(
+                "Autres"
+            ),
+        ).pack(side="left", padx=(2, 0))
 
         zone_filtres = ttk.Frame(conteneur)
         zone_filtres.pack(fill="x", pady=(0, 12))
@@ -1150,7 +1187,7 @@ class ApplicationComptaPrivee(tk.Tk):
         filtre_categorie = ttk.Combobox(
             zone_filtres,
             textvariable=variable_categorie,
-            values=["Toutes", *categories_disponibles],
+            values=["Toutes", "Autres", *categories_disponibles],
             state="readonly",
             width=16,
         )
@@ -1447,13 +1484,17 @@ class ApplicationComptaPrivee(tk.Tk):
                 evenements
             )
 
-            compteur.set(
-                (
-                    f"Affichés : {resume_audit['total']}"
-                    f"  |  Conversions : {resume_audit['conversions']}"
-                    f"  |  OCR : {resume_audit['ocr']}"
-                    f"  |  Autres : {resume_audit['autres']}"
-                )
+            resume_total.set(
+                f"Affichés : {resume_audit['total']}"
+            )
+            resume_conversions.set(
+                f"Conversions : {resume_audit['conversions']}"
+            )
+            resume_ocr.set(
+                f"OCR : {resume_audit['ocr']}"
+            )
+            resume_autres.set(
+                f"Autres : {resume_audit['autres']}"
             )
 
             details_audit.configure(state="normal")

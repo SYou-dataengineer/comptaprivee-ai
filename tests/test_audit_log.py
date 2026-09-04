@@ -1048,3 +1048,140 @@ def test_resumer_evenements_audit_classe_categories_inconnues_autres() -> None:
 
     assert resume["total"] == 2
     assert resume["autres"] == 2
+
+def test_filtrer_evenements_audit_categorie_autres() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        filtrer_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            1, "Document converti", "conversion", None,
+            "a.xlsx", "2026-09-03 10:00:00",
+        ),
+        EvenementAudit(
+            2, "Alerte OCR résolue", "ocr", None,
+            "FAC-N05", "2026-09-03 11:00:00",
+        ),
+        EvenementAudit(
+            3, "Sauvegarde créée", "sauvegarde", None,
+            "backup.zip", "2026-09-03 12:00:00",
+        ),
+        EvenementAudit(
+            4, "Facture enregistrée", "facture", None,
+            "FAC-001", "2026-09-03 13:00:00",
+        ),
+    ]
+
+    resultat = filtrer_evenements_audit(
+        evenements,
+        categorie="Autres",
+    )
+
+    assert [e.identifiant for e in resultat] == [3, 4]
+
+
+def test_filtrer_evenements_audit_autres_insensible_a_la_casse() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        filtrer_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            1, "A", "OCR", None,
+            None, "2026-09-03 10:00:00",
+        ),
+        EvenementAudit(
+            2, "B", " Sauvegarde ", None,
+            None, "2026-09-03 11:00:00",
+        ),
+    ]
+
+    resultat = filtrer_evenements_audit(
+        evenements,
+        categorie=" autres ",
+    )
+
+    assert len(resultat) == 1
+    assert resultat[0].identifiant == 2
+
+
+def test_exporter_journal_audit_csv_categorie_autres(
+    tmp_path,
+) -> None:
+    import csv
+
+    from src.comptaprivee.audit_log import (
+        exporter_journal_audit_csv,
+    )
+
+    chemin_base = tmp_path / "audit.db"
+    destination = tmp_path / "autres.csv"
+
+    enregistrer_evenement(
+        "Document converti",
+        "conversion",
+        reference="document.xlsx",
+        chemin_base=chemin_base,
+    )
+    enregistrer_evenement(
+        "Sauvegarde créée",
+        "sauvegarde",
+        reference="backup.zip",
+        chemin_base=chemin_base,
+    )
+
+    exporter_journal_audit_csv(
+        destination,
+        chemin_base,
+        categorie="Autres",
+    )
+
+    with destination.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        lignes = list(csv.reader(fichier))
+
+    assert len(lignes) == 2
+    assert lignes[1][1] == "sauvegarde"
+    assert lignes[1][3] == "backup.zip"
+
+
+def test_resume_apres_filtre_autres_est_coherent() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        filtrer_evenements_audit,
+        resumer_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            1, "A", "conversion", None,
+            None, "2026-09-03 10:00:00",
+        ),
+        EvenementAudit(
+            2, "B", "ocr", None,
+            None, "2026-09-03 11:00:00",
+        ),
+        EvenementAudit(
+            3, "C", "facture", None,
+            None, "2026-09-03 12:00:00",
+        ),
+    ]
+
+    vue = filtrer_evenements_audit(
+        evenements,
+        categorie="Autres",
+    )
+    resume = resumer_evenements_audit(vue)
+
+    assert resume == {
+        "total": 1,
+        "conversions": 0,
+        "ocr": 0,
+        "autres": 1,
+    }

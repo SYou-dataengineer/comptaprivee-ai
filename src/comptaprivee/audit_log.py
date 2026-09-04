@@ -253,12 +253,19 @@ def filtrer_evenements_audit(
     resultat: list[EvenementAudit] = []
 
     for evenement in evenements:
-        if (
-            categorie_normalisee
-            and evenement.categorie.strip().casefold()
-            != categorie_normalisee
-        ):
-            continue
+        if categorie_normalisee:
+            categorie_evenement = (
+                evenement.categorie.strip().casefold()
+            )
+
+            if categorie_normalisee == "autres":
+                if categorie_evenement in {
+                    "conversion",
+                    "ocr",
+                }:
+                    continue
+            elif categorie_evenement != categorie_normalisee:
+                continue
 
         if (
             action_normalisee
