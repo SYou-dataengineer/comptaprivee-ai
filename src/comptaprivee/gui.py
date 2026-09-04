@@ -14,6 +14,7 @@ from .audit_log import (
     exporter_evenements_audit_csv,
     exporter_journal_audit_csv,
     filtrer_evenements_audit,
+    filtres_rapides_audit,
     formater_evenement_audit_details,
     journaliser_sans_bloquer,
     lister_evenements,
@@ -1126,14 +1127,41 @@ class ApplicationComptaPrivee(tk.Tk):
         resume_ocr = tk.StringVar(value="OCR : 0")
         resume_autres = tk.StringVar(value="Autres : 0")
 
-        def appliquer_filtre_resume(categorie: str) -> None:
-            variable_recherche.set("")
-            variable_categorie.set(categorie)
-            variable_action.set("Toutes")
+        def appliquer_filtre_resume(mode: str) -> None:
+            filtres = filtres_rapides_audit(mode)
+
+            variable_recherche.set(
+                filtres["recherche"]
+            )
+            variable_categorie.set(
+                filtres["categorie"]
+            )
+            variable_action.set(
+                filtres["action"]
+            )
+
+            if "date_debut" in filtres:
+                variable_date_debut.set(
+                    filtres["date_debut"]
+                )
+
+            if "date_fin" in filtres:
+                variable_date_fin.set(
+                    filtres["date_fin"]
+                )
+
             charger()
 
         zone_resume = ttk.Frame(zone_recherche)
         zone_resume.pack(side="right")
+
+        ttk.Button(
+            zone_resume,
+            text="Tout afficher",
+            command=lambda: appliquer_filtre_resume(
+                "Tout afficher"
+            ),
+        ).pack(side="left", padx=(0, 6))
 
         ttk.Label(
             zone_resume,
@@ -1528,12 +1556,9 @@ class ApplicationComptaPrivee(tk.Tk):
 
 
         def reinitialiser_filtres() -> None:
-            variable_recherche.set("")
-            variable_categorie.set("Toutes")
-            variable_action.set("Toutes")
-            variable_date_debut.set("")
-            variable_date_fin.set("")
-            charger()
+            appliquer_filtre_resume(
+                "Tout afficher"
+            )
 
         def afficher_resolutions_ocr() -> None:
             variable_recherche.set(

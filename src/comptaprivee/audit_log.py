@@ -292,6 +292,57 @@ def filtrer_evenements_audit(
 
     return resultat
 
+def filtres_rapides_audit(
+    mode: str,
+) -> dict[str, str]:
+    """Retourne les changements de filtres pour les raccourcis du journal."""
+    mode_normalise = mode.strip().casefold()
+
+    if mode_normalise in {
+        "conversion",
+        "conversions",
+    }:
+        return {
+            "recherche": "",
+            "categorie": "conversion",
+            "action": "Toutes",
+        }
+
+    if mode_normalise == "ocr":
+        return {
+            "recherche": "",
+            "categorie": "ocr",
+            "action": "Toutes",
+        }
+
+    if mode_normalise in {
+        "autre",
+        "autres",
+    }:
+        return {
+            "recherche": "",
+            "categorie": "Autres",
+            "action": "Toutes",
+        }
+
+    if mode_normalise in {
+        "tout afficher",
+        "tous",
+        "all",
+    }:
+        return {
+            "recherche": "",
+            "categorie": "Toutes",
+            "action": "Toutes",
+            "date_debut": "",
+            "date_fin": "",
+        }
+
+    raise ValueError(
+        "Raccourci de filtre inconnu. "
+        "Utilisez Conversions, OCR, Autres ou Tout afficher."
+    )
+
 def resumer_evenements_audit(
     evenements: list[EvenementAudit],
 ) -> dict[str, int]:

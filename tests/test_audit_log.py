@@ -1185,3 +1185,56 @@ def test_resume_apres_filtre_autres_est_coherent() -> None:
         "ocr": 0,
         "autres": 1,
     }
+
+def test_filtres_rapides_audit_conversions_preserve_dates() -> None:
+    from src.comptaprivee.audit_log import (
+        filtres_rapides_audit,
+    )
+
+    filtres = filtres_rapides_audit("Conversions")
+
+    assert filtres == {
+        "recherche": "",
+        "categorie": "conversion",
+        "action": "Toutes",
+    }
+    assert "date_debut" not in filtres
+    assert "date_fin" not in filtres
+
+
+def test_filtres_rapides_audit_ocr() -> None:
+    from src.comptaprivee.audit_log import (
+        filtres_rapides_audit,
+    )
+
+    filtres = filtres_rapides_audit("OCR")
+
+    assert filtres["categorie"] == "ocr"
+    assert filtres["action"] == "Toutes"
+
+
+def test_filtres_rapides_audit_autres() -> None:
+    from src.comptaprivee.audit_log import (
+        filtres_rapides_audit,
+    )
+
+    filtres = filtres_rapides_audit("Autres")
+
+    assert filtres["categorie"] == "Autres"
+    assert "date_debut" not in filtres
+
+
+def test_filtres_rapides_audit_tout_afficher_reinitialise_tout() -> None:
+    from src.comptaprivee.audit_log import (
+        filtres_rapides_audit,
+    )
+
+    filtres = filtres_rapides_audit("Tout afficher")
+
+    assert filtres == {
+        "recherche": "",
+        "categorie": "Toutes",
+        "action": "Toutes",
+        "date_debut": "",
+        "date_fin": "",
+    }
