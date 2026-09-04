@@ -16,6 +16,7 @@ from .audit_log import (
     formater_evenement_audit_details,
     journaliser_sans_bloquer,
     lister_evenements,
+    periode_rapide_audit,
     rechercher_evenements,
 )
 from .batch_processor import traiter_et_exporter_documents
@@ -1177,6 +1178,36 @@ class ApplicationComptaPrivee(tk.Tk):
             width=12,
         )
         champ_date_fin.pack(side="left", padx=(6, 16))
+
+        def appliquer_periode_rapide(mode: str) -> None:
+            debut, fin = periode_rapide_audit(mode)
+            variable_date_debut.set(debut)
+            variable_date_fin.set(fin)
+            charger()
+
+        ttk.Button(
+            zone_filtres,
+            text="Aujourd'hui",
+            command=lambda: appliquer_periode_rapide(
+                "Aujourd'hui"
+            ),
+        ).pack(side="left", padx=(0, 6))
+
+        ttk.Button(
+            zone_filtres,
+            text="7 jours",
+            command=lambda: appliquer_periode_rapide(
+                "7 jours"
+            ),
+        ).pack(side="left", padx=(0, 6))
+
+        ttk.Button(
+            zone_filtres,
+            text="Ce mois",
+            command=lambda: appliquer_periode_rapide(
+                "Ce mois"
+            ),
+        ).pack(side="left")
 
         zone_contenu = ttk.Frame(conteneur)
         zone_contenu.pack(fill="both", expand=True)

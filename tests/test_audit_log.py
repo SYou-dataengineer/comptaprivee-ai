@@ -468,3 +468,64 @@ def test_exporter_journal_audit_csv_respecte_categorie_et_periode(
     assert len(lignes) == 2
     assert lignes[1][1] == "ocr"
     assert lignes[1][3] == "FAC-N05"
+
+def test_periode_rapide_audit_aujourdhui() -> None:
+    from datetime import date
+
+    from src.comptaprivee.audit_log import (
+        periode_rapide_audit,
+    )
+
+    debut, fin = periode_rapide_audit(
+        "Aujourd'hui",
+        aujourd_hui=date(2026, 9, 3),
+    )
+
+    assert debut == "2026-09-03"
+    assert fin == "2026-09-03"
+
+
+def test_periode_rapide_audit_7_jours() -> None:
+    from datetime import date
+
+    from src.comptaprivee.audit_log import (
+        periode_rapide_audit,
+    )
+
+    debut, fin = periode_rapide_audit(
+        "7 jours",
+        aujourd_hui=date(2026, 9, 3),
+    )
+
+    assert debut == "2026-08-28"
+    assert fin == "2026-09-03"
+
+
+def test_periode_rapide_audit_ce_mois() -> None:
+    from datetime import date
+
+    from src.comptaprivee.audit_log import (
+        periode_rapide_audit,
+    )
+
+    debut, fin = periode_rapide_audit(
+        "Ce mois",
+        aujourd_hui=date(2026, 9, 3),
+    )
+
+    assert debut == "2026-09-01"
+    assert fin == "2026-09-03"
+
+
+def test_periode_rapide_audit_refuse_mode_inconnu() -> None:
+    from datetime import date
+
+    from src.comptaprivee.audit_log import (
+        periode_rapide_audit,
+    )
+
+    with pytest.raises(ValueError):
+        periode_rapide_audit(
+            "Hier seulement",
+            aujourd_hui=date(2026, 9, 3),
+        )

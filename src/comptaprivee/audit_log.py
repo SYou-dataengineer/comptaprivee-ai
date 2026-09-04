@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import sqlite3
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from .database import (
@@ -272,6 +272,44 @@ def filtrer_evenements_audit(
         resultat.append(evenement)
 
     return resultat
+
+def periode_rapide_audit(
+    mode: str,
+    *,
+    aujourd_hui: date | None = None,
+) -> tuple[str, str]:
+    """Retourne une période inclusive prête à utiliser dans les filtres."""
+    jour = aujourd_hui or date.today()
+    mode_normalise = mode.strip().casefold()
+
+    if mode_normalise in {
+        "aujourd'hui",
+        "aujourdhui",
+        "today",
+    }:
+        debut = jour
+        fin = jour
+    elif mode_normalise in {
+        "7 jours",
+        "7 derniers jours",
+        "semaine",
+    }:
+        debut = jour - timedelta(days=6)
+        fin = jour
+    elif mode_normalise in {
+        "ce mois",
+        "mois",
+        "this month",
+    }:
+        debut = jour.replace(day=1)
+        fin = jour
+    else:
+        raise ValueError(
+            "Période rapide inconnue. "
+            "Utilisez Aujourd'hui, 7 jours ou Ce mois."
+        )
+
+    return debut.isoformat(), fin.isoformat()
 
 def exporter_journal_audit_csv(
     destination: str | Path,
