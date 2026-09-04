@@ -213,6 +213,7 @@ def filtrer_evenements_audit(
     evenements: list[EvenementAudit],
     *,
     categorie: str | None = None,
+    action: str | None = None,
     date_debut: str | None = None,
     date_fin: str | None = None,
 ) -> list[EvenementAudit]:
@@ -220,6 +221,10 @@ def filtrer_evenements_audit(
     categorie_normalisee = (categorie or "").strip().casefold()
     if categorie_normalisee in {"", "toutes", "tous"}:
         categorie_normalisee = ""
+
+    action_normalisee = (action or "").strip().casefold()
+    if action_normalisee in {"", "toutes", "tous"}:
+        action_normalisee = ""
 
     debut: date | None = None
     fin: date | None = None
@@ -252,6 +257,13 @@ def filtrer_evenements_audit(
             categorie_normalisee
             and evenement.categorie.strip().casefold()
             != categorie_normalisee
+        ):
+            continue
+
+        if (
+            action_normalisee
+            and evenement.action.strip().casefold()
+            != action_normalisee
         ):
             continue
 
@@ -317,6 +329,7 @@ def exporter_journal_audit_csv(
     *,
     recherche: str | None = None,
     categorie: str | None = None,
+    action: str | None = None,
     date_debut: str | None = None,
     date_fin: str | None = None,
     limite: int | None = 500,
@@ -345,6 +358,7 @@ def exporter_journal_audit_csv(
     evenements = filtrer_evenements_audit(
         evenements,
         categorie=categorie,
+        action=action,
         date_debut=date_debut,
         date_fin=date_fin,
     )

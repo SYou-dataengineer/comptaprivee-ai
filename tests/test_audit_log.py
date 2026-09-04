@@ -529,3 +529,157 @@ def test_periode_rapide_audit_refuse_mode_inconnu() -> None:
             "Hier seulement",
             aujourd_hui=date(2026, 9, 3),
         )
+
+def test_filtrer_evenements_audit_par_action() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        filtrer_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            identifiant=1,
+            action="Document converti",
+            categorie="conversion",
+            details=None,
+            reference="document.xlsx",
+            date_creation="2026-09-03 10:00:00",
+        ),
+        EvenementAudit(
+            identifiant=2,
+            action="Alerte OCR résolue",
+            categorie="ocr",
+            details=None,
+            reference="FAC-N05",
+            date_creation="2026-09-03 11:00:00",
+        ),
+    ]
+
+    resultat = filtrer_evenements_audit(
+        evenements,
+        action="alerte ocr résolue",
+    )
+
+    assert len(resultat) == 1
+    assert resultat[0].reference == "FAC-N05"
+
+
+def test_filtrer_evenements_audit_action_toutes_ne_filtre_pas() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        filtrer_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            identifiant=1,
+            action="Document converti",
+            categorie="conversion",
+            details=None,
+            reference="a.xlsx",
+            date_creation="2026-09-03 10:00:00",
+        ),
+        EvenementAudit(
+            identifiant=2,
+            action="Alerte OCR résolue",
+            categorie="ocr",
+            details=None,
+            reference="FAC-N05",
+            date_creation="2026-09-03 11:00:00",
+        ),
+    ]
+
+    resultat = filtrer_evenements_audit(
+        evenements,
+        action="Toutes",
+    )
+
+    assert len(resultat) == 2
+
+
+def test_filtrer_evenements_audit_combine_action_categorie_periode() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        filtrer_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            identifiant=1,
+            action="Alerte OCR résolue",
+            categorie="ocr",
+            details=None,
+            reference="FAC-001",
+            date_creation="2026-09-01 09:00:00",
+        ),
+        EvenementAudit(
+            identifiant=2,
+            action="Alerte OCR résolue",
+            categorie="ocr",
+            details=None,
+            reference="FAC-N05",
+            date_creation="2026-09-03 22:26:22",
+        ),
+        EvenementAudit(
+            identifiant=3,
+            action="Document converti",
+            categorie="conversion",
+            details=None,
+            reference="document.xlsx",
+            date_creation="2026-09-03 22:30:00",
+        ),
+    ]
+
+    resultat = filtrer_evenements_audit(
+        evenements,
+        categorie="ocr",
+        action="Alerte OCR résolue",
+        date_debut="2026-09-03",
+        date_fin="2026-09-03",
+    )
+
+    assert len(resultat) == 1
+    assert resultat[0].reference == "FAC-N05"
+
+
+def test_exporter_journal_audit_csv_respecte_action(
+    tmp_path,
+) -> None:
+    import csv
+
+    from src.comptaprivee.audit_log import (
+        exporter_journal_audit_csv,
+    )
+
+    chemin_base = tmp_path / "audit.db"
+    destination = tmp_path / "actions.csv"
+
+    enregistrer_evenement(
+        "Document converti",
+        "conversion",
+        reference="document.xlsx",
+        chemin_base=chemin_base,
+    )
+    enregistrer_evenement(
+        "Alerte OCR résolue",
+        "ocr",
+        reference="FAC-N05",
+        chemin_base=chemin_base,
+    )
+
+    exporter_journal_audit_csv(
+        destination,
+        chemin_base,
+        action="Alerte OCR résolue",
+    )
+
+    with destination.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        lignes = list(csv.reader(fichier))
+
+    assert len(lignes) == 2
+    assert lignes[1][2] == "Alerte OCR résolue"
+    assert lignes[1][3] == "FAC-N05"

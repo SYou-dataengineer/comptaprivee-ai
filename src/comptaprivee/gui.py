@@ -1155,6 +1155,31 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Label(
             zone_filtres,
+            text="Action :",
+        ).pack(side="left")
+
+        variable_action = tk.StringVar(value="Toutes")
+
+        actions_disponibles = sorted(
+            {
+                evenement.action
+                for evenement in lister_evenements(limite=500)
+                if evenement.action
+            },
+            key=str.casefold,
+        )
+
+        filtre_action = ttk.Combobox(
+            zone_filtres,
+            textvariable=variable_action,
+            values=["Toutes", *actions_disponibles],
+            state="readonly",
+            width=22,
+        )
+        filtre_action.pack(side="left", padx=(6, 16))
+
+        ttk.Label(
+            zone_filtres,
             text="Du (AAAA-MM-JJ) :",
         ).pack(side="left")
 
@@ -1335,6 +1360,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 evenements = filtrer_evenements_audit(
                     evenements,
                     categorie=variable_categorie.get(),
+                    action=variable_action.get(),
                     date_debut=variable_date_debut.get(),
                     date_fin=variable_date_fin.get(),
                 )
@@ -1404,6 +1430,7 @@ class ApplicationComptaPrivee(tk.Tk):
         def reinitialiser_filtres() -> None:
             variable_recherche.set("")
             variable_categorie.set("Toutes")
+            variable_action.set("Toutes")
             variable_date_debut.set("")
             variable_date_fin.set("")
             charger()
@@ -1413,6 +1440,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 "Alerte OCR résolue"
             )
             variable_categorie.set("ocr")
+            variable_action.set("Alerte OCR résolue")
             charger()
 
         def exporter_journal_csv() -> None:
@@ -1437,6 +1465,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     destination,
                     recherche=recherche or None,
                     categorie=variable_categorie.get(),
+                    action=variable_action.get(),
                     date_debut=variable_date_debut.get(),
                     date_fin=variable_date_fin.get(),
                     limite=500,
@@ -1504,6 +1533,10 @@ class ApplicationComptaPrivee(tk.Tk):
             lambda _event: charger(),
         )
         filtre_categorie.bind(
+            "<<ComboboxSelected>>",
+            lambda _event: charger(),
+        )
+        filtre_action.bind(
             "<<ComboboxSelected>>",
             lambda _event: charger(),
         )
