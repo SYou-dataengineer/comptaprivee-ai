@@ -68,6 +68,25 @@ def formater_taille(taille_octets: int) -> str:
 
     return f"{taille_octets / (1024 * 1024):.1f} Mo"
 
+def formater_details_export(
+    export: ExportEnregistre,
+) -> str:
+    """Prépare les détails lisibles d'un export pour l'interface."""
+    return "\n".join(
+        [
+            f"Fichier : {export.nom}",
+            f"Type : {export.type_fichier}",
+            f"Taille : {formater_taille(export.taille_octets)}",
+            (
+                "Modifié le : "
+                + export.modifie_le.strftime("%Y-%m-%d %H:%M:%S")
+            ),
+            "",
+            "Chemin local :",
+            str(export.chemin.resolve()),
+        ]
+    )
+
 def periode_rapide_exports(
     mode: str,
     *,

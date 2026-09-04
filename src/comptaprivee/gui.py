@@ -88,6 +88,7 @@ from .export_history import (
     compter_types,
     exporter_historique_csv,
     filtrer_exports,
+    formater_details_export,
     formater_taille,
     lister_exports,
     periode_rapide_exports,
@@ -2037,8 +2038,8 @@ class ApplicationComptaPrivee(tk.Tk):
         """Affiche les fichiers PDF/CSV présents dans data/exports."""
         fenetre = tk.Toplevel(self)
         fenetre.title("Historique des exports — ComptaPrivée AI")
-        fenetre.geometry("920x560")
-        fenetre.minsize(760, 460)
+        fenetre.geometry("1180x620")
+        fenetre.minsize(980, 500)
         fenetre.transient(self)
 
         conteneur = ttk.Frame(fenetre, padding=18)
@@ -2264,12 +2265,52 @@ class ApplicationComptaPrivee(tk.Tk):
         zone_tableau = ttk.Frame(conteneur)
         zone_tableau.pack(fill="both", expand=True)
 
+        panneau_liste_exports = ttk.Frame(zone_tableau)
+        panneau_liste_exports.pack(
+            side="left",
+            fill="both",
+            expand=True,
+        )
+
+        panneau_details_export = ttk.Frame(
+            zone_tableau,
+            padding=(15, 0, 0, 0),
+        )
+        panneau_details_export.pack(
+            side="right",
+            fill="both",
+        )
+
+        ttk.Label(
+            panneau_details_export,
+            text="Détails du fichier",
+            font=("Segoe UI", 11, "bold"),
+        ).pack(anchor="w")
+
+        details_export = ScrolledText(
+            panneau_details_export,
+            width=42,
+            height=24,
+            wrap="word",
+            font=("Segoe UI", 9),
+        )
+        details_export.pack(
+            fill="both",
+            expand=True,
+            pady=(6, 0),
+        )
+        details_export.insert(
+            "1.0",
+            "Sélectionnez un fichier pour afficher ses détails.",
+        )
+        details_export.configure(state="disabled")
+
         colonne_tri_export = tk.StringVar(value="date")
         tri_decroissant_export = tk.BooleanVar(value=True)
 
         colonnes = ("nom", "type", "date", "taille")
         tableau = ttk.Treeview(
-            zone_tableau,
+            panneau_liste_exports,
             columns=colonnes,
             show="headings",
             selectmode="browse",
@@ -2286,7 +2327,7 @@ class ApplicationComptaPrivee(tk.Tk):
         tableau.column("taille", width=90, anchor="e")
 
         barre = ttk.Scrollbar(
-            zone_tableau,
+            panneau_liste_exports,
             orient="vertical",
             command=tableau.yview,
         )
@@ -2296,12 +2337,40 @@ class ApplicationComptaPrivee(tk.Tk):
         barre.pack(side="right", fill="y")
 
         chemins: dict[str, Path] = {}
+        exports_par_iid = {}
+
+        def afficher_details_export(_event=None) -> None:
+            selection = tableau.selection()
+
+            if not selection:
+                return
+
+            export = exports_par_iid.get(selection[0])
+            if export is None:
+                return
+
+            details_export.configure(state="normal")
+            details_export.delete("1.0", "end")
+            details_export.insert(
+                "1.0",
+                formater_details_export(export),
+            )
+            details_export.configure(state="disabled")
 
         def actualiser() -> None:
             for item in tableau.get_children():
                 tableau.delete(item)
 
             chemins.clear()
+            exports_par_iid.clear()
+
+            details_export.configure(state="normal")
+            details_export.delete("1.0", "end")
+            details_export.insert(
+                "1.0",
+                "Sélectionnez un fichier pour afficher ses détails.",
+            )
+            details_export.configure(state="disabled")
 
             tous_exports = lister_exports(
                 self.dossier_exports()
@@ -2364,6 +2433,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     ),
                 )
                 chemins[identifiant] = export.chemin
+                exports_par_iid[identifiant] = export
 
             if not exports:
                 message = (
@@ -2627,6 +2697,10 @@ class ApplicationComptaPrivee(tk.Tk):
             command=fenetre.destroy,
         ).pack(side="right")
 
+        tableau.bind(
+            "<<TreeviewSelect>>",
+            afficher_details_export,
+        )
         tableau.bind(
             "<Double-1>",
             lambda _event: ouvrir_selection(),

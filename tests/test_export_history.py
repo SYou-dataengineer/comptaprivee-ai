@@ -422,3 +422,87 @@ def test_type_rapide_export_refuse_type_inconnu() -> None:
 
     with pytest.raises(ValueError):
         type_rapide_export("Excel")
+
+def test_formater_details_export_contient_identite() -> None:
+    from datetime import datetime
+    from pathlib import Path
+    from src.comptaprivee.export_history import (
+        ExportEnregistre,
+        formater_details_export,
+    )
+
+    export = ExportEnregistre(
+        nom="rapport.pdf",
+        chemin=Path("data/exports/rapport.pdf"),
+        type_fichier="PDF",
+        taille_octets=2048,
+        modifie_le=datetime(2026, 9, 4, 14, 30, 5),
+    )
+
+    details = formater_details_export(export)
+
+    assert "Fichier : rapport.pdf" in details
+    assert "Type : PDF" in details
+
+
+def test_formater_details_export_affiche_taille_lisible() -> None:
+    from datetime import datetime
+    from pathlib import Path
+    from src.comptaprivee.export_history import (
+        ExportEnregistre,
+        formater_details_export,
+    )
+
+    export = ExportEnregistre(
+        nom="rapport.csv",
+        chemin=Path("data/exports/rapport.csv"),
+        type_fichier="CSV",
+        taille_octets=1536,
+        modifie_le=datetime(2026, 9, 4, 14, 30, 5),
+    )
+
+    assert "Taille : 1.5 Ko" in formater_details_export(export)
+
+
+def test_formater_details_export_affiche_date_complete() -> None:
+    from datetime import datetime
+    from pathlib import Path
+    from src.comptaprivee.export_history import (
+        ExportEnregistre,
+        formater_details_export,
+    )
+
+    export = ExportEnregistre(
+        nom="rapport.pdf",
+        chemin=Path("data/exports/rapport.pdf"),
+        type_fichier="PDF",
+        taille_octets=100,
+        modifie_le=datetime(2026, 9, 4, 14, 30, 5),
+    )
+
+    assert (
+        "Modifié le : 2026-09-04 14:30:05"
+        in formater_details_export(export)
+    )
+
+
+def test_formater_details_export_affiche_chemin_absolu(tmp_path) -> None:
+    from datetime import datetime
+    from src.comptaprivee.export_history import (
+        ExportEnregistre,
+        formater_details_export,
+    )
+
+    chemin = tmp_path / "rapport.csv"
+    export = ExportEnregistre(
+        nom="rapport.csv",
+        chemin=chemin,
+        type_fichier="CSV",
+        taille_octets=100,
+        modifie_le=datetime(2026, 9, 4, 14, 30, 5),
+    )
+
+    details = formater_details_export(export)
+
+    assert "Chemin local :" in details
+    assert str(chemin.resolve()) in details
