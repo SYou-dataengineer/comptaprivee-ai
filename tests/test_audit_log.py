@@ -353,3 +353,118 @@ def test_formater_evenement_audit_details_conserve_multiligne() -> None:
     )
 
     assert "source=a.pdf\nexport=a.xlsx" in texte
+
+def test_filtrer_evenements_audit_par_categorie() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        filtrer_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(
+            1, "Document converti", "conversion", None,
+            "a.xlsx", "2026-09-01 10:00:00",
+        ),
+        EvenementAudit(
+            2, "Alerte OCR résolue", "ocr", None,
+            "FAC-N05", "2026-09-03 22:26:22",
+        ),
+    ]
+
+    resultat = filtrer_evenements_audit(
+        evenements,
+        categorie="OCR",
+    )
+
+    assert len(resultat) == 1
+    assert resultat[0].reference == "FAC-N05"
+
+
+def test_filtrer_evenements_audit_par_periode_inclusive() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        filtrer_evenements_audit,
+    )
+
+    evenements = [
+        EvenementAudit(1, "A", "test", None, None, "2026-09-01 08:00:00"),
+        EvenementAudit(2, "B", "test", None, None, "2026-09-03 08:00:00"),
+        EvenementAudit(3, "C", "test", None, None, "2026-09-05 08:00:00"),
+    ]
+
+    resultat = filtrer_evenements_audit(
+        evenements,
+        date_debut="2026-09-01",
+        date_fin="2026-09-03",
+    )
+
+    assert [e.action for e in resultat] == ["A", "B"]
+
+
+def test_filtrer_evenements_audit_refuse_periode_invalide() -> None:
+    from src.comptaprivee.audit_log import (
+        EvenementAudit,
+        filtrer_evenements_audit,
+    )
+
+    evenement = EvenementAudit(
+        1, "Test", "test", None, None, "2026-09-03 12:00:00"
+    )
+
+    with pytest.raises(ValueError):
+        filtrer_evenements_audit(
+            [evenement],
+            date_debut="2026-09-05",
+            date_fin="2026-09-01",
+        )
+
+
+def test_exporter_journal_audit_csv_respecte_categorie_et_periode(
+    tmp_path,
+) -> None:
+    import csv
+
+    from src.comptaprivee.audit_log import (
+        exporter_journal_audit_csv,
+        lister_evenements,
+    )
+
+    chemin_base = tmp_path / "audit.db"
+    destination = tmp_path / "filtre.csv"
+
+    enregistrer_evenement(
+        "Document converti",
+        "conversion",
+        reference="document.xlsx",
+        chemin_base=chemin_base,
+    )
+    enregistrer_evenement(
+        "Alerte OCR résolue",
+        "ocr",
+        reference="FAC-N05",
+        chemin_base=chemin_base,
+    )
+
+    date_jour = lister_evenements(
+        chemin_base,
+        limite=1,
+    )[0].date_creation[:10]
+
+    exporter_journal_audit_csv(
+        destination,
+        chemin_base,
+        categorie="ocr",
+        date_debut=date_jour,
+        date_fin=date_jour,
+    )
+
+    with destination.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as fichier:
+        lignes = list(csv.reader(fichier))
+
+    assert len(lignes) == 2
+    assert lignes[1][1] == "ocr"
+    assert lignes[1][3] == "FAC-N05"

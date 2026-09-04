@@ -12,6 +12,7 @@ from tkinter.scrolledtext import ScrolledText
 from .anomalies import detecter_anomalies
 from .audit_log import (
     exporter_journal_audit_csv,
+    filtrer_evenements_audit,
     formater_evenement_audit_details,
     journaliser_sans_bloquer,
     lister_evenements,
@@ -1123,6 +1124,60 @@ class ApplicationComptaPrivee(tk.Tk):
             foreground="#475569",
         ).pack(side="right")
 
+        zone_filtres = ttk.Frame(conteneur)
+        zone_filtres.pack(fill="x", pady=(0, 12))
+
+        ttk.Label(
+            zone_filtres,
+            text="Catégorie :",
+        ).pack(side="left")
+
+        variable_categorie = tk.StringVar(value="Toutes")
+
+        categories_disponibles = sorted(
+            {
+                evenement.categorie
+                for evenement in lister_evenements(limite=500)
+                if evenement.categorie
+            },
+            key=str.casefold,
+        )
+
+        filtre_categorie = ttk.Combobox(
+            zone_filtres,
+            textvariable=variable_categorie,
+            values=["Toutes", *categories_disponibles],
+            state="readonly",
+            width=16,
+        )
+        filtre_categorie.pack(side="left", padx=(6, 16))
+
+        ttk.Label(
+            zone_filtres,
+            text="Du (AAAA-MM-JJ) :",
+        ).pack(side="left")
+
+        variable_date_debut = tk.StringVar()
+        champ_date_debut = ttk.Entry(
+            zone_filtres,
+            textvariable=variable_date_debut,
+            width=12,
+        )
+        champ_date_debut.pack(side="left", padx=(6, 16))
+
+        ttk.Label(
+            zone_filtres,
+            text="Au :",
+        ).pack(side="left")
+
+        variable_date_fin = tk.StringVar()
+        champ_date_fin = ttk.Entry(
+            zone_filtres,
+            textvariable=variable_date_fin,
+            width=12,
+        )
+        champ_date_fin.pack(side="left", padx=(6, 16))
+
         zone_contenu = ttk.Frame(conteneur)
         zone_contenu.pack(fill="both", expand=True)
 
@@ -1245,6 +1300,21 @@ class ApplicationComptaPrivee(tk.Tk):
             else:
                 evenements = lister_evenements(limite=500)
 
+            try:
+                evenements = filtrer_evenements_audit(
+                    evenements,
+                    categorie=variable_categorie.get(),
+                    date_debut=variable_date_debut.get(),
+                    date_fin=variable_date_fin.get(),
+                )
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Filtres invalides",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
             for iid in tableau.get_children():
                 tableau.delete(iid)
 
@@ -1299,10 +1369,19 @@ class ApplicationComptaPrivee(tk.Tk):
             variable_recherche.set("")
             charger()
 
+
+        def reinitialiser_filtres() -> None:
+            variable_recherche.set("")
+            variable_categorie.set("Toutes")
+            variable_date_debut.set("")
+            variable_date_fin.set("")
+            charger()
+
         def afficher_resolutions_ocr() -> None:
             variable_recherche.set(
                 "Alerte OCR résolue"
             )
+            variable_categorie.set("ocr")
             charger()
 
         def exporter_journal_csv() -> None:
@@ -1326,6 +1405,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 chemin = exporter_journal_audit_csv(
                     destination,
                     recherche=recherche or None,
+                    categorie=variable_categorie.get(),
+                    date_debut=variable_date_debut.get(),
+                    date_fin=variable_date_fin.get(),
                     limite=500,
                 )
             except (OSError, ValueError) as erreur:
@@ -1351,6 +1433,13 @@ class ApplicationComptaPrivee(tk.Tk):
             command=effacer_recherche,
         ).pack(side="left", padx=(8, 0))
 
+
+        ttk.Button(
+            zone_boutons,
+            text="Réinitialiser filtres",
+            command=reinitialiser_filtres,
+        ).pack(side="left", padx=(8, 0))
+
         ttk.Button(
             zone_boutons,
             text="Résolutions OCR",
@@ -1371,6 +1460,20 @@ class ApplicationComptaPrivee(tk.Tk):
 
         champ_recherche.bind(
             "<Return>",
+            lambda _event: charger(),
+        )
+
+
+        champ_date_debut.bind(
+            "<Return>",
+            lambda _event: charger(),
+        )
+        champ_date_fin.bind(
+            "<Return>",
+            lambda _event: charger(),
+        )
+        filtre_categorie.bind(
+            "<<ComboboxSelected>>",
             lambda _event: charger(),
         )
 

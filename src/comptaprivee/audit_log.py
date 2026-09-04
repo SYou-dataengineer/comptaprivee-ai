@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import sqlite3
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from .database import (
@@ -208,11 +209,78 @@ def journaliser_sans_bloquer(
     except Exception:
         return
 
+def filtrer_evenements_audit(
+    evenements: list[EvenementAudit],
+    *,
+    categorie: str | None = None,
+    date_debut: str | None = None,
+    date_fin: str | None = None,
+) -> list[EvenementAudit]:
+    """Filtre des événements par catégorie et période inclusive."""
+    categorie_normalisee = (categorie or "").strip().casefold()
+    if categorie_normalisee in {"", "toutes", "tous"}:
+        categorie_normalisee = ""
+
+    debut: date | None = None
+    fin: date | None = None
+
+    if (date_debut or "").strip():
+        try:
+            debut = date.fromisoformat(str(date_debut).strip())
+        except ValueError as erreur:
+            raise ValueError(
+                "La date de début doit être au format AAAA-MM-JJ."
+            ) from erreur
+
+    if (date_fin or "").strip():
+        try:
+            fin = date.fromisoformat(str(date_fin).strip())
+        except ValueError as erreur:
+            raise ValueError(
+                "La date de fin doit être au format AAAA-MM-JJ."
+            ) from erreur
+
+    if debut is not None and fin is not None and debut > fin:
+        raise ValueError(
+            "La date de début ne peut pas être après la date de fin."
+        )
+
+    resultat: list[EvenementAudit] = []
+
+    for evenement in evenements:
+        if (
+            categorie_normalisee
+            and evenement.categorie.strip().casefold()
+            != categorie_normalisee
+        ):
+            continue
+
+        try:
+            date_evenement = date.fromisoformat(
+                evenement.date_creation[:10]
+            )
+        except (TypeError, ValueError) as erreur:
+            raise ValueError(
+                "Une date du journal d'audit est invalide."
+            ) from erreur
+
+        if debut is not None and date_evenement < debut:
+            continue
+        if fin is not None and date_evenement > fin:
+            continue
+
+        resultat.append(evenement)
+
+    return resultat
+
 def exporter_journal_audit_csv(
     destination: str | Path,
     chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
     *,
     recherche: str | None = None,
+    categorie: str | None = None,
+    date_debut: str | None = None,
+    date_fin: str | None = None,
     limite: int | None = 500,
 ) -> Path:
     """Exporte localement le journal d'audit dans un CSV compatible Excel."""
@@ -235,6 +303,13 @@ def exporter_journal_audit_csv(
             chemin_base,
             limite=limite,
         )
+
+    evenements = filtrer_evenements_audit(
+        evenements,
+        categorie=categorie,
+        date_debut=date_debut,
+        date_fin=date_fin,
+    )
 
     chemin_destination.parent.mkdir(
         parents=True,
