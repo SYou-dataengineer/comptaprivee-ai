@@ -112,6 +112,11 @@ from .tax_document_classifier import (
     ClassificationDocumentFiscal,
     classifier_document_fiscal,
 )
+from .tax_field_extractor import (
+    DonneeFiscaleExtraite,
+    extraire_cases_fiscales,
+    formater_montant_fiscal,
+)
 from .tax_validator import appliquer_validation_fiscale
 from .settings import (
     DEVISES,
@@ -2307,6 +2312,10 @@ class ApplicationComptaPrivee(tk.Tk):
             Path,
             ClassificationDocumentFiscal,
         ] = {}
+        donnees_fiscales_extraites: dict[
+            Path,
+            tuple[DonneeFiscaleExtraite, ...],
+        ] = {}
 
         def rafraichir_documents() -> None:
             for item in tableau_documents.get_children():
@@ -2386,6 +2395,10 @@ class ApplicationComptaPrivee(tk.Tk):
                     chemin,
                     None,
                 )
+                donnees_fiscales_extraites.pop(
+                    chemin,
+                    None,
+                )
 
             rafraichir_documents()
 
@@ -2418,6 +2431,10 @@ class ApplicationComptaPrivee(tk.Tk):
                     )
 
                 classifications_fiscales[chemin] = classification
+                donnees_fiscales_extraites.pop(
+                    chemin,
+                    None,
+                )
 
             rafraichir_documents()
 
@@ -2452,6 +2469,236 @@ class ApplicationComptaPrivee(tk.Tk):
                 message,
                 parent=fenetre,
             )
+
+        def afficher_donnees_fiscales_extraites() -> None:
+            toutes_donnees = [
+                donnee
+                for chemin in documents_importes
+                for donnee in donnees_fiscales_extraites.get(
+                    chemin,
+                    (),
+                )
+            ]
+
+            fenetre_donnees = tk.Toplevel(fenetre)
+            fenetre_donnees.title(
+                "Données fiscales extraites — ComptaPrivée AI"
+            )
+            fenetre_donnees.geometry("1050x520")
+            fenetre_donnees.minsize(850, 420)
+            fenetre_donnees.transient(fenetre)
+
+            conteneur_donnees = ttk.Frame(
+                fenetre_donnees,
+                padding=14,
+            )
+            conteneur_donnees.pack(
+                fill="both",
+                expand=True,
+            )
+
+            ttk.Label(
+                conteneur_donnees,
+                text="Données fiscales extraites",
+                font=("Segoe UI", 16, "bold"),
+            ).pack(anchor="w")
+
+            ttk.Label(
+                conteneur_donnees,
+                text=(
+                    "Valeurs extraites localement. "
+                    "Validation comptable obligatoire avant tout calcul."
+                ),
+                foreground="#166534",
+            ).pack(anchor="w", pady=(3, 10))
+
+            colonnes = (
+                "document",
+                "type",
+                "case",
+                "libelle",
+                "valeur",
+                "statut",
+            )
+            tableau_donnees = ttk.Treeview(
+                conteneur_donnees,
+                columns=colonnes,
+                show="headings",
+                selectmode="browse",
+            )
+
+            entetes = {
+                "document": "Document source",
+                "type": "Type",
+                "case": "Case",
+                "libelle": "Libellé",
+                "valeur": "Valeur",
+                "statut": "Statut",
+            }
+
+            for colonne, titre in entetes.items():
+                tableau_donnees.heading(
+                    colonne,
+                    text=titre,
+                )
+
+            tableau_donnees.column(
+                "document",
+                width=210,
+                anchor="w",
+            )
+            tableau_donnees.column(
+                "type",
+                width=70,
+                anchor="center",
+            )
+            tableau_donnees.column(
+                "case",
+                width=70,
+                anchor="center",
+            )
+            tableau_donnees.column(
+                "libelle",
+                width=260,
+                anchor="w",
+            )
+            tableau_donnees.column(
+                "valeur",
+                width=120,
+                anchor="e",
+            )
+            tableau_donnees.column(
+                "statut",
+                width=180,
+                anchor="w",
+            )
+
+            barre_donnees = ttk.Scrollbar(
+                conteneur_donnees,
+                orient="vertical",
+                command=tableau_donnees.yview,
+            )
+            tableau_donnees.configure(
+                yscrollcommand=barre_donnees.set
+            )
+
+            tableau_donnees.pack(
+                side="left",
+                fill="both",
+                expand=True,
+            )
+            barre_donnees.pack(
+                side="right",
+                fill="y",
+            )
+
+            for index, donnee in enumerate(toutes_donnees):
+                tableau_donnees.insert(
+                    "",
+                    "end",
+                    iid=f"tax-field-{index}",
+                    values=(
+                        donnee.document.name,
+                        donnee.type_document,
+                        donnee.case,
+                        donnee.libelle,
+                        formater_montant_fiscal(
+                            donnee.valeur
+                        ),
+                        donnee.statut,
+                    ),
+                )
+
+            if not toutes_donnees:
+                tableau_donnees.insert(
+                    "",
+                    "end",
+                    values=(
+                        "Aucune donnée extraite",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                    ),
+                )
+
+        def extraire_cases_documents_fiscaux() -> None:
+            if not documents_importes:
+                messagebox.showinfo(
+                    "Extraction fiscale",
+                    "Importez d'abord au moins un document.",
+                    parent=fenetre,
+                )
+                return
+
+            if not classifications_fiscales:
+                messagebox.showinfo(
+                    "Extraction fiscale",
+                    (
+                        "Reconnaissez d'abord les documents "
+                        "T4 / RL-1."
+                    ),
+                    parent=fenetre,
+                )
+                return
+
+            donnees_fiscales_extraites.clear()
+            erreurs: list[str] = []
+
+            for chemin in documents_importes:
+                classification = classifications_fiscales.get(
+                    chemin
+                )
+
+                if (
+                    classification is None
+                    or classification.type_document
+                    not in {"T4", "RL-1"}
+                ):
+                    continue
+
+                try:
+                    texte = extraire_texte_document(chemin)
+                    donnees = extraire_cases_fiscales(
+                        classification.type_document,
+                        texte,
+                        chemin,
+                    )
+                    donnees_fiscales_extraites[
+                        chemin
+                    ] = donnees
+                except Exception as erreur:
+                    erreurs.append(
+                        f"{chemin.name} : {erreur}"
+                    )
+
+            total_cases = sum(
+                len(donnees)
+                for donnees in donnees_fiscales_extraites.values()
+            )
+
+            message = (
+                "Extraction locale terminée.\n\n"
+                f"Cases extraites : {total_cases}\n"
+                "Statut : À valider par le comptable\n\n"
+                "Aucun calcul d'impôt n'a été effectué.\n"
+                "Aucune donnée n'a quitté l'ordinateur."
+            )
+
+            if erreurs:
+                message += (
+                    "\n\nCertains documents nécessitent "
+                    "une vérification manuelle."
+                )
+
+            messagebox.showinfo(
+                "Extraction fiscale",
+                message,
+                parent=fenetre,
+            )
+
+            afficher_donnees_fiscales_extraites()
 
         def initialiser_dossier_fiscal() -> None:
             try:
@@ -2512,6 +2759,12 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_actions,
             text="Reconnaître T4 / RL-1",
             command=reconnaitre_documents_fiscaux,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            zone_actions,
+            text="Extraire les cases",
+            command=extraire_cases_documents_fiscaux,
         ).pack(side="left", padx=(8, 0))
 
         ttk.Button(
