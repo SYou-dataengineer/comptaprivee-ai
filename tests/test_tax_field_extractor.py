@@ -149,3 +149,78 @@ def test_type_non_pris_en_charge_est_refuse() -> None:
             "Case 13 100,00",
             "T5.pdf",
         )
+
+
+def test_extraire_t4_champs_requis_moteur_2025() -> None:
+    texte = """
+    Case 24 - Gains assurables AE
+    52 000,00 $
+    Case 26 - Gains admissibles RPC RRQ
+    52 000,00 $
+    Case 55 - Cotisations RQAP
+    260,00 $
+    Case 56 - Gains assurables RQAP
+    52 000,00 $
+    """
+
+    donnees = extraire_cases_fiscales(
+        "T4",
+        texte,
+        "T4_Moteur_2025.pdf",
+    )
+
+    valeurs = {donnee.case: donnee.valeur for donnee in donnees}
+
+    assert valeurs["24"] == Decimal("52000.00")
+    assert valeurs["26"] == Decimal("52000.00")
+    assert valeurs["55"] == Decimal("260.00")
+    assert valeurs["56"] == Decimal("52000.00")
+
+
+def test_extraire_t4_case_17a_si_presente() -> None:
+    donnees = extraire_cases_fiscales(
+        "T4",
+        "Case 17A - Deuxième cotisation RRQ\n300,00 $",
+        "T4_Moteur_2025.pdf",
+    )
+
+    assert donnees[0].case == "17A"
+    assert donnees[0].valeur == Decimal("300.00")
+
+
+def test_extraire_rl1_champs_requis_moteur_2025() -> None:
+    texte = """
+    Case G - Salaire admissible au RRQ
+    52 000,00 $
+    Case H - Cotisation au RQAP
+    260,00 $
+    Case I - Salaire admissible au RQAP
+    52 000,00 $
+    """
+
+    donnees = extraire_cases_fiscales(
+        "RL-1",
+        texte,
+        "RL1_Moteur_2025.pdf",
+    )
+
+    valeurs = {donnee.case: donnee.valeur for donnee in donnees}
+
+    assert valeurs["G"] == Decimal("52000.00")
+    assert valeurs["H"] == Decimal("260.00")
+    assert valeurs["I"] == Decimal("52000.00")
+
+
+def test_champs_optionnels_absents_ne_creent_pas_de_valeur() -> None:
+    donnees = extraire_cases_fiscales(
+        "T4",
+        "Case 14 - Revenu d'emploi\\n52 000,00 $",
+        "T4_Simple.pdf",
+    )
+
+    cases = {donnee.case for donnee in donnees}
+
+    assert "14" in cases
+    assert "17A" not in cases
+    assert "55" not in cases
+

@@ -29,6 +29,11 @@ REGLES_T4 = (
     ("16", "Cotisations RPC", (r"\bcase\s*16\b", r"\bbox\s*16\b")),
     ("17", "Cotisations RRQ", (r"\bcase\s*17\b", r"\bbox\s*17\b")),
     (
+        "17A",
+        "Deuxième cotisation supplémentaire au RRQ",
+        (r"\bcase\s*17a\b", r"\bbox\s*17a\b"),
+    ),
+    (
         "18",
         "Cotisations assurance-emploi",
         (r"\bcase\s*18\b", r"\bbox\s*18\b"),
@@ -38,12 +43,32 @@ REGLES_T4 = (
         "Impôt sur le revenu retenu",
         (r"\bcase\s*22\b", r"\bbox\s*22\b"),
     ),
+    (
+        "24",
+        "Gains assurables assurance-emploi",
+        (r"\bcase\s*24\b", r"\bbox\s*24\b"),
+    ),
+    (
+        "26",
+        "Gains admissibles RPC/RRQ",
+        (r"\bcase\s*26\b", r"\bbox\s*26\b"),
+    ),
+    (
+        "55",
+        "Cotisations au RQAP",
+        (r"\bcase\s*55\b", r"\bbox\s*55\b"),
+    ),
+    (
+        "56",
+        "Gains assurables au RQAP",
+        (r"\bcase\s*56\b", r"\bbox\s*56\b"),
+    ),
 )
 
 REGLES_RL1 = (
     (
         "B.A",
-        "Cotisation de base au RRQ",
+        "Cotisation RRQ (base + première supplémentaire)",
         (r"\bcase\s*b\s*\.\s*a\b",),
     ),
     (
@@ -70,6 +95,21 @@ REGLES_RL1 = (
         "E",
         "Impôt du Québec retenu",
         (r"\bcase\s*e\b",),
+    ),
+    (
+        "G",
+        "Salaire admissible au RRQ",
+        (r"\bcase\s*g\b",),
+    ),
+    (
+        "H",
+        "Cotisation au RQAP",
+        (r"\bcase\s*h\b",),
+    ),
+    (
+        "I",
+        "Salaire admissible au RQAP",
+        (r"\bcase\s*i\b",),
     ),
 )
 
