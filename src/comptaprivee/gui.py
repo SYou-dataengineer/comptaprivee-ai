@@ -121,7 +121,11 @@ from .tax_field_validation import (
     DonneeFiscaleValidee,
     cle_donnee_fiscale,
     corriger_et_valider_donnee_fiscale,
+    toutes_donnees_sont_validees,
     valider_donnee_fiscale,
+)
+from .tax_validated_case import (
+    construire_dossier_fiscal_valide,
 )
 from .tax_validator import appliquer_validation_fiscale
 from .settings import (
@@ -153,6 +157,7 @@ class ApplicationComptaPrivee(tk.Tk):
         self.chemin_document: Path | None = None
         self.chemins_lot: list[Path] = []
         self.dossier_fiscal_courant = None
+        self.dossier_fiscal_valide_courant = None
 
         self.variables = {
             "numero": tk.StringVar(),
@@ -2386,10 +2391,18 @@ class ApplicationComptaPrivee(tk.Tk):
                 ],
             )
 
+            ajout_effectue = False
+
             for valeur in selections:
                 chemin = Path(valeur)
                 if chemin not in documents_importes:
                     documents_importes.append(chemin)
+                    ajout_effectue = True
+
+            if ajout_effectue:
+                self.dossier_fiscal_courant = None
+                self.dossier_fiscal_valide_courant = None
+                validations_fiscales.clear()
 
             rafraichir_documents()
 
@@ -2409,6 +2422,9 @@ class ApplicationComptaPrivee(tk.Tk):
                     chemin,
                     None,
                 )
+                validations_fiscales.clear()
+                self.dossier_fiscal_courant = None
+                self.dossier_fiscal_valide_courant = None
 
             rafraichir_documents()
 
@@ -2446,6 +2462,8 @@ class ApplicationComptaPrivee(tk.Tk):
                     None,
                 )
 
+            validations_fiscales.clear()
+            self.dossier_fiscal_valide_courant = None
             rafraichir_documents()
 
             t4 = sum(
@@ -2480,6 +2498,54 @@ class ApplicationComptaPrivee(tk.Tk):
                 parent=fenetre,
             )
 
+
+        def toutes_donnees_extraites() -> list[DonneeFiscaleExtraite]:
+            return [
+                donnee
+                for chemin in documents_importes
+                for donnee in donnees_fiscales_extraites.get(
+                    chemin,
+                    (),
+                )
+            ]
+
+        def dossier_peut_etre_verrouille() -> bool:
+            donnees = toutes_donnees_extraites()
+
+            return (
+                self.dossier_fiscal_courant is not None
+                and bool(donnees)
+                and toutes_donnees_sont_validees(
+                    donnees,
+                    validations_fiscales,
+                )
+            )
+
+        def mettre_a_jour_etat_dossier_valide() -> None:
+            if self.dossier_fiscal_valide_courant is not None:
+                bouton_preparer_dossier.configure(
+                    state="disabled",
+                    text="Dossier fiscal validé ✓",
+                )
+                bouton_calcul_fiscal.configure(
+                    text=(
+                        "Calcul fiscal 2025 — prêt "
+                        "(moteur non installé)"
+                    )
+                )
+                return
+
+            bouton_preparer_dossier.configure(
+                state=(
+                    "normal"
+                    if dossier_peut_etre_verrouille()
+                    else "disabled"
+                ),
+                text="Préparer le dossier validé",
+            )
+            bouton_calcul_fiscal.configure(
+                text="Calcul fiscal 2025 — verrouillé"
+            )
 
         def afficher_donnees_fiscales_extraites() -> None:
             toutes_donnees = [
@@ -2672,6 +2738,8 @@ class ApplicationComptaPrivee(tk.Tk):
                     ),
                 )
                 mettre_a_jour_resume()
+                self.dossier_fiscal_valide_courant = None
+                mettre_a_jour_etat_dossier_valide()
 
             for index, donnee in enumerate(toutes_donnees):
                 tableau_donnees.insert(
@@ -2869,6 +2937,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
             donnees_fiscales_extraites.clear()
             validations_fiscales.clear()
+            self.dossier_fiscal_valide_courant = None
             erreurs: list[str] = []
 
             for chemin in documents_importes:
@@ -2942,7 +3011,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 return
 
             self.dossier_fiscal_courant = dossier
+            self.dossier_fiscal_valide_courant = None
             statut_dossier.set(dossier.statut)
+            mettre_a_jour_etat_dossier_valide()
             self.statut.set(
                 (
                     "Dossier fiscal local initialisé : "
@@ -2961,6 +3032,61 @@ class ApplicationComptaPrivee(tk.Tk):
                     f"Documents : {len(dossier.documents)}\n\n"
                     "Aucune donnée n'a été transmise à l'ARC, "
                     "à Revenu Québec ou à une IA externe."
+                ),
+                parent=fenetre,
+            )
+
+        def preparer_dossier_fiscal_valide() -> None:
+            if self.dossier_fiscal_courant is None:
+                messagebox.showinfo(
+                    "Dossier fiscal validé",
+                    "Initialisez d'abord le dossier fiscal.",
+                    parent=fenetre,
+                )
+                return
+
+            donnees = toutes_donnees_extraites()
+
+            try:
+                dossier_valide = construire_dossier_fiscal_valide(
+                    self.dossier_fiscal_courant,
+                    donnees,
+                    validations_fiscales,
+                )
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Dossier fiscal non prêt",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                mettre_a_jour_etat_dossier_valide()
+                return
+
+            self.dossier_fiscal_valide_courant = dossier_valide
+            statut_dossier.set(
+                "Validé — prêt pour le moteur fiscal"
+            )
+            self.statut.set(
+                (
+                    "Dossier fiscal validé : "
+                    f"{dossier_valide.client} — "
+                    f"{dossier_valide.annee_fiscale}"
+                )
+            )
+            mettre_a_jour_etat_dossier_valide()
+
+            messagebox.showinfo(
+                "Dossier fiscal validé",
+                (
+                    "Le dossier fiscal est maintenant verrouillé "
+                    "sur les valeurs validées par le comptable.\n\n"
+                    f"Client : {dossier_valide.client}\n"
+                    f"Année : {dossier_valide.annee_fiscale}\n"
+                    f"Province : {dossier_valide.province}\n"
+                    "Valeurs validées : "
+                    f"{len(dossier_valide.donnees_validees)}\n\n"
+                    "Le moteur de calcul fiscal n'est pas encore "
+                    "installé. Aucune déclaration n'a été transmise."
                 ),
                 parent=fenetre,
             )
@@ -2998,6 +3124,27 @@ class ApplicationComptaPrivee(tk.Tk):
             command=initialiser_dossier_fiscal,
         ).pack(side="left", padx=(8, 0))
 
+        bouton_preparer_dossier = ttk.Button(
+            zone_actions,
+            text="Préparer le dossier validé",
+            command=preparer_dossier_fiscal_valide,
+            state="disabled",
+        )
+        bouton_preparer_dossier.pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        bouton_calcul_fiscal = ttk.Button(
+            zone_actions,
+            text="Calcul fiscal 2025 — verrouillé",
+            state="disabled",
+        )
+        bouton_calcul_fiscal.pack(
+            side="left",
+            padx=(8, 0),
+        )
+
         ttk.Button(
             zone_actions,
             text="Transmettre ARC — verrouillé",
@@ -3016,6 +3163,7 @@ class ApplicationComptaPrivee(tk.Tk):
             command=fenetre.destroy,
         ).pack(side="right")
 
+        mettre_a_jour_etat_dossier_valide()
         champ_client.focus_set()
 
     def ouvrir_historique_exports(self) -> None:
