@@ -223,4 +223,3 @@ def test_champs_optionnels_absents_ne_creent_pas_de_valeur() -> None:
     assert "14" in cases
     assert "17A" not in cases
     assert "55" not in cases
-
