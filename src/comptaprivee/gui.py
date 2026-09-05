@@ -117,6 +117,12 @@ from .tax_field_extractor import (
     extraire_cases_fiscales,
     formater_montant_fiscal,
 )
+from .tax_field_validation import (
+    DonneeFiscaleValidee,
+    cle_donnee_fiscale,
+    corriger_et_valider_donnee_fiscale,
+    valider_donnee_fiscale,
+)
 from .tax_validator import appliquer_validation_fiscale
 from .settings import (
     DEVISES,
@@ -2316,6 +2322,10 @@ class ApplicationComptaPrivee(tk.Tk):
             Path,
             tuple[DonneeFiscaleExtraite, ...],
         ] = {}
+        validations_fiscales: dict[
+            tuple[str, str, str],
+            DonneeFiscaleValidee,
+        ] = {}
 
         def rafraichir_documents() -> None:
             for item in tableau_documents.get_children():
@@ -2470,6 +2480,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 parent=fenetre,
             )
 
+
         def afficher_donnees_fiscales_extraites() -> None:
             toutes_donnees = [
                 donnee
@@ -2482,10 +2493,10 @@ class ApplicationComptaPrivee(tk.Tk):
 
             fenetre_donnees = tk.Toplevel(fenetre)
             fenetre_donnees.title(
-                "Données fiscales extraites — ComptaPrivée AI"
+                "Validation fiscale — ComptaPrivée AI"
             )
-            fenetre_donnees.geometry("1050x520")
-            fenetre_donnees.minsize(850, 420)
+            fenetre_donnees.geometry("1120x590")
+            fenetre_donnees.minsize(900, 470)
             fenetre_donnees.transient(fenetre)
 
             conteneur_donnees = ttk.Frame(
@@ -2499,29 +2510,57 @@ class ApplicationComptaPrivee(tk.Tk):
 
             ttk.Label(
                 conteneur_donnees,
-                text="Données fiscales extraites",
+                text="Validation comptable des données fiscales",
                 font=("Segoe UI", 16, "bold"),
             ).pack(anchor="w")
 
             ttk.Label(
                 conteneur_donnees,
                 text=(
-                    "Valeurs extraites localement. "
-                    "Validation comptable obligatoire avant tout calcul."
+                    "Chaque valeur doit être validée ou corrigée "
+                    "par le comptable avant tout futur calcul fiscal."
                 ),
                 foreground="#166534",
-            ).pack(anchor="w", pady=(3, 10))
+            ).pack(anchor="w", pady=(3, 5))
+
+            resume_validation = tk.StringVar()
+
+            def mettre_a_jour_resume() -> None:
+                nombre_valide = sum(
+                    1
+                    for donnee in toutes_donnees
+                    if cle_donnee_fiscale(donnee)
+                    in validations_fiscales
+                )
+                total = len(toutes_donnees)
+
+                resume_validation.set(
+                    f"Validées : {nombre_valide} / {total}"
+                )
+
+            ttk.Label(
+                conteneur_donnees,
+                textvariable=resume_validation,
+                foreground="#475569",
+            ).pack(anchor="w", pady=(0, 10))
+
+            zone_tableau = ttk.Frame(conteneur_donnees)
+            zone_tableau.pack(
+                fill="both",
+                expand=True,
+            )
 
             colonnes = (
                 "document",
                 "type",
                 "case",
                 "libelle",
-                "valeur",
+                "extraite",
+                "validee",
                 "statut",
             )
             tableau_donnees = ttk.Treeview(
-                conteneur_donnees,
+                zone_tableau,
                 columns=colonnes,
                 show="headings",
                 selectmode="browse",
@@ -2532,7 +2571,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 "type": "Type",
                 "case": "Case",
                 "libelle": "Libellé",
-                "valeur": "Valeur",
+                "extraite": "Valeur extraite",
+                "validee": "Valeur validée",
                 "statut": "Statut",
             }
 
@@ -2544,37 +2584,42 @@ class ApplicationComptaPrivee(tk.Tk):
 
             tableau_donnees.column(
                 "document",
-                width=210,
+                width=190,
                 anchor="w",
             )
             tableau_donnees.column(
                 "type",
-                width=70,
+                width=60,
                 anchor="center",
             )
             tableau_donnees.column(
                 "case",
-                width=70,
+                width=60,
                 anchor="center",
             )
             tableau_donnees.column(
                 "libelle",
-                width=260,
+                width=230,
                 anchor="w",
             )
             tableau_donnees.column(
-                "valeur",
-                width=120,
+                "extraite",
+                width=115,
+                anchor="e",
+            )
+            tableau_donnees.column(
+                "validee",
+                width=115,
                 anchor="e",
             )
             tableau_donnees.column(
                 "statut",
-                width=180,
+                width=210,
                 anchor="w",
             )
 
             barre_donnees = ttk.Scrollbar(
-                conteneur_donnees,
+                zone_tableau,
                 orient="vertical",
                 command=tableau_donnees.yview,
             )
@@ -2592,27 +2637,55 @@ class ApplicationComptaPrivee(tk.Tk):
                 fill="y",
             )
 
+            def valeurs_ligne(
+                donnee: DonneeFiscaleExtraite,
+            ) -> tuple[str, ...]:
+                validation = validations_fiscales.get(
+                    cle_donnee_fiscale(donnee)
+                )
+
+                if validation is None:
+                    valeur_validee = "-"
+                    statut = donnee.statut
+                else:
+                    valeur_validee = formater_montant_fiscal(
+                        validation.valeur_validee
+                    )
+                    statut = validation.statut
+
+                return (
+                    donnee.document.name,
+                    donnee.type_document,
+                    donnee.case,
+                    donnee.libelle,
+                    formater_montant_fiscal(donnee.valeur),
+                    valeur_validee,
+                    statut,
+                )
+
+            def rafraichir_ligne(index: int) -> None:
+                iid = f"tax-field-{index}"
+                tableau_donnees.item(
+                    iid,
+                    values=valeurs_ligne(
+                        toutes_donnees[index]
+                    ),
+                )
+                mettre_a_jour_resume()
+
             for index, donnee in enumerate(toutes_donnees):
                 tableau_donnees.insert(
                     "",
                     "end",
                     iid=f"tax-field-{index}",
-                    values=(
-                        donnee.document.name,
-                        donnee.type_document,
-                        donnee.case,
-                        donnee.libelle,
-                        formater_montant_fiscal(
-                            donnee.valeur
-                        ),
-                        donnee.statut,
-                    ),
+                    values=valeurs_ligne(donnee),
                 )
 
             if not toutes_donnees:
                 tableau_donnees.insert(
                     "",
                     "end",
+                    iid="tax-field-vide",
                     values=(
                         "Aucune donnée extraite",
                         "",
@@ -2620,8 +2693,159 @@ class ApplicationComptaPrivee(tk.Tk):
                         "",
                         "",
                         "",
+                        "",
                     ),
                 )
+
+            def index_selectionne() -> int | None:
+                selection = tableau_donnees.selection()
+
+                if not selection:
+                    messagebox.showinfo(
+                        "Validation fiscale",
+                        "Sélectionnez d'abord une donnée fiscale.",
+                        parent=fenetre_donnees,
+                    )
+                    return None
+
+                iid = selection[0]
+
+                if not iid.startswith("tax-field-") or iid == "tax-field-vide":
+                    return None
+
+                try:
+                    return int(iid.rsplit("-", 1)[1])
+                except ValueError:
+                    return None
+
+            def valider_selection() -> None:
+                index = index_selectionne()
+                if index is None:
+                    return
+
+                donnee = toutes_donnees[index]
+                validations_fiscales[
+                    cle_donnee_fiscale(donnee)
+                ] = valider_donnee_fiscale(donnee)
+
+                rafraichir_ligne(index)
+
+            def corriger_selection() -> None:
+                index = index_selectionne()
+                if index is None:
+                    return
+
+                donnee = toutes_donnees[index]
+                validation_actuelle = validations_fiscales.get(
+                    cle_donnee_fiscale(donnee)
+                )
+
+                valeur_initiale = (
+                    validation_actuelle.valeur_validee
+                    if validation_actuelle is not None
+                    else donnee.valeur
+                )
+
+                nouvelle_valeur = simpledialog.askstring(
+                    "Corriger la valeur fiscale",
+                    (
+                        f"{donnee.type_document} — case {donnee.case}\n"
+                        f"{donnee.libelle}\n\n"
+                        "Entrez la valeur correcte :"
+                    ),
+                    initialvalue=formater_montant_fiscal(
+                        valeur_initiale
+                    ),
+                    parent=fenetre_donnees,
+                )
+
+                if nouvelle_valeur is None:
+                    return
+
+                try:
+                    validation = (
+                        corriger_et_valider_donnee_fiscale(
+                            donnee,
+                            nouvelle_valeur,
+                        )
+                    )
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Valeur fiscale invalide",
+                        str(erreur),
+                        parent=fenetre_donnees,
+                    )
+                    return
+
+                validations_fiscales[
+                    cle_donnee_fiscale(donnee)
+                ] = validation
+
+                rafraichir_ligne(index)
+
+            def valider_tout() -> None:
+                if not toutes_donnees:
+                    return
+
+                for index, donnee in enumerate(toutes_donnees):
+                    cle = cle_donnee_fiscale(donnee)
+
+                    if cle not in validations_fiscales:
+                        validations_fiscales[
+                            cle
+                        ] = valider_donnee_fiscale(donnee)
+
+                    rafraichir_ligne(index)
+
+                messagebox.showinfo(
+                    "Validation fiscale",
+                    (
+                        "Toutes les données extraites sont maintenant "
+                        "validées par le comptable.\n\n"
+                        "Aucun calcul d'impôt n'a encore été effectué."
+                    ),
+                    parent=fenetre_donnees,
+                )
+
+            zone_actions_validation = ttk.Frame(
+                conteneur_donnees
+            )
+            zone_actions_validation.pack(
+                fill="x",
+                pady=(10, 0),
+            )
+
+            ttk.Button(
+                zone_actions_validation,
+                text="Valider la sélection",
+                command=valider_selection,
+            ).pack(side="left")
+
+            ttk.Button(
+                zone_actions_validation,
+                text="Corriger et valider",
+                command=corriger_selection,
+            ).pack(
+                side="left",
+                padx=(8, 0),
+            )
+
+            ttk.Button(
+                zone_actions_validation,
+                text="Valider tout",
+                command=valider_tout,
+            ).pack(
+                side="left",
+                padx=(8, 0),
+            )
+
+            ttk.Button(
+                zone_actions_validation,
+                text="Fermer",
+                command=fenetre_donnees.destroy,
+            ).pack(side="right")
+
+            mettre_a_jour_resume()
 
         def extraire_cases_documents_fiscaux() -> None:
             if not documents_importes:
@@ -2644,6 +2868,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 return
 
             donnees_fiscales_extraites.clear()
+            validations_fiscales.clear()
             erreurs: list[str] = []
 
             for chemin in documents_importes:
