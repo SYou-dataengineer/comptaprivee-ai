@@ -101,6 +101,13 @@ from .invoice_validator import (
     valider_facture,
 )
 from .main import extraire_texte_document
+from .tax_case import (
+    PROVINCES_PHASE_1,
+    annee_fiscale_par_defaut,
+    annees_fiscales_disponibles,
+    creer_dossier_fiscal,
+)
+from .tax_compliance import etat_conformite_initial
 from .tax_validator import appliquer_validation_fiscale
 from .settings import (
     DEVISES,
@@ -130,6 +137,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
         self.chemin_document: Path | None = None
         self.chemins_lot: list[Path] = []
+        self.dossier_fiscal_courant = None
 
         self.variables = {
             "numero": tk.StringVar(),
@@ -180,6 +188,12 @@ class ApplicationComptaPrivee(tk.Tk):
             font=("Segoe UI", 10, "bold"),
         )
 
+        style.configure(
+            "AgentFiscal.TButton",
+            font=("Segoe UI", 11, "bold"),
+            padding=(12, 8),
+        )
+
         conteneur = ttk.Frame(
             self,
             padding=20,
@@ -221,6 +235,19 @@ class ApplicationComptaPrivee(tk.Tk):
             anchor="w",
             pady=(8, 15),
         )
+
+        zone_agent_fiscal = ttk.Frame(conteneur)
+        zone_agent_fiscal.pack(
+            fill="x",
+            pady=(0, 12),
+        )
+
+        ttk.Button(
+            zone_agent_fiscal,
+            text="🧾 Agent fiscal — Nouveau dossier",
+            command=self.ouvrir_agent_fiscal,
+            style="AgentFiscal.TButton",
+        ).pack(anchor="w")
 
         barre_document = ttk.Frame(conteneur)
         barre_document.pack(
@@ -2033,6 +2060,370 @@ class ApplicationComptaPrivee(tk.Tk):
         ).pack(side="right")
 
         actualiser()
+
+
+    def ouvrir_agent_fiscal(self) -> None:
+        """Ouvre le premier espace local de l'Agent fiscal."""
+        fenetre = tk.Toplevel(self)
+        fenetre.title("Agent fiscal — ComptaPrivée AI")
+        fenetre.geometry("1100x690")
+        fenetre.minsize(920, 590)
+        fenetre.transient(self)
+
+        conteneur = ttk.Frame(fenetre, padding=18)
+        conteneur.pack(fill="both", expand=True)
+
+        ttk.Label(
+            conteneur,
+            text="Agent fiscal — Nouveau dossier",
+            font=("Segoe UI", 19, "bold"),
+        ).pack(anchor="w")
+
+        ttk.Label(
+            conteneur,
+            text=(
+                "Phase 1 : préparation locale d'un dossier fiscal "
+                "de particulier au Québec."
+            ),
+            foreground="#166534",
+        ).pack(anchor="w", pady=(3, 12))
+
+        etat_conformite = etat_conformite_initial()
+
+        zone_conformite = ttk.LabelFrame(
+            conteneur,
+            text="Verrous de conformité actifs",
+            padding=10,
+        )
+        zone_conformite.pack(fill="x", pady=(0, 12))
+
+        ttk.Label(
+            zone_conformite,
+            text=(
+                "✓ Mode local"
+                "   |   ✓ Validation humaine obligatoire"
+                "   |   🔒 ARC désactivée"
+                "   |   🔒 Revenu Québec désactivée"
+                "   |   🔒 IA externe désactivée"
+            ),
+            foreground="#166534",
+        ).pack(anchor="w")
+
+        if (
+            not etat_conformite.mode_local
+            or not etat_conformite.validation_humaine_obligatoire
+        ):
+            messagebox.showerror(
+                "Conformité fiscale",
+                (
+                    "Les verrous de conformité requis ne sont pas actifs. "
+                    "L'Agent fiscal ne peut pas être utilisé."
+                ),
+                parent=fenetre,
+            )
+            fenetre.destroy()
+            return
+
+        zone_dossier = ttk.LabelFrame(
+            conteneur,
+            text="Dossier fiscal",
+            padding=12,
+        )
+        zone_dossier.pack(fill="x", pady=(0, 12))
+
+        client_fiscal = tk.StringVar()
+        annee_fiscale = tk.StringVar(
+            value=str(annee_fiscale_par_defaut())
+        )
+        province_fiscale = tk.StringVar(value="Québec")
+        statut_dossier = tk.StringVar(
+            value="Brouillon — dossier non initialisé"
+        )
+
+        ttk.Label(zone_dossier, text="Client :").grid(
+            row=0, column=0, sticky="w"
+        )
+        champ_client = ttk.Entry(
+            zone_dossier,
+            textvariable=client_fiscal,
+            width=42,
+        )
+        champ_client.grid(
+            row=0,
+            column=1,
+            sticky="ew",
+            padx=(8, 18),
+        )
+
+        ttk.Label(
+            zone_dossier,
+            text="Année fiscale :",
+        ).grid(row=0, column=2, sticky="w")
+
+        ttk.Combobox(
+            zone_dossier,
+            textvariable=annee_fiscale,
+            values=tuple(
+                str(annee)
+                for annee in annees_fiscales_disponibles()
+            ),
+            state="readonly",
+            width=10,
+        ).grid(
+            row=0,
+            column=3,
+            sticky="w",
+            padx=(8, 18),
+        )
+
+        ttk.Label(
+            zone_dossier,
+            text="Province :",
+        ).grid(row=0, column=4, sticky="w")
+
+        ttk.Combobox(
+            zone_dossier,
+            textvariable=province_fiscale,
+            values=PROVINCES_PHASE_1,
+            state="readonly",
+            width=12,
+        ).grid(
+            row=0,
+            column=5,
+            sticky="w",
+            padx=(8, 0),
+        )
+
+        ttk.Label(
+            zone_dossier,
+            textvariable=statut_dossier,
+            foreground="#475569",
+        ).grid(
+            row=1,
+            column=0,
+            columnspan=6,
+            sticky="w",
+            pady=(10, 0),
+        )
+
+        zone_dossier.columnconfigure(1, weight=1)
+
+        zone_documents = ttk.LabelFrame(
+            conteneur,
+            text="Documents fiscaux",
+            padding=10,
+        )
+        zone_documents.pack(
+            fill="both",
+            expand=True,
+        )
+
+        ttk.Label(
+            zone_documents,
+            text=(
+                "Import local uniquement. "
+                "Aucune analyse fiscale n'est encore lancée à cette étape."
+            ),
+            foreground="#475569",
+        ).pack(anchor="w", pady=(0, 8))
+
+        colonnes_documents = (
+            "nom",
+            "type",
+            "emplacement",
+        )
+        tableau_documents = ttk.Treeview(
+            zone_documents,
+            columns=colonnes_documents,
+            show="headings",
+            selectmode="browse",
+            height=11,
+        )
+        tableau_documents.heading("nom", text="Document")
+        tableau_documents.heading("type", text="Type")
+        tableau_documents.heading(
+            "emplacement",
+            text="Emplacement local",
+        )
+
+        tableau_documents.column(
+            "nom",
+            width=300,
+            anchor="w",
+        )
+        tableau_documents.column(
+            "type",
+            width=80,
+            anchor="center",
+        )
+        tableau_documents.column(
+            "emplacement",
+            width=500,
+            anchor="w",
+        )
+
+        barre_documents = ttk.Scrollbar(
+            zone_documents,
+            orient="vertical",
+            command=tableau_documents.yview,
+        )
+        tableau_documents.configure(
+            yscrollcommand=barre_documents.set
+        )
+
+        tableau_documents.pack(
+            side="left",
+            fill="both",
+            expand=True,
+        )
+        barre_documents.pack(side="right", fill="y")
+
+        documents_importes: list[Path] = []
+
+        def rafraichir_documents() -> None:
+            for item in tableau_documents.get_children():
+                tableau_documents.delete(item)
+
+            for index, chemin in enumerate(documents_importes):
+                tableau_documents.insert(
+                    "",
+                    "end",
+                    iid=f"fiscal-doc-{index}",
+                    values=(
+                        chemin.name,
+                        chemin.suffix.lstrip(".").upper() or "Fichier",
+                        str(chemin.parent),
+                    ),
+                )
+
+            statut_dossier.set(
+                (
+                    "Brouillon — dossier non initialisé"
+                    if not documents_importes
+                    else (
+                        f"{len(documents_importes)} document(s) "
+                        "sélectionné(s) — dossier à initialiser"
+                    )
+                )
+            )
+
+        def importer_documents_fiscaux() -> None:
+            selections = filedialog.askopenfilenames(
+                parent=fenetre,
+                title="Importer des documents fiscaux",
+                filetypes=[
+                    (
+                        "Documents pris en charge",
+                        "*.pdf *.docx *.png *.jpg *.jpeg *.tif *.tiff *.bmp",
+                    ),
+                    ("PDF", "*.pdf"),
+                    ("Word", "*.docx"),
+                    (
+                        "Images",
+                        "*.png *.jpg *.jpeg *.tif *.tiff *.bmp",
+                    ),
+                    ("Tous les fichiers", "*.*"),
+                ],
+            )
+
+            for valeur in selections:
+                chemin = Path(valeur)
+                if chemin not in documents_importes:
+                    documents_importes.append(chemin)
+
+            rafraichir_documents()
+
+        def retirer_document_fiscal() -> None:
+            selection = tableau_documents.selection()
+            if not selection:
+                return
+
+            index = tableau_documents.index(selection[0])
+            if 0 <= index < len(documents_importes):
+                documents_importes.pop(index)
+
+            rafraichir_documents()
+
+        def initialiser_dossier_fiscal() -> None:
+            try:
+                dossier = creer_dossier_fiscal(
+                    client=client_fiscal.get(),
+                    annee_fiscale=annee_fiscale.get(),
+                    province=province_fiscale.get(),
+                    documents=documents_importes,
+                )
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Dossier fiscal invalide",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            self.dossier_fiscal_courant = dossier
+            statut_dossier.set(dossier.statut)
+            self.statut.set(
+                (
+                    "Dossier fiscal local initialisé : "
+                    f"{dossier.client} — {dossier.annee_fiscale}"
+                )
+            )
+
+            messagebox.showinfo(
+                "Dossier fiscal initialisé",
+                (
+                    "Le dossier fiscal est initialisé localement "
+                    "pour cette session.\n\n"
+                    f"Client : {dossier.client}\n"
+                    f"Année : {dossier.annee_fiscale}\n"
+                    f"Province : {dossier.province}\n"
+                    f"Documents : {len(dossier.documents)}\n\n"
+                    "Aucune donnée n'a été transmise à l'ARC, "
+                    "à Revenu Québec ou à une IA externe."
+                ),
+                parent=fenetre,
+            )
+
+        zone_actions = ttk.Frame(conteneur)
+        zone_actions.pack(fill="x", pady=(10, 0))
+
+        ttk.Button(
+            zone_actions,
+            text="Importer des documents",
+            command=importer_documents_fiscaux,
+        ).pack(side="left")
+
+        ttk.Button(
+            zone_actions,
+            text="Retirer la sélection",
+            command=retirer_document_fiscal,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            zone_actions,
+            text="Initialiser le dossier fiscal",
+            command=initialiser_dossier_fiscal,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            zone_actions,
+            text="Transmettre ARC — verrouillé",
+            state="disabled",
+        ).pack(side="left", padx=(18, 0))
+
+        ttk.Button(
+            zone_actions,
+            text="Transmettre Revenu Québec — verrouillé",
+            state="disabled",
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            zone_actions,
+            text="Fermer",
+            command=fenetre.destroy,
+        ).pack(side="right")
+
+        champ_client.focus_set()
 
     def ouvrir_historique_exports(self) -> None:
         """Affiche les fichiers PDF/CSV présents dans data/exports."""
