@@ -108,6 +108,10 @@ from .tax_case import (
     creer_dossier_fiscal,
 )
 from .tax_compliance import etat_conformite_initial
+from .tax_document_classifier import (
+    ClassificationDocumentFiscal,
+    classifier_document_fiscal,
+)
 from .tax_validator import appliquer_validation_fiscale
 from .settings import (
     DEVISES,
@@ -2230,6 +2234,8 @@ class ApplicationComptaPrivee(tk.Tk):
         colonnes_documents = (
             "nom",
             "type",
+            "type_fiscal",
+            "confiance",
             "emplacement",
         )
         tableau_documents = ttk.Treeview(
@@ -2240,7 +2246,15 @@ class ApplicationComptaPrivee(tk.Tk):
             height=11,
         )
         tableau_documents.heading("nom", text="Document")
-        tableau_documents.heading("type", text="Type")
+        tableau_documents.heading("type", text="Type fichier")
+        tableau_documents.heading(
+            "type_fiscal",
+            text="Type fiscal",
+        )
+        tableau_documents.heading(
+            "confiance",
+            text="Confiance",
+        )
         tableau_documents.heading(
             "emplacement",
             text="Emplacement local",
@@ -2253,12 +2267,22 @@ class ApplicationComptaPrivee(tk.Tk):
         )
         tableau_documents.column(
             "type",
-            width=80,
+            width=90,
+            anchor="center",
+        )
+        tableau_documents.column(
+            "type_fiscal",
+            width=110,
+            anchor="center",
+        )
+        tableau_documents.column(
+            "confiance",
+            width=90,
             anchor="center",
         )
         tableau_documents.column(
             "emplacement",
-            width=500,
+            width=380,
             anchor="w",
         )
 
@@ -2279,12 +2303,27 @@ class ApplicationComptaPrivee(tk.Tk):
         barre_documents.pack(side="right", fill="y")
 
         documents_importes: list[Path] = []
+        classifications_fiscales: dict[
+            Path,
+            ClassificationDocumentFiscal,
+        ] = {}
 
         def rafraichir_documents() -> None:
             for item in tableau_documents.get_children():
                 tableau_documents.delete(item)
 
             for index, chemin in enumerate(documents_importes):
+                classification = classifications_fiscales.get(
+                    chemin
+                )
+
+                if classification is None:
+                    type_fiscal = "Non analysé"
+                    confiance = "-"
+                else:
+                    type_fiscal = classification.type_document
+                    confiance = f"{classification.confiance} %"
+
                 tableau_documents.insert(
                     "",
                     "end",
@@ -2292,6 +2331,8 @@ class ApplicationComptaPrivee(tk.Tk):
                     values=(
                         chemin.name,
                         chemin.suffix.lstrip(".").upper() or "Fichier",
+                        type_fiscal,
+                        confiance,
                         str(chemin.parent),
                     ),
                 )
@@ -2340,9 +2381,77 @@ class ApplicationComptaPrivee(tk.Tk):
 
             index = tableau_documents.index(selection[0])
             if 0 <= index < len(documents_importes):
-                documents_importes.pop(index)
+                chemin = documents_importes.pop(index)
+                classifications_fiscales.pop(
+                    chemin,
+                    None,
+                )
 
             rafraichir_documents()
+
+        def reconnaitre_documents_fiscaux() -> None:
+            if not documents_importes:
+                messagebox.showinfo(
+                    "Reconnaissance fiscale",
+                    "Importez d'abord au moins un document.",
+                    parent=fenetre,
+                )
+                return
+
+            erreurs: list[str] = []
+
+            for chemin in documents_importes:
+                try:
+                    texte = extraire_texte_document(chemin)
+                    classification = classifier_document_fiscal(
+                        chemin,
+                        texte,
+                    )
+                except Exception as erreur:
+                    erreurs.append(
+                        f"{chemin.name} : {erreur}"
+                    )
+                    classification = ClassificationDocumentFiscal(
+                        type_document="À vérifier",
+                        confiance=0,
+                        motifs=("lecture locale impossible",),
+                    )
+
+                classifications_fiscales[chemin] = classification
+
+            rafraichir_documents()
+
+            t4 = sum(
+                1
+                for resultat in classifications_fiscales.values()
+                if resultat.type_document == "T4"
+            )
+            rl1 = sum(
+                1
+                for resultat in classifications_fiscales.values()
+                if resultat.type_document == "RL-1"
+            )
+            autres = len(classifications_fiscales) - t4 - rl1
+
+            message = (
+                "Reconnaissance locale terminée.\n\n"
+                f"T4 : {t4}\n"
+                f"RL-1 : {rl1}\n"
+                f"À vérifier / non reconnus : {autres}\n\n"
+                "Aucune donnée n'a quitté l'ordinateur."
+            )
+
+            if erreurs:
+                message += (
+                    "\n\nCertains documents n'ont pas pu être "
+                    "lus automatiquement et doivent être vérifiés."
+                )
+
+            messagebox.showinfo(
+                "Reconnaissance fiscale",
+                message,
+                parent=fenetre,
+            )
 
         def initialiser_dossier_fiscal() -> None:
             try:
@@ -2397,6 +2506,12 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_actions,
             text="Retirer la sélection",
             command=retirer_document_fiscal,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            zone_actions,
+            text="Reconnaître T4 / RL-1",
+            command=reconnaitre_documents_fiscaux,
         ).pack(side="left", padx=(8, 0))
 
         ttk.Button(
