@@ -131,6 +131,10 @@ from .tax_estimation_2025 import (
     calculer_estimation_fiscale_2025,
     formater_estimation_fiscale_2025,
 )
+from .tax_report_pdf_2025 import (
+    exporter_rapport_fiscal_pdf_2025,
+    nom_rapport_fiscal_pdf_2025,
+)
 from .tax_validator import appliquer_validation_fiscale
 from .settings import (
     DEVISES,
@@ -3134,6 +3138,44 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 return
 
+            def exporter_rapport_pdf() -> None:
+                dossier_exports = Path("data/exports")
+                dossier_exports.mkdir(parents=True, exist_ok=True)
+                destination = filedialog.asksaveasfilename(
+                    parent=fenetre_resultat,
+                    title="Exporter le rapport fiscal en PDF",
+                    initialdir=str(dossier_exports.resolve()),
+                    initialfile=nom_rapport_fiscal_pdf_2025(estimation),
+                    defaultextension=".pdf",
+                    filetypes=[("Document PDF", "*.pdf")],
+                )
+                if not destination:
+                    return
+                try:
+                    chemin = exporter_rapport_fiscal_pdf_2025(
+                        estimation,
+                        destination,
+                    )
+                except Exception as erreur:
+                    messagebox.showerror(
+                        "Export PDF impossible",
+                        str(erreur),
+                        parent=fenetre_resultat,
+                    )
+                    return
+                self.statut.set(
+                    f"Rapport fiscal exporté : {chemin.name}"
+                )
+                messagebox.showinfo(
+                    "Rapport fiscal exporté",
+                    (
+                        f"Fichier : {chemin}\n\n"
+                        "Validation comptable obligatoire. "
+                        "Aucune déclaration n'a été transmise."
+                    ),
+                    parent=fenetre_resultat,
+                )
+
             fenetre_resultat = tk.Toplevel(fenetre)
             fenetre_resultat.title(
                 "Estimation fiscale 2025 — ComptaPrivée AI"
@@ -3209,6 +3251,12 @@ class ApplicationComptaPrivee(tk.Tk):
                 text="Fermer",
                 command=fenetre_resultat.destroy,
             ).pack(side="right")
+
+            ttk.Button(
+                zone_actions_resultat,
+                text="Exporter le rapport fiscal en PDF",
+                command=exporter_rapport_pdf,
+            ).pack(side="right", padx=(0, 10))
 
             final = estimation.rapprochement
             bouton_calcul_fiscal.configure(
