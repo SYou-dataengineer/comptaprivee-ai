@@ -127,6 +127,10 @@ from .tax_field_validation import (
 from .tax_validated_case import (
     construire_dossier_fiscal_valide,
 )
+from .tax_estimation_2025 import (
+    calculer_estimation_fiscale_2025,
+    formater_estimation_fiscale_2025,
+)
 from .tax_validator import appliquer_validation_fiscale
 from .settings import (
     DEVISES,
@@ -2528,10 +2532,8 @@ class ApplicationComptaPrivee(tk.Tk):
                     text="Dossier fiscal validé ✓",
                 )
                 bouton_calcul_fiscal.configure(
-                    text=(
-                        "Calcul fiscal 2025 — prêt "
-                        "(moteur non installé)"
-                    )
+                    state="normal",
+                    text="Calculer l'estimation fiscale 2025",
                 )
                 return
 
@@ -2544,7 +2546,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 text="Préparer le dossier validé",
             )
             bouton_calcul_fiscal.configure(
-                text="Calcul fiscal 2025 — verrouillé"
+                state="disabled",
+                text="Calcul fiscal 2025 — verrouillé",
             )
 
         def afficher_donnees_fiscales_extraites() -> None:
@@ -3085,10 +3088,142 @@ class ApplicationComptaPrivee(tk.Tk):
                     f"Province : {dossier_valide.province}\n"
                     "Valeurs validées : "
                     f"{len(dossier_valide.donnees_validees)}\n\n"
-                    "Le moteur de calcul fiscal n'est pas encore "
-                    "installé. Aucune déclaration n'a été transmise."
+                    "Le moteur d'estimation fiscale 2025 est prêt. "
+                    "Aucune déclaration n'a été transmise."
                 ),
                 parent=fenetre,
+            )
+
+        def calculer_estimation_depuis_interface() -> None:
+            dossier_valide = self.dossier_fiscal_valide_courant
+
+            if dossier_valide is None:
+                messagebox.showinfo(
+                    "Estimation fiscale 2025",
+                    (
+                        "Préparez d'abord le dossier fiscal validé. "
+                        "Le calcul n'utilise jamais les valeurs OCR "
+                        "non validées."
+                    ),
+                    parent=fenetre,
+                )
+                return
+
+            try:
+                estimation = calculer_estimation_fiscale_2025(
+                    dossier_valide
+                )
+                resume = formater_estimation_fiscale_2025(
+                    estimation
+                )
+            except ValueError as erreur:
+                messagebox.showerror(
+                    "Estimation fiscale non disponible",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+            except Exception as erreur:
+                messagebox.showerror(
+                    "Erreur de calcul fiscal",
+                    (
+                        "L'estimation locale n'a pas pu être calculée.\n\n"
+                        f"Détail : {erreur}"
+                    ),
+                    parent=fenetre,
+                )
+                return
+
+            fenetre_resultat = tk.Toplevel(fenetre)
+            fenetre_resultat.title(
+                "Estimation fiscale 2025 — ComptaPrivée AI"
+            )
+            fenetre_resultat.geometry("940x700")
+            fenetre_resultat.minsize(780, 560)
+            fenetre_resultat.transient(fenetre)
+
+            conteneur_resultat = ttk.Frame(
+                fenetre_resultat,
+                padding=18,
+            )
+            conteneur_resultat.pack(
+                fill="both",
+                expand=True,
+            )
+
+            ttk.Label(
+                conteneur_resultat,
+                text="Estimation fiscale 2025",
+                font=("Segoe UI", 19, "bold"),
+            ).pack(anchor="w")
+
+            ttk.Label(
+                conteneur_resultat,
+                text=(
+                    "Calcul entièrement local à partir du dossier "
+                    "verrouillé et validé par le comptable."
+                ),
+                foreground="#166534",
+            ).pack(anchor="w", pady=(3, 3))
+
+            ttk.Label(
+                conteneur_resultat,
+                text=(
+                    "ESTIMATION DE BASE — validation comptable "
+                    "obligatoire avant toute utilisation fiscale."
+                ),
+                foreground="#92400e",
+            ).pack(anchor="w", pady=(0, 12))
+
+            zone_resultat = ScrolledText(
+                conteneur_resultat,
+                wrap="word",
+                font=("Consolas", 10),
+            )
+            zone_resultat.pack(
+                fill="both",
+                expand=True,
+            )
+            zone_resultat.insert("1.0", resume)
+            zone_resultat.configure(state="disabled")
+
+            zone_actions_resultat = ttk.Frame(
+                conteneur_resultat
+            )
+            zone_actions_resultat.pack(
+                fill="x",
+                pady=(12, 0),
+            )
+
+            ttk.Label(
+                zone_actions_resultat,
+                text=(
+                    "🔒 ARC désactivée | "
+                    "🔒 Revenu Québec désactivée"
+                ),
+                foreground="#166534",
+            ).pack(side="left")
+
+            ttk.Button(
+                zone_actions_resultat,
+                text="Fermer",
+                command=fenetre_resultat.destroy,
+            ).pack(side="right")
+
+            final = estimation.rapprochement
+            bouton_calcul_fiscal.configure(
+                text="Recalculer l'estimation fiscale 2025"
+            )
+            montant_resultat = (
+                final.remboursement_estime
+                if final.remboursement_estime
+                else final.solde_estime
+            )
+            self.statut.set(
+                (
+                    f"{final.resultat} : {montant_resultat} "
+                    "— validation comptable obligatoire"
+                )
             )
 
         zone_actions = ttk.Frame(conteneur)
@@ -3138,6 +3273,7 @@ class ApplicationComptaPrivee(tk.Tk):
         bouton_calcul_fiscal = ttk.Button(
             zone_actions,
             text="Calcul fiscal 2025 — verrouillé",
+            command=calculer_estimation_depuis_interface,
             state="disabled",
         )
         bouton_calcul_fiscal.pack(
