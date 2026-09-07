@@ -55,6 +55,18 @@ def construire_trace_calcul_fiscal_2025(
     federal = estimation.federal
     quebec = estimation.quebec
     final = estimation.rapprochement
+    ajustement_reer = estimation.ajustement_reer
+
+    formule_revenu_federal = (
+        "Revenu d'emploi - déduction RRQ améliorée"
+    )
+    formule_revenu_quebec = (
+        "Revenu Québec - déduction travailleur - déduction RRQ"
+    )
+
+    if ajustement_reer.deduction_reer > Decimal("0"):
+        formule_revenu_federal += " - déduction REER validée"
+        formule_revenu_quebec += " - déduction REER validée"
 
     if dossier.annee_fiscale != 2025:
         raise ValueError(
@@ -89,7 +101,7 @@ def construire_trace_calcul_fiscal_2025(
         _ligne(
             3, "REVENU FÉDÉRAL", "Revenu imposable fédéral",
             "Moteur fiscal local 2025",
-            "Revenu d'emploi - déduction RRQ améliorée",
+            formule_revenu_federal,
             revenu.revenu_imposable_federal,
         ),
         _ligne(
@@ -107,7 +119,7 @@ def construire_trace_calcul_fiscal_2025(
         _ligne(
             6, "REVENU QUÉBEC", "Revenu imposable Québec",
             "Moteur fiscal local 2025",
-            "Revenu Québec - déduction travailleur - déduction RRQ",
+            formule_revenu_quebec,
             revenu.revenu_imposable_quebec,
         ),
         _ligne(
@@ -172,6 +184,27 @@ def construire_trace_calcul_fiscal_2025(
         ),
     )
 
+    prochain_ordre = 17
+
+    if ajustement_reer.deduction_reer > Decimal("0"):
+        lignes += (
+            _ligne(
+                prochain_ordre,
+                "AJUSTEMENTS VALIDÉS",
+                "Déduction REER/RPAC/RVER validée",
+                (
+                    "ARC ligne 20800 / Revenu Québec ligne 214 "
+                    "— validation comptable"
+                ),
+                (
+                    "Montant réclamé limité au plafond individuel "
+                    "REER confirmé"
+                ),
+                ajustement_reer.deduction_reer,
+            ),
+        )
+        prochain_ordre += 1
+
     if final.remboursement_estime > Decimal("0"):
         montant = final.remboursement_estime
         formule = "Retenues totales - impôt total préliminaire"
@@ -184,7 +217,7 @@ def construire_trace_calcul_fiscal_2025(
 
     lignes += (
         _ligne(
-            17, "RÉSULTAT", final.resultat,
+            prochain_ordre, "RÉSULTAT", final.resultat,
             "Rapprochement fiscal 2025",
             formule,
             montant,

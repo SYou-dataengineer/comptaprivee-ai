@@ -196,3 +196,91 @@ def test_trace_calcul_rappelle_validation_et_aucune_transmission():
     assert "VALIDATION COMPTABLE OBLIGATOIRE" in texte
     assert "Elle ne refait pas l'OCR" in texte
     assert "Aucune déclaration n'a été transmise" in texte
+
+from src.comptaprivee.tax_adjustments_2025 import AjustementReer2025
+
+
+def _reer_5000():
+    return AjustementReer2025(
+        deduction_reer=Decimal("5000"),
+        plafond_reer_confirme=Decimal("8000"),
+        source_plafond_reer="Avis de cotisation / T1028 ARC",
+        valide_par_comptable=True,
+    )
+
+
+def test_pipeline_sans_reer_reste_identique():
+    e = calculer_estimation_fiscale_2025(_dossier_52000())
+    assert e.rapprochement.remboursement_estime == Decimal("5611.05")
+    assert e.ajustement_reer.deduction_reer == Decimal("0")
+
+
+def test_pipeline_reer_5000_reduit_revenu_federal():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        ajustement_reer=_reer_5000(),
+    )
+    assert e.revenu.revenu_imposable_federal == Decimal("46515.00")
+
+
+def test_pipeline_reer_5000_reduit_revenu_quebec():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        ajustement_reer=_reer_5000(),
+    )
+    assert e.revenu.revenu_imposable_quebec == Decimal("45095.00")
+
+
+def test_pipeline_reer_5000_recalcule_impots():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        ajustement_reer=_reer_5000(),
+    )
+    assert e.federal.impot_federal_de_base == Decimal("3676.90")
+    assert e.quebec.impot_quebec_preliminaire == Decimal("3713.36")
+
+
+def test_pipeline_reer_5000_recalcule_remboursement():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        ajustement_reer=_reer_5000(),
+    )
+    assert e.rapprochement.impot_total_preliminaire == Decimal("6783.57")
+    assert e.rapprochement.remboursement_estime == Decimal("6916.43")
+
+
+def test_resume_affiche_reer_valide():
+    texte = formater_estimation_fiscale_2025(
+        calculer_estimation_fiscale_2025(
+            _dossier_52000(),
+            ajustement_reer=_reer_5000(),
+        )
+    )
+    assert "AJUSTEMENTS VALIDÉS" in texte
+    assert "Déduction REER/RPAC/RVER" in texte
+    assert "5\u00a0000,00 $" in texte
+    assert "Avis de cotisation / T1028 ARC" in texte
+
+
+def test_trace_reer_ajoute_une_etape():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        ajustement_reer=_reer_5000(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+    assert len(trace.lignes) == 18
+    assert trace.lignes[-2].libelle == "Déduction REER/RPAC/RVER validée"
+    assert trace.lignes[-1].libelle == "Remboursement estimé"
+
+
+def test_trace_reer_affiche_sources_et_nouveau_resultat():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        ajustement_reer=_reer_5000(),
+    )
+    texte = formater_trace_calcul_fiscal_2025(
+        construire_trace_calcul_fiscal_2025(e)
+    )
+    assert "ARC ligne 20800" in texte
+    assert "Revenu Québec ligne 214" in texte
+    assert "6\u00a0916,43 $" in texte

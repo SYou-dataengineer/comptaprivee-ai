@@ -10,6 +10,10 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .tax_adjustments_2025 import (
+    AjustementReer2025,
+    valider_ajustement_reer_2025,
+)
 from .tax_estimation_2025 import EstimationFiscale2025
 from .tax_field_validation import (
     DonneeFiscaleValidee,
@@ -44,6 +48,7 @@ class DossierFiscalEnregistre:
     estimation: ResumeEstimationSauvegardee | None
     rapport_pdf: Path | None
     documents_manquants: tuple[Path, ...]
+    ajustement_reer: AjustementReer2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -98,10 +103,64 @@ def _estimation_vers_dict(estimation: EstimationFiscale2025 | None):
     }
 
 
+
+def _ajustement_reer_vers_dict(
+    ajustement: AjustementReer2025 | None,
+):
+    if ajustement is None:
+        ajustement = AjustementReer2025()
+
+    valider_ajustement_reer_2025(ajustement)
+
+    return {
+        "deduction_reer": _decimal_texte(ajustement.deduction_reer),
+        "plafond_reer_confirme": _decimal_texte(
+            ajustement.plafond_reer_confirme
+        ),
+        "source_plafond_reer": ajustement.source_plafond_reer,
+        "valide_par_comptable": bool(ajustement.valide_par_comptable),
+        "inclut_transfert_reer": bool(ajustement.inclut_transfert_reer),
+        "inclut_remboursement_rap_reep": bool(
+            ajustement.inclut_remboursement_rap_reep
+        ),
+    }
+
+
+def _ajustement_reer_depuis_dict(valeur: Any) -> AjustementReer2025:
+    if valeur is None:
+        return AjustementReer2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError("L'ajustement REER enregistré est invalide.")
+
+    ajustement = AjustementReer2025(
+        deduction_reer=_decimal_depuis_json(
+            valeur.get("deduction_reer", "0"),
+            "ajustement_reer.deduction_reer",
+        ),
+        plafond_reer_confirme=_decimal_depuis_json(
+            valeur.get("plafond_reer_confirme", "0"),
+            "ajustement_reer.plafond_reer_confirme",
+        ),
+        source_plafond_reer=str(valeur.get("source_plafond_reer", "")),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        inclut_transfert_reer=bool(
+            valeur.get("inclut_transfert_reer", False)
+        ),
+        inclut_remboursement_rap_reep=bool(
+            valeur.get("inclut_remboursement_rap_reep", False)
+        ),
+    )
+    return valider_ajustement_reer_2025(ajustement)
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
     estimation: EstimationFiscale2025 | None = None,
+    ajustement_reer: AjustementReer2025 | None = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -135,6 +194,9 @@ def sauvegarder_dossier_fiscal(
             for d in dossier.donnees_validees
         ],
         "derniere_estimation": _estimation_vers_dict(estimation),
+        "ajustement_reer": _ajustement_reer_vers_dict(
+            ajustement_reer
+        ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
 
@@ -239,6 +301,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             retenues_totales=_decimal_depuis_json(e.get("retenues_totales"), "estimation.retenues_totales"),
         )
 
+    ajustement_reer = _ajustement_reer_depuis_dict(
+        contenu.get("ajustement_reer")
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -248,6 +313,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         estimation=estimation,
         rapport_pdf=rapport,
         documents_manquants=manquants,
+        ajustement_reer=ajustement_reer,
     )
 
 

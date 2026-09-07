@@ -127,6 +127,10 @@ from .tax_field_validation import (
 from .tax_validated_case import (
     construire_dossier_fiscal_valide,
 )
+from .tax_adjustments_2025 import (
+    AjustementReer2025,
+    creer_ajustement_reer_depuis_champs_2025,
+)
 from .tax_estimation_2025 import (
     calculer_estimation_fiscale_2025,
     formater_estimation_fiscale_2025,
@@ -2350,6 +2354,264 @@ class ApplicationComptaPrivee(tk.Tk):
         ] = {}
         derniere_estimation = None
         dernier_rapport_pdf: Path | None = None
+        ajustement_reer_courant = AjustementReer2025()
+
+
+        def mettre_a_jour_bouton_ajustements() -> None:
+            if ajustement_reer_courant.deduction_reer > Decimal("0"):
+                bouton_ajustements_fiscaux.configure(
+                    text=(
+                        "Ajustements fiscaux — REER "
+                        + formater_montant_estimation(
+                            ajustement_reer_courant.deduction_reer
+                        )
+                    )
+                )
+            else:
+                bouton_ajustements_fiscaux.configure(
+                    text="Ajustements fiscaux"
+                )
+
+        def ouvrir_ajustements_fiscaux_2025() -> None:
+            nonlocal ajustement_reer_courant
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            fenetre_ajustements = tk.Toplevel(fenetre)
+            fenetre_ajustements.title(
+                "Ajustements fiscaux 2025 — ComptaPrivée AI"
+            )
+            fenetre_ajustements.geometry("720x470")
+            fenetre_ajustements.minsize(650, 430)
+            fenetre_ajustements.transient(fenetre)
+
+            cadre = ttk.Frame(fenetre_ajustements, padding=18)
+            cadre.pack(fill="both", expand=True)
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Ajustements fiscaux 2025",
+                font=("Segoe UI", 18, "bold"),
+            ).grid(row=0, column=0, columnspan=2, sticky="w")
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Première extension : déduction "
+                    "REER / RPAC / RVER ordinaire."
+                ),
+                foreground="#166534",
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(3, 16),
+            )
+
+            deduction_var = tk.StringVar(
+                value=(
+                    ""
+                    if ajustement_reer_courant.deduction_reer
+                    == Decimal("0")
+                    else str(ajustement_reer_courant.deduction_reer)
+                )
+            )
+            plafond_var = tk.StringVar(
+                value=(
+                    ""
+                    if ajustement_reer_courant.plafond_reer_confirme
+                    == Decimal("0")
+                    else str(
+                        ajustement_reer_courant.plafond_reer_confirme
+                    )
+                )
+            )
+            source_var = tk.StringVar(
+                value=ajustement_reer_courant.source_plafond_reer
+            )
+            validation_var = tk.BooleanVar(
+                value=ajustement_reer_courant.valide_par_comptable
+            )
+
+            ttk.Label(
+                cadre,
+                text="Déduction REER/RPAC/RVER :",
+            ).grid(row=2, column=0, sticky="w", pady=7)
+            ttk.Entry(
+                cadre,
+                textvariable=deduction_var,
+                width=28,
+            ).grid(
+                row=2,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=7,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Plafond individuel confirmé :",
+            ).grid(row=3, column=0, sticky="w", pady=7)
+            ttk.Entry(
+                cadre,
+                textvariable=plafond_var,
+                width=28,
+            ).grid(
+                row=3,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=7,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Source du plafond :",
+            ).grid(row=4, column=0, sticky="w", pady=7)
+            ttk.Entry(
+                cadre,
+                textvariable=source_var,
+            ).grid(
+                row=4,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=7,
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Ex. : Avis de cotisation ARC / "
+                    "T1028 / Mon dossier ARC"
+                ),
+                foreground="#475569",
+            ).grid(
+                row=5,
+                column=1,
+                sticky="w",
+                padx=(12, 0),
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text=(
+                    "Je confirme que le montant et le plafond "
+                    "ont été vérifiés par le comptable."
+                ),
+                variable=validation_var,
+            ).grid(
+                row=6,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(18, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "⚠ Les transferts REER et les remboursements "
+                    "RAP/REEP ne sont pas pris en charge dans ce profil."
+                ),
+                foreground="#92400e",
+                wraplength=650,
+            ).grid(
+                row=7,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(4, 14),
+            )
+
+            def effacer() -> None:
+                deduction_var.set("")
+                plafond_var.set("")
+                source_var.set("")
+                validation_var.set(False)
+
+            def appliquer() -> None:
+                nonlocal ajustement_reer_courant
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    nouvel_ajustement = (
+                        creer_ajustement_reer_depuis_champs_2025(
+                            deduction_var.get(),
+                            plafond_var.get(),
+                            source_var.get(),
+                            validation_var.get(),
+                        )
+                    )
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Ajustement fiscal invalide",
+                        str(erreur),
+                        parent=fenetre_ajustements,
+                    )
+                    return
+
+                ajustement_reer_courant = nouvel_ajustement
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                mettre_a_jour_bouton_ajustements()
+
+                if nouvel_ajustement.deduction_reer > Decimal("0"):
+                    message = (
+                        "Déduction REER validée et prête pour "
+                        "le prochain calcul.\n\n"
+                        "Déduction : "
+                        + formater_montant_estimation(
+                            nouvel_ajustement.deduction_reer
+                        )
+                        + "\nPlafond confirmé : "
+                        + formater_montant_estimation(
+                            nouvel_ajustement.plafond_reer_confirme
+                        )
+                        + "\n\nLe calcul fiscal doit être recalculé."
+                    )
+                else:
+                    message = (
+                        "Aucun ajustement REER ne sera appliqué "
+                        "au prochain calcul."
+                    )
+
+                self.statut.set("Ajustements fiscaux 2025 mis à jour")
+                messagebox.showinfo(
+                    "Ajustements fiscaux 2025",
+                    message,
+                    parent=fenetre_ajustements,
+                )
+                fenetre_ajustements.destroy()
+
+            zone_actions_ajustements = ttk.Frame(cadre)
+            zone_actions_ajustements.grid(
+                row=8,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(8, 0),
+            )
+
+            ttk.Button(
+                zone_actions_ajustements,
+                text="Effacer",
+                command=effacer,
+            ).pack(side="left")
+
+            ttk.Button(
+                zone_actions_ajustements,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right")
+
+            ttk.Button(
+                zone_actions_ajustements,
+                text="Fermer",
+                command=fenetre_ajustements.destroy,
+            ).pack(side="right", padx=(0, 8))
 
         def rafraichir_documents() -> None:
             for item in tableau_documents.get_children():
@@ -3013,6 +3275,8 @@ class ApplicationComptaPrivee(tk.Tk):
             afficher_donnees_fiscales_extraites()
 
         def initialiser_dossier_fiscal() -> None:
+            nonlocal ajustement_reer_courant
+            nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
                     client=client_fiscal.get(),
@@ -3030,6 +3294,10 @@ class ApplicationComptaPrivee(tk.Tk):
 
             self.dossier_fiscal_courant = dossier
             self.dossier_fiscal_valide_courant = None
+            ajustement_reer_courant = AjustementReer2025()
+            derniere_estimation = None
+            dernier_rapport_pdf = None
+            mettre_a_jour_bouton_ajustements()
             statut_dossier.set(dossier.statut)
             mettre_a_jour_etat_dossier_valide()
             self.statut.set(
@@ -3131,7 +3399,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 try:
                     estimation_a_sauvegarder = (
                         calculer_estimation_fiscale_2025(
-                            dossier_valide
+                            dossier_valide,
+                            ajustement_reer=ajustement_reer_courant,
                         )
                     )
                 except (ValueError, Exception):
@@ -3158,6 +3427,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 chemin = sauvegarder_dossier_fiscal(
                     dossier_valide,
                     estimation=estimation_a_sauvegarder,
+                    ajustement_reer=ajustement_reer_courant,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -3225,6 +3495,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
             nonlocal derniere_estimation, dernier_rapport_pdf
+            nonlocal ajustement_reer_courant
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -3262,6 +3533,8 @@ class ApplicationComptaPrivee(tk.Tk):
             province_fiscale.set(dossier.province)
             derniere_estimation = None
             dernier_rapport_pdf = enregistrement.rapport_pdf
+            ajustement_reer_courant = enregistrement.ajustement_reer
+            mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
             statut_dossier.set("Validé — dossier rouvert localement")
             mettre_a_jour_etat_dossier_valide()
@@ -3526,7 +3799,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
             try:
                 estimation = calculer_estimation_fiscale_2025(
-                    dossier_valide
+                    dossier_valide,
+                    ajustement_reer=ajustement_reer_courant,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation
@@ -3802,6 +4076,16 @@ class ApplicationComptaPrivee(tk.Tk):
             command=ouvrir_dossiers_fiscaux_enregistres,
         ).pack(side="left", padx=(8, 0))
 
+        bouton_ajustements_fiscaux = ttk.Button(
+            zone_actions,
+            text="Ajustements fiscaux",
+            command=ouvrir_ajustements_fiscaux_2025,
+        )
+        bouton_ajustements_fiscaux.pack(
+            side="left",
+            padx=(8, 0),
+        )
+
         bouton_calcul_fiscal = ttk.Button(
             zone_actions,
             text="Calcul fiscal 2025 — verrouillé",
@@ -3831,6 +4115,7 @@ class ApplicationComptaPrivee(tk.Tk):
             command=fenetre.destroy,
         ).pack(side="right")
 
+        mettre_a_jour_bouton_ajustements()
         mettre_a_jour_etat_dossier_valide()
         champ_client.focus_set()
 
