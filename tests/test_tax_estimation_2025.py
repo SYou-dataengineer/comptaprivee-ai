@@ -269,7 +269,10 @@ def test_trace_reer_ajoute_une_etape():
     )
     trace = construire_trace_calcul_fiscal_2025(e)
     assert len(trace.lignes) == 18
-    assert trace.lignes[-2].libelle == "Déduction REER/RPAC/RVER validée"
+    assert (
+        trace.lignes[2].libelle
+        == "Déduction REER/RPAC/RVER validée"
+    )
     assert trace.lignes[-1].libelle == "Remboursement estimé"
 
 
@@ -284,3 +287,30 @@ def test_trace_reer_affiche_sources_et_nouveau_resultat():
     assert "ARC ligne 20800" in texte
     assert "Revenu Québec ligne 214" in texte
     assert "6\u00a0916,43 $" in texte
+
+def test_trace_reer_est_placee_avant_revenu_imposable_federal():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        ajustement_reer=_reer_5000(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    assert trace.lignes[2].ordre == 3
+    assert (
+        trace.lignes[2].libelle
+        == "Déduction REER/RPAC/RVER validée"
+    )
+    assert trace.lignes[3].ordre == 4
+    assert trace.lignes[3].libelle == "Revenu imposable fédéral"
+
+
+def test_trace_reer_conserve_une_numerotation_continue():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        ajustement_reer=_reer_5000(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    assert [ligne.ordre for ligne in trace.lignes] == list(
+        range(1, 19)
+    )

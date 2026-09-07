@@ -4,7 +4,7 @@ Cette brique ne modifie aucun résultat fiscal. Elle explique une estimation
 déjà calculée à partir d'un dossier verrouillé et validé par le comptable.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 
 from .tax_estimation_2025 import (
@@ -187,23 +187,33 @@ def construire_trace_calcul_fiscal_2025(
     prochain_ordre = 17
 
     if ajustement_reer.deduction_reer > Decimal("0"):
-        lignes += (
-            _ligne(
-                prochain_ordre,
-                "AJUSTEMENTS VALIDÉS",
-                "Déduction REER/RPAC/RVER validée",
-                (
-                    "ARC ligne 20800 / Revenu Québec ligne 214 "
-                    "— validation comptable"
-                ),
-                (
-                    "Montant réclamé limité au plafond individuel "
-                    "REER confirmé"
-                ),
-                ajustement_reer.deduction_reer,
+        ligne_reer = _ligne(
+            3,
+            "REVENU FÉDÉRAL",
+            "Déduction REER/RPAC/RVER validée",
+            (
+                "ARC ligne 20800 / Revenu Québec ligne 214 "
+                "— validation comptable"
             ),
+            (
+                "Montant réclamé limité au plafond individuel "
+                "REER confirmé"
+            ),
+            ajustement_reer.deduction_reer,
         )
-        prochain_ordre += 1
+
+        # Le REER intervient avant le revenu imposable. Les étapes
+        # suivantes sont décalées d'un rang uniquement lorsque cette
+        # déduction validée est présente.
+        lignes = (
+            lignes[:2]
+            + (ligne_reer,)
+            + tuple(
+                replace(ligne, ordre=ligne.ordre + 1)
+                for ligne in lignes[2:]
+            )
+        )
+        prochain_ordre = 18
 
     if final.remboursement_estime > Decimal("0"):
         montant = final.remboursement_estime
