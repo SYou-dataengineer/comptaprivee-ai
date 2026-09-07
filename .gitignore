@@ -52,3 +52,7 @@ data/parametres.json
 .local_cleanup_archive/
 *.bak
 data/ocr_review_queue.json
+
+# Dossiers fiscaux locaux confidentiels
+data/dossiers_fiscaux/*
+!data/dossiers_fiscaux/.gitkeep

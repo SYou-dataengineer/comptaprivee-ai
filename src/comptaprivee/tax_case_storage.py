@@ -1,0 +1,264 @@
+"""Persistance locale des dossiers fiscaux validés."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
+import json
+from pathlib import Path
+import re
+from typing import Any
+
+from .tax_estimation_2025 import EstimationFiscale2025
+from .tax_field_validation import (
+    DonneeFiscaleValidee,
+    STATUT_CORRIGE_VALIDE,
+    STATUT_VALIDE,
+)
+from .tax_validated_case import DossierFiscalValide
+
+SCHEMA_VERSION = 1
+
+# Racine stable du projet, indépendante du dossier courant.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DOSSIERS_FISCAUX_DIR = (
+    PROJECT_ROOT / "data" / "dossiers_fiscaux"
+)
+STATUTS_VALIDATION_AUTORISES = {STATUT_VALIDE, STATUT_CORRIGE_VALIDE}
+
+
+@dataclass(frozen=True)
+class ResumeEstimationSauvegardee:
+    resultat: str
+    montant: Decimal
+    impot_total_preliminaire: Decimal
+    retenues_totales: Decimal
+
+
+@dataclass(frozen=True)
+class DossierFiscalEnregistre:
+    chemin: Path
+    dossier: DossierFiscalValide
+    sauvegarde_le: str
+    estimation: ResumeEstimationSauvegardee | None
+    rapport_pdf: Path | None
+    documents_manquants: tuple[Path, ...]
+
+
+def _nom_securise(valeur: str) -> str:
+    texte = re.sub(r"[^\w-]+", "_", valeur.strip(), flags=re.UNICODE)
+    texte = re.sub(r"_+", "_", texte).strip("_")
+    return texte or "client"
+
+
+def nom_fichier_dossier_fiscal(dossier: DossierFiscalValide) -> str:
+    return f"Dossier_Fiscal_{dossier.annee_fiscale}_{_nom_securise(dossier.client)}.json"
+
+
+def _chemin_vers_stockage(chemin: Path) -> str:
+    valeur = Path(chemin)
+
+    if valeur.is_absolute():
+        absolu = valeur
+    else:
+        absolu = PROJECT_ROOT / valeur
+
+    try:
+        absolu_resolu = absolu.resolve()
+        racine = PROJECT_ROOT.resolve()
+        return str(absolu_resolu.relative_to(racine))
+    except (OSError, ValueError):
+        return str(absolu)
+
+
+def _chemin_depuis_stockage(valeur: str) -> Path:
+    chemin = Path(valeur)
+
+    if chemin.is_absolute():
+        return chemin
+
+    return PROJECT_ROOT / chemin
+
+
+def _decimal_texte(valeur: Decimal) -> str:
+    return format(valeur, "f")
+
+
+def _estimation_vers_dict(estimation: EstimationFiscale2025 | None):
+    if estimation is None:
+        return None
+    r = estimation.rapprochement
+    montant = r.remboursement_estime if r.remboursement_estime > 0 else r.solde_estime
+    return {
+        "resultat": r.resultat,
+        "montant": _decimal_texte(montant),
+        "impot_total_preliminaire": _decimal_texte(r.impot_total_preliminaire),
+        "retenues_totales": _decimal_texte(r.retenues_totales),
+    }
+
+
+def sauvegarder_dossier_fiscal(
+    dossier: DossierFiscalValide,
+    *,
+    estimation: EstimationFiscale2025 | None = None,
+    rapport_pdf: Path | str | None = None,
+    destination: Path | str | None = None,
+) -> Path:
+    if destination is None:
+        DOSSIERS_FISCAUX_DIR.mkdir(parents=True, exist_ok=True)
+        chemin = DOSSIERS_FISCAUX_DIR / nom_fichier_dossier_fiscal(dossier)
+    else:
+        chemin = Path(destination)
+        if chemin.suffix.lower() != ".json":
+            chemin = chemin.with_suffix(".json")
+        chemin.parent.mkdir(parents=True, exist_ok=True)
+
+    contenu = {
+        "schema_version": SCHEMA_VERSION,
+        "sauvegarde_le": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "client": dossier.client,
+        "annee_fiscale": dossier.annee_fiscale,
+        "province": dossier.province,
+        "documents": [_chemin_vers_stockage(x) for x in dossier.documents],
+        "donnees_validees": [
+            {
+                "document": _chemin_vers_stockage(d.document),
+                "type_document": d.type_document,
+                "case": d.case,
+                "libelle": d.libelle,
+                "valeur_extraite": _decimal_texte(d.valeur_extraite),
+                "valeur_validee": _decimal_texte(d.valeur_validee),
+                "corrigee": bool(d.corrigee),
+                "statut": d.statut,
+            }
+            for d in dossier.donnees_validees
+        ],
+        "derniere_estimation": _estimation_vers_dict(estimation),
+        "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
+    }
+
+    temporaire = chemin.with_suffix(chemin.suffix + ".tmp")
+    try:
+        temporaire.write_text(json.dumps(contenu, ensure_ascii=False, indent=2), encoding="utf-8")
+        temporaire.replace(chemin)
+    finally:
+        try:
+            temporaire.unlink()
+        except OSError:
+            pass
+    return chemin
+
+
+def _decimal_depuis_json(valeur: Any, nom: str) -> Decimal:
+    try:
+        resultat = Decimal(str(valeur))
+    except (InvalidOperation, ValueError, TypeError) as erreur:
+        raise ValueError(f"Valeur décimale invalide pour {nom}.") from erreur
+    if not resultat.is_finite():
+        raise ValueError(f"Valeur décimale non finie pour {nom}.")
+    return resultat
+
+
+def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
+    chemin = Path(source)
+    try:
+        contenu = json.loads(chemin.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as erreur:
+        raise ValueError(f"Dossier fiscal illisible : {chemin.name}") from erreur
+    if not isinstance(contenu, dict) or contenu.get("schema_version") != SCHEMA_VERSION:
+        raise ValueError("Version de dossier fiscal non prise en charge.")
+
+    try:
+        client = " ".join(str(contenu["client"]).split())
+        annee = int(contenu["annee_fiscale"])
+        province = str(contenu["province"])
+        sauvegarde_le = str(contenu["sauvegarde_le"])
+        documents_json = contenu["documents"]
+        donnees_json = contenu["donnees_validees"]
+    except (KeyError, TypeError, ValueError) as erreur:
+        raise ValueError("Le dossier fiscal enregistré est incomplet.") from erreur
+
+    if not client or annee < 2000 or annee > 2100:
+        raise ValueError("Identité du dossier fiscal enregistrée invalide.")
+    if province.strip().casefold() not in {"québec", "quebec"}:
+        raise ValueError("Cette version accepte uniquement les dossiers Québec.")
+    if not isinstance(documents_json, list) or not isinstance(donnees_json, list) or not donnees_json:
+        raise ValueError("Le dossier fiscal enregistré ne contient pas de données valides.")
+
+    documents = tuple(Path(str(v)) for v in documents_json)
+    donnees = []
+    for index, brut in enumerate(donnees_json):
+        if not isinstance(brut, dict):
+            raise ValueError("Une donnée fiscale enregistrée est invalide.")
+        try:
+            statut = str(brut["statut"])
+            type_document = str(brut["type_document"])
+            document = Path(str(brut["document"]))
+            case = str(brut["case"])
+            libelle = str(brut["libelle"])
+            corrigee = bool(brut["corrigee"])
+        except KeyError as erreur:
+            raise ValueError("Une donnée fiscale enregistrée est incomplète.") from erreur
+        if statut not in STATUTS_VALIDATION_AUTORISES:
+            raise ValueError("Statut de validation fiscale enregistré invalide.")
+        if type_document not in {"T4", "RL-1"}:
+            raise ValueError("Type de document fiscal enregistré non pris en charge.")
+        ve = _decimal_depuis_json(brut.get("valeur_extraite"), f"valeur_extraite[{index}]")
+        vv = _decimal_depuis_json(brut.get("valeur_validee"), f"valeur_validee[{index}]")
+        if ve < 0 or vv < 0:
+            raise ValueError("Une valeur fiscale enregistrée ne peut pas être négative.")
+        donnees.append(DonneeFiscaleValidee(
+            document=document,
+            type_document=type_document,
+            case=case,
+            libelle=libelle,
+            valeur_extraite=ve,
+            valeur_validee=vv,
+            corrigee=corrigee,
+            statut=statut,
+        ))
+
+    dossier = DossierFiscalValide(
+        client=client,
+        annee_fiscale=annee,
+        province="Québec",
+        documents=documents,
+        donnees_validees=tuple(donnees),
+    )
+
+    estimation = None
+    e = contenu.get("derniere_estimation")
+    if e is not None:
+        if not isinstance(e, dict):
+            raise ValueError("Le résumé d'estimation enregistré est invalide.")
+        estimation = ResumeEstimationSauvegardee(
+            resultat=str(e.get("resultat", "")),
+            montant=_decimal_depuis_json(e.get("montant"), "estimation.montant"),
+            impot_total_preliminaire=_decimal_depuis_json(e.get("impot_total_preliminaire"), "estimation.impot_total_preliminaire"),
+            retenues_totales=_decimal_depuis_json(e.get("retenues_totales"), "estimation.retenues_totales"),
+        )
+
+    rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
+    manquants = tuple(x for x in documents if not x.exists())
+    return DossierFiscalEnregistre(
+        chemin=chemin,
+        dossier=dossier,
+        sauvegarde_le=sauvegarde_le,
+        estimation=estimation,
+        rapport_pdf=rapport,
+        documents_manquants=manquants,
+    )
+
+
+def lister_dossiers_fiscaux(dossier: Path | str = DOSSIERS_FISCAUX_DIR):
+    racine = Path(dossier)
+    if not racine.exists():
+        return ()
+    resultats = []
+    for chemin in racine.glob("*.json"):
+        try:
+            resultats.append(charger_dossier_fiscal(chemin))
+        except ValueError:
+            continue
+    return tuple(sorted(resultats, key=lambda x: (x.sauvegarde_le, x.chemin.name), reverse=True))

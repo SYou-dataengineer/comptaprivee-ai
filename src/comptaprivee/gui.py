@@ -130,10 +130,15 @@ from .tax_validated_case import (
 from .tax_estimation_2025 import (
     calculer_estimation_fiscale_2025,
     formater_estimation_fiscale_2025,
+    formater_montant_estimation,
 )
 from .tax_report_pdf_2025 import (
     exporter_rapport_fiscal_pdf_2025,
     nom_rapport_fiscal_pdf_2025,
+)
+from .tax_case_storage import (
+    lister_dossiers_fiscaux,
+    sauvegarder_dossier_fiscal,
 )
 from .tax_validator import appliquer_validation_fiscale
 from .settings import (
@@ -2339,6 +2344,8 @@ class ApplicationComptaPrivee(tk.Tk):
             tuple[str, str, str],
             DonneeFiscaleValidee,
         ] = {}
+        derniere_estimation = None
+        dernier_rapport_pdf: Path | None = None
 
         def rafraichir_documents() -> None:
             for item in tableau_documents.get_children():
@@ -3098,7 +3105,407 @@ class ApplicationComptaPrivee(tk.Tk):
                 parent=fenetre,
             )
 
+        def sauvegarder_dossier_fiscal_local() -> None:
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dossier_valide = self.dossier_fiscal_valide_courant
+
+            if dossier_valide is None:
+                messagebox.showinfo(
+                    "Enregistrer le dossier fiscal",
+                    "Préparez d'abord un dossier fiscal validé.",
+                    parent=fenetre,
+                )
+                return
+
+            estimation_a_sauvegarder = derniere_estimation
+
+            # Sécurité : ne dépend pas uniquement de l'état temporaire
+            # de la fenêtre. Si l'estimation n'est plus en mémoire mais
+            # que le dossier est validé, on la recalcule localement.
+            if estimation_a_sauvegarder is None:
+                try:
+                    estimation_a_sauvegarder = (
+                        calculer_estimation_fiscale_2025(
+                            dossier_valide
+                        )
+                    )
+                except (ValueError, Exception):
+                    estimation_a_sauvegarder = None
+
+            rapport_a_sauvegarder = dernier_rapport_pdf
+
+            # Si le rapport a déjà été exporté avec le nom par défaut,
+            # on le rattache automatiquement au dossier.
+            if (
+                rapport_a_sauvegarder is None
+                and estimation_a_sauvegarder is not None
+            ):
+                rapport_candidat = (
+                    Path("data/exports")
+                    / nom_rapport_fiscal_pdf_2025(
+                        estimation_a_sauvegarder
+                    )
+                )
+                if rapport_candidat.exists():
+                    rapport_a_sauvegarder = rapport_candidat
+
+            try:
+                chemin = sauvegarder_dossier_fiscal(
+                    dossier_valide,
+                    estimation=estimation_a_sauvegarder,
+                    rapport_pdf=rapport_a_sauvegarder,
+                )
+            except Exception as erreur:
+                messagebox.showerror(
+                    "Enregistrement impossible",
+                    str(erreur),
+                    parent=fenetre,
+                )
+                return
+
+            derniere_estimation = estimation_a_sauvegarder
+            dernier_rapport_pdf = rapport_a_sauvegarder
+
+            lignes_confirmation = [
+                "Dossier enregistré localement :",
+                "",
+                str(chemin),
+                "",
+            ]
+
+            if estimation_a_sauvegarder is None:
+                lignes_confirmation.append(
+                    "Estimation : non disponible."
+                )
+            else:
+                rapprochement = (
+                    estimation_a_sauvegarder.rapprochement
+                )
+                montant = (
+                    rapprochement.remboursement_estime
+                    if rapprochement.remboursement_estime
+                    else rapprochement.solde_estime
+                )
+                lignes_confirmation.append(
+                    "Estimation enregistrée : "
+                    f"{rapprochement.resultat} — "
+                    f"{formater_montant_estimation(montant)}"
+                )
+
+            if rapport_a_sauvegarder is None:
+                lignes_confirmation.append(
+                    "Rapport PDF : non associé."
+                )
+            else:
+                lignes_confirmation.append(
+                    "Rapport PDF associé : "
+                    f"{rapport_a_sauvegarder.name}"
+                )
+
+            lignes_confirmation.extend(
+                [
+                    "",
+                    "Aucune déclaration n'a été transmise.",
+                ]
+            )
+
+            self.statut.set(
+                f"Dossier fiscal enregistré : {chemin.name}"
+            )
+            messagebox.showinfo(
+                "Dossier fiscal enregistré",
+                "\n".join(lignes_confirmation),
+                parent=fenetre,
+            )
+
+        def charger_enregistrement_dans_interface(enregistrement) -> None:
+            nonlocal derniere_estimation, dernier_rapport_pdf
+            dossier = enregistrement.dossier
+            documents_importes[:] = list(dossier.documents)
+            classifications_fiscales.clear()
+            donnees_fiscales_extraites.clear()
+            validations_fiscales.clear()
+            par_document = {}
+            for validation in dossier.donnees_validees:
+                donnee = DonneeFiscaleExtraite(
+                    document=validation.document,
+                    type_document=validation.type_document,
+                    case=validation.case,
+                    libelle=validation.libelle,
+                    valeur=validation.valeur_extraite,
+                    valeur_brute=str(validation.valeur_extraite),
+                )
+                par_document.setdefault(validation.document, []).append(donnee)
+                validations_fiscales[cle_donnee_fiscale(donnee)] = validation
+            for document, donnees in par_document.items():
+                donnees_fiscales_extraites[document] = tuple(donnees)
+                types = {d.type_document for d in donnees}
+                classifications_fiscales[document] = ClassificationDocumentFiscal(
+                    type_document=next(iter(types)) if len(types) == 1 else "À vérifier",
+                    confiance=100 if len(types) == 1 else 0,
+                    motifs=("dossier fiscal enregistré",),
+                )
+            self.dossier_fiscal_courant = creer_dossier_fiscal(
+                client=dossier.client,
+                annee_fiscale=dossier.annee_fiscale,
+                province=dossier.province,
+                documents=dossier.documents,
+            )
+            self.dossier_fiscal_valide_courant = dossier
+            client_fiscal.set(dossier.client)
+            annee_fiscale.set(str(dossier.annee_fiscale))
+            province_fiscale.set(dossier.province)
+            derniere_estimation = None
+            dernier_rapport_pdf = enregistrement.rapport_pdf
+            rafraichir_documents()
+            statut_dossier.set("Validé — dossier rouvert localement")
+            mettre_a_jour_etat_dossier_valide()
+            message = f"Dossier rouvert : {dossier.client} — {dossier.annee_fiscale}"
+            if enregistrement.estimation:
+                message += f"\n\nDernier résultat : {enregistrement.estimation.resultat} — {formater_montant_estimation(enregistrement.estimation.montant)}"
+            if enregistrement.documents_manquants:
+                message += f"\n\nAttention : {len(enregistrement.documents_manquants)} document(s) source manquant(s)."
+            self.statut.set(message.split("\n",1)[0])
+            messagebox.showinfo("Dossier fiscal rouvert", message, parent=fenetre)
+
+        def ouvrir_dossiers_fiscaux_enregistres() -> None:
+            fenetre_dossiers = tk.Toplevel(fenetre)
+            fenetre_dossiers.title(
+                "Dossiers fiscaux enregistrés — ComptaPrivée AI"
+            )
+            fenetre_dossiers.geometry("1080x600")
+            fenetre_dossiers.minsize(860, 480)
+            fenetre_dossiers.transient(fenetre)
+
+            conteneur_dossiers = ttk.Frame(
+                fenetre_dossiers,
+                padding=16,
+            )
+            conteneur_dossiers.pack(
+                fill="both",
+                expand=True,
+            )
+
+            conteneur_dossiers.columnconfigure(0, weight=1)
+            conteneur_dossiers.rowconfigure(3, weight=1)
+
+            ttk.Label(
+                conteneur_dossiers,
+                text="Dossiers fiscaux enregistrés",
+                font=("Segoe UI", 17, "bold"),
+            ).grid(row=0, column=0, sticky="w")
+
+            ttk.Label(
+                conteneur_dossiers,
+                text=(
+                    "Instantanés locaux des valeurs validées "
+                    "par le comptable."
+                ),
+                foreground="#166534",
+            ).grid(
+                row=1,
+                column=0,
+                sticky="w",
+                pady=(3, 8),
+            )
+
+            dossiers = list(lister_dossiers_fiscaux())
+
+            def selection_index() -> int | None:
+                selection = tableau.selection()
+                if not selection:
+                    messagebox.showinfo(
+                        "Dossiers fiscaux",
+                        "Sélectionnez d'abord un dossier.",
+                        parent=fenetre_dossiers,
+                    )
+                    return None
+                try:
+                    return int(selection[0].rsplit("-", 1)[1])
+                except (ValueError, IndexError):
+                    return None
+
+            def ouvrir_selection() -> None:
+                index = selection_index()
+                if index is None:
+                    return
+
+                charger_enregistrement_dans_interface(
+                    dossiers[index]
+                )
+                fenetre_dossiers.destroy()
+
+            def ouvrir_rapport_selection() -> None:
+                index = selection_index()
+                if index is None:
+                    return
+
+                rapport = dossiers[index].rapport_pdf
+                if rapport is None or not rapport.exists():
+                    messagebox.showinfo(
+                        "Rapport fiscal",
+                        "Aucun rapport PDF local disponible pour ce dossier.",
+                        parent=fenetre_dossiers,
+                    )
+                    return
+
+                try:
+                    if sys.platform.startswith("win"):
+                        os.startfile(rapport)
+                    elif sys.platform == "darwin":
+                        subprocess.Popen(["open", str(rapport)])
+                    else:
+                        subprocess.Popen(["xdg-open", str(rapport)])
+                except OSError as erreur:
+                    messagebox.showerror(
+                        "Ouverture impossible",
+                        str(erreur),
+                        parent=fenetre_dossiers,
+                    )
+
+            zone_actions_dossiers = ttk.Frame(
+                conteneur_dossiers
+            )
+            zone_actions_dossiers.grid(
+                row=2,
+                column=0,
+                sticky="ew",
+                pady=(0, 10),
+            )
+
+            ttk.Button(
+                zone_actions_dossiers,
+                text="Ouvrir le dossier",
+                command=ouvrir_selection,
+            ).pack(side="left")
+
+            ttk.Button(
+                zone_actions_dossiers,
+                text="Ouvrir le rapport PDF",
+                command=ouvrir_rapport_selection,
+            ).pack(side="left", padx=(8, 0))
+
+            ttk.Label(
+                zone_actions_dossiers,
+                text="Double-clic ou Entrée : ouvrir le dossier",
+                foreground="#4b5563",
+            ).pack(side="left", padx=(14, 0))
+
+            ttk.Button(
+                zone_actions_dossiers,
+                text="Fermer",
+                command=fenetre_dossiers.destroy,
+            ).pack(side="right")
+
+            cadre_tableau = ttk.Frame(
+                conteneur_dossiers
+            )
+            cadre_tableau.grid(
+                row=3,
+                column=0,
+                sticky="nsew",
+            )
+            cadre_tableau.columnconfigure(0, weight=1)
+            cadre_tableau.rowconfigure(0, weight=1)
+
+            colonnes = (
+                "client",
+                "annee",
+                "province",
+                "sauvegarde",
+                "resultat",
+                "documents",
+            )
+
+            tableau = ttk.Treeview(
+                cadre_tableau,
+                columns=colonnes,
+                show="headings",
+                selectmode="browse",
+            )
+
+            defiles_y = ttk.Scrollbar(
+                cadre_tableau,
+                orient="vertical",
+                command=tableau.yview,
+            )
+            tableau.configure(yscrollcommand=defiles_y.set)
+
+            tableau.grid(
+                row=0,
+                column=0,
+                sticky="nsew",
+            )
+            defiles_y.grid(
+                row=0,
+                column=1,
+                sticky="ns",
+            )
+
+            titres = {
+                "client": "Client",
+                "annee": "Année",
+                "province": "Province",
+                "sauvegarde": "Sauvegardé le",
+                "resultat": "Dernier résultat",
+                "documents": "Documents",
+            }
+            for colonne, titre in titres.items():
+                tableau.heading(colonne, text=titre)
+
+            tableau.column("client", width=190, anchor="w")
+            tableau.column("annee", width=75, anchor="center")
+            tableau.column("province", width=85, anchor="center")
+            tableau.column("sauvegarde", width=185, anchor="w")
+            tableau.column("resultat", width=280, anchor="w")
+            tableau.column("documents", width=110, anchor="center")
+
+            for index, item in enumerate(dossiers):
+                if item.estimation is None:
+                    resultat = "Aucune estimation enregistrée"
+                else:
+                    resultat = (
+                        f"{item.estimation.resultat} — "
+                        f"{formater_montant_estimation(item.estimation.montant)}"
+                    )
+
+                etat_documents = (
+                    "OK"
+                    if not item.documents_manquants
+                    else f"{len(item.documents_manquants)} manquant(s)"
+                )
+
+                tableau.insert(
+                    "",
+                    "end",
+                    iid=f"dossier-fiscal-{index}",
+                    values=(
+                        item.dossier.client,
+                        item.dossier.annee_fiscale,
+                        item.dossier.province,
+                        item.sauvegarde_le,
+                        resultat,
+                        etat_documents,
+                    ),
+                )
+
+            tableau.bind(
+                "<Double-1>",
+                lambda _event: ouvrir_selection(),
+            )
+            tableau.bind(
+                "<Return>",
+                lambda _event: ouvrir_selection(),
+            )
+
+            if dossiers:
+                premier = "dossier-fiscal-0"
+                tableau.selection_set(premier)
+                tableau.focus(premier)
+
         def calculer_estimation_depuis_interface() -> None:
+            nonlocal derniere_estimation
             dossier_valide = self.dossier_fiscal_valide_courant
 
             if dossier_valide is None:
@@ -3120,6 +3527,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 resume = formater_estimation_fiscale_2025(
                     estimation
                 )
+                derniere_estimation = estimation
             except ValueError as erreur:
                 messagebox.showerror(
                     "Estimation fiscale non disponible",
@@ -3139,6 +3547,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 return
 
             def exporter_rapport_pdf() -> None:
+                nonlocal dernier_rapport_pdf
                 dossier_exports = Path("data/exports")
                 dossier_exports.mkdir(parents=True, exist_ok=True)
                 destination = filedialog.asksaveasfilename(
@@ -3156,6 +3565,7 @@ class ApplicationComptaPrivee(tk.Tk):
                         estimation,
                         destination,
                     )
+                    dernier_rapport_pdf = chemin
                 except Exception as erreur:
                     messagebox.showerror(
                         "Export PDF impossible",
@@ -3317,6 +3727,18 @@ class ApplicationComptaPrivee(tk.Tk):
             side="left",
             padx=(8, 0),
         )
+
+        ttk.Button(
+            zone_actions,
+            text="Enregistrer dossier",
+            command=sauvegarder_dossier_fiscal_local,
+        ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            zone_actions,
+            text="Dossiers enregistrés",
+            command=ouvrir_dossiers_fiscaux_enregistres,
+        ).pack(side="left", padx=(8, 0))
 
         bouton_calcul_fiscal = ttk.Button(
             zone_actions,
