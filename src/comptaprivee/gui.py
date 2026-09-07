@@ -132,6 +132,10 @@ from .tax_estimation_2025 import (
     formater_estimation_fiscale_2025,
     formater_montant_estimation,
 )
+from .tax_calculation_trace_2025 import (
+    construire_trace_calcul_fiscal_2025,
+    formater_trace_calcul_fiscal_2025,
+)
 from .tax_report_pdf_2025 import (
     exporter_rapport_fiscal_pdf_2025,
     nom_rapport_fiscal_pdf_2025,
@@ -3586,6 +3590,58 @@ class ApplicationComptaPrivee(tk.Tk):
                     parent=fenetre_resultat,
                 )
 
+            def ouvrir_trace_calcul() -> None:
+                trace = construire_trace_calcul_fiscal_2025(
+                    estimation
+                )
+                texte_trace = formater_trace_calcul_fiscal_2025(
+                    trace
+                )
+
+                fenetre_trace = tk.Toplevel(fenetre_resultat)
+                fenetre_trace.title(
+                    "Détail du calcul fiscal 2025 — ComptaPrivée AI"
+                )
+                fenetre_trace.geometry("980x720")
+                fenetre_trace.minsize(800, 560)
+                fenetre_trace.transient(fenetre_resultat)
+
+                cadre_trace = ttk.Frame(
+                    fenetre_trace,
+                    padding=18,
+                )
+                cadre_trace.pack(fill="both", expand=True)
+
+                ttk.Label(
+                    cadre_trace,
+                    text="Détail du calcul fiscal 2025",
+                    font=("Segoe UI", 18, "bold"),
+                ).pack(anchor="w")
+
+                ttk.Label(
+                    cadre_trace,
+                    text=(
+                        "Sources, formules et montants issus "
+                        "des valeurs validées."
+                    ),
+                    foreground="#166534",
+                ).pack(anchor="w", pady=(3, 10))
+
+                zone_trace = ScrolledText(
+                    cadre_trace,
+                    wrap="word",
+                    font=("Consolas", 10),
+                )
+                zone_trace.pack(fill="both", expand=True)
+                zone_trace.insert("1.0", texte_trace)
+                zone_trace.configure(state="disabled")
+
+                ttk.Button(
+                    cadre_trace,
+                    text="Fermer",
+                    command=fenetre_trace.destroy,
+                ).pack(anchor="e", pady=(10, 0))
+
             fenetre_resultat = tk.Toplevel(fenetre)
             fenetre_resultat.title(
                 "Estimation fiscale 2025 — ComptaPrivée AI"
@@ -3666,6 +3722,12 @@ class ApplicationComptaPrivee(tk.Tk):
                 zone_actions_resultat,
                 text="Exporter le rapport fiscal en PDF",
                 command=exporter_rapport_pdf,
+            ).pack(side="right", padx=(0, 10))
+
+            ttk.Button(
+                zone_actions_resultat,
+                text="Voir le détail du calcul",
+                command=ouvrir_trace_calcul,
             ).pack(side="right", padx=(0, 10))
 
             final = estimation.rapprochement
