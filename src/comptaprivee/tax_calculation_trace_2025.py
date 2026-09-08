@@ -7,6 +7,10 @@ déjà calculée à partir d'un dossier verrouillé et validé par le comptable.
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_donations_2025 import (
+    credit_federal_dons_2025,
+    credit_quebec_dons_2025,
+)
 from .tax_estimation_2025 import (
     EstimationFiscale2025,
     formater_montant_estimation,
@@ -74,6 +78,7 @@ def construire_trace_calcul_fiscal_2025(
     final = estimation.rapprochement
     ajustement_reer = estimation.ajustement_reer
     cotisations = estimation.cotisations_syndicales
+    dons = estimation.dons_bienfaisance
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -91,11 +96,19 @@ def construire_trace_calcul_fiscal_2025(
             " - cotisations syndicales/professionnelles validées"
         )
 
+    formule_impot_federal = (
+        "Impôt fédéral brut - crédits non remboursables de base"
+    )
+    if dons.montant_admissible_federal > Decimal("0"):
+        formule_impot_federal += " - crédit dons ligne 34900"
+
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
     if cotisations.montant_quebec_admissible > Decimal("0"):
         formule_impot_quebec += (
             " - crédit cotisations syndicales/professionnelles (10 %)"
         )
+    if dons.montant_admissible_quebec > Decimal("0"):
+        formule_impot_quebec += " - crédit dons ligne 395"
 
     if dossier.annee_fiscale != 2025:
         raise ValueError(
@@ -166,7 +179,7 @@ def construire_trace_calcul_fiscal_2025(
         _ligne(
             9, "FÉDÉRAL", "Impôt fédéral de base",
             "Moteur fiscal local 2025",
-            "Impôt fédéral brut - crédits non remboursables",
+            formule_impot_federal,
             final.impot_federal_de_base,
         ),
         _ligne(
@@ -260,6 +273,54 @@ def construire_trace_calcul_fiscal_2025(
                 ),
                 "Base admissible validée × 10 %",
                 credit_quebec_cotisations_2025(cotisations),
+            ),
+        )
+
+    if dons.montant_admissible_federal > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt fédéral de base",
+            _ligne(
+                0,
+                "FÉDÉRAL",
+                "Crédit fédéral pour dons",
+                (
+                    "ARC annexe 9 / ligne 34900 — "
+                    + dons.source_federale
+                    + " — validation comptable"
+                ),
+                (
+                    "14,5 % des premiers 200 $ + 29 % de "
+                    "l'excédent — profil simple 2025"
+                ),
+                credit_federal_dons_2025(
+                    dons,
+                    revenu.revenu_imposable_federal,
+                ),
+            ),
+        )
+
+    if dons.montant_admissible_quebec > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt Québec préliminaire",
+            _ligne(
+                0,
+                "QUÉBEC",
+                "Crédit Québec pour dons",
+                (
+                    "Revenu Québec ligne 395 — "
+                    + dons.source_quebec
+                    + " — validation comptable"
+                ),
+                (
+                    "20 % des premiers 200 $ + 24 % de "
+                    "l'excédent — profil simple 2025"
+                ),
+                credit_quebec_dons_2025(
+                    dons,
+                    revenu.revenu_imposable_quebec,
+                ),
             ),
         )
 

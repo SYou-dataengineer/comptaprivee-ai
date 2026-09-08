@@ -150,7 +150,7 @@ def calculer_rapprochement_fiscal_2025(
             "Le calcul couvre uniquement le profil emploi Québec simple 2025.",
             "L'abattement Québec est calculé à 16,5 % de l'impôt fédéral de base.",
             "Les retenues T4 et RL-1 sont comparées aux impôts préliminaires.",
-            "Aucun crédit familial, médical, étude, don ou handicap.",
+            "Aucun crédit familial, médical, étude ou handicap.",
             "Aucune prime d'assurance médicaments ni contribution Québec additionnelle.",
             "Aucun remboursement de cotisations excédentaires RRQ/AE/RQAP.",
             "Aucun revenu autonome, placement, location ou gain en capital.",

@@ -135,6 +135,10 @@ from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
 )
+from .tax_donations_2025 import (
+    DonsBienfaisance2025,
+    valider_dons_bienfaisance_2025,
+)
 from .tax_estimation_2025 import (
     calculer_estimation_fiscale_2025,
     formater_estimation_fiscale_2025,
@@ -2362,6 +2366,7 @@ class ApplicationComptaPrivee(tk.Tk):
         cotisations_syndicales_courantes = (
             CotisationsSyndicalesProfessionnelles2025()
         )
+        dons_bienfaisance_courants = DonsBienfaisance2025()
 
 
         def mettre_a_jour_bouton_ajustements() -> None:
@@ -2392,6 +2397,23 @@ class ApplicationComptaPrivee(tk.Tk):
                     + formater_montant_estimation(qc)
                 )
 
+            don_fed = dons_bienfaisance_courants.montant_admissible_federal
+            don_qc = dons_bienfaisance_courants.montant_admissible_quebec
+
+            if don_fed > Decimal("0") or don_qc > Decimal("0"):
+                if don_fed == don_qc:
+                    morceaux.append(
+                        "Dons "
+                        + formater_montant_estimation(don_fed)
+                    )
+                else:
+                    morceaux.append(
+                        "Dons F "
+                        + formater_montant_estimation(don_fed)
+                        + " / QC "
+                        + formater_montant_estimation(don_qc)
+                    )
+
             bouton_ajustements_fiscaux.configure(
                 text=(
                     "Ajustements fiscaux — " + " | ".join(morceaux)
@@ -2403,19 +2425,56 @@ class ApplicationComptaPrivee(tk.Tk):
         def ouvrir_ajustements_fiscaux_2025() -> None:
             nonlocal ajustement_reer_courant
             nonlocal cotisations_syndicales_courantes
+            nonlocal dons_bienfaisance_courants
             nonlocal derniere_estimation, dernier_rapport_pdf
 
             fenetre_ajustements = tk.Toplevel(fenetre)
             fenetre_ajustements.title(
                 "Ajustements fiscaux 2025 — ComptaPrivée AI"
             )
-            fenetre_ajustements.geometry("820x720")
-            fenetre_ajustements.minsize(760, 650)
+            fenetre_ajustements.geometry("900x790")
+            fenetre_ajustements.minsize(820, 680)
             fenetre_ajustements.transient(fenetre)
 
-            cadre = ttk.Frame(fenetre_ajustements, padding=18)
-            cadre.pack(fill="both", expand=True)
+            zone = ttk.Frame(fenetre_ajustements)
+            zone.pack(fill="both", expand=True)
+
+            canvas = tk.Canvas(
+                zone,
+                highlightthickness=0,
+                borderwidth=0,
+            )
+            barre = ttk.Scrollbar(
+                zone,
+                orient="vertical",
+                command=canvas.yview,
+            )
+            canvas.configure(yscrollcommand=barre.set)
+
+            barre.pack(side="right", fill="y")
+            canvas.pack(side="left", fill="both", expand=True)
+
+            cadre = ttk.Frame(canvas, padding=18)
+            fenetre_canvas = canvas.create_window(
+                (0, 0),
+                window=cadre,
+                anchor="nw",
+            )
             cadre.columnconfigure(1, weight=1)
+
+            def ajuster_defilement(_event=None) -> None:
+                canvas.configure(
+                    scrollregion=canvas.bbox("all")
+                )
+
+            def ajuster_largeur(event) -> None:
+                canvas.itemconfigure(
+                    fenetre_canvas,
+                    width=event.width,
+                )
+
+            cadre.bind("<Configure>", ajuster_defilement)
+            canvas.bind("<Configure>", ajuster_largeur)
 
             ttk.Label(
                 cadre,
@@ -2426,8 +2485,8 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Label(
                 cadre,
                 text=(
-                    "REER/RPAC/RVER et cotisations syndicales ou "
-                    "professionnelles — validation comptable obligatoire."
+                    "REER/RPAC/RVER, cotisations et dons — "
+                    "validation comptable obligatoire."
                 ),
                 foreground="#166534",
             ).grid(
@@ -2653,21 +2712,6 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=5,
             )
 
-            ttk.Label(
-                cadre,
-                text=(
-                    "Ex. : T4 case 44 / reçu syndical — "
-                    "RL-1 case F / reçu professionnel."
-                ),
-                foreground="#475569",
-            ).grid(
-                row=13,
-                column=0,
-                columnspan=2,
-                sticky="w",
-                pady=(2, 6),
-            )
-
             ttk.Checkbutton(
                 cadre,
                 text=(
@@ -2676,7 +2720,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 ),
                 variable=dedoublonnage_var,
             ).grid(
-                row=14,
+                row=13,
                 column=0,
                 columnspan=2,
                 sticky="w",
@@ -2691,7 +2735,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 ),
                 variable=validation_cot_var,
             ).grid(
-                row=15,
+                row=14,
                 column=0,
                 columnspan=2,
                 sticky="w",
@@ -2706,9 +2750,240 @@ class ApplicationComptaPrivee(tk.Tk):
                     "donnant droit à un remboursement."
                 ),
                 foreground="#92400e",
-                wraplength=740,
+                wraplength=790,
+            ).grid(
+                row=15,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(6, 12),
+            )
+
+            ttk.Separator(
+                cadre,
+                orient="horizontal",
             ).grid(
                 row=16,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(0, 12),
+            )
+
+            ttk.Label(
+                cadre,
+                text="Dons de bienfaisance",
+                font=("Segoe UI", 11, "bold"),
+            ).grid(row=17, column=0, columnspan=2, sticky="w")
+
+            don_fed_var = tk.StringVar(
+                value=(
+                    ""
+                    if (
+                        dons_bienfaisance_courants
+                        .montant_admissible_federal
+                        == Decimal("0")
+                    )
+                    else str(
+                        dons_bienfaisance_courants
+                        .montant_admissible_federal
+                    )
+                )
+            )
+            don_qc_var = tk.StringVar(
+                value=(
+                    ""
+                    if (
+                        dons_bienfaisance_courants
+                        .montant_admissible_quebec
+                        == Decimal("0")
+                    )
+                    else str(
+                        dons_bienfaisance_courants
+                        .montant_admissible_quebec
+                    )
+                )
+            )
+            don_source_fed_var = tk.StringVar(
+                value=dons_bienfaisance_courants.source_federale
+            )
+            don_source_qc_var = tk.StringVar(
+                value=dons_bienfaisance_courants.source_quebec
+            )
+            don_validation_var = tk.BooleanVar(
+                value=dons_bienfaisance_courants.valide_par_comptable
+            )
+            donataire_var = tk.BooleanVar(
+                value=(
+                    dons_bienfaisance_courants
+                    .donataire_reconnu_confirme
+                )
+            )
+            monetaire_2025_var = tk.BooleanVar(
+                value=(
+                    dons_bienfaisance_courants
+                    .dons_monetaires_2025_uniquement
+                )
+            )
+            aucun_report_var = tk.BooleanVar(
+                value=dons_bienfaisance_courants.aucun_report_anterieur
+            )
+            jan_fev_var = tk.BooleanVar(
+                value=dons_bienfaisance_courants.inclut_dons_jan_fev_2025
+            )
+            jan_fev_reclame_2024_var = tk.BooleanVar(
+                value=(
+                    dons_bienfaisance_courants
+                    .dons_jan_fev_deja_reclames_2024
+                )
+            )
+
+            ttk.Label(
+                cadre,
+                text="Montant admissible fédéral — ligne 34900 :",
+            ).grid(row=18, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                textvariable=don_fed_var,
+            ).grid(
+                row=18,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Source fédérale / reçu officiel :",
+            ).grid(row=19, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                textvariable=don_source_fed_var,
+            ).grid(
+                row=19,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Montant admissible Québec — ligne 395 :",
+            ).grid(row=20, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                textvariable=don_qc_var,
+            ).grid(
+                row=20,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Source Québec / reçu officiel :",
+            ).grid(row=21, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                textvariable=don_source_qc_var,
+            ).grid(
+                row=21,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Je confirme que le donataire reconnu a été vérifié.",
+                variable=donataire_var,
+            ).grid(
+                row=22,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Il s'agit uniquement de dons monétaires faits en 2025.",
+                variable=monetaire_2025_var,
+            ).grid(
+                row=23,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Aucun don reporté d'une année antérieure n'est inclus.",
+                variable=aucun_report_var,
+            ).grid(
+                row=24,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Le montant inclut un ou des dons de janvier/février 2025.",
+                variable=jan_fev_var,
+            ).grid(
+                row=25,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text=(
+                    "Ces dons de janvier/février 2025 ont déjà été "
+                    "réclamés dans la déclaration 2024."
+                ),
+                variable=jan_fev_reclame_2024_var,
+            ).grid(
+                row=26,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Je confirme les dons admissibles validés par le comptable.",
+                variable=don_validation_var,
+            ).grid(
+                row=27,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "⚠ Profil actuel : dons monétaires 2025 seulement, "
+                    "sans report antérieur ni règles spéciales. "
+                    "Les cas hors profil sont refusés."
+                ),
+                foreground="#92400e",
+                wraplength=790,
+            ).grid(
+                row=28,
                 column=0,
                 columnspan=2,
                 sticky="w",
@@ -2745,6 +3020,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 plafond_var.set("")
                 source_var.set("")
                 validation_reer_var.set(False)
+
                 cot_fed_var.set("")
                 source_fed_var.set("")
                 cot_qc_var.set("")
@@ -2752,9 +3028,21 @@ class ApplicationComptaPrivee(tk.Tk):
                 validation_cot_var.set(False)
                 dedoublonnage_var.set(False)
 
+                don_fed_var.set("")
+                don_qc_var.set("")
+                don_source_fed_var.set("")
+                don_source_qc_var.set("")
+                don_validation_var.set(False)
+                donataire_var.set(False)
+                monetaire_2025_var.set(False)
+                aucun_report_var.set(False)
+                jan_fev_var.set(False)
+                jan_fev_reclame_2024_var.set(False)
+
             def appliquer() -> None:
                 nonlocal ajustement_reer_courant
                 nonlocal cotisations_syndicales_courantes
+                nonlocal dons_bienfaisance_courants
                 nonlocal derniere_estimation, dernier_rapport_pdf
 
                 try:
@@ -2766,18 +3054,19 @@ class ApplicationComptaPrivee(tk.Tk):
                             validation_reer_var.get(),
                         )
                     )
+
                     nouvelles_cotisations = (
                         CotisationsSyndicalesProfessionnelles2025(
                             montant_federal_admissible=(
                                 decimal_depuis_champ(
                                     cot_fed_var.get(),
-                                    "Montant fédéral",
+                                    "Montant fédéral cotisations",
                                 )
                             ),
                             montant_quebec_admissible=(
                                 decimal_depuis_champ(
                                     cot_qc_var.get(),
-                                    "Montant Québec",
+                                    "Montant Québec cotisations",
                                 )
                             ),
                             source_federale=source_fed_var.get().strip(),
@@ -2793,6 +3082,31 @@ class ApplicationComptaPrivee(tk.Tk):
                     valider_cotisations_syndicales_2025(
                         nouvelles_cotisations
                     )
+
+                    nouveaux_dons = DonsBienfaisance2025(
+                        montant_admissible_federal=decimal_depuis_champ(
+                            don_fed_var.get(),
+                            "Montant fédéral dons",
+                        ),
+                        montant_admissible_quebec=decimal_depuis_champ(
+                            don_qc_var.get(),
+                            "Montant Québec dons",
+                        ),
+                        source_federale=don_source_fed_var.get().strip(),
+                        source_quebec=don_source_qc_var.get().strip(),
+                        valide_par_comptable=don_validation_var.get(),
+                        donataire_reconnu_confirme=donataire_var.get(),
+                        dons_monetaires_2025_uniquement=(
+                            monetaire_2025_var.get()
+                        ),
+                        aucun_report_anterieur=aucun_report_var.get(),
+                        inclut_dons_jan_fev_2025=jan_fev_var.get(),
+                        dons_jan_fev_deja_reclames_2024=(
+                            jan_fev_reclame_2024_var.get()
+                        ),
+                    )
+                    valider_dons_bienfaisance_2025(nouveaux_dons)
+
                 except ValueError as erreur:
                     messagebox.showerror(
                         "Ajustements fiscaux invalides",
@@ -2802,9 +3116,9 @@ class ApplicationComptaPrivee(tk.Tk):
                     return
 
                 ajustement_reer_courant = nouvel_ajustement
-                cotisations_syndicales_courantes = (
-                    nouvelles_cotisations
-                )
+                cotisations_syndicales_courantes = nouvelles_cotisations
+                dons_bienfaisance_courants = nouveaux_dons
+
                 derniere_estimation = None
                 dernier_rapport_pdf = None
                 mettre_a_jour_bouton_ajustements()
@@ -2825,10 +3139,18 @@ class ApplicationComptaPrivee(tk.Tk):
                             nouvelles_cotisations
                             .montant_federal_admissible
                         )
-                        + "\nBase Québec : "
+                        + "\nBase cotisations Québec : "
                         + formater_montant_estimation(
                             nouvelles_cotisations
                             .montant_quebec_admissible
+                        )
+                        + "\nDons fédéraux : "
+                        + formater_montant_estimation(
+                            nouveaux_dons.montant_admissible_federal
+                        )
+                        + "\nDons Québec : "
+                        + formater_montant_estimation(
+                            nouveaux_dons.montant_admissible_quebec
                         )
                         + "\n\nLe calcul fiscal doit être recalculé."
                     ),
@@ -2838,11 +3160,11 @@ class ApplicationComptaPrivee(tk.Tk):
 
             zone_actions = ttk.Frame(cadre)
             zone_actions.grid(
-                row=17,
+                row=29,
                 column=0,
                 columnspan=2,
                 sticky="ew",
-                pady=(8, 0),
+                pady=(8, 12),
             )
 
             ttk.Button(
@@ -3527,6 +3849,7 @@ class ApplicationComptaPrivee(tk.Tk):
         def initialiser_dossier_fiscal() -> None:
             nonlocal ajustement_reer_courant
             nonlocal cotisations_syndicales_courantes
+            nonlocal dons_bienfaisance_courants
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -3549,6 +3872,7 @@ class ApplicationComptaPrivee(tk.Tk):
             cotisations_syndicales_courantes = (
                 CotisationsSyndicalesProfessionnelles2025()
             )
+            dons_bienfaisance_courants = DonsBienfaisance2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -3688,6 +4012,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
+                    dons_bienfaisance=dons_bienfaisance_courants,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -3757,6 +4082,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal derniere_estimation, dernier_rapport_pdf
             nonlocal ajustement_reer_courant
             nonlocal cotisations_syndicales_courantes
+            nonlocal dons_bienfaisance_courants
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -3797,6 +4123,9 @@ class ApplicationComptaPrivee(tk.Tk):
             ajustement_reer_courant = enregistrement.ajustement_reer
             cotisations_syndicales_courantes = (
                 enregistrement.cotisations_syndicales
+            )
+            dons_bienfaisance_courants = (
+                enregistrement.dons_bienfaisance
             )
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
@@ -4068,6 +4397,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
+                    dons_bienfaisance=dons_bienfaisance_courants,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation

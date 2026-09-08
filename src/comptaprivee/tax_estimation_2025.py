@@ -15,6 +15,13 @@ from .tax_adjustments_2025 import (
     AjustementReer2025,
     appliquer_ajustement_reer_2025,
 )
+from .tax_donations_2025 import (
+    DonsBienfaisance2025,
+    appliquer_credit_federal_dons_2025,
+    appliquer_credit_quebec_dons_2025,
+    credit_federal_dons_2025,
+    credit_quebec_dons_2025,
+)
 from .tax_engine_input_2025 import (
     BaseFiscaleEmploi2025,
     consolider_base_fiscale_emploi_2025,
@@ -54,6 +61,7 @@ class EstimationFiscale2025:
     rapprochement: RapprochementFiscal2025
     ajustement_reer: AjustementReer2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
+    dons_bienfaisance: DonsBienfaisance2025
 
 
 def calculer_estimation_fiscale_2025(
@@ -62,6 +70,7 @@ def calculer_estimation_fiscale_2025(
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
+    dons_bienfaisance: DonsBienfaisance2025 | None = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
     if dossier.annee_fiscale != 2025:
@@ -94,11 +103,27 @@ def calculer_estimation_fiscale_2025(
         cotisations_effectives,
     )
 
+    dons_effectifs = (
+        dons_bienfaisance
+        if dons_bienfaisance is not None
+        else DonsBienfaisance2025()
+    )
+
     federal = calculer_impot_federal_preliminaire_2025(base, revenu)
+    federal = appliquer_credit_federal_dons_2025(
+        federal,
+        dons_effectifs,
+        revenu.revenu_imposable_federal,
+    )
     quebec = calculer_impot_quebec_preliminaire_2025(revenu)
     quebec = appliquer_credit_quebec_cotisations_2025(
         quebec,
         cotisations_effectives,
+    )
+    quebec = appliquer_credit_quebec_dons_2025(
+        quebec,
+        dons_effectifs,
+        revenu.revenu_imposable_quebec,
     )
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
@@ -115,6 +140,7 @@ def calculer_estimation_fiscale_2025(
         rapprochement=rapprochement,
         ajustement_reer=ajustement_reer_effectif,
         cotisations_syndicales=cotisations_effectives,
+        dons_bienfaisance=dons_effectifs,
     )
 
 
@@ -183,6 +209,31 @@ def formater_estimation_fiscale_2025(
                 estimation.cotisations_syndicales.montant_federal_admissible
                 > Decimal("0")
                 or estimation.cotisations_syndicales.montant_quebec_admissible
+                > Decimal("0")
+            )
+            else []
+        ),
+        *(
+            [
+                "",
+                "DONS DE BIENFAISANCE VALIDÉS",
+                "Montant admissible fédéral : "
+                f"{formater_montant_estimation(estimation.dons_bienfaisance.montant_admissible_federal)}",
+                "Crédit fédéral — ligne 34900 : "
+                f"{formater_montant_estimation(credit_federal_dons_2025(estimation.dons_bienfaisance, revenu.revenu_imposable_federal))}",
+                "Source fédérale : "
+                f"{estimation.dons_bienfaisance.source_federale}",
+                "Montant admissible Québec : "
+                f"{formater_montant_estimation(estimation.dons_bienfaisance.montant_admissible_quebec)}",
+                "Crédit Québec — ligne 395 : "
+                f"{formater_montant_estimation(credit_quebec_dons_2025(estimation.dons_bienfaisance, revenu.revenu_imposable_quebec))}",
+                "Source Québec : "
+                f"{estimation.dons_bienfaisance.source_quebec}",
+            ]
+            if (
+                estimation.dons_bienfaisance.montant_admissible_federal
+                > Decimal("0")
+                or estimation.dons_bienfaisance.montant_admissible_quebec
                 > Decimal("0")
             )
             else []

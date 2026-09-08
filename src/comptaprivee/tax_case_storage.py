@@ -18,6 +18,10 @@ from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
 )
+from .tax_donations_2025 import (
+    DonsBienfaisance2025,
+    valider_dons_bienfaisance_2025,
+)
 from .tax_estimation_2025 import EstimationFiscale2025
 from .tax_field_validation import (
     DonneeFiscaleValidee,
@@ -54,6 +58,7 @@ class DossierFiscalEnregistre:
     documents_manquants: tuple[Path, ...]
     ajustement_reer: AjustementReer2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
+    dons_bienfaisance: DonsBienfaisance2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -219,6 +224,87 @@ def _cotisations_syndicales_depuis_dict(
     return valider_cotisations_syndicales_2025(cotisations)
 
 
+
+def _dons_bienfaisance_vers_dict(
+    dons: DonsBienfaisance2025 | None,
+):
+    if dons is None:
+        dons = DonsBienfaisance2025()
+
+    valider_dons_bienfaisance_2025(dons)
+
+    return {
+        "montant_admissible_federal": _decimal_texte(
+            dons.montant_admissible_federal
+        ),
+        "montant_admissible_quebec": _decimal_texte(
+            dons.montant_admissible_quebec
+        ),
+        "source_federale": dons.source_federale,
+        "source_quebec": dons.source_quebec,
+        "valide_par_comptable": bool(dons.valide_par_comptable),
+        "donataire_reconnu_confirme": bool(
+            dons.donataire_reconnu_confirme
+        ),
+        "dons_monetaires_2025_uniquement": bool(
+            dons.dons_monetaires_2025_uniquement
+        ),
+        "aucun_report_anterieur": bool(
+            dons.aucun_report_anterieur
+        ),
+        "inclut_dons_jan_fev_2025": bool(
+            dons.inclut_dons_jan_fev_2025
+        ),
+        "dons_jan_fev_deja_reclames_2024": bool(
+            dons.dons_jan_fev_deja_reclames_2024
+        ),
+    }
+
+
+def _dons_bienfaisance_depuis_dict(
+    valeur: Any,
+) -> DonsBienfaisance2025:
+    if valeur is None:
+        return DonsBienfaisance2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Les dons de bienfaisance enregistrés sont invalides."
+        )
+
+    dons = DonsBienfaisance2025(
+        montant_admissible_federal=_decimal_depuis_json(
+            valeur.get("montant_admissible_federal", "0"),
+            "dons_bienfaisance.montant_admissible_federal",
+        ),
+        montant_admissible_quebec=_decimal_depuis_json(
+            valeur.get("montant_admissible_quebec", "0"),
+            "dons_bienfaisance.montant_admissible_quebec",
+        ),
+        source_federale=str(valeur.get("source_federale", "")),
+        source_quebec=str(valeur.get("source_quebec", "")),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        donataire_reconnu_confirme=bool(
+            valeur.get("donataire_reconnu_confirme", False)
+        ),
+        dons_monetaires_2025_uniquement=bool(
+            valeur.get("dons_monetaires_2025_uniquement", False)
+        ),
+        aucun_report_anterieur=bool(
+            valeur.get("aucun_report_anterieur", False)
+        ),
+        inclut_dons_jan_fev_2025=bool(
+            valeur.get("inclut_dons_jan_fev_2025", False)
+        ),
+        dons_jan_fev_deja_reclames_2024=bool(
+            valeur.get("dons_jan_fev_deja_reclames_2024", False)
+        ),
+    )
+    return valider_dons_bienfaisance_2025(dons)
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
@@ -227,6 +313,7 @@ def sauvegarder_dossier_fiscal(
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
+    dons_bienfaisance: DonsBienfaisance2025 | None = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -265,6 +352,9 @@ def sauvegarder_dossier_fiscal(
         ),
         "cotisations_syndicales": _cotisations_syndicales_vers_dict(
             cotisations_syndicales
+        ),
+        "dons_bienfaisance": _dons_bienfaisance_vers_dict(
+            dons_bienfaisance
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
@@ -376,6 +466,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     cotisations_syndicales = _cotisations_syndicales_depuis_dict(
         contenu.get("cotisations_syndicales")
     )
+    dons_bienfaisance = _dons_bienfaisance_depuis_dict(
+        contenu.get("dons_bienfaisance")
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -387,6 +480,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         documents_manquants=manquants,
         ajustement_reer=ajustement_reer,
         cotisations_syndicales=cotisations_syndicales,
+        dons_bienfaisance=dons_bienfaisance,
     )
 
 
