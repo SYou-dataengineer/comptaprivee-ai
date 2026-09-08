@@ -11,6 +11,9 @@ from .tax_estimation_2025 import (
     EstimationFiscale2025,
     formater_montant_estimation,
 )
+from .tax_union_dues_2025 import (
+    credit_quebec_cotisations_2025,
+)
 
 
 @dataclass(frozen=True)
@@ -46,6 +49,20 @@ def _ligne(ordre, section, libelle, source, formule, montant):
     )
 
 
+def _inserer_ligne_avant(lignes, libelle_cible, nouvelle_ligne):
+    index = next(
+        (i for i, ligne in enumerate(lignes) if ligne.libelle == libelle_cible),
+        None,
+    )
+    if index is None:
+        raise ValueError("Point d'insertion introuvable : " + libelle_cible)
+    resultat = lignes[:index] + (nouvelle_ligne,) + lignes[index:]
+    return tuple(
+        replace(ligne, ordre=i + 1)
+        for i, ligne in enumerate(resultat)
+    )
+
+
 def construire_trace_calcul_fiscal_2025(
     estimation: EstimationFiscale2025,
 ) -> TraceCalculFiscal2025:
@@ -56,6 +73,7 @@ def construire_trace_calcul_fiscal_2025(
     quebec = estimation.quebec
     final = estimation.rapprochement
     ajustement_reer = estimation.ajustement_reer
+    cotisations = estimation.cotisations_syndicales
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -67,6 +85,17 @@ def construire_trace_calcul_fiscal_2025(
     if ajustement_reer.deduction_reer > Decimal("0"):
         formule_revenu_federal += " - déduction REER validée"
         formule_revenu_quebec += " - déduction REER validée"
+
+    if cotisations.montant_federal_admissible > Decimal("0"):
+        formule_revenu_federal += (
+            " - cotisations syndicales/professionnelles validées"
+        )
+
+    formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
+    if cotisations.montant_quebec_admissible > Decimal("0"):
+        formule_impot_quebec += (
+            " - crédit cotisations syndicales/professionnelles (10 %)"
+        )
 
     if dossier.annee_fiscale != 2025:
         raise ValueError(
@@ -167,7 +196,7 @@ def construire_trace_calcul_fiscal_2025(
         _ligne(
             14, "QUÉBEC", "Impôt Québec préliminaire",
             "Moteur fiscal local 2025",
-            "Impôt Québec brut - crédit personnel de base",
+            formule_impot_quebec,
             final.impot_quebec_preliminaire,
         ),
         _ligne(
@@ -184,36 +213,57 @@ def construire_trace_calcul_fiscal_2025(
         ),
     )
 
-    prochain_ordre = 17
-
     if ajustement_reer.deduction_reer > Decimal("0"):
-        ligne_reer = _ligne(
-            3,
-            "REVENU FÉDÉRAL",
-            "Déduction REER/RPAC/RVER validée",
-            (
-                "ARC ligne 20800 / Revenu Québec ligne 214 "
-                "— validation comptable"
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable fédéral",
+            _ligne(
+                0,
+                "REVENU FÉDÉRAL",
+                "Déduction REER/RPAC/RVER validée",
+                "ARC ligne 20800 / Revenu Québec ligne 214 — validation comptable",
+                "Montant réclamé limité au plafond individuel REER confirmé",
+                ajustement_reer.deduction_reer,
             ),
-            (
-                "Montant réclamé limité au plafond individuel "
-                "REER confirmé"
-            ),
-            ajustement_reer.deduction_reer,
         )
 
-        # Le REER intervient avant le revenu imposable. Les étapes
-        # suivantes sont décalées d'un rang uniquement lorsque cette
-        # déduction validée est présente.
-        lignes = (
-            lignes[:2]
-            + (ligne_reer,)
-            + tuple(
-                replace(ligne, ordre=ligne.ordre + 1)
-                for ligne in lignes[2:]
-            )
+    if cotisations.montant_federal_admissible > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable fédéral",
+            _ligne(
+                0,
+                "REVENU FÉDÉRAL",
+                "Cotisations syndicales/professionnelles — fédéral",
+                (
+                    "ARC ligne 21200 — "
+                    + cotisations.source_federale
+                    + " — validation comptable et dédoublonnage"
+                ),
+                "Montant fédéral admissible déduit du revenu net et imposable",
+                cotisations.montant_federal_admissible,
+            ),
         )
-        prochain_ordre = 18
+
+    if cotisations.montant_quebec_admissible > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt Québec préliminaire",
+            _ligne(
+                0,
+                "QUÉBEC",
+                "Crédit cotisations syndicales/professionnelles — Québec",
+                (
+                    "Revenu Québec ligne 397.1 — "
+                    + cotisations.source_quebec
+                    + " — validation comptable"
+                ),
+                "Base admissible validée × 10 %",
+                credit_quebec_cotisations_2025(cotisations),
+            ),
+        )
+
+    prochain_ordre = len(lignes) + 1
 
     if final.remboursement_estime > Decimal("0"):
         montant = final.remboursement_estime

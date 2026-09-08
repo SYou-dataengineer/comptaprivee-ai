@@ -131,6 +131,10 @@ from .tax_adjustments_2025 import (
     AjustementReer2025,
     creer_ajustement_reer_depuis_champs_2025,
 )
+from .tax_union_dues_2025 import (
+    CotisationsSyndicalesProfessionnelles2025,
+    valider_cotisations_syndicales_2025,
+)
 from .tax_estimation_2025 import (
     calculer_estimation_fiscale_2025,
     formater_estimation_fiscale_2025,
@@ -2355,33 +2359,58 @@ class ApplicationComptaPrivee(tk.Tk):
         derniere_estimation = None
         dernier_rapport_pdf: Path | None = None
         ajustement_reer_courant = AjustementReer2025()
+        cotisations_syndicales_courantes = (
+            CotisationsSyndicalesProfessionnelles2025()
+        )
 
 
         def mettre_a_jour_bouton_ajustements() -> None:
+            morceaux = []
+
             if ajustement_reer_courant.deduction_reer > Decimal("0"):
-                bouton_ajustements_fiscaux.configure(
-                    text=(
-                        "Ajustements fiscaux — REER "
-                        + formater_montant_estimation(
-                            ajustement_reer_courant.deduction_reer
-                        )
+                morceaux.append(
+                    "REER "
+                    + formater_montant_estimation(
+                        ajustement_reer_courant.deduction_reer
                     )
                 )
-            else:
-                bouton_ajustements_fiscaux.configure(
-                    text="Ajustements fiscaux"
+
+            fed = (
+                cotisations_syndicales_courantes
+                .montant_federal_admissible
+            )
+            qc = (
+                cotisations_syndicales_courantes
+                .montant_quebec_admissible
+            )
+
+            if fed > Decimal("0") or qc > Decimal("0"):
+                morceaux.append(
+                    "Cotis. F "
+                    + formater_montant_estimation(fed)
+                    + " / QC "
+                    + formater_montant_estimation(qc)
                 )
+
+            bouton_ajustements_fiscaux.configure(
+                text=(
+                    "Ajustements fiscaux — " + " | ".join(morceaux)
+                    if morceaux
+                    else "Ajustements fiscaux"
+                )
+            )
 
         def ouvrir_ajustements_fiscaux_2025() -> None:
             nonlocal ajustement_reer_courant
+            nonlocal cotisations_syndicales_courantes
             nonlocal derniere_estimation, dernier_rapport_pdf
 
             fenetre_ajustements = tk.Toplevel(fenetre)
             fenetre_ajustements.title(
                 "Ajustements fiscaux 2025 — ComptaPrivée AI"
             )
-            fenetre_ajustements.geometry("720x470")
-            fenetre_ajustements.minsize(650, 430)
+            fenetre_ajustements.geometry("820x720")
+            fenetre_ajustements.minsize(760, 650)
             fenetre_ajustements.transient(fenetre)
 
             cadre = ttk.Frame(fenetre_ajustements, padding=18)
@@ -2397,8 +2426,8 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Label(
                 cadre,
                 text=(
-                    "Première extension : déduction "
-                    "REER / RPAC / RVER ordinaire."
+                    "REER/RPAC/RVER et cotisations syndicales ou "
+                    "professionnelles — validation comptable obligatoire."
                 ),
                 foreground="#166534",
             ).grid(
@@ -2406,8 +2435,14 @@ class ApplicationComptaPrivee(tk.Tk):
                 column=0,
                 columnspan=2,
                 sticky="w",
-                pady=(3, 16),
+                pady=(3, 14),
             )
+
+            ttk.Label(
+                cadre,
+                text="REER / RPAC / RVER",
+                font=("Segoe UI", 11, "bold"),
+            ).grid(row=2, column=0, columnspan=2, sticky="w")
 
             deduction_var = tk.StringVar(
                 value=(
@@ -2430,110 +2465,296 @@ class ApplicationComptaPrivee(tk.Tk):
             source_var = tk.StringVar(
                 value=ajustement_reer_courant.source_plafond_reer
             )
-            validation_var = tk.BooleanVar(
+            validation_reer_var = tk.BooleanVar(
                 value=ajustement_reer_courant.valide_par_comptable
             )
 
             ttk.Label(
                 cadre,
                 text="Déduction REER/RPAC/RVER :",
-            ).grid(row=2, column=0, sticky="w", pady=7)
+            ).grid(row=3, column=0, sticky="w", pady=5)
             ttk.Entry(
                 cadre,
                 textvariable=deduction_var,
-                width=28,
-            ).grid(
-                row=2,
-                column=1,
-                sticky="ew",
-                padx=(12, 0),
-                pady=7,
-            )
-
-            ttk.Label(
-                cadre,
-                text="Plafond individuel confirmé :",
-            ).grid(row=3, column=0, sticky="w", pady=7)
-            ttk.Entry(
-                cadre,
-                textvariable=plafond_var,
-                width=28,
             ).grid(
                 row=3,
                 column=1,
                 sticky="ew",
                 padx=(12, 0),
-                pady=7,
+                pady=5,
             )
 
             ttk.Label(
                 cadre,
-                text="Source du plafond :",
-            ).grid(row=4, column=0, sticky="w", pady=7)
+                text="Plafond individuel confirmé :",
+            ).grid(row=4, column=0, sticky="w", pady=5)
             ttk.Entry(
                 cadre,
-                textvariable=source_var,
+                textvariable=plafond_var,
             ).grid(
                 row=4,
                 column=1,
                 sticky="ew",
                 padx=(12, 0),
-                pady=7,
+                pady=5,
             )
 
             ttk.Label(
                 cadre,
-                text=(
-                    "Ex. : Avis de cotisation ARC / "
-                    "T1028 / Mon dossier ARC"
-                ),
-                foreground="#475569",
+                text="Source du plafond :",
+            ).grid(row=5, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                textvariable=source_var,
             ).grid(
                 row=5,
                 column=1,
-                sticky="w",
+                sticky="ew",
                 padx=(12, 0),
+                pady=5,
             )
 
             ttk.Checkbutton(
                 cadre,
                 text=(
-                    "Je confirme que le montant et le plafond "
+                    "Je confirme que le montant REER et le plafond "
                     "ont été vérifiés par le comptable."
                 ),
-                variable=validation_var,
+                variable=validation_reer_var,
             ).grid(
                 row=6,
                 column=0,
                 columnspan=2,
                 sticky="w",
-                pady=(18, 8),
+                pady=(6, 12),
+            )
+
+            ttk.Separator(
+                cadre,
+                orient="horizontal",
+            ).grid(
+                row=7,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(0, 12),
+            )
+
+            ttk.Label(
+                cadre,
+                text="Cotisations syndicales / professionnelles",
+                font=("Segoe UI", 11, "bold"),
+            ).grid(row=8, column=0, columnspan=2, sticky="w")
+
+            cot_fed_var = tk.StringVar(
+                value=(
+                    ""
+                    if (
+                        cotisations_syndicales_courantes
+                        .montant_federal_admissible
+                        == Decimal("0")
+                    )
+                    else str(
+                        cotisations_syndicales_courantes
+                        .montant_federal_admissible
+                    )
+                )
+            )
+            source_fed_var = tk.StringVar(
+                value=cotisations_syndicales_courantes.source_federale
+            )
+            cot_qc_var = tk.StringVar(
+                value=(
+                    ""
+                    if (
+                        cotisations_syndicales_courantes
+                        .montant_quebec_admissible
+                        == Decimal("0")
+                    )
+                    else str(
+                        cotisations_syndicales_courantes
+                        .montant_quebec_admissible
+                    )
+                )
+            )
+            source_qc_var = tk.StringVar(
+                value=cotisations_syndicales_courantes.source_quebec
+            )
+            validation_cot_var = tk.BooleanVar(
+                value=(
+                    cotisations_syndicales_courantes
+                    .valide_par_comptable
+                )
+            )
+            dedoublonnage_var = tk.BooleanVar(
+                value=(
+                    cotisations_syndicales_courantes
+                    .sources_dedoublonnees
+                )
+            )
+
+            ttk.Label(
+                cadre,
+                text="Montant fédéral admissible — ligne 21200 :",
+            ).grid(row=9, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                textvariable=cot_fed_var,
+            ).grid(
+                row=9,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Source fédérale :",
+            ).grid(row=10, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                textvariable=source_fed_var,
+            ).grid(
+                row=10,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Base Québec admissible — ligne 397.1 :",
+            ).grid(row=11, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                textvariable=cot_qc_var,
+            ).grid(
+                row=11,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Source Québec :",
+            ).grid(row=12, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                textvariable=source_qc_var,
+            ).grid(
+                row=12,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
             )
 
             ttk.Label(
                 cadre,
                 text=(
-                    "⚠ Les transferts REER et les remboursements "
-                    "RAP/REEP ne sont pas pris en charge dans ce profil."
+                    "Ex. : T4 case 44 / reçu syndical — "
+                    "RL-1 case F / reçu professionnel."
                 ),
-                foreground="#92400e",
-                wraplength=650,
+                foreground="#475569",
             ).grid(
-                row=7,
+                row=13,
                 column=0,
                 columnspan=2,
                 sticky="w",
-                pady=(4, 14),
+                pady=(2, 6),
             )
+
+            ttk.Checkbutton(
+                cadre,
+                text=(
+                    "Je confirme que les sources ont été vérifiées "
+                    "et dédoublonnées."
+                ),
+                variable=dedoublonnage_var,
+            ).grid(
+                row=14,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text=(
+                    "Je confirme les cotisations admissibles "
+                    "validées par le comptable."
+                ),
+                variable=validation_cot_var,
+            ).grid(
+                row=15,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "⚠ Les droits d'adhésion/initiation sont exclus. "
+                    "La base Québec ne doit pas inclure les taxes "
+                    "donnant droit à un remboursement."
+                ),
+                foreground="#92400e",
+                wraplength=740,
+            ).grid(
+                row=16,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(6, 12),
+            )
+
+            def decimal_depuis_champ(
+                texte: str,
+                libelle: str,
+            ) -> Decimal:
+                nettoye = (
+                    texte.strip()
+                    .replace("\u00a0", "")
+                    .replace(" ", "")
+                    .replace(",", ".")
+                    .replace("$", "")
+                )
+                if not nettoye:
+                    return Decimal("0")
+                try:
+                    valeur = Decimal(nettoye)
+                except (InvalidOperation, ValueError) as erreur:
+                    raise ValueError(
+                        f"{libelle} : montant invalide."
+                    ) from erreur
+                if not valeur.is_finite():
+                    raise ValueError(
+                        f"{libelle} : montant non fini."
+                    )
+                return valeur
 
             def effacer() -> None:
                 deduction_var.set("")
                 plafond_var.set("")
                 source_var.set("")
-                validation_var.set(False)
+                validation_reer_var.set(False)
+                cot_fed_var.set("")
+                source_fed_var.set("")
+                cot_qc_var.set("")
+                source_qc_var.set("")
+                validation_cot_var.set(False)
+                dedoublonnage_var.set(False)
 
             def appliquer() -> None:
                 nonlocal ajustement_reer_courant
+                nonlocal cotisations_syndicales_courantes
                 nonlocal derniere_estimation, dernier_rapport_pdf
 
                 try:
@@ -2542,53 +2763,82 @@ class ApplicationComptaPrivee(tk.Tk):
                             deduction_var.get(),
                             plafond_var.get(),
                             source_var.get(),
-                            validation_var.get(),
+                            validation_reer_var.get(),
                         )
+                    )
+                    nouvelles_cotisations = (
+                        CotisationsSyndicalesProfessionnelles2025(
+                            montant_federal_admissible=(
+                                decimal_depuis_champ(
+                                    cot_fed_var.get(),
+                                    "Montant fédéral",
+                                )
+                            ),
+                            montant_quebec_admissible=(
+                                decimal_depuis_champ(
+                                    cot_qc_var.get(),
+                                    "Montant Québec",
+                                )
+                            ),
+                            source_federale=source_fed_var.get().strip(),
+                            source_quebec=source_qc_var.get().strip(),
+                            valide_par_comptable=(
+                                validation_cot_var.get()
+                            ),
+                            sources_dedoublonnees=(
+                                dedoublonnage_var.get()
+                            ),
+                        )
+                    )
+                    valider_cotisations_syndicales_2025(
+                        nouvelles_cotisations
                     )
                 except ValueError as erreur:
                     messagebox.showerror(
-                        "Ajustement fiscal invalide",
+                        "Ajustements fiscaux invalides",
                         str(erreur),
                         parent=fenetre_ajustements,
                     )
                     return
 
                 ajustement_reer_courant = nouvel_ajustement
+                cotisations_syndicales_courantes = (
+                    nouvelles_cotisations
+                )
                 derniere_estimation = None
                 dernier_rapport_pdf = None
                 mettre_a_jour_bouton_ajustements()
 
-                if nouvel_ajustement.deduction_reer > Decimal("0"):
-                    message = (
-                        "Déduction REER validée et prête pour "
-                        "le prochain calcul.\n\n"
-                        "Déduction : "
+                self.statut.set(
+                    "Ajustements fiscaux 2025 mis à jour"
+                )
+                messagebox.showinfo(
+                    "Ajustements fiscaux 2025",
+                    (
+                        "Ajustements validés pour le prochain calcul.\n\n"
+                        "REER : "
                         + formater_montant_estimation(
                             nouvel_ajustement.deduction_reer
                         )
-                        + "\nPlafond confirmé : "
+                        + "\nCotisations fédérales : "
                         + formater_montant_estimation(
-                            nouvel_ajustement.plafond_reer_confirme
+                            nouvelles_cotisations
+                            .montant_federal_admissible
+                        )
+                        + "\nBase Québec : "
+                        + formater_montant_estimation(
+                            nouvelles_cotisations
+                            .montant_quebec_admissible
                         )
                         + "\n\nLe calcul fiscal doit être recalculé."
-                    )
-                else:
-                    message = (
-                        "Aucun ajustement REER ne sera appliqué "
-                        "au prochain calcul."
-                    )
-
-                self.statut.set("Ajustements fiscaux 2025 mis à jour")
-                messagebox.showinfo(
-                    "Ajustements fiscaux 2025",
-                    message,
+                    ),
                     parent=fenetre_ajustements,
                 )
                 fenetre_ajustements.destroy()
 
-            zone_actions_ajustements = ttk.Frame(cadre)
-            zone_actions_ajustements.grid(
-                row=8,
+            zone_actions = ttk.Frame(cadre)
+            zone_actions.grid(
+                row=17,
                 column=0,
                 columnspan=2,
                 sticky="ew",
@@ -2596,19 +2846,19 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
             ttk.Button(
-                zone_actions_ajustements,
+                zone_actions,
                 text="Effacer",
                 command=effacer,
             ).pack(side="left")
 
             ttk.Button(
-                zone_actions_ajustements,
+                zone_actions,
                 text="Valider et appliquer",
                 command=appliquer,
             ).pack(side="right")
 
             ttk.Button(
-                zone_actions_ajustements,
+                zone_actions,
                 text="Fermer",
                 command=fenetre_ajustements.destroy,
             ).pack(side="right", padx=(0, 8))
@@ -3276,6 +3526,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
         def initialiser_dossier_fiscal() -> None:
             nonlocal ajustement_reer_courant
+            nonlocal cotisations_syndicales_courantes
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -3295,6 +3546,9 @@ class ApplicationComptaPrivee(tk.Tk):
             self.dossier_fiscal_courant = dossier
             self.dossier_fiscal_valide_courant = None
             ajustement_reer_courant = AjustementReer2025()
+            cotisations_syndicales_courantes = (
+                CotisationsSyndicalesProfessionnelles2025()
+            )
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -3401,6 +3655,9 @@ class ApplicationComptaPrivee(tk.Tk):
                         calculer_estimation_fiscale_2025(
                             dossier_valide,
                             ajustement_reer=ajustement_reer_courant,
+                            cotisations_syndicales=(
+                                cotisations_syndicales_courantes
+                            ),
                         )
                     )
                 except (ValueError, Exception):
@@ -3428,6 +3685,9 @@ class ApplicationComptaPrivee(tk.Tk):
                     dossier_valide,
                     estimation=estimation_a_sauvegarder,
                     ajustement_reer=ajustement_reer_courant,
+                    cotisations_syndicales=(
+                        cotisations_syndicales_courantes
+                    ),
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -3496,6 +3756,7 @@ class ApplicationComptaPrivee(tk.Tk):
         def charger_enregistrement_dans_interface(enregistrement) -> None:
             nonlocal derniere_estimation, dernier_rapport_pdf
             nonlocal ajustement_reer_courant
+            nonlocal cotisations_syndicales_courantes
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -3534,6 +3795,9 @@ class ApplicationComptaPrivee(tk.Tk):
             derniere_estimation = None
             dernier_rapport_pdf = enregistrement.rapport_pdf
             ajustement_reer_courant = enregistrement.ajustement_reer
+            cotisations_syndicales_courantes = (
+                enregistrement.cotisations_syndicales
+            )
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
             statut_dossier.set("Validé — dossier rouvert localement")
@@ -3801,6 +4065,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 estimation = calculer_estimation_fiscale_2025(
                     dossier_valide,
                     ajustement_reer=ajustement_reer_courant,
+                    cotisations_syndicales=(
+                        cotisations_syndicales_courantes
+                    ),
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation

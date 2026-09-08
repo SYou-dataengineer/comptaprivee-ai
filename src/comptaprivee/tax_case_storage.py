@@ -14,6 +14,10 @@ from .tax_adjustments_2025 import (
     AjustementReer2025,
     valider_ajustement_reer_2025,
 )
+from .tax_union_dues_2025 import (
+    CotisationsSyndicalesProfessionnelles2025,
+    valider_cotisations_syndicales_2025,
+)
 from .tax_estimation_2025 import EstimationFiscale2025
 from .tax_field_validation import (
     DonneeFiscaleValidee,
@@ -49,6 +53,7 @@ class DossierFiscalEnregistre:
     rapport_pdf: Path | None
     documents_manquants: tuple[Path, ...]
     ajustement_reer: AjustementReer2025
+    cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -156,11 +161,72 @@ def _ajustement_reer_depuis_dict(valeur: Any) -> AjustementReer2025:
     return valider_ajustement_reer_2025(ajustement)
 
 
+def _cotisations_syndicales_vers_dict(
+    cotisations: CotisationsSyndicalesProfessionnelles2025 | None,
+):
+    if cotisations is None:
+        cotisations = CotisationsSyndicalesProfessionnelles2025()
+
+    valider_cotisations_syndicales_2025(cotisations)
+
+    return {
+        "montant_federal_admissible": _decimal_texte(
+            cotisations.montant_federal_admissible
+        ),
+        "montant_quebec_admissible": _decimal_texte(
+            cotisations.montant_quebec_admissible
+        ),
+        "source_federale": cotisations.source_federale,
+        "source_quebec": cotisations.source_quebec,
+        "valide_par_comptable": bool(
+            cotisations.valide_par_comptable
+        ),
+        "sources_dedoublonnees": bool(
+            cotisations.sources_dedoublonnees
+        ),
+    }
+
+
+def _cotisations_syndicales_depuis_dict(
+    valeur: Any,
+) -> CotisationsSyndicalesProfessionnelles2025:
+    if valeur is None:
+        return CotisationsSyndicalesProfessionnelles2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Les cotisations syndicales enregistrées sont invalides."
+        )
+
+    cotisations = CotisationsSyndicalesProfessionnelles2025(
+        montant_federal_admissible=_decimal_depuis_json(
+            valeur.get("montant_federal_admissible", "0"),
+            "cotisations_syndicales.montant_federal_admissible",
+        ),
+        montant_quebec_admissible=_decimal_depuis_json(
+            valeur.get("montant_quebec_admissible", "0"),
+            "cotisations_syndicales.montant_quebec_admissible",
+        ),
+        source_federale=str(valeur.get("source_federale", "")),
+        source_quebec=str(valeur.get("source_quebec", "")),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        sources_dedoublonnees=bool(
+            valeur.get("sources_dedoublonnees", False)
+        ),
+    )
+    return valider_cotisations_syndicales_2025(cotisations)
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
     estimation: EstimationFiscale2025 | None = None,
     ajustement_reer: AjustementReer2025 | None = None,
+    cotisations_syndicales: (
+        CotisationsSyndicalesProfessionnelles2025 | None
+    ) = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -196,6 +262,9 @@ def sauvegarder_dossier_fiscal(
         "derniere_estimation": _estimation_vers_dict(estimation),
         "ajustement_reer": _ajustement_reer_vers_dict(
             ajustement_reer
+        ),
+        "cotisations_syndicales": _cotisations_syndicales_vers_dict(
+            cotisations_syndicales
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
@@ -304,6 +373,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     ajustement_reer = _ajustement_reer_depuis_dict(
         contenu.get("ajustement_reer")
     )
+    cotisations_syndicales = _cotisations_syndicales_depuis_dict(
+        contenu.get("cotisations_syndicales")
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -314,6 +386,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         rapport_pdf=rapport,
         documents_manquants=manquants,
         ajustement_reer=ajustement_reer,
+        cotisations_syndicales=cotisations_syndicales,
     )
 
 

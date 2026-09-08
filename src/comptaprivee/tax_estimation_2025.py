@@ -35,6 +35,12 @@ from .tax_reconciliation_2025 import (
     RapprochementFiscal2025,
     calculer_rapprochement_fiscal_2025,
 )
+from .tax_union_dues_2025 import (
+    CotisationsSyndicalesProfessionnelles2025,
+    appliquer_credit_quebec_cotisations_2025,
+    appliquer_deduction_federale_cotisations_2025,
+    credit_quebec_cotisations_2025,
+)
 from .tax_validated_case import DossierFiscalValide
 
 
@@ -47,11 +53,15 @@ class EstimationFiscale2025:
     quebec: ImpotQuebecPreliminaire2025
     rapprochement: RapprochementFiscal2025
     ajustement_reer: AjustementReer2025
+    cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
 
 
 def calculer_estimation_fiscale_2025(
     dossier: DossierFiscalValide,
     ajustement_reer: AjustementReer2025 | None = None,
+    cotisations_syndicales: (
+        CotisationsSyndicalesProfessionnelles2025 | None
+    ) = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
     if dossier.annee_fiscale != 2025:
@@ -73,8 +83,23 @@ def calculer_estimation_fiscale_2025(
         ajustement_reer_effectif,
     )
 
+    cotisations_effectives = (
+        cotisations_syndicales
+        if cotisations_syndicales is not None
+        else CotisationsSyndicalesProfessionnelles2025()
+    )
+
+    revenu = appliquer_deduction_federale_cotisations_2025(
+        revenu,
+        cotisations_effectives,
+    )
+
     federal = calculer_impot_federal_preliminaire_2025(base, revenu)
     quebec = calculer_impot_quebec_preliminaire_2025(revenu)
+    quebec = appliquer_credit_quebec_cotisations_2025(
+        quebec,
+        cotisations_effectives,
+    )
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
         federal,
@@ -89,6 +114,7 @@ def calculer_estimation_fiscale_2025(
         quebec=quebec,
         rapprochement=rapprochement,
         ajustement_reer=ajustement_reer_effectif,
+        cotisations_syndicales=cotisations_effectives,
     )
 
 
@@ -136,6 +162,29 @@ def formater_estimation_fiscale_2025(
             ]
             if estimation.ajustement_reer.deduction_reer
             > Decimal("0")
+            else []
+        ),
+        *(
+            [
+                "",
+                "COTISATIONS SYNDICALES / PROFESSIONNELLES VALIDÉES",
+                "Cotisations fédérales — ligne 21200 : "
+                f"{formater_montant_estimation(estimation.cotisations_syndicales.montant_federal_admissible)}",
+                "Source fédérale : "
+                f"{estimation.cotisations_syndicales.source_federale}",
+                "Base Québec — ligne 397.1 : "
+                f"{formater_montant_estimation(estimation.cotisations_syndicales.montant_quebec_admissible)}",
+                "Crédit Québec (10 %) : "
+                f"{formater_montant_estimation(credit_quebec_cotisations_2025(estimation.cotisations_syndicales))}",
+                "Source Québec : "
+                f"{estimation.cotisations_syndicales.source_quebec}",
+            ]
+            if (
+                estimation.cotisations_syndicales.montant_federal_admissible
+                > Decimal("0")
+                or estimation.cotisations_syndicales.montant_quebec_admissible
+                > Decimal("0")
+            )
             else []
         ),
         "",
