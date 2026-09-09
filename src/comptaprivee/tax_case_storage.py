@@ -22,6 +22,10 @@ from .tax_donations_2025 import (
     DonsBienfaisance2025,
     valider_dons_bienfaisance_2025,
 )
+from .tax_medical_expenses_2025 import (
+    FraisMedicaux2025,
+    valider_frais_medicaux_2025,
+)
 from .tax_estimation_2025 import EstimationFiscale2025
 from .tax_field_validation import (
     DonneeFiscaleValidee,
@@ -59,6 +63,7 @@ class DossierFiscalEnregistre:
     ajustement_reer: AjustementReer2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
+    frais_medicaux: FraisMedicaux2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -305,6 +310,90 @@ def _dons_bienfaisance_depuis_dict(
     return valider_dons_bienfaisance_2025(dons)
 
 
+def _frais_medicaux_vers_dict(
+    frais: FraisMedicaux2025 | None,
+):
+    if frais is None:
+        frais = FraisMedicaux2025()
+
+    valider_frais_medicaux_2025(frais)
+
+    return {
+        "montant_admissible_federal": _decimal_texte(
+            frais.montant_admissible_federal
+        ),
+        "montant_admissible_quebec": _decimal_texte(
+            frais.montant_admissible_quebec
+        ),
+        "source_federale": frais.source_federale,
+        "source_quebec": frais.source_quebec,
+        "valide_par_comptable": bool(frais.valide_par_comptable),
+        "recus_confirmes": bool(frais.recus_confirmes),
+        "remboursements_soustraits": bool(
+            frais.remboursements_soustraits
+        ),
+        "periode_12_mois_fin_2025_confirmee": bool(
+            frais.periode_12_mois_fin_2025_confirmee
+        ),
+        "aucune_periode_deja_reclamee": bool(
+            frais.aucune_periode_deja_reclamee
+        ),
+        "profil_individuel_sans_conjoint_dependant": bool(
+            frais.profil_individuel_sans_conjoint_dependant
+        ),
+    }
+
+
+def _frais_medicaux_depuis_dict(
+    valeur: Any,
+) -> FraisMedicaux2025:
+    if valeur is None:
+        return FraisMedicaux2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Les frais médicaux enregistrés sont invalides."
+        )
+
+    frais = FraisMedicaux2025(
+        montant_admissible_federal=_decimal_depuis_json(
+            valeur.get("montant_admissible_federal", "0"),
+            "frais_medicaux.montant_admissible_federal",
+        ),
+        montant_admissible_quebec=_decimal_depuis_json(
+            valeur.get("montant_admissible_quebec", "0"),
+            "frais_medicaux.montant_admissible_quebec",
+        ),
+        source_federale=str(valeur.get("source_federale", "")),
+        source_quebec=str(valeur.get("source_quebec", "")),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        recus_confirmes=bool(
+            valeur.get("recus_confirmes", False)
+        ),
+        remboursements_soustraits=bool(
+            valeur.get("remboursements_soustraits", False)
+        ),
+        periode_12_mois_fin_2025_confirmee=bool(
+            valeur.get(
+                "periode_12_mois_fin_2025_confirmee",
+                False,
+            )
+        ),
+        aucune_periode_deja_reclamee=bool(
+            valeur.get("aucune_periode_deja_reclamee", False)
+        ),
+        profil_individuel_sans_conjoint_dependant=bool(
+            valeur.get(
+                "profil_individuel_sans_conjoint_dependant",
+                False,
+            )
+        ),
+    )
+    return valider_frais_medicaux_2025(frais)
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
@@ -314,6 +403,7 @@ def sauvegarder_dossier_fiscal(
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
     dons_bienfaisance: DonsBienfaisance2025 | None = None,
+    frais_medicaux: FraisMedicaux2025 | None = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -355,6 +445,9 @@ def sauvegarder_dossier_fiscal(
         ),
         "dons_bienfaisance": _dons_bienfaisance_vers_dict(
             dons_bienfaisance
+        ),
+        "frais_medicaux": _frais_medicaux_vers_dict(
+            frais_medicaux
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
@@ -469,6 +562,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     dons_bienfaisance = _dons_bienfaisance_depuis_dict(
         contenu.get("dons_bienfaisance")
     )
+    frais_medicaux = _frais_medicaux_depuis_dict(
+        contenu.get("frais_medicaux")
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -481,6 +577,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         ajustement_reer=ajustement_reer,
         cotisations_syndicales=cotisations_syndicales,
         dons_bienfaisance=dons_bienfaisance,
+        frais_medicaux=frais_medicaux,
     )
 
 

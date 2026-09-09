@@ -139,6 +139,10 @@ from .tax_donations_2025 import (
     DonsBienfaisance2025,
     valider_dons_bienfaisance_2025,
 )
+from .tax_medical_expenses_2025 import (
+    FraisMedicaux2025,
+    valider_frais_medicaux_2025,
+)
 from .tax_estimation_2025 import (
     calculer_estimation_fiscale_2025,
     formater_estimation_fiscale_2025,
@@ -2367,8 +2371,7 @@ class ApplicationComptaPrivee(tk.Tk):
             CotisationsSyndicalesProfessionnelles2025()
         )
         dons_bienfaisance_courants = DonsBienfaisance2025()
-
-
+        frais_medicaux_courants = FraisMedicaux2025()
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
 
@@ -2421,6 +2424,315 @@ class ApplicationComptaPrivee(tk.Tk):
                     else "Ajustements fiscaux"
                 )
             )
+
+        def ouvrir_frais_medicaux_2025() -> None:
+            nonlocal frais_medicaux_courants
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Frais médicaux 2025 — ComptaPrivée AI")
+            dialogue.geometry("780x650")
+            dialogue.minsize(720, 600)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            cadre = ttk.Frame(dialogue, padding=16)
+            cadre.pack(fill="both", expand=True)
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Frais médicaux 2025",
+                font=("Segoe UI", 16, "bold"),
+            ).grid(
+                row=0,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil actuel : particulier sans conjoint ni personne "
+                    "à charge. Les frais et les pièces doivent être "
+                    "vérifiés par le comptable."
+                ),
+                foreground="#166534",
+                wraplength=680,
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 12),
+            )
+
+            def montant_texte(valeur: Decimal) -> str:
+                if valeur == Decimal("0"):
+                    return ""
+                return format(valeur, "f").replace(".", ",")
+
+            def decimal_depuis_champ(
+                texte: str,
+                libelle: str,
+            ) -> Decimal:
+                nettoye = (
+                    texte.strip()
+                    .replace("\u00a0", "")
+                    .replace(" ", "")
+                    .replace(",", ".")
+                    .replace("$", "")
+                )
+                if not nettoye:
+                    return Decimal("0")
+                try:
+                    valeur = Decimal(nettoye)
+                except (InvalidOperation, ValueError) as erreur:
+                    raise ValueError(
+                        f"{libelle} : montant invalide."
+                    ) from erreur
+                if not valeur.is_finite():
+                    raise ValueError(
+                        f"{libelle} : montant non fini."
+                    )
+                return valeur
+
+            fed_var = tk.StringVar(
+                value=montant_texte(
+                    frais_medicaux_courants
+                    .montant_admissible_federal
+                )
+            )
+            qc_var = tk.StringVar(
+                value=montant_texte(
+                    frais_medicaux_courants
+                    .montant_admissible_quebec
+                )
+            )
+            source_fed_var = tk.StringVar(
+                value=frais_medicaux_courants.source_federale
+            )
+            source_qc_var = tk.StringVar(
+                value=frais_medicaux_courants.source_quebec
+            )
+            validation_var = tk.BooleanVar(
+                value=frais_medicaux_courants.valide_par_comptable
+            )
+            recus_var = tk.BooleanVar(
+                value=frais_medicaux_courants.recus_confirmes
+            )
+            remboursements_var = tk.BooleanVar(
+                value=frais_medicaux_courants.remboursements_soustraits
+            )
+            periode_var = tk.BooleanVar(
+                value=(
+                    frais_medicaux_courants
+                    .periode_12_mois_fin_2025_confirmee
+                )
+            )
+            non_reclamee_var = tk.BooleanVar(
+                value=(
+                    frais_medicaux_courants
+                    .aucune_periode_deja_reclamee
+                )
+            )
+            profil_var = tk.BooleanVar(
+                value=(
+                    frais_medicaux_courants
+                    .profil_individuel_sans_conjoint_dependant
+                )
+            )
+
+            champs = (
+                ("Montant admissible fédéral :", fed_var),
+                ("Source fédérale / reçus :", source_fed_var),
+                ("Montant admissible Québec :", qc_var),
+                ("Source Québec / reçus :", source_qc_var),
+            )
+
+            for ligne, (libelle, variable) in enumerate(
+                champs,
+                start=2,
+            ):
+                ttk.Label(
+                    cadre,
+                    text=libelle,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    sticky="w",
+                    pady=5,
+                )
+                ttk.Entry(
+                    cadre,
+                    textvariable=variable,
+                    width=48,
+                ).grid(
+                    row=ligne,
+                    column=1,
+                    sticky="ew",
+                    padx=(12, 0),
+                    pady=5,
+                )
+
+            confirmations = (
+                (
+                    "Frais médicaux validés par le comptable",
+                    validation_var,
+                ),
+                (
+                    "Reçus et pièces justificatives confirmés",
+                    recus_var,
+                ),
+                (
+                    "Remboursements reçus ou à recevoir déjà soustraits",
+                    remboursements_var,
+                ),
+                (
+                    "Période de 12 mois se terminant en 2025 confirmée",
+                    periode_var,
+                ),
+                (
+                    "Aucune partie de cette période déjà réclamée",
+                    non_reclamee_var,
+                ),
+                (
+                    "Profil individuel sans conjoint ni personne à charge",
+                    profil_var,
+                ),
+            )
+
+            for ligne, (libelle, variable) in enumerate(
+                confirmations,
+                start=6,
+            ):
+                ttk.Checkbutton(
+                    cadre,
+                    text=libelle,
+                    variable=variable,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    columnspan=2,
+                    sticky="w",
+                    pady=4,
+                )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Le moteur applique le seuil fédéral de 3 % "
+                    "(maximum 2 834 $) et le seuil Québec de 3 %."
+                ),
+                foreground="#92400e",
+                wraplength=680,
+            ).grid(
+                row=12,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(12, 8),
+            )
+
+            def effacer() -> None:
+                fed_var.set("")
+                qc_var.set("")
+                source_fed_var.set("")
+                source_qc_var.set("")
+                validation_var.set(False)
+                recus_var.set(False)
+                remboursements_var.set(False)
+                periode_var.set(False)
+                non_reclamee_var.set(False)
+                profil_var.set(False)
+
+            def appliquer() -> None:
+                nonlocal frais_medicaux_courants
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    nouveaux_frais = FraisMedicaux2025(
+                        montant_admissible_federal=decimal_depuis_champ(
+                            fed_var.get(),
+                            "Montant fédéral frais médicaux",
+                        ),
+                        montant_admissible_quebec=decimal_depuis_champ(
+                            qc_var.get(),
+                            "Montant Québec frais médicaux",
+                        ),
+                        source_federale=source_fed_var.get().strip(),
+                        source_quebec=source_qc_var.get().strip(),
+                        valide_par_comptable=validation_var.get(),
+                        recus_confirmes=recus_var.get(),
+                        remboursements_soustraits=(
+                            remboursements_var.get()
+                        ),
+                        periode_12_mois_fin_2025_confirmee=(
+                            periode_var.get()
+                        ),
+                        aucune_periode_deja_reclamee=(
+                            non_reclamee_var.get()
+                        ),
+                        profil_individuel_sans_conjoint_dependant=(
+                            profil_var.get()
+                        ),
+                    )
+                    nouveaux_frais = valider_frais_medicaux_2025(
+                        nouveaux_frais
+                    )
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Frais médicaux invalides",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                frais_medicaux_courants = nouveaux_frais
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                self.statut.set(
+                    "Frais médicaux 2025 mis à jour"
+                )
+
+                messagebox.showinfo(
+                    "Frais médicaux 2025",
+                    (
+                        "Les frais médicaux ont été validés pour "
+                        "le prochain calcul fiscal."
+                    ),
+                    parent=dialogue,
+                )
+                dialogue.destroy()
+
+            actions = ttk.Frame(cadre)
+            actions.grid(
+                row=13,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(16, 0),
+            )
+
+            ttk.Button(
+                actions,
+                text="Effacer",
+                command=effacer,
+            ).pack(side="left")
+
+            ttk.Button(
+                actions,
+                text="Fermer",
+                command=dialogue.destroy,
+            ).pack(side="right")
+
+            ttk.Button(
+                actions,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right", padx=(0, 8))
 
         def ouvrir_ajustements_fiscaux_2025() -> None:
             nonlocal ajustement_reer_courant
@@ -3850,6 +4162,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal ajustement_reer_courant
             nonlocal cotisations_syndicales_courantes
             nonlocal dons_bienfaisance_courants
+            nonlocal frais_medicaux_courants
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -3873,6 +4186,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 CotisationsSyndicalesProfessionnelles2025()
             )
             dons_bienfaisance_courants = DonsBienfaisance2025()
+            frais_medicaux_courants = FraisMedicaux2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -3982,6 +4296,10 @@ class ApplicationComptaPrivee(tk.Tk):
                             cotisations_syndicales=(
                                 cotisations_syndicales_courantes
                             ),
+                            dons_bienfaisance=(
+                                dons_bienfaisance_courants
+                            ),
+                            frais_medicaux=frais_medicaux_courants,
                         )
                     )
                 except (ValueError, Exception):
@@ -4013,6 +4331,7 @@ class ApplicationComptaPrivee(tk.Tk):
                         cotisations_syndicales_courantes
                     ),
                     dons_bienfaisance=dons_bienfaisance_courants,
+                    frais_medicaux=frais_medicaux_courants,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -4083,6 +4402,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal ajustement_reer_courant
             nonlocal cotisations_syndicales_courantes
             nonlocal dons_bienfaisance_courants
+            nonlocal frais_medicaux_courants
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -4126,6 +4446,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             dons_bienfaisance_courants = (
                 enregistrement.dons_bienfaisance
+            )
+            frais_medicaux_courants = (
+                enregistrement.frais_medicaux
             )
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
@@ -4398,6 +4721,7 @@ class ApplicationComptaPrivee(tk.Tk):
                         cotisations_syndicales_courantes
                     ),
                     dons_bienfaisance=dons_bienfaisance_courants,
+                    frais_medicaux=frais_medicaux_courants,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation
@@ -4672,6 +4996,15 @@ class ApplicationComptaPrivee(tk.Tk):
             text="Dossiers enregistrés",
             command=ouvrir_dossiers_fiscaux_enregistres,
         ).pack(side="left", padx=(8, 0))
+
+        ttk.Button(
+            zone_actions,
+            text="Frais médicaux 2025",
+            command=ouvrir_frais_medicaux_2025,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
 
         bouton_ajustements_fiscaux = ttk.Button(
             zone_actions,

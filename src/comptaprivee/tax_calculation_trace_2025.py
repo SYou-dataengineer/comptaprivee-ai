@@ -11,6 +11,10 @@ from .tax_donations_2025 import (
     credit_federal_dons_2025,
     credit_quebec_dons_2025,
 )
+from .tax_medical_expenses_2025 import (
+    credit_federal_frais_medicaux_2025,
+    credit_quebec_frais_medicaux_2025,
+)
 from .tax_estimation_2025 import (
     EstimationFiscale2025,
     formater_montant_estimation,
@@ -79,6 +83,7 @@ def construire_trace_calcul_fiscal_2025(
     ajustement_reer = estimation.ajustement_reer
     cotisations = estimation.cotisations_syndicales
     dons = estimation.dons_bienfaisance
+    frais_medicaux = estimation.frais_medicaux
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -101,6 +106,10 @@ def construire_trace_calcul_fiscal_2025(
     )
     if dons.montant_admissible_federal > Decimal("0"):
         formule_impot_federal += " - crédit dons ligne 34900"
+    if frais_medicaux.montant_admissible_federal > Decimal("0"):
+        formule_impot_federal += (
+            " - crédit frais médicaux lignes 33099 / 33200"
+        )
 
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
     if cotisations.montant_quebec_admissible > Decimal("0"):
@@ -109,6 +118,8 @@ def construire_trace_calcul_fiscal_2025(
         )
     if dons.montant_admissible_quebec > Decimal("0"):
         formule_impot_quebec += " - crédit dons ligne 395"
+    if frais_medicaux.montant_admissible_quebec > Decimal("0"):
+        formule_impot_quebec += " - crédit frais médicaux ligne 381"
 
     if dossier.annee_fiscale != 2025:
         raise ValueError(
@@ -320,6 +331,54 @@ def construire_trace_calcul_fiscal_2025(
                 credit_quebec_dons_2025(
                     dons,
                     revenu.revenu_imposable_quebec,
+                ),
+            ),
+        )
+
+    if frais_medicaux.montant_admissible_federal > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt fédéral de base",
+            _ligne(
+                0,
+                "FÉDÉRAL",
+                "Crédit fédéral pour frais médicaux",
+                (
+                    "ARC lignes 33099 / 33200 — "
+                    + frais_medicaux.source_federale
+                    + " — validation comptable"
+                ),
+                (
+                    "Frais admissibles - moindre de 3 % du revenu net "
+                    "ou 2 834 $, puis × 14,5 %"
+                ),
+                credit_federal_frais_medicaux_2025(
+                    frais_medicaux,
+                    revenu.revenu_net_federal,
+                ),
+            ),
+        )
+
+    if frais_medicaux.montant_admissible_quebec > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt Québec préliminaire",
+            _ligne(
+                0,
+                "QUÉBEC",
+                "Crédit Québec pour frais médicaux",
+                (
+                    "Revenu Québec ligne 381 — "
+                    + frais_medicaux.source_quebec
+                    + " — validation comptable"
+                ),
+                (
+                    "Frais admissibles - 3 % du revenu net Québec, "
+                    "puis × 20 % — profil sans conjoint"
+                ),
+                credit_quebec_frais_medicaux_2025(
+                    frais_medicaux,
+                    revenu.revenu_net_quebec,
                 ),
             ),
         )

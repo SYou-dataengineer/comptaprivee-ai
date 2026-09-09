@@ -130,6 +130,18 @@ def calculer_rapprochement_fiscal_2025(
         solde = ZERO
         resultat = "Équilibre estimé"
 
+    credit_medical_inclus = (
+        "Crédit fédéral pour frais médicaux admissibles inclus."
+        in federal.limitations
+        or "Crédit Québec pour frais médicaux admissibles inclus."
+        in quebec.limitations
+    )
+    limitation_credits = (
+        "Aucun crédit familial, étude ou handicap."
+        if credit_medical_inclus
+        else "Aucun crédit familial, médical, étude ou handicap."
+    )
+
     return RapprochementFiscal2025(
         client=base.client,
         annee_fiscale=base.annee_fiscale,
@@ -150,7 +162,7 @@ def calculer_rapprochement_fiscal_2025(
             "Le calcul couvre uniquement le profil emploi Québec simple 2025.",
             "L'abattement Québec est calculé à 16,5 % de l'impôt fédéral de base.",
             "Les retenues T4 et RL-1 sont comparées aux impôts préliminaires.",
-            "Aucun crédit familial, médical, étude ou handicap.",
+            limitation_credits,
             "Aucune prime d'assurance médicaments ni contribution Québec additionnelle.",
             "Aucun remboursement de cotisations excédentaires RRQ/AE/RQAP.",
             "Aucun revenu autonome, placement, location ou gain en capital.",
