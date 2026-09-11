@@ -143,6 +143,10 @@ from .tax_medical_expenses_2025 import (
     FraisMedicaux2025,
     valider_frais_medicaux_2025,
 )
+from .tax_tuition_2025 import (
+    FraisScolarite2025,
+    valider_frais_scolarite_2025,
+)
 from .tax_estimation_2025 import (
     calculer_estimation_fiscale_2025,
     formater_estimation_fiscale_2025,
@@ -2372,6 +2376,7 @@ class ApplicationComptaPrivee(tk.Tk):
         )
         dons_bienfaisance_courants = DonsBienfaisance2025()
         frais_medicaux_courants = FraisMedicaux2025()
+        frais_scolarite_courants = FraisScolarite2025()
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
 
@@ -2710,6 +2715,332 @@ class ApplicationComptaPrivee(tk.Tk):
             actions = ttk.Frame(cadre)
             actions.grid(
                 row=13,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(16, 0),
+            )
+
+            ttk.Button(
+                actions,
+                text="Effacer",
+                command=effacer,
+            ).pack(side="left")
+
+            ttk.Button(
+                actions,
+                text="Fermer",
+                command=dialogue.destroy,
+            ).pack(side="right")
+
+            ttk.Button(
+                actions,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right", padx=(0, 8))
+
+        def ouvrir_frais_scolarite_2025() -> None:
+            nonlocal frais_scolarite_courants
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Frais de scolarité 2025 — ComptaPrivée AI"
+            )
+            dialogue.geometry("820x760")
+            dialogue.minsize(760, 680)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            cadre = ttk.Frame(dialogue, padding=16)
+            cadre.pack(fill="both", expand=True)
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Frais de scolarité / examen 2025",
+                font=("Segoe UI", 16, "bold"),
+            ).grid(
+                row=0,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil actuel : frais 2025 seulement, sans report "
+                    "antérieur ni transfert. Toute pièce et toute "
+                    "admissibilité doivent être vérifiées par le comptable."
+                ),
+                foreground="#166534",
+                wraplength=710,
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 12),
+            )
+
+            def montant_texte(valeur: Decimal) -> str:
+                if valeur == Decimal("0"):
+                    return ""
+                return format(valeur, "f").replace(".", ",")
+
+            def decimal_depuis_champ(
+                texte: str,
+                libelle: str,
+            ) -> Decimal:
+                nettoye = (
+                    texte.strip()
+                    .replace("\u00a0", "")
+                    .replace(" ", "")
+                    .replace(",", ".")
+                    .replace("$", "")
+                )
+                if not nettoye:
+                    return Decimal("0")
+                try:
+                    valeur = Decimal(nettoye)
+                except (InvalidOperation, ValueError) as erreur:
+                    raise ValueError(
+                        f"{libelle} : montant invalide."
+                    ) from erreur
+                if not valeur.is_finite():
+                    raise ValueError(
+                        f"{libelle} : montant non fini."
+                    )
+                return valeur
+
+            fed_var = tk.StringVar(
+                value=montant_texte(
+                    frais_scolarite_courants
+                    .montant_admissible_federal
+                )
+            )
+            qc_var = tk.StringVar(
+                value=montant_texte(
+                    frais_scolarite_courants
+                    .montant_admissible_quebec
+                )
+            )
+            source_fed_var = tk.StringVar(
+                value=frais_scolarite_courants.source_federale
+            )
+            source_qc_var = tk.StringVar(
+                value=frais_scolarite_courants.source_quebec
+            )
+            validation_var = tk.BooleanVar(
+                value=frais_scolarite_courants.valide_par_comptable
+            )
+            piece_fed_var = tk.BooleanVar(
+                value=frais_scolarite_courants.piece_federale_confirmee
+            )
+            recu_qc_var = tk.BooleanVar(
+                value=(
+                    frais_scolarite_courants
+                    .recu_officiel_quebec_confirme
+                )
+            )
+            seuil_var = tk.BooleanVar(
+                value=frais_scolarite_courants.seuil_100_confirme
+            )
+            remboursements_var = tk.BooleanVar(
+                value=(
+                    frais_scolarite_courants
+                    .remboursements_soustraits
+                )
+            )
+            frais_2025_var = tk.BooleanVar(
+                value=frais_scolarite_courants.frais_2025_uniquement
+            )
+            aucun_report_var = tk.BooleanVar(
+                value=frais_scolarite_courants.aucun_report_anterieur
+            )
+            aucun_transfert_var = tk.BooleanVar(
+                value=frais_scolarite_courants.aucun_transfert
+            )
+            formation_var = tk.BooleanVar(
+                value=(
+                    frais_scolarite_courants
+                    .credit_canadien_formation_non_reclame
+                )
+            )
+            profil_var = tk.BooleanVar(
+                value=(
+                    frais_scolarite_courants
+                    .profil_resident_quebec_simple
+                )
+            )
+
+            champs = (
+                ("Montant admissible fédéral — ligne 32300 :", fed_var),
+                ("Source fédérale / T2202-TL11-reçu :", source_fed_var),
+                ("Montant admissible Québec — ligne 398 :", qc_var),
+                ("Source Québec / reçu officiel :", source_qc_var),
+            )
+
+            for ligne, (libelle, variable) in enumerate(
+                champs,
+                start=2,
+            ):
+                ttk.Label(
+                    cadre,
+                    text=libelle,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    sticky="w",
+                    pady=5,
+                )
+                ttk.Entry(
+                    cadre,
+                    textvariable=variable,
+                    width=48,
+                ).grid(
+                    row=ligne,
+                    column=1,
+                    sticky="ew",
+                    padx=(12, 0),
+                    pady=5,
+                )
+
+            confirmations = (
+                ("Frais validés par le comptable", validation_var),
+                ("Pièce fédérale admissible confirmée", piece_fed_var),
+                ("Reçu officiel Québec confirmé", recu_qc_var),
+                ("Seuil de plus de 100 $ confirmé", seuil_var),
+                (
+                    "Remboursements non imposables déjà soustraits",
+                    remboursements_var,
+                ),
+                ("Frais admissibles de 2025 uniquement", frais_2025_var),
+                ("Aucun report antérieur", aucun_report_var),
+                (
+                    "Aucun transfert à une autre personne",
+                    aucun_transfert_var,
+                ),
+                (
+                    "Crédit canadien pour la formation non réclamé",
+                    formation_var,
+                ),
+                ("Profil résident Québec/Canada simple", profil_var),
+            )
+
+            for ligne, (libelle, variable) in enumerate(
+                confirmations,
+                start=6,
+            ):
+                ttk.Checkbutton(
+                    cadre,
+                    text=libelle,
+                    variable=variable,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    columnspan=2,
+                    sticky="w",
+                    pady=3,
+                )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Le moteur actuel refuse les dossiers nécessitant "
+                    "un report ou un transfert afin de ne perdre aucun "
+                    "montant de scolarité inutilisé."
+                ),
+                foreground="#92400e",
+                wraplength=710,
+            ).grid(
+                row=16,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(12, 8),
+            )
+
+            def effacer() -> None:
+                fed_var.set("")
+                qc_var.set("")
+                source_fed_var.set("")
+                source_qc_var.set("")
+                validation_var.set(False)
+                piece_fed_var.set(False)
+                recu_qc_var.set(False)
+                seuil_var.set(False)
+                remboursements_var.set(False)
+                frais_2025_var.set(False)
+                aucun_report_var.set(False)
+                aucun_transfert_var.set(False)
+                formation_var.set(False)
+                profil_var.set(False)
+
+            def appliquer() -> None:
+                nonlocal frais_scolarite_courants
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    nouveaux_frais = FraisScolarite2025(
+                        montant_admissible_federal=decimal_depuis_champ(
+                            fed_var.get(),
+                            "Montant fédéral scolarité",
+                        ),
+                        montant_admissible_quebec=decimal_depuis_champ(
+                            qc_var.get(),
+                            "Montant Québec scolarité",
+                        ),
+                        source_federale=source_fed_var.get().strip(),
+                        source_quebec=source_qc_var.get().strip(),
+                        valide_par_comptable=validation_var.get(),
+                        piece_federale_confirmee=piece_fed_var.get(),
+                        recu_officiel_quebec_confirme=recu_qc_var.get(),
+                        seuil_100_confirme=seuil_var.get(),
+                        remboursements_soustraits=(
+                            remboursements_var.get()
+                        ),
+                        frais_2025_uniquement=frais_2025_var.get(),
+                        aucun_report_anterieur=aucun_report_var.get(),
+                        aucun_transfert=aucun_transfert_var.get(),
+                        credit_canadien_formation_non_reclame=(
+                            formation_var.get()
+                        ),
+                        profil_resident_quebec_simple=profil_var.get(),
+                    )
+                    nouveaux_frais = valider_frais_scolarite_2025(
+                        nouveaux_frais
+                    )
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Frais de scolarité invalides",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                frais_scolarite_courants = nouveaux_frais
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                self.statut.set(
+                    "Frais de scolarité 2025 mis à jour"
+                )
+
+                messagebox.showinfo(
+                    "Frais de scolarité 2025",
+                    (
+                        "Les frais de scolarité/examen ont été validés "
+                        "pour le prochain calcul fiscal."
+                    ),
+                    parent=dialogue,
+                )
+                dialogue.destroy()
+
+            actions = ttk.Frame(cadre)
+            actions.grid(
+                row=17,
                 column=0,
                 columnspan=2,
                 sticky="ew",
@@ -4163,6 +4494,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal cotisations_syndicales_courantes
             nonlocal dons_bienfaisance_courants
             nonlocal frais_medicaux_courants
+            nonlocal frais_scolarite_courants
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -4187,6 +4519,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             dons_bienfaisance_courants = DonsBienfaisance2025()
             frais_medicaux_courants = FraisMedicaux2025()
+            frais_scolarite_courants = FraisScolarite2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -4300,6 +4633,7 @@ class ApplicationComptaPrivee(tk.Tk):
                                 dons_bienfaisance_courants
                             ),
                             frais_medicaux=frais_medicaux_courants,
+                            frais_scolarite=frais_scolarite_courants,
                         )
                     )
                 except (ValueError, Exception):
@@ -4332,6 +4666,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     ),
                     dons_bienfaisance=dons_bienfaisance_courants,
                     frais_medicaux=frais_medicaux_courants,
+                    frais_scolarite=frais_scolarite_courants,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -4403,6 +4738,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal cotisations_syndicales_courantes
             nonlocal dons_bienfaisance_courants
             nonlocal frais_medicaux_courants
+            nonlocal frais_scolarite_courants
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -4449,6 +4785,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             frais_medicaux_courants = (
                 enregistrement.frais_medicaux
+            )
+            frais_scolarite_courants = (
+                enregistrement.frais_scolarite
             )
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
@@ -4722,6 +5061,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     ),
                     dons_bienfaisance=dons_bienfaisance_courants,
                     frais_medicaux=frais_medicaux_courants,
+                    frais_scolarite=frais_scolarite_courants,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation
@@ -5001,6 +5341,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_actions,
             text="Frais médicaux 2025",
             command=ouvrir_frais_medicaux_2025,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        ttk.Button(
+            zone_actions,
+            text="Frais de scolarité 2025",
+            command=ouvrir_frais_scolarite_2025,
         ).pack(
             side="left",
             padx=(8, 0),

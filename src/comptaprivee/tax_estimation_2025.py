@@ -29,6 +29,13 @@ from .tax_medical_expenses_2025 import (
     credit_federal_frais_medicaux_2025,
     credit_quebec_frais_medicaux_2025,
 )
+from .tax_tuition_2025 import (
+    FraisScolarite2025,
+    appliquer_credit_federal_frais_scolarite_2025,
+    appliquer_credit_quebec_frais_scolarite_2025,
+    credit_federal_frais_scolarite_2025,
+    credit_quebec_frais_scolarite_2025,
+)
 from .tax_engine_input_2025 import (
     BaseFiscaleEmploi2025,
     consolider_base_fiscale_emploi_2025,
@@ -70,6 +77,7 @@ class EstimationFiscale2025:
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
+    frais_scolarite: FraisScolarite2025
 
 
 def calculer_estimation_fiscale_2025(
@@ -80,6 +88,7 @@ def calculer_estimation_fiscale_2025(
     ) = None,
     dons_bienfaisance: DonsBienfaisance2025 | None = None,
     frais_medicaux: FraisMedicaux2025 | None = None,
+    frais_scolarite: FraisScolarite2025 | None = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
     if dossier.annee_fiscale != 2025:
@@ -124,6 +133,12 @@ def calculer_estimation_fiscale_2025(
         else FraisMedicaux2025()
     )
 
+    frais_scolarite_effectifs = (
+        frais_scolarite
+        if frais_scolarite is not None
+        else FraisScolarite2025()
+    )
+
     federal = calculer_impot_federal_preliminaire_2025(base, revenu)
     federal = appliquer_credit_federal_dons_2025(
         federal,
@@ -134,6 +149,10 @@ def calculer_estimation_fiscale_2025(
         federal,
         frais_medicaux_effectifs,
         revenu.revenu_net_federal,
+    )
+    federal = appliquer_credit_federal_frais_scolarite_2025(
+        federal,
+        frais_scolarite_effectifs,
     )
     quebec = calculer_impot_quebec_preliminaire_2025(revenu)
     quebec = appliquer_credit_quebec_cotisations_2025(
@@ -149,6 +168,10 @@ def calculer_estimation_fiscale_2025(
         quebec,
         frais_medicaux_effectifs,
         revenu.revenu_net_quebec,
+    )
+    quebec = appliquer_credit_quebec_frais_scolarite_2025(
+        quebec,
+        frais_scolarite_effectifs,
     )
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
@@ -167,6 +190,7 @@ def calculer_estimation_fiscale_2025(
         cotisations_syndicales=cotisations_effectives,
         dons_bienfaisance=dons_effectifs,
         frais_medicaux=frais_medicaux_effectifs,
+        frais_scolarite=frais_scolarite_effectifs,
     )
 
 
@@ -285,6 +309,31 @@ def formater_estimation_fiscale_2025(
                 estimation.frais_medicaux.montant_admissible_federal
                 > Decimal("0")
                 or estimation.frais_medicaux.montant_admissible_quebec
+                > Decimal("0")
+            )
+            else []
+        ),
+        *(
+            [
+                "",
+                "FRAIS DE SCOLARITÉ / EXAMEN VALIDÉS",
+                "Montant admissible fédéral : "
+                f"{formater_montant_estimation(estimation.frais_scolarite.montant_admissible_federal)}",
+                "Crédit fédéral — ligne 32300 : "
+                f"{formater_montant_estimation(credit_federal_frais_scolarite_2025(estimation.frais_scolarite))}",
+                "Source fédérale : "
+                f"{estimation.frais_scolarite.source_federale}",
+                "Montant admissible Québec : "
+                f"{formater_montant_estimation(estimation.frais_scolarite.montant_admissible_quebec)}",
+                "Crédit Québec — ligne 398 : "
+                f"{formater_montant_estimation(credit_quebec_frais_scolarite_2025(estimation.frais_scolarite))}",
+                "Source Québec : "
+                f"{estimation.frais_scolarite.source_quebec}",
+            ]
+            if (
+                estimation.frais_scolarite.montant_admissible_federal
+                > Decimal("0")
+                or estimation.frais_scolarite.montant_admissible_quebec
                 > Decimal("0")
             )
             else []

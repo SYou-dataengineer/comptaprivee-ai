@@ -15,6 +15,10 @@ from .tax_medical_expenses_2025 import (
     credit_federal_frais_medicaux_2025,
     credit_quebec_frais_medicaux_2025,
 )
+from .tax_tuition_2025 import (
+    credit_federal_frais_scolarite_2025,
+    credit_quebec_frais_scolarite_2025,
+)
 from .tax_estimation_2025 import (
     EstimationFiscale2025,
     formater_montant_estimation,
@@ -84,6 +88,7 @@ def construire_trace_calcul_fiscal_2025(
     cotisations = estimation.cotisations_syndicales
     dons = estimation.dons_bienfaisance
     frais_medicaux = estimation.frais_medicaux
+    frais_scolarite = estimation.frais_scolarite
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -110,6 +115,10 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_federal += (
             " - crédit frais médicaux lignes 33099 / 33200"
         )
+    if frais_scolarite.montant_admissible_federal > Decimal("0"):
+        formule_impot_federal += (
+            " - crédit frais de scolarité ligne 32300"
+        )
 
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
     if cotisations.montant_quebec_admissible > Decimal("0"):
@@ -120,6 +129,10 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_quebec += " - crédit dons ligne 395"
     if frais_medicaux.montant_admissible_quebec > Decimal("0"):
         formule_impot_quebec += " - crédit frais médicaux ligne 381"
+    if frais_scolarite.montant_admissible_quebec > Decimal("0"):
+        formule_impot_quebec += (
+            " - crédit frais de scolarité/examen ligne 398"
+        )
 
     if dossier.annee_fiscale != 2025:
         raise ValueError(
@@ -379,6 +392,52 @@ def construire_trace_calcul_fiscal_2025(
                 credit_quebec_frais_medicaux_2025(
                     frais_medicaux,
                     revenu.revenu_net_quebec,
+                ),
+            ),
+        )
+
+    if frais_scolarite.montant_admissible_federal > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt fédéral de base",
+            _ligne(
+                0,
+                "FÉDÉRAL",
+                "Crédit fédéral pour frais de scolarité",
+                (
+                    "ARC annexe 11 / ligne 32300 — "
+                    + frais_scolarite.source_federale
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant admissible 2025 × 14,5 % — "
+                    "aucun report/transfert dans ce profil"
+                ),
+                credit_federal_frais_scolarite_2025(
+                    frais_scolarite
+                ),
+            ),
+        )
+
+    if frais_scolarite.montant_admissible_quebec > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt Québec préliminaire",
+            _ligne(
+                0,
+                "QUÉBEC",
+                "Crédit Québec pour frais de scolarité / examen",
+                (
+                    "Revenu Québec annexe T / ligne 398 — "
+                    + frais_scolarite.source_quebec
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant admissible 2025 × 8 % — "
+                    "aucun report/transfert dans ce profil"
+                ),
+                credit_quebec_frais_scolarite_2025(
+                    frais_scolarite
                 ),
             ),
         )

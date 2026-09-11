@@ -13,6 +13,10 @@ from .tax_medical_expenses_2025 import (
     credit_federal_frais_medicaux_2025,
     credit_quebec_frais_medicaux_2025,
 )
+from .tax_tuition_2025 import (
+    credit_federal_frais_scolarite_2025,
+    credit_quebec_frais_scolarite_2025,
+)
 
 
 def nom_rapport_fiscal_pdf_2025(estimation: EstimationFiscale2025) -> str:
@@ -31,6 +35,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     q = estimation.quebec
     x = estimation.rapprochement
     medical = estimation.frais_medicaux
+    scolarite = estimation.frais_scolarite
 
     montant = (
         x.remboursement_estime
@@ -137,6 +142,118 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                         "confirmée"
                         if medical.periode_12_mois_fin_2025_confirmee
                         else "non confirmée"
+                    )
+                ),
+            ]
+        )
+
+    if (
+        scolarite.montant_admissible_federal > 0
+        or scolarite.montant_admissible_quebec > 0
+    ):
+        credit_federal_scolarite = (
+            credit_federal_frais_scolarite_2025(
+                scolarite
+            )
+        )
+        credit_quebec_scolarite = (
+            credit_quebec_frais_scolarite_2025(
+                scolarite
+            )
+        )
+
+        lignes.extend(
+            [
+                "",
+                "FRAIS DE SCOLARITÉ / EXAMEN VALIDÉS",
+                (
+                    "Montant admissible fédéral : "
+                    f"{formater_montant_estimation(
+                        scolarite.montant_admissible_federal
+                    )}"
+                ),
+                (
+                    "Crédit fédéral - ligne 32300 : "
+                    f"{formater_montant_estimation(
+                        credit_federal_scolarite
+                    )}"
+                ),
+                f"Source fédérale : {scolarite.source_federale}",
+                (
+                    "Montant admissible Québec : "
+                    f"{formater_montant_estimation(
+                        scolarite.montant_admissible_quebec
+                    )}"
+                ),
+                (
+                    "Crédit Québec - ligne 398 : "
+                    f"{formater_montant_estimation(
+                        credit_quebec_scolarite
+                    )}"
+                ),
+                f"Source Québec : {scolarite.source_quebec}",
+                (
+                    "Validation comptable : "
+                    + (
+                        "confirmée"
+                        if scolarite.valide_par_comptable
+                        else "non confirmée"
+                    )
+                ),
+                (
+                    "Pièce fédérale confirmée : "
+                    + (
+                        "oui"
+                        if scolarite.piece_federale_confirmee
+                        else "non"
+                    )
+                ),
+                (
+                    "Reçu officiel Québec confirmé : "
+                    + (
+                        "oui"
+                        if scolarite.recu_officiel_quebec_confirme
+                        else "non"
+                    )
+                ),
+                (
+                    "Seuil de plus de 100 $ confirmé : "
+                    + (
+                        "oui"
+                        if scolarite.seuil_100_confirme
+                        else "non"
+                    )
+                ),
+                (
+                    "Remboursements soustraits : "
+                    + (
+                        "oui"
+                        if scolarite.remboursements_soustraits
+                        else "non"
+                    )
+                ),
+                (
+                    "Frais 2025 uniquement : "
+                    + (
+                        "oui"
+                        if scolarite.frais_2025_uniquement
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucun report antérieur : "
+                    + (
+                        "oui"
+                        if scolarite.aucun_report_anterieur
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucun transfert : "
+                    + (
+                        "oui"
+                        if scolarite.aucun_transfert
+                        else "non"
                     )
                 ),
             ]

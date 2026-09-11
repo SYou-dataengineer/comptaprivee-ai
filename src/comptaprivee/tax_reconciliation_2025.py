@@ -136,11 +136,26 @@ def calculer_rapprochement_fiscal_2025(
         or "Crédit Québec pour frais médicaux admissibles inclus."
         in quebec.limitations
     )
-    limitation_credits = (
-        "Aucun crédit familial, étude ou handicap."
-        if credit_medical_inclus
-        else "Aucun crédit familial, médical, étude ou handicap."
+    credit_scolarite_inclus = (
+        "Crédit fédéral pour frais de scolarité admissibles inclus."
+        in federal.limitations
+        or (
+            "Crédit Québec pour frais de scolarité ou d'examen "
+            "admissibles inclus."
+        )
+        in quebec.limitations
     )
+
+    if credit_medical_inclus and credit_scolarite_inclus:
+        limitation_credits = "Aucun crédit familial ou handicap."
+    elif credit_medical_inclus:
+        limitation_credits = "Aucun crédit familial, étude ou handicap."
+    elif credit_scolarite_inclus:
+        limitation_credits = "Aucun crédit familial, médical ou handicap."
+    else:
+        limitation_credits = (
+            "Aucun crédit familial, médical, étude ou handicap."
+        )
 
     return RapprochementFiscal2025(
         client=base.client,

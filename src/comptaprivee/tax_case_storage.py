@@ -26,6 +26,10 @@ from .tax_medical_expenses_2025 import (
     FraisMedicaux2025,
     valider_frais_medicaux_2025,
 )
+from .tax_tuition_2025 import (
+    FraisScolarite2025,
+    valider_frais_scolarite_2025,
+)
 from .tax_estimation_2025 import EstimationFiscale2025
 from .tax_field_validation import (
     DonneeFiscaleValidee,
@@ -64,6 +68,7 @@ class DossierFiscalEnregistre:
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
+    frais_scolarite: FraisScolarite2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -394,6 +399,100 @@ def _frais_medicaux_depuis_dict(
     return valider_frais_medicaux_2025(frais)
 
 
+def _frais_scolarite_vers_dict(
+    frais: FraisScolarite2025 | None,
+):
+    if frais is None:
+        frais = FraisScolarite2025()
+
+    valider_frais_scolarite_2025(frais)
+
+    return {
+        "montant_admissible_federal": _decimal_texte(
+            frais.montant_admissible_federal
+        ),
+        "montant_admissible_quebec": _decimal_texte(
+            frais.montant_admissible_quebec
+        ),
+        "source_federale": frais.source_federale,
+        "source_quebec": frais.source_quebec,
+        "valide_par_comptable": bool(frais.valide_par_comptable),
+        "piece_federale_confirmee": bool(frais.piece_federale_confirmee),
+        "recu_officiel_quebec_confirme": bool(
+            frais.recu_officiel_quebec_confirme
+        ),
+        "seuil_100_confirme": bool(frais.seuil_100_confirme),
+        "remboursements_soustraits": bool(
+            frais.remboursements_soustraits
+        ),
+        "frais_2025_uniquement": bool(frais.frais_2025_uniquement),
+        "aucun_report_anterieur": bool(frais.aucun_report_anterieur),
+        "aucun_transfert": bool(frais.aucun_transfert),
+        "credit_canadien_formation_non_reclame": bool(
+            frais.credit_canadien_formation_non_reclame
+        ),
+        "profil_resident_quebec_simple": bool(
+            frais.profil_resident_quebec_simple
+        ),
+    }
+
+
+def _frais_scolarite_depuis_dict(
+    valeur: Any,
+) -> FraisScolarite2025:
+    if valeur is None:
+        return FraisScolarite2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Les frais de scolarité enregistrés sont invalides."
+        )
+
+    frais = FraisScolarite2025(
+        montant_admissible_federal=_decimal_depuis_json(
+            valeur.get("montant_admissible_federal", "0"),
+            "frais_scolarite.montant_admissible_federal",
+        ),
+        montant_admissible_quebec=_decimal_depuis_json(
+            valeur.get("montant_admissible_quebec", "0"),
+            "frais_scolarite.montant_admissible_quebec",
+        ),
+        source_federale=str(valeur.get("source_federale", "")),
+        source_quebec=str(valeur.get("source_quebec", "")),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        piece_federale_confirmee=bool(
+            valeur.get("piece_federale_confirmee", False)
+        ),
+        recu_officiel_quebec_confirme=bool(
+            valeur.get("recu_officiel_quebec_confirme", False)
+        ),
+        seuil_100_confirme=bool(
+            valeur.get("seuil_100_confirme", False)
+        ),
+        remboursements_soustraits=bool(
+            valeur.get("remboursements_soustraits", False)
+        ),
+        frais_2025_uniquement=bool(
+            valeur.get("frais_2025_uniquement", False)
+        ),
+        aucun_report_anterieur=bool(
+            valeur.get("aucun_report_anterieur", False)
+        ),
+        aucun_transfert=bool(
+            valeur.get("aucun_transfert", False)
+        ),
+        credit_canadien_formation_non_reclame=bool(
+            valeur.get("credit_canadien_formation_non_reclame", False)
+        ),
+        profil_resident_quebec_simple=bool(
+            valeur.get("profil_resident_quebec_simple", False)
+        ),
+    )
+    return valider_frais_scolarite_2025(frais)
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
@@ -404,6 +503,7 @@ def sauvegarder_dossier_fiscal(
     ) = None,
     dons_bienfaisance: DonsBienfaisance2025 | None = None,
     frais_medicaux: FraisMedicaux2025 | None = None,
+    frais_scolarite: FraisScolarite2025 | None = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -448,6 +548,9 @@ def sauvegarder_dossier_fiscal(
         ),
         "frais_medicaux": _frais_medicaux_vers_dict(
             frais_medicaux
+        ),
+        "frais_scolarite": _frais_scolarite_vers_dict(
+            frais_scolarite
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
@@ -565,6 +668,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     frais_medicaux = _frais_medicaux_depuis_dict(
         contenu.get("frais_medicaux")
     )
+    frais_scolarite = _frais_scolarite_depuis_dict(
+        contenu.get("frais_scolarite")
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -578,6 +684,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         cotisations_syndicales=cotisations_syndicales,
         dons_bienfaisance=dons_bienfaisance,
         frais_medicaux=frais_medicaux,
+        frais_scolarite=frais_scolarite,
     )
 
 
