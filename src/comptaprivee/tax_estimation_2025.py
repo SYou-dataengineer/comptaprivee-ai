@@ -40,6 +40,13 @@ from .tax_drug_insurance_2025 import (
     cotisation_assurance_medicaments_2025,
     valider_assurance_medicaments_2025,
 )
+from .tax_living_alone_2025 import (
+    PersonneVivantSeule2025,
+    appliquer_credit_quebec_personne_vivant_seule_2025,
+    credit_quebec_personne_vivant_seule_2025,
+    montant_ligne_361_personne_vivant_seule_2025,
+    valider_personne_vivant_seule_2025,
+)
 from .tax_medical_expenses_2025 import (
     FraisMedicaux2025,
     appliquer_credit_federal_frais_medicaux_2025,
@@ -99,6 +106,7 @@ class EstimationFiscale2025:
     credit_deficience: CreditDeficience2025
     assurance_medicaments: AssuranceMedicamentsQuebec2025
     cotisations_excedentaires: CotisationsExcedentaires2025
+    personne_vivant_seule: PersonneVivantSeule2025
 
 
 def calculer_estimation_fiscale_2025(
@@ -116,6 +124,9 @@ def calculer_estimation_fiscale_2025(
     ) = None,
     cotisations_excedentaires: (
         CotisationsExcedentaires2025 | None
+    ) = None,
+    personne_vivant_seule: (
+        PersonneVivantSeule2025 | None
     ) = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
@@ -239,6 +250,26 @@ def calculer_estimation_fiscale_2025(
         else CreditDeficience2025()
     )
 
+    personne_vivant_seule_effective = (
+        personne_vivant_seule
+        if personne_vivant_seule is not None
+        else PersonneVivantSeule2025()
+    )
+    valider_personne_vivant_seule_2025(
+        personne_vivant_seule_effective
+    )
+
+    if (
+        personne_vivant_seule_effective.reclamer_montant
+        and personne_vivant_seule_effective.revenu_familial_net
+        != revenu.revenu_net_quebec
+    ):
+        raise ValueError(
+            "Le revenu familial net du profil personne vivant seule "
+            "doit correspondre au revenu net Québec calculé pour "
+            "ce dossier."
+        )
+
     assurance_medicaments_effective = (
         assurance_medicaments
         if assurance_medicaments is not None
@@ -307,6 +338,10 @@ def calculer_estimation_fiscale_2025(
         quebec,
         credit_deficience_effectif,
     )
+    quebec = appliquer_credit_quebec_personne_vivant_seule_2025(
+        quebec,
+        personne_vivant_seule_effective,
+    )
     remboursements_cotisations = (
         calculer_remboursements_cotisations_2025(
             cotisations_excedentaires_effectives
@@ -353,6 +388,7 @@ def calculer_estimation_fiscale_2025(
         cotisations_excedentaires=(
             cotisations_excedentaires_effectives
         ),
+        personne_vivant_seule=personne_vivant_seule_effective,
     )
 
 
@@ -571,6 +607,22 @@ def formater_estimation_fiscale_2025(
                 f"{estimation.assurance_medicaments.source}",
             ]
             if estimation.assurance_medicaments.type_couverture.strip()
+            else []
+        ),
+        *(
+            [
+                "",
+                "PERSONNE VIVANT SEULE — QUÉBEC 2025",
+                "Revenu familial net : "
+                f"{formater_montant_estimation(estimation.personne_vivant_seule.revenu_familial_net)}",
+                "Montant annexe B / ligne 361 : "
+                f"{formater_montant_estimation(montant_ligne_361_personne_vivant_seule_2025(estimation.personne_vivant_seule))}",
+                "Crédit Québec : "
+                f"{formater_montant_estimation(credit_quebec_personne_vivant_seule_2025(estimation.personne_vivant_seule))}",
+                "Source : "
+                f"{estimation.personne_vivant_seule.source}",
+            ]
+            if estimation.personne_vivant_seule.reclamer_montant
             else []
         ),
         *(

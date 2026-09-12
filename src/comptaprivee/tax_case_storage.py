@@ -34,6 +34,10 @@ from .tax_contribution_overpayments_2025 import (
     CotisationsExcedentaires2025,
     valider_cotisations_excedentaires_2025,
 )
+from .tax_living_alone_2025 import (
+    PersonneVivantSeule2025,
+    valider_personne_vivant_seule_2025,
+)
 from .tax_medical_expenses_2025 import (
     FraisMedicaux2025,
     valider_frais_medicaux_2025,
@@ -84,6 +88,7 @@ class DossierFiscalEnregistre:
     credit_deficience: CreditDeficience2025
     assurance_medicaments: AssuranceMedicamentsQuebec2025
     cotisations_excedentaires: CotisationsExcedentaires2025
+    personne_vivant_seule: PersonneVivantSeule2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -821,6 +826,157 @@ def _cotisations_excedentaires_depuis_dict(
     return valider_cotisations_excedentaires_2025(cotisations)
 
 
+def _personne_vivant_seule_vers_dict(
+    profil: PersonneVivantSeule2025 | None,
+):
+    if profil is None:
+        profil = PersonneVivantSeule2025()
+
+    valider_personne_vivant_seule_2025(profil)
+
+    return {
+        "reclamer_montant": bool(profil.reclamer_montant),
+        "revenu_familial_net": _decimal_texte(
+            profil.revenu_familial_net
+        ),
+        "personne_vivant_seule_toute_annee": bool(
+            profil.personne_vivant_seule_toute_annee
+        ),
+        "habitation_maintenue_par_contribuable": bool(
+            profil.habitation_maintenue_par_contribuable
+        ),
+        "seulement_personnes_autorisees_dans_habitation": bool(
+            profil.seulement_personnes_autorisees_dans_habitation
+        ),
+        "aucun_conjoint_31_decembre_2025": bool(
+            profil.aucun_conjoint_31_decembre_2025
+        ),
+        "resident_quebec_canada_toute_annee": bool(
+            profil.resident_quebec_canada_toute_annee
+        ),
+        "reclamer_additionnel_monoparental": bool(
+            profil.reclamer_additionnel_monoparental
+        ),
+        "enfant_majeur_etudes_admissible": bool(
+            profil.enfant_majeur_etudes_admissible
+        ),
+        "aucun_droit_allocation_famille_decembre": bool(
+            profil.aucun_droit_allocation_famille_decembre
+        ),
+        "mois_allocation_famille_2025": int(
+            profil.mois_allocation_famille_2025
+        ),
+        "aucun_montant_age_ou_retraite": bool(
+            profil.aucun_montant_age_ou_retraite
+        ),
+        "documents_justificatifs_confirmes": bool(
+            profil.documents_justificatifs_confirmes
+        ),
+        "valide_par_comptable": bool(
+            profil.valide_par_comptable
+        ),
+        "source": profil.source,
+    }
+
+
+def _personne_vivant_seule_depuis_dict(
+    valeur: Any,
+) -> PersonneVivantSeule2025:
+    if valeur is None:
+        return PersonneVivantSeule2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Le profil personne vivant seule enregistré est invalide."
+        )
+
+    try:
+        mois_allocation = int(
+            valeur.get("mois_allocation_famille_2025", 0)
+        )
+    except (TypeError, ValueError) as erreur:
+        raise ValueError(
+            "Le nombre de mois d'Allocation famille enregistré "
+            "est invalide."
+        ) from erreur
+
+    profil = PersonneVivantSeule2025(
+        reclamer_montant=bool(
+            valeur.get("reclamer_montant", False)
+        ),
+        revenu_familial_net=_decimal_depuis_json(
+            valeur.get("revenu_familial_net", "0"),
+            "personne_vivant_seule.revenu_familial_net",
+        ),
+        personne_vivant_seule_toute_annee=bool(
+            valeur.get(
+                "personne_vivant_seule_toute_annee",
+                False,
+            )
+        ),
+        habitation_maintenue_par_contribuable=bool(
+            valeur.get(
+                "habitation_maintenue_par_contribuable",
+                False,
+            )
+        ),
+        seulement_personnes_autorisees_dans_habitation=bool(
+            valeur.get(
+                "seulement_personnes_autorisees_dans_habitation",
+                False,
+            )
+        ),
+        aucun_conjoint_31_decembre_2025=bool(
+            valeur.get(
+                "aucun_conjoint_31_decembre_2025",
+                False,
+            )
+        ),
+        resident_quebec_canada_toute_annee=bool(
+            valeur.get(
+                "resident_quebec_canada_toute_annee",
+                False,
+            )
+        ),
+        reclamer_additionnel_monoparental=bool(
+            valeur.get(
+                "reclamer_additionnel_monoparental",
+                False,
+            )
+        ),
+        enfant_majeur_etudes_admissible=bool(
+            valeur.get(
+                "enfant_majeur_etudes_admissible",
+                False,
+            )
+        ),
+        aucun_droit_allocation_famille_decembre=bool(
+            valeur.get(
+                "aucun_droit_allocation_famille_decembre",
+                False,
+            )
+        ),
+        mois_allocation_famille_2025=mois_allocation,
+        aucun_montant_age_ou_retraite=bool(
+            valeur.get(
+                "aucun_montant_age_ou_retraite",
+                False,
+            )
+        ),
+        documents_justificatifs_confirmes=bool(
+            valeur.get(
+                "documents_justificatifs_confirmes",
+                False,
+            )
+        ),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        source=str(valeur.get("source", "")),
+    )
+    return valider_personne_vivant_seule_2025(profil)
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
@@ -835,6 +991,7 @@ def sauvegarder_dossier_fiscal(
     credit_deficience: CreditDeficience2025 | None = None,
     assurance_medicaments: AssuranceMedicamentsQuebec2025 | None = None,
     cotisations_excedentaires: CotisationsExcedentaires2025 | None = None,
+    personne_vivant_seule: PersonneVivantSeule2025 | None = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -891,6 +1048,9 @@ def sauvegarder_dossier_fiscal(
         ),
         "cotisations_excedentaires": _cotisations_excedentaires_vers_dict(
             cotisations_excedentaires
+        ),
+        "personne_vivant_seule": _personne_vivant_seule_vers_dict(
+            personne_vivant_seule
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
@@ -1020,6 +1180,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     cotisations_excedentaires = _cotisations_excedentaires_depuis_dict(
         contenu.get("cotisations_excedentaires")
     )
+    personne_vivant_seule = _personne_vivant_seule_depuis_dict(
+        contenu.get("personne_vivant_seule")
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -1037,6 +1200,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         credit_deficience=credit_deficience,
         assurance_medicaments=assurance_medicaments,
         cotisations_excedentaires=cotisations_excedentaires,
+        personne_vivant_seule=personne_vivant_seule,
     )
 
 

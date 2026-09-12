@@ -159,6 +159,10 @@ from .tax_contribution_overpayments_2025 import (
     CotisationsExcedentaires2025,
     valider_cotisations_excedentaires_2025,
 )
+from .tax_living_alone_2025 import (
+    PersonneVivantSeule2025,
+    valider_personne_vivant_seule_2025,
+)
 from .tax_estimation_2025 import (
     calculer_estimation_fiscale_2025,
     formater_estimation_fiscale_2025,
@@ -2392,6 +2396,7 @@ class ApplicationComptaPrivee(tk.Tk):
         credit_deficience_courant = CreditDeficience2025()
         assurance_medicaments_courante = AssuranceMedicamentsQuebec2025()
         cotisations_excedentaires_courantes = CotisationsExcedentaires2025()
+        personne_vivant_seule_courante = PersonneVivantSeule2025()
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
 
@@ -3389,6 +3394,519 @@ class ApplicationComptaPrivee(tk.Tk):
             actions = ttk.Frame(cadre)
             actions.grid(
                 row=15,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(16, 0),
+            )
+
+            ttk.Button(
+                actions,
+                text="Effacer",
+                command=effacer,
+            ).pack(side="left")
+
+            ttk.Button(
+                actions,
+                text="Fermer",
+                command=dialogue.destroy,
+            ).pack(side="right")
+
+            ttk.Button(
+                actions,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right", padx=(0, 8))
+
+        def ouvrir_personne_vivant_seule_2025() -> None:
+            nonlocal personne_vivant_seule_courante
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Personne vivant seule / famille monoparentale 2025"
+            )
+            dialogue.geometry("930x850")
+            dialogue.minsize(850, 740)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            cadre = ttk.Frame(dialogue, padding=16)
+            cadre.pack(fill="both", expand=True)
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Personne vivant seule — Québec 2025",
+                font=("Segoe UI", 16, "bold"),
+            ).grid(
+                row=0,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Annexe B / ligne 361. Cette version traite le profil "
+                    "simple : sans conjoint au 31 décembre 2025, résidence "
+                    "Québec/Canada toute l'année, habitation admissible "
+                    "toute l'année et aucun montant pour âge ou revenus "
+                    "de retraite combiné."
+                ),
+                foreground="#166534",
+                wraplength=790,
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 12),
+            )
+
+            reclamer_var = tk.BooleanVar(
+                value=personne_vivant_seule_courante.reclamer_montant
+            )
+            revenu_var = tk.StringVar(
+                value=str(
+                    personne_vivant_seule_courante.revenu_familial_net
+                )
+            )
+            seule_annee_var = tk.BooleanVar(
+                value=(
+                    personne_vivant_seule_courante
+                    .personne_vivant_seule_toute_annee
+                )
+            )
+            habitation_var = tk.BooleanVar(
+                value=(
+                    personne_vivant_seule_courante
+                    .habitation_maintenue_par_contribuable
+                )
+            )
+            personnes_autorisees_var = tk.BooleanVar(
+                value=(
+                    personne_vivant_seule_courante
+                    .seulement_personnes_autorisees_dans_habitation
+                )
+            )
+            sans_conjoint_var = tk.BooleanVar(
+                value=(
+                    personne_vivant_seule_courante
+                    .aucun_conjoint_31_decembre_2025
+                )
+            )
+            resident_var = tk.BooleanVar(
+                value=(
+                    personne_vivant_seule_courante
+                    .resident_quebec_canada_toute_annee
+                )
+            )
+            additionnel_var = tk.BooleanVar(
+                value=(
+                    personne_vivant_seule_courante
+                    .reclamer_additionnel_monoparental
+                )
+            )
+            enfant_etudes_var = tk.BooleanVar(
+                value=(
+                    personne_vivant_seule_courante
+                    .enfant_majeur_etudes_admissible
+                )
+            )
+            sans_allocation_dec_var = tk.BooleanVar(
+                value=(
+                    personne_vivant_seule_courante
+                    .aucun_droit_allocation_famille_decembre
+                )
+            )
+            mois_allocation_var = tk.StringVar(
+                value=str(
+                    personne_vivant_seule_courante
+                    .mois_allocation_famille_2025
+                )
+            )
+            sans_age_retraite_var = tk.BooleanVar(
+                value=(
+                    personne_vivant_seule_courante
+                    .aucun_montant_age_ou_retraite
+                )
+            )
+            documents_var = tk.BooleanVar(
+                value=(
+                    personne_vivant_seule_courante
+                    .documents_justificatifs_confirmes
+                )
+            )
+            validation_var = tk.BooleanVar(
+                value=personne_vivant_seule_courante.valide_par_comptable
+            )
+            source_var = tk.StringVar(
+                value=personne_vivant_seule_courante.source
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Réclamer le montant pour personne vivant seule",
+                variable=reclamer_var,
+            ).grid(
+                row=2,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Revenu familial net 2025 :",
+            ).grid(
+                row=3,
+                column=0,
+                sticky="w",
+                pady=4,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=revenu_var,
+                width=24,
+            ).grid(
+                row=3,
+                column=1,
+                sticky="w",
+                padx=(12, 0),
+                pady=4,
+            )
+
+            confirmations = (
+                (
+                    "Personne vivant seule pendant toute l'année 2025",
+                    seule_annee_var,
+                ),
+                (
+                    "Habitation maintenue par le contribuable toute l'année",
+                    habitation_var,
+                ),
+                (
+                    "Seulement des personnes autorisées vivaient dans l'habitation",
+                    personnes_autorisees_var,
+                ),
+                (
+                    "Aucun conjoint au 31 décembre 2025",
+                    sans_conjoint_var,
+                ),
+                (
+                    "Résident du Québec et du Canada toute l'année 2025",
+                    resident_var,
+                ),
+            )
+
+            for ligne, (libelle, variable) in enumerate(
+                confirmations,
+                start=4,
+            ):
+                ttk.Checkbutton(
+                    cadre,
+                    text=libelle,
+                    variable=variable,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    columnspan=2,
+                    sticky="w",
+                    pady=2,
+                )
+
+            ttk.Separator(
+                cadre,
+                orient="horizontal",
+            ).grid(
+                row=9,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(12, 10),
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Réclamer le montant additionnel pour famille monoparentale",
+                variable=additionnel_var,
+            ).grid(
+                row=10,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Enfant majeur aux études admissible confirmé",
+                variable=enfant_etudes_var,
+            ).grid(
+                row=11,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=2,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Aucun droit à l'Allocation famille pour décembre 2025",
+                variable=sans_allocation_dec_var,
+            ).grid(
+                row=12,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=2,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Nombre de mois d'Allocation famille reçus en 2025 :",
+            ).grid(
+                row=13,
+                column=0,
+                sticky="w",
+                pady=4,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=mois_allocation_var,
+                width=12,
+            ).grid(
+                row=13,
+                column=1,
+                sticky="w",
+                padx=(12, 0),
+                pady=4,
+            )
+
+            ttk.Separator(
+                cadre,
+                orient="horizontal",
+            ).grid(
+                row=14,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(12, 10),
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Aucun montant pour âge ou revenus de retraite combiné",
+                variable=sans_age_retraite_var,
+            ).grid(
+                row=15,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=2,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Documents justificatifs confirmés",
+                variable=documents_var,
+            ).grid(
+                row=16,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=2,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Situation validée par le comptable",
+                variable=validation_var,
+            ).grid(
+                row=17,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=2,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Source justificative :",
+            ).grid(
+                row=18,
+                column=0,
+                sticky="w",
+                pady=4,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=source_var,
+                width=55,
+            ).grid(
+                row=18,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=4,
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Références intégrées : montant de base 2 128 $, "
+                    "additionnel monoparental 2 627 $, réduction "
+                    "mensuelle Allocation famille 218,92 $, seuil "
+                    "42 090 $, réduction 18,75 %, crédit Québec 14 %."
+                ),
+                foreground="#92400e",
+                wraplength=790,
+            ).grid(
+                row=19,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(12, 8),
+            )
+
+            def lire_decimal(
+                variable: tk.StringVar,
+                libelle: str,
+            ) -> Decimal:
+                texte = (
+                    variable.get()
+                    .strip()
+                    .replace("\u00a0", "")
+                    .replace(" ", "")
+                    .replace("$", "")
+                    .replace(",", ".")
+                )
+                if not texte:
+                    return Decimal("0")
+                try:
+                    valeur = Decimal(texte)
+                except InvalidOperation as erreur:
+                    raise ValueError(
+                        f"{libelle} doit être un montant valide."
+                    ) from erreur
+                if not valeur.is_finite():
+                    raise ValueError(
+                        f"{libelle} doit être un montant fini."
+                    )
+                return valeur
+
+            def lire_mois() -> int:
+                texte = mois_allocation_var.get().strip()
+                if not texte:
+                    return 0
+                try:
+                    valeur = int(texte)
+                except ValueError as erreur:
+                    raise ValueError(
+                        "Le nombre de mois d'Allocation famille "
+                        "doit être un entier."
+                    ) from erreur
+                return valeur
+
+            def effacer() -> None:
+                reclamer_var.set(False)
+                revenu_var.set("0")
+                seule_annee_var.set(False)
+                habitation_var.set(False)
+                personnes_autorisees_var.set(False)
+                sans_conjoint_var.set(False)
+                resident_var.set(False)
+                additionnel_var.set(False)
+                enfant_etudes_var.set(False)
+                sans_allocation_dec_var.set(False)
+                mois_allocation_var.set("0")
+                sans_age_retraite_var.set(False)
+                documents_var.set(False)
+                validation_var.set(False)
+                source_var.set("")
+
+            def appliquer() -> None:
+                nonlocal personne_vivant_seule_courante
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    nouveau_profil = PersonneVivantSeule2025(
+                        reclamer_montant=reclamer_var.get(),
+                        revenu_familial_net=lire_decimal(
+                            revenu_var,
+                            "Le revenu familial net",
+                        ),
+                        personne_vivant_seule_toute_annee=(
+                            seule_annee_var.get()
+                        ),
+                        habitation_maintenue_par_contribuable=(
+                            habitation_var.get()
+                        ),
+                        seulement_personnes_autorisees_dans_habitation=(
+                            personnes_autorisees_var.get()
+                        ),
+                        aucun_conjoint_31_decembre_2025=(
+                            sans_conjoint_var.get()
+                        ),
+                        resident_quebec_canada_toute_annee=(
+                            resident_var.get()
+                        ),
+                        reclamer_additionnel_monoparental=(
+                            additionnel_var.get()
+                        ),
+                        enfant_majeur_etudes_admissible=(
+                            enfant_etudes_var.get()
+                        ),
+                        aucun_droit_allocation_famille_decembre=(
+                            sans_allocation_dec_var.get()
+                        ),
+                        mois_allocation_famille_2025=lire_mois(),
+                        aucun_montant_age_ou_retraite=(
+                            sans_age_retraite_var.get()
+                        ),
+                        documents_justificatifs_confirmes=(
+                            documents_var.get()
+                        ),
+                        valide_par_comptable=validation_var.get(),
+                        source=source_var.get().strip(),
+                    )
+                    nouveau_profil = (
+                        valider_personne_vivant_seule_2025(
+                            nouveau_profil
+                        )
+                    )
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Profil personne vivant seule invalide",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                personne_vivant_seule_courante = nouveau_profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                self.statut.set(
+                    "Profil personne vivant seule 2025 mis à jour"
+                )
+
+                messagebox.showinfo(
+                    "Personne vivant seule 2025",
+                    (
+                        "Le profil a été enregistré pour le prochain "
+                        "calcul fiscal."
+                    ),
+                    parent=dialogue,
+                )
+                dialogue.destroy()
+
+            actions = ttk.Frame(cadre)
+            actions.grid(
+                row=20,
                 column=0,
                 columnspan=2,
                 sticky="ew",
@@ -5671,6 +6189,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal credit_deficience_courant
             nonlocal assurance_medicaments_courante
             nonlocal cotisations_excedentaires_courantes
+            nonlocal personne_vivant_seule_courante
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -5699,6 +6218,7 @@ class ApplicationComptaPrivee(tk.Tk):
             credit_deficience_courant = CreditDeficience2025()
             assurance_medicaments_courante = AssuranceMedicamentsQuebec2025()
             cotisations_excedentaires_courantes = CotisationsExcedentaires2025()
+            personne_vivant_seule_courante = PersonneVivantSeule2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -5816,6 +6336,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             credit_deficience=credit_deficience_courant,
                             assurance_medicaments=assurance_medicaments_courante,
                             cotisations_excedentaires=cotisations_excedentaires_courantes,
+                            personne_vivant_seule=personne_vivant_seule_courante,
                         )
                     )
                 except (ValueError, Exception):
@@ -5852,6 +6373,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     credit_deficience=credit_deficience_courant,
                     assurance_medicaments=assurance_medicaments_courante,
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
+                    personne_vivant_seule=personne_vivant_seule_courante,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -5927,6 +6449,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal credit_deficience_courant
             nonlocal assurance_medicaments_courante
             nonlocal cotisations_excedentaires_courantes
+            nonlocal personne_vivant_seule_courante
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -5985,6 +6508,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             cotisations_excedentaires_courantes = (
                 enregistrement.cotisations_excedentaires
+            )
+            personne_vivant_seule_courante = (
+                enregistrement.personne_vivant_seule
             )
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
@@ -6262,6 +6788,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     credit_deficience=credit_deficience_courant,
                     assurance_medicaments=assurance_medicaments_courante,
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
+                    personne_vivant_seule=personne_vivant_seule_courante,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation
@@ -6577,6 +7104,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_actions,
             text="Cotisations excédentaires 2025",
             command=ouvrir_cotisations_excedentaires_2025,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        ttk.Button(
+            zone_actions,
+            text="Personne vivant seule 2025",
+            command=ouvrir_personne_vivant_seule_2025,
         ).pack(
             side="left",
             padx=(8, 0),

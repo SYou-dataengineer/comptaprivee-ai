@@ -18,6 +18,10 @@ from .tax_disability_2025 import (
 from .tax_drug_insurance_2025 import (
     code_exemption_case_449_2025,
 )
+from .tax_living_alone_2025 import (
+    credit_quebec_personne_vivant_seule_2025,
+    montant_ligne_361_personne_vivant_seule_2025,
+)
 from .tax_medical_expenses_2025 import (
     credit_federal_frais_medicaux_2025,
     credit_quebec_frais_medicaux_2025,
@@ -100,6 +104,7 @@ def construire_trace_calcul_fiscal_2025(
     credit_deficience = estimation.credit_deficience
     assurance_medicaments = estimation.assurance_medicaments
     cotisations_excedentaires = estimation.cotisations_excedentaires
+    personne_vivant_seule = estimation.personne_vivant_seule
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -151,6 +156,10 @@ def construire_trace_calcul_fiscal_2025(
     if credit_deficience.reclamer_quebec:
         formule_impot_quebec += (
             " - crédit déficience ligne 376"
+        )
+    if personne_vivant_seule.reclamer_montant:
+        formule_impot_quebec += (
+            " - crédit personne vivant seule ligne 361"
         )
 
     formule_impot_total = (
@@ -511,6 +520,37 @@ def construire_trace_calcul_fiscal_2025(
                 ),
                 credit_quebec_deficience_2025(
                     credit_deficience
+                ),
+            ),
+        )
+
+    if personne_vivant_seule.reclamer_montant:
+        montant_ligne_361 = (
+            montant_ligne_361_personne_vivant_seule_2025(
+                personne_vivant_seule
+            )
+        )
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt Québec préliminaire",
+            _ligne(
+                0,
+                "QUÉBEC",
+                "Crédit Québec — personne vivant seule",
+                (
+                    "Revenu Québec annexe B / ligne 361 — "
+                    + personne_vivant_seule.source
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant ligne 361 "
+                    + formater_montant_estimation(montant_ligne_361)
+                    + " × 14 %; montant de base 2 128 $, "
+                    "réduction de 18,75 % du revenu familial net "
+                    "excédant 42 090 $"
+                ),
+                credit_quebec_personne_vivant_seule_2025(
+                    personne_vivant_seule
                 ),
             ),
         )

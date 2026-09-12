@@ -9,6 +9,12 @@ from .tax_estimation_2025 import (
     EstimationFiscale2025,
     formater_montant_estimation,
 )
+from .tax_living_alone_2025 import (
+    MONTANT_PERSONNE_VIVANT_SEULE_2025,
+    SEUIL_REDUCTION_ANNEXE_B_2025,
+    credit_quebec_personne_vivant_seule_2025,
+    montant_ligne_361_personne_vivant_seule_2025,
+)
 from .tax_medical_expenses_2025 import (
     credit_federal_frais_medicaux_2025,
     credit_quebec_frais_medicaux_2025,
@@ -48,6 +54,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     deficience = estimation.credit_deficience
     assurance_medicaments = estimation.assurance_medicaments
     cotisations_excedentaires = estimation.cotisations_excedentaires
+    personne_vivant_seule = estimation.personne_vivant_seule
 
     montant = (
         x.remboursement_estime
@@ -399,6 +406,144 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                         else "non"
                     )
                 ),
+            ]
+        )
+
+    if personne_vivant_seule.reclamer_montant:
+        montant_ligne_361 = (
+            montant_ligne_361_personne_vivant_seule_2025(
+                personne_vivant_seule
+            )
+        )
+        credit_personne_seule = (
+            credit_quebec_personne_vivant_seule_2025(
+                personne_vivant_seule
+            )
+        )
+
+        lignes.extend(
+            [
+                "",
+                "PERSONNE VIVANT SEULE — QUÉBEC 2025",
+                (
+                    "Revenu familial net : "
+                    f"{formater_montant_estimation(
+                        personne_vivant_seule.revenu_familial_net
+                    )}"
+                ),
+                (
+                    "Montant de base : "
+                    f"{formater_montant_estimation(
+                        MONTANT_PERSONNE_VIVANT_SEULE_2025
+                    )}"
+                ),
+                (
+                    "Seuil de réduction : "
+                    f"{formater_montant_estimation(
+                        SEUIL_REDUCTION_ANNEXE_B_2025
+                    )}"
+                ),
+                "Taux de réduction : 18,75 %",
+                (
+                    "Annexe B / ligne 361 : "
+                    f"{formater_montant_estimation(
+                        montant_ligne_361
+                    )}"
+                ),
+                (
+                    "Crédit Québec : "
+                    f"{formater_montant_estimation(
+                        credit_personne_seule
+                    )}"
+                ),
+                "Taux du crédit Québec : 14 %",
+                (
+                    "Additionnel monoparental réclamé : "
+                    + (
+                        "oui"
+                        if (
+                            personne_vivant_seule
+                            .reclamer_additionnel_monoparental
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Mois d'Allocation famille reçus en 2025 : "
+                    f"{personne_vivant_seule.mois_allocation_famille_2025}"
+                ),
+                (
+                    "Sans conjoint au 31 décembre 2025 : "
+                    + (
+                        "oui"
+                        if (
+                            personne_vivant_seule
+                            .aucun_conjoint_31_decembre_2025
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Résident Québec/Canada toute l'année : "
+                    + (
+                        "oui"
+                        if (
+                            personne_vivant_seule
+                            .resident_quebec_canada_toute_annee
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Habitation maintenue toute l'année : "
+                    + (
+                        "oui"
+                        if (
+                            personne_vivant_seule
+                            .habitation_maintenue_par_contribuable
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Personnes autorisées dans l'habitation seulement : "
+                    + (
+                        "oui"
+                        if (
+                            personne_vivant_seule
+                            .seulement_personnes_autorisees_dans_habitation
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucun montant âge/retraite combiné : "
+                    + (
+                        "oui"
+                        if personne_vivant_seule.aucun_montant_age_ou_retraite
+                        else "non"
+                    )
+                ),
+                (
+                    "Documents justificatifs confirmés : "
+                    + (
+                        "oui"
+                        if (
+                            personne_vivant_seule
+                            .documents_justificatifs_confirmes
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Validation comptable : "
+                    + (
+                        "confirmée"
+                        if personne_vivant_seule.valide_par_comptable
+                        else "non confirmée"
+                    )
+                ),
+                f"Source : {personne_vivant_seule.source}",
             ]
         )
 

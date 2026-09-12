@@ -192,7 +192,14 @@ def calculer_rapprochement_fiscal_2025(
         )
     )
 
-    credits_absents = ["familial"]
+    credit_familial_inclus = (
+        "Montant Québec pour personne vivant seule inclus à la ligne 361."
+        in quebec.limitations
+    )
+
+    credits_absents = []
+    if not credit_familial_inclus:
+        credits_absents.append("familial")
     if not credit_medical_inclus:
         credits_absents.append("médical")
     if not credit_scolarite_inclus:
@@ -200,8 +207,12 @@ def calculer_rapprochement_fiscal_2025(
     if not credit_handicap_inclus:
         credits_absents.append("handicap")
 
-    if len(credits_absents) == 1:
-        limitation_credits = "Aucun crédit familial."
+    if not credits_absents:
+        limitation_credits = (
+            "Crédit familial Québec pour personne vivant seule inclus."
+        )
+    elif len(credits_absents) == 1:
+        limitation_credits = f"Aucun crédit {credits_absents[0]}."
     elif len(credits_absents) == 2:
         limitation_credits = (
             f"Aucun crédit {credits_absents[0]} "
