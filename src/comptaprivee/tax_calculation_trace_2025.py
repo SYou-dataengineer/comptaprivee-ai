@@ -14,6 +14,11 @@ from .tax_age_retirement_2025 import (
     montant_revenus_retraite_2025,
     reduction_annexe_b_age_retraite_2025,
 )
+from .tax_federal_age_pension_2025 import (
+    credit_federal_age_pension_2025,
+    montant_age_federal_2025,
+    montant_pension_federal_2025,
+)
 from .tax_donations_2025 import (
     credit_federal_dons_2025,
     credit_quebec_dons_2025,
@@ -113,6 +118,9 @@ def construire_trace_calcul_fiscal_2025(
     cotisations_excedentaires = estimation.cotisations_excedentaires
     personne_vivant_seule = estimation.personne_vivant_seule
     montants_age_retraite = estimation.montants_age_retraite
+    credits_federaux_age_pension = (
+        estimation.credits_federaux_age_pension
+    )
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -146,6 +154,13 @@ def construire_trace_calcul_fiscal_2025(
     if credit_deficience.reclamer_federal:
         formule_impot_federal += (
             " - crédit handicap ligne 31600"
+        )
+    if (
+        credits_federaux_age_pension.reclamer_montant_age
+        or credits_federaux_age_pension.reclamer_montant_pension
+    ):
+        formule_impot_federal += (
+            " - crédit âge/pension lignes 30100/31400"
         )
 
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
@@ -489,6 +504,52 @@ def construire_trace_calcul_fiscal_2025(
                 ),
                 credit_quebec_frais_scolarite_2025(
                     frais_scolarite
+                ),
+            ),
+        )
+
+    if (
+        credits_federaux_age_pension.reclamer_montant_age
+        or credits_federaux_age_pension.reclamer_montant_pension
+    ):
+        montant_age_federal = montant_age_federal_2025(
+            credits_federaux_age_pension
+        )
+        montant_pension_federal = montant_pension_federal_2025(
+            credits_federaux_age_pension
+        )
+
+        sources_federales = []
+        if credits_federaux_age_pension.reclamer_montant_age:
+            sources_federales.append(
+                credits_federaux_age_pension.source_age
+            )
+        if credits_federaux_age_pension.reclamer_montant_pension:
+            sources_federales.append(
+                credits_federaux_age_pension.source_pension
+            )
+
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt fédéral de base",
+            _ligne(
+                0,
+                "FÉDÉRAL",
+                "Crédit fédéral — âge / pension",
+                (
+                    "ARC ligne 30100 / ligne 31400 — "
+                    + " — ".join(sources_federales)
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant ligne 30100 "
+                    + formater_montant_estimation(montant_age_federal)
+                    + " + montant ligne 31400 "
+                    + formater_montant_estimation(montant_pension_federal)
+                    + " = base admissible; crédit fédéral × 14,5 %"
+                ),
+                credit_federal_age_pension_2025(
+                    credits_federaux_age_pension
                 ),
             ),
         )

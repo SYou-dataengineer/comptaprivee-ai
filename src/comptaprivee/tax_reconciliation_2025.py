@@ -201,6 +201,9 @@ def calculer_rapprochement_fiscal_2025(
         "inclus à la ligne 361."
         in quebec.limitations
     )
+    credit_age_pension_federal_inclus = (
+        "Montant fédéral en raison de l'âge ligne 30100 inclus." in federal.limitations
+    )
 
     credits_absents = []
     if not credit_familial_inclus:
@@ -253,6 +256,13 @@ def calculer_rapprochement_fiscal_2025(
             "L'abattement Québec est calculé à 16,5 % de l'impôt fédéral de base.",
             "Les retenues T4 et RL-1 sont comparées aux impôts préliminaires.",
             limitation_credits,
+            *(
+                (
+                    "Montant fédéral en raison de l'âge ligne 30100 inclus.",
+                )
+                if credit_age_pension_federal_inclus
+                else ()
+            ),
             *(
                 (
                     "Montants Québec en raison de l\'âge ou pour revenus "

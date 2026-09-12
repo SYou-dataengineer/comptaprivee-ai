@@ -9,6 +9,11 @@ from .tax_estimation_2025 import (
     EstimationFiscale2025,
     formater_montant_estimation,
 )
+from .tax_federal_age_pension_2025 import (
+    credit_federal_age_pension_2025,
+    montant_age_federal_2025,
+    montant_pension_federal_2025,
+)
 from .tax_age_retirement_2025 import (
     MONTANT_REVENUS_RETRAITE_MAX_2025,
     SEUIL_REDUCTION_ANNEXE_B_2025,
@@ -65,6 +70,9 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     cotisations_excedentaires = estimation.cotisations_excedentaires
     personne_vivant_seule = estimation.personne_vivant_seule
     montants_age_retraite = estimation.montants_age_retraite
+    credits_federaux_age_pension = (
+        estimation.credits_federaux_age_pension
+    )
 
     montant = (
         x.remboursement_estime
@@ -417,6 +425,157 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     )
                 ),
             ]
+        )
+
+    if (
+        credits_federaux_age_pension.reclamer_montant_age
+        or credits_federaux_age_pension.reclamer_montant_pension
+    ):
+        montant_age_federal = montant_age_federal_2025(
+            credits_federaux_age_pension
+        )
+        montant_pension_federal = montant_pension_federal_2025(
+            credits_federaux_age_pension
+        )
+        credit_age_pension_federal = (
+            credit_federal_age_pension_2025(
+                credits_federaux_age_pension
+            )
+        )
+
+        lignes.extend(
+            [
+                "",
+                "ÂGE / PENSION - FÉDÉRAL 2025",
+                (
+                    "Revenu net fédéral - ligne 23600 : "
+                    f"{formater_montant_estimation(
+                        credits_federaux_age_pension
+                        .revenu_net_ligne_23600
+                    )}"
+                ),
+                (
+                    "Montant en raison de l'âge - ligne 30100 : "
+                    f"{formater_montant_estimation(
+                        montant_age_federal
+                    )}"
+                ),
+                (
+                    "Montant pour revenu de pension - ligne 31400 : "
+                    f"{formater_montant_estimation(
+                        montant_pension_federal
+                    )}"
+                ),
+                (
+                    "Crédit fédéral âge / pension : "
+                    f"{formater_montant_estimation(
+                        credit_age_pension_federal
+                    )}"
+                ),
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                (
+                    "65 ans ou plus au 31 décembre 2025 : "
+                    + (
+                        "oui"
+                        if (
+                            credits_federaux_age_pension
+                            .age_65_plus_31_decembre_2025
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Résident du Canada toute l'année 2025 : "
+                    + (
+                        "oui"
+                        if (
+                            credits_federaux_age_pension
+                            .resident_canada_toute_annee
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucune règle spéciale décès : "
+                    + (
+                        "oui"
+                        if (
+                            credits_federaux_age_pension
+                            .aucune_regle_deces
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucun fractionnement de pension T1032 : "
+                    + (
+                        "oui"
+                        if (
+                            credits_federaux_age_pension
+                            .aucun_fractionnement_pension
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucun transfert entre conjoints : "
+                    + (
+                        "oui"
+                        if (
+                            credits_federaux_age_pension
+                            .aucun_transfert_conjoint
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Validation comptable : "
+                    + (
+                        "confirmée"
+                        if (
+                            credits_federaux_age_pension
+                            .valide_par_comptable
+                        )
+                        else "non confirmée"
+                    )
+                ),
+            ]
+        )
+
+        if credits_federaux_age_pension.reclamer_montant_age:
+            lignes.append(
+                "Source âge : "
+                f"{credits_federaux_age_pension.source_age}"
+            )
+        else:
+            lignes.append("Ligne 30100 non réclamée")
+
+        if credits_federaux_age_pension.reclamer_montant_pension:
+            lignes.extend(
+                [
+                    (
+                        "Revenu de pension admissible confirmé : "
+                        + (
+                            "oui"
+                            if (
+                                credits_federaux_age_pension
+                                .revenu_pension_admissible_confirme
+                            )
+                            else "non"
+                        )
+                    ),
+                    (
+                        "Source pension : "
+                        f"{credits_federaux_age_pension.source_pension}"
+                    ),
+                ]
+            )
+        else:
+            lignes.append("Ligne 31400 non réclamée")
+
+        lignes.append(
+            "Ligne 34990 : garde-fou actif; calcul automatique "
+            "limité au profil simple actuellement supporté."
         )
 
     if (

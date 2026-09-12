@@ -38,6 +38,10 @@ from .tax_age_retirement_2025 import (
     MontantsAgeRetraite2025,
     valider_montants_age_retraite_2025,
 )
+from .tax_federal_age_pension_2025 import (
+    CreditsFederauxAgePension2025,
+    valider_credits_federaux_age_pension_2025,
+)
 from .tax_living_alone_2025 import (
     PersonneVivantSeule2025,
     valider_personne_vivant_seule_2025,
@@ -94,6 +98,7 @@ class DossierFiscalEnregistre:
     cotisations_excedentaires: CotisationsExcedentaires2025
     personne_vivant_seule: PersonneVivantSeule2025
     montants_age_retraite: MontantsAgeRetraite2025
+    credits_federaux_age_pension: CreditsFederauxAgePension2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -982,6 +987,128 @@ def _personne_vivant_seule_depuis_dict(
     return valider_personne_vivant_seule_2025(profil)
 
 
+def _credits_federaux_age_pension_vers_dict(
+    profil: CreditsFederauxAgePension2025 | None,
+):
+    if profil is None:
+        profil = CreditsFederauxAgePension2025()
+
+    valider_credits_federaux_age_pension_2025(profil)
+
+    return {
+        "reclamer_montant_age": bool(
+            profil.reclamer_montant_age
+        ),
+        "age_65_plus_31_decembre_2025": bool(
+            profil.age_65_plus_31_decembre_2025
+        ),
+        "revenu_net_ligne_23600": _decimal_texte(
+            profil.revenu_net_ligne_23600
+        ),
+        "reclamer_montant_pension": bool(
+            profil.reclamer_montant_pension
+        ),
+        "revenu_pension_admissible": _decimal_texte(
+            profil.revenu_pension_admissible
+        ),
+        "resident_canada_toute_annee": bool(
+            profil.resident_canada_toute_annee
+        ),
+        "aucune_regle_deces": bool(
+            profil.aucune_regle_deces
+        ),
+        "aucun_fractionnement_pension": bool(
+            profil.aucun_fractionnement_pension
+        ),
+        "aucun_transfert_conjoint": bool(
+            profil.aucun_transfert_conjoint
+        ),
+        "revenu_pension_admissible_confirme": bool(
+            profil.revenu_pension_admissible_confirme
+        ),
+        "valide_par_comptable": bool(
+            profil.valide_par_comptable
+        ),
+        "source_age": profil.source_age,
+        "source_pension": profil.source_pension,
+    }
+
+
+def _credits_federaux_age_pension_depuis_dict(
+    valeur: Any,
+) -> CreditsFederauxAgePension2025:
+    if valeur is None:
+        return CreditsFederauxAgePension2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Le profil âge/pension fédéral enregistré est invalide."
+        )
+
+    profil = CreditsFederauxAgePension2025(
+        reclamer_montant_age=bool(
+            valeur.get("reclamer_montant_age", False)
+        ),
+        age_65_plus_31_decembre_2025=bool(
+            valeur.get(
+                "age_65_plus_31_decembre_2025",
+                False,
+            )
+        ),
+        revenu_net_ligne_23600=_decimal_depuis_json(
+            valeur.get("revenu_net_ligne_23600", "0"),
+            (
+                "credits_federaux_age_pension."
+                "revenu_net_ligne_23600"
+            ),
+        ),
+        reclamer_montant_pension=bool(
+            valeur.get("reclamer_montant_pension", False)
+        ),
+        revenu_pension_admissible=_decimal_depuis_json(
+            valeur.get("revenu_pension_admissible", "0"),
+            (
+                "credits_federaux_age_pension."
+                "revenu_pension_admissible"
+            ),
+        ),
+        resident_canada_toute_annee=bool(
+            valeur.get(
+                "resident_canada_toute_annee",
+                False,
+            )
+        ),
+        aucune_regle_deces=bool(
+            valeur.get("aucune_regle_deces", False)
+        ),
+        aucun_fractionnement_pension=bool(
+            valeur.get(
+                "aucun_fractionnement_pension",
+                False,
+            )
+        ),
+        aucun_transfert_conjoint=bool(
+            valeur.get("aucun_transfert_conjoint", False)
+        ),
+        revenu_pension_admissible_confirme=bool(
+            valeur.get(
+                "revenu_pension_admissible_confirme",
+                False,
+            )
+        ),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        source_age=str(
+            valeur.get("source_age", "")
+        ),
+        source_pension=str(
+            valeur.get("source_pension", "")
+        ),
+    )
+    return valider_credits_federaux_age_pension_2025(profil)
+
+
 def _montants_age_retraite_vers_dict(
     profil: MontantsAgeRetraite2025 | None,
 ):
@@ -1163,6 +1290,7 @@ def sauvegarder_dossier_fiscal(
     cotisations_excedentaires: CotisationsExcedentaires2025 | None = None,
     personne_vivant_seule: PersonneVivantSeule2025 | None = None,
     montants_age_retraite: MontantsAgeRetraite2025 | None = None,
+    credits_federaux_age_pension: CreditsFederauxAgePension2025 | None = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -1225,6 +1353,9 @@ def sauvegarder_dossier_fiscal(
         ),
         "montants_age_retraite": _montants_age_retraite_vers_dict(
             montants_age_retraite
+        ),
+        "credits_federaux_age_pension": _credits_federaux_age_pension_vers_dict(
+            credits_federaux_age_pension
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
@@ -1360,6 +1491,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     montants_age_retraite = _montants_age_retraite_depuis_dict(
         contenu.get("montants_age_retraite")
     )
+    credits_federaux_age_pension = _credits_federaux_age_pension_depuis_dict(
+        contenu.get("credits_federaux_age_pension")
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -1379,6 +1513,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         cotisations_excedentaires=cotisations_excedentaires,
         personne_vivant_seule=personne_vivant_seule,
         montants_age_retraite=montants_age_retraite,
+        credits_federaux_age_pension=(
+            credits_federaux_age_pension
+        ),
     )
 
 

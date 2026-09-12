@@ -75,6 +75,15 @@ from .tax_engine_input_2025 import (
     BaseFiscaleEmploi2025,
     consolider_base_fiscale_emploi_2025,
 )
+from .tax_federal_age_pension_2025 import (
+    CreditsFederauxAgePension2025,
+    appliquer_credit_federal_age_pension_2025,
+    credit_federal_age_pension_2025,
+    integration_sans_credit_compensatoire_autorisee_2025,
+    montant_age_federal_2025,
+    montant_pension_federal_2025,
+    valider_credits_federaux_age_pension_2025,
+)
 from .tax_federal_2025 import (
     ImpotFederalPreliminaire2025,
     calculer_impot_federal_preliminaire_2025,
@@ -118,6 +127,7 @@ class EstimationFiscale2025:
     cotisations_excedentaires: CotisationsExcedentaires2025
     personne_vivant_seule: PersonneVivantSeule2025
     montants_age_retraite: MontantsAgeRetraite2025
+    credits_federaux_age_pension: CreditsFederauxAgePension2025
 
 
 def calculer_estimation_fiscale_2025(
@@ -141,6 +151,9 @@ def calculer_estimation_fiscale_2025(
     ) = None,
     montants_age_retraite: (
         MontantsAgeRetraite2025 | None
+    ) = None,
+    credits_federaux_age_pension: (
+        CreditsFederauxAgePension2025 | None
     ) = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
@@ -320,6 +333,52 @@ def calculer_estimation_fiscale_2025(
             "de l\'annexe B."
         )
 
+    credits_federaux_age_pension_effectifs = (
+        credits_federaux_age_pension
+        if credits_federaux_age_pension is not None
+        else CreditsFederauxAgePension2025()
+    )
+    valider_credits_federaux_age_pension_2025(
+        credits_federaux_age_pension_effectifs
+    )
+
+    age_pension_federal_actif = (
+        credits_federaux_age_pension_effectifs.reclamer_montant_age
+        or credits_federaux_age_pension_effectifs.reclamer_montant_pension
+    )
+
+    if (
+        age_pension_federal_actif
+        and credits_federaux_age_pension_effectifs.revenu_net_ligne_23600
+        != revenu.revenu_net_federal
+    ):
+        raise ValueError(
+            "Le revenu net de la ligne 23600 du profil âge/pension "
+            "fédéral doit correspondre au revenu net fédéral calculé "
+            "pour ce dossier."
+        )
+
+    if credits_federaux_age_pension_effectifs.reclamer_montant_pension:
+        raise ValueError(
+            "Le montant fédéral pour revenu de pension ligne 31400 "
+            "ne peut pas encore être intégré : le revenu de pension "
+            "admissible doit d'abord être ajouté au moteur de revenu "
+            "(lignes 11500, 11600 ou 12900 selon le cas)."
+        )
+
+    if (
+        age_pension_federal_actif
+        and not integration_sans_credit_compensatoire_autorisee_2025(
+            revenu.revenu_imposable_federal
+        )
+    ):
+        raise ValueError(
+            "Ce dossier peut nécessiter le crédit compensatoire "
+            "fédéral de la ligne 34990. Cette première version "
+            "refuse le calcul automatique au-delà de la première "
+            "tranche tant que la ligne 34990 n'est pas intégrée."
+        )
+
     assurance_medicaments_effective = (
         assurance_medicaments
         if assurance_medicaments is not None
@@ -364,6 +423,10 @@ def calculer_estimation_fiscale_2025(
     federal = appliquer_credit_federal_handicap_2025(
         federal,
         credit_deficience_effectif,
+    )
+    federal = appliquer_credit_federal_age_pension_2025(
+        federal,
+        credits_federaux_age_pension_effectifs,
     )
     quebec = calculer_impot_quebec_preliminaire_2025(revenu)
     quebec = appliquer_credit_quebec_cotisations_2025(
@@ -444,6 +507,9 @@ def calculer_estimation_fiscale_2025(
         ),
         personne_vivant_seule=personne_vivant_seule_effective,
         montants_age_retraite=montants_age_retraite_effectifs,
+        credits_federaux_age_pension=(
+            credits_federaux_age_pension_effectifs
+        ),
     )
 
 
@@ -678,6 +744,67 @@ def formater_estimation_fiscale_2025(
                 f"{estimation.personne_vivant_seule.source}",
             ]
             if estimation.personne_vivant_seule.reclamer_montant
+            else []
+        ),
+        *(
+            [
+                "",
+                "ÂGE / PENSION — FÉDÉRAL 2025",
+                (
+                    "Revenu net fédéral — ligne 23600 : "
+                    f"{formater_montant_estimation(
+                        estimation.credits_federaux_age_pension
+                        .revenu_net_ligne_23600
+                    )}"
+                ),
+                (
+                    "Montant en raison de l'âge — ligne 30100 : "
+                    f"{formater_montant_estimation(
+                        montant_age_federal_2025(
+                            estimation.credits_federaux_age_pension
+                        )
+                    )}"
+                ),
+                (
+                    "Montant pour revenu de pension — ligne 31400 : "
+                    f"{formater_montant_estimation(
+                        montant_pension_federal_2025(
+                            estimation.credits_federaux_age_pension
+                        )
+                    )}"
+                ),
+                (
+                    "Crédit fédéral calculé : "
+                    f"{formater_montant_estimation(
+                        credit_federal_age_pension_2025(
+                            estimation.credits_federaux_age_pension
+                        )
+                    )}"
+                ),
+                *(
+                    [
+                        "Source âge : "
+                        f"{estimation.credits_federaux_age_pension.source_age}"
+                    ]
+                    if estimation.credits_federaux_age_pension.reclamer_montant_age
+                    else []
+                ),
+                *(
+                    [
+                        "Source pension : "
+                        f"{estimation.credits_federaux_age_pension.source_pension}"
+                    ]
+                    if estimation.credits_federaux_age_pension.reclamer_montant_pension
+                    else ["Ligne 31400 non réclamée"]
+                ),
+                "Fractionnement T1032 : non",
+                "Transfert entre conjoints : non",
+                "Validation comptable : confirmée",
+            ]
+            if (
+                estimation.credits_federaux_age_pension.reclamer_montant_age
+                or estimation.credits_federaux_age_pension.reclamer_montant_pension
+            )
             else []
         ),
         *(

@@ -163,6 +163,10 @@ from .tax_age_retirement_2025 import (
     MontantsAgeRetraite2025,
     valider_montants_age_retraite_2025,
 )
+from .tax_federal_age_pension_2025 import (
+    CreditsFederauxAgePension2025,
+    valider_credits_federaux_age_pension_2025,
+)
 from .tax_living_alone_2025 import (
     PersonneVivantSeule2025,
     valider_personne_vivant_seule_2025,
@@ -2402,6 +2406,7 @@ class ApplicationComptaPrivee(tk.Tk):
         cotisations_excedentaires_courantes = CotisationsExcedentaires2025()
         personne_vivant_seule_courante = PersonneVivantSeule2025()
         montants_age_retraite_courants = MontantsAgeRetraite2025()
+        credits_federaux_age_pension_courants = CreditsFederauxAgePension2025()
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
 
@@ -3419,6 +3424,454 @@ class ApplicationComptaPrivee(tk.Tk):
 
             ttk.Button(
                 actions,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right", padx=(0, 8))
+
+
+
+        def ouvrir_age_pension_federal_2025() -> None:
+            nonlocal credits_federaux_age_pension_courants
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Âge / pension — fédéral 2025 — ComptaPrivée AI"
+            )
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            dialogue.resizable(False, False)
+
+            cadre = ttk.Frame(dialogue, padding=16)
+            cadre.pack(fill="both", expand=True)
+
+            ttk.Label(
+                cadre,
+                text="Crédits fédéraux âge / revenu de pension 2025",
+                font=("Segoe UI", 13, "bold"),
+            ).grid(
+                row=0,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Ligne 30100 : maximum 9 028 $, réduction de 15 % "
+                    "du revenu net au-dessus de 45 522 $, montant nul "
+                    "à partir de 105 709 $. Taux du crédit : 14,5 %."
+                ),
+                wraplength=650,
+                justify="left",
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 4),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Ligne 31400 : maximum 2 000 $. Dans cette version, "
+                    "le calcul automatique du revenu de pension reste "
+                    "bloqué tant que les lignes de revenu 11500/11600/12900 "
+                    "ne sont pas intégrées au moteur."
+                ),
+                wraplength=650,
+                justify="left",
+            ).grid(
+                row=2,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 4),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Garde-fou ligne 34990 : les dossiers au-delà de la "
+                    "première tranche fédérale sont refusés tant que le "
+                    "crédit compensatoire n'est pas intégré."
+                ),
+                wraplength=650,
+                justify="left",
+                foreground="#92400e",
+            ).grid(
+                row=3,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 12),
+            )
+
+            reclamer_age_var = tk.BooleanVar(
+                value=credits_federaux_age_pension_courants
+                .reclamer_montant_age
+            )
+            age_65_var = tk.BooleanVar(
+                value=credits_federaux_age_pension_courants
+                .age_65_plus_31_decembre_2025
+            )
+            revenu_net_var = tk.StringVar(
+                value=str(
+                    credits_federaux_age_pension_courants
+                    .revenu_net_ligne_23600
+                )
+            )
+            source_age_var = tk.StringVar(
+                value=credits_federaux_age_pension_courants.source_age
+            )
+
+            reclamer_pension_var = tk.BooleanVar(
+                value=credits_federaux_age_pension_courants
+                .reclamer_montant_pension
+            )
+            revenu_pension_var = tk.StringVar(
+                value=str(
+                    credits_federaux_age_pension_courants
+                    .revenu_pension_admissible
+                )
+            )
+            pension_confirmee_var = tk.BooleanVar(
+                value=credits_federaux_age_pension_courants
+                .revenu_pension_admissible_confirme
+            )
+            source_pension_var = tk.StringVar(
+                value=credits_federaux_age_pension_courants
+                .source_pension
+            )
+
+            resident_var = tk.BooleanVar(
+                value=credits_federaux_age_pension_courants
+                .resident_canada_toute_annee
+            )
+            aucun_deces_var = tk.BooleanVar(
+                value=credits_federaux_age_pension_courants
+                .aucune_regle_deces
+            )
+            aucun_fractionnement_var = tk.BooleanVar(
+                value=credits_federaux_age_pension_courants
+                .aucun_fractionnement_pension
+            )
+            aucun_transfert_var = tk.BooleanVar(
+                value=credits_federaux_age_pension_courants
+                .aucun_transfert_conjoint
+            )
+            validation_var = tk.BooleanVar(
+                value=credits_federaux_age_pension_courants
+                .valide_par_comptable
+            )
+
+            ligne = 4
+
+            ttk.Checkbutton(
+                cadre,
+                text="Réclamer le montant en raison de l'âge — ligne 30100",
+                variable=reclamer_age_var,
+            ).grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+            ligne += 1
+
+            ttk.Checkbutton(
+                cadre,
+                text="65 ans ou plus au 31 décembre 2025",
+                variable=age_65_var,
+            ).grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+            ligne += 1
+
+            ttk.Label(
+                cadre,
+                text="Revenu net fédéral — ligne 23600",
+            ).grid(
+                row=ligne,
+                column=0,
+                sticky="w",
+                pady=3,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=revenu_net_var,
+                width=24,
+            ).grid(
+                row=ligne,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=3,
+            )
+            ligne += 1
+
+            ttk.Label(
+                cadre,
+                text="Source confirmant l'âge",
+            ).grid(
+                row=ligne,
+                column=0,
+                sticky="w",
+                pady=3,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=source_age_var,
+                width=46,
+            ).grid(
+                row=ligne,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=3,
+            )
+            ligne += 1
+
+            ttk.Separator(
+                cadre,
+                orient="horizontal",
+            ).grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=8,
+            )
+            ligne += 1
+
+            ttk.Checkbutton(
+                cadre,
+                text=(
+                    "Réclamer le montant pour revenu de pension — "
+                    "ligne 31400"
+                ),
+                variable=reclamer_pension_var,
+            ).grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+            ligne += 1
+
+            ttk.Label(
+                cadre,
+                text="Revenu de pension admissible",
+            ).grid(
+                row=ligne,
+                column=0,
+                sticky="w",
+                pady=3,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=revenu_pension_var,
+                width=24,
+            ).grid(
+                row=ligne,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=3,
+            )
+            ligne += 1
+
+            ttk.Checkbutton(
+                cadre,
+                text="Admissibilité du revenu de pension confirmée",
+                variable=pension_confirmee_var,
+            ).grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+            ligne += 1
+
+            ttk.Label(
+                cadre,
+                text="Source du revenu de pension",
+            ).grid(
+                row=ligne,
+                column=0,
+                sticky="w",
+                pady=3,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=source_pension_var,
+                width=46,
+            ).grid(
+                row=ligne,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=3,
+            )
+            ligne += 1
+
+            ttk.Separator(
+                cadre,
+                orient="horizontal",
+            ).grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=8,
+            )
+            ligne += 1
+
+            confirmations = (
+                (
+                    "Résident du Canada toute l'année 2025",
+                    resident_var,
+                ),
+                (
+                    "Aucune règle spéciale pour personne décédée",
+                    aucun_deces_var,
+                ),
+                (
+                    "Aucun fractionnement de pension T1032",
+                    aucun_fractionnement_var,
+                ),
+                (
+                    "Aucun transfert de crédits entre conjoints",
+                    aucun_transfert_var,
+                ),
+                (
+                    "Situation validée par le comptable",
+                    validation_var,
+                ),
+            )
+
+            for texte, variable in confirmations:
+                ttk.Checkbutton(
+                    cadre,
+                    text=texte,
+                    variable=variable,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    columnspan=2,
+                    sticky="w",
+                    pady=3,
+                )
+                ligne += 1
+
+            cadre.columnconfigure(1, weight=1)
+
+            def reinitialiser() -> None:
+                reclamer_age_var.set(False)
+                age_65_var.set(False)
+                revenu_net_var.set("0")
+                source_age_var.set("")
+                reclamer_pension_var.set(False)
+                revenu_pension_var.set("0")
+                pension_confirmee_var.set(False)
+                source_pension_var.set("")
+                resident_var.set(False)
+                aucun_deces_var.set(False)
+                aucun_fractionnement_var.set(False)
+                aucun_transfert_var.set(False)
+                validation_var.set(False)
+
+            def appliquer() -> None:
+                nonlocal credits_federaux_age_pension_courants
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    nouveau_profil = CreditsFederauxAgePension2025(
+                        reclamer_montant_age=reclamer_age_var.get(),
+                        age_65_plus_31_decembre_2025=age_65_var.get(),
+                        revenu_net_ligne_23600=Decimal(
+                            revenu_net_var.get().strip() or "0"
+                        ),
+                        reclamer_montant_pension=(
+                            reclamer_pension_var.get()
+                        ),
+                        revenu_pension_admissible=Decimal(
+                            revenu_pension_var.get().strip() or "0"
+                        ),
+                        resident_canada_toute_annee=resident_var.get(),
+                        aucune_regle_deces=aucun_deces_var.get(),
+                        aucun_fractionnement_pension=(
+                            aucun_fractionnement_var.get()
+                        ),
+                        aucun_transfert_conjoint=(
+                            aucun_transfert_var.get()
+                        ),
+                        revenu_pension_admissible_confirme=(
+                            pension_confirmee_var.get()
+                        ),
+                        valide_par_comptable=validation_var.get(),
+                        source_age=source_age_var.get().strip(),
+                        source_pension=source_pension_var.get().strip(),
+                    )
+
+                    valider_credits_federaux_age_pension_2025(
+                        nouveau_profil
+                    )
+
+                    if nouveau_profil.reclamer_montant_pension:
+                        raise ValueError(
+                            "La ligne 31400 est préparée mais son "
+                            "calcul automatique reste bloqué tant que "
+                            "le revenu de pension admissible n'est pas "
+                            "intégré au moteur de revenu."
+                        )
+
+                except (InvalidOperation, ValueError) as erreur:
+                    messagebox.showerror(
+                        "Âge / pension fédéral invalide",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                credits_federaux_age_pension_courants = nouveau_profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                dialogue.destroy()
+
+            boutons = ttk.Frame(cadre)
+            boutons.grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(14, 0),
+            )
+
+            ttk.Button(
+                boutons,
+                text="Réinitialiser",
+                command=reinitialiser,
+            ).pack(side="left")
+
+            ttk.Button(
+                boutons,
+                text="Annuler",
+                command=dialogue.destroy,
+            ).pack(side="right")
+
+            ttk.Button(
+                boutons,
                 text="Valider et appliquer",
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
@@ -6767,6 +7220,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal cotisations_excedentaires_courantes
             nonlocal personne_vivant_seule_courante
             nonlocal montants_age_retraite_courants
+            nonlocal credits_federaux_age_pension_courants
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -6797,6 +7251,7 @@ class ApplicationComptaPrivee(tk.Tk):
             cotisations_excedentaires_courantes = CotisationsExcedentaires2025()
             personne_vivant_seule_courante = PersonneVivantSeule2025()
             montants_age_retraite_courants = MontantsAgeRetraite2025()
+            credits_federaux_age_pension_courants = CreditsFederauxAgePension2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -6916,6 +7371,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             cotisations_excedentaires=cotisations_excedentaires_courantes,
                             personne_vivant_seule=personne_vivant_seule_courante,
                             montants_age_retraite=montants_age_retraite_courants,
+                            credits_federaux_age_pension=credits_federaux_age_pension_courants,
                         )
                     )
                 except (ValueError, Exception):
@@ -6954,6 +7410,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
                     personne_vivant_seule=personne_vivant_seule_courante,
                     montants_age_retraite=montants_age_retraite_courants,
+                    credits_federaux_age_pension=credits_federaux_age_pension_courants,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -7031,6 +7488,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal cotisations_excedentaires_courantes
             nonlocal personne_vivant_seule_courante
             nonlocal montants_age_retraite_courants
+            nonlocal credits_federaux_age_pension_courants
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -7095,6 +7553,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             montants_age_retraite_courants = (
                 enregistrement.montants_age_retraite
+            )
+            credits_federaux_age_pension_courants = (
+                enregistrement.credits_federaux_age_pension
             )
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
@@ -7374,6 +7835,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
                     personne_vivant_seule=personne_vivant_seule_courante,
                     montants_age_retraite=montants_age_retraite_courants,
+                    credits_federaux_age_pension=credits_federaux_age_pension_courants,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation
@@ -7707,6 +8169,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_actions,
             text="Âge / retraite 2025",
             command=ouvrir_age_retraite_2025,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        ttk.Button(
+            zone_actions,
+            text="Âge / pension fédéral 2025",
+            command=ouvrir_age_pension_federal_2025,
         ).pack(
             side="left",
             padx=(8, 0),
