@@ -26,6 +26,10 @@ from .tax_disability_2025 import (
     CreditDeficience2025,
     valider_credit_deficience_2025,
 )
+from .tax_drug_insurance_2025 import (
+    AssuranceMedicamentsQuebec2025,
+    valider_assurance_medicaments_2025,
+)
 from .tax_medical_expenses_2025 import (
     FraisMedicaux2025,
     valider_frais_medicaux_2025,
@@ -74,6 +78,7 @@ class DossierFiscalEnregistre:
     frais_medicaux: FraisMedicaux2025
     frais_scolarite: FraisScolarite2025
     credit_deficience: CreditDeficience2025
+    assurance_medicaments: AssuranceMedicamentsQuebec2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -589,6 +594,98 @@ def _credit_deficience_depuis_dict(
     return valider_credit_deficience_2025(credit)
 
 
+def _assurance_medicaments_vers_dict(
+    assurance: AssuranceMedicamentsQuebec2025 | None,
+):
+    if assurance is None:
+        assurance = AssuranceMedicamentsQuebec2025()
+
+    valider_assurance_medicaments_2025(assurance)
+
+    return {
+        "type_couverture": assurance.type_couverture,
+        "couverture_toute_annee": bool(
+            assurance.couverture_toute_annee
+        ),
+        "sans_conjoint_31_decembre_2025": bool(
+            assurance.sans_conjoint_31_decembre_2025
+        ),
+        "revenu_ligne_275": _decimal_texte(
+            assurance.revenu_ligne_275
+        ),
+        "revenu_ligne_48_annexe_k": _decimal_texte(
+            assurance.revenu_ligne_48_annexe_k
+        ),
+        "aucun_mois_exempt": bool(assurance.aucun_mois_exempt),
+        "carte_ramq_valide_2025": bool(
+            assurance.carte_ramq_valide_2025
+        ),
+        "situation_validee_par_comptable": bool(
+            assurance.situation_validee_par_comptable
+        ),
+        "aucun_cas_particulier": bool(
+            assurance.aucun_cas_particulier
+        ),
+        "source": assurance.source,
+        "code_case_449": assurance.code_case_449,
+    }
+
+
+def _assurance_medicaments_depuis_dict(
+    valeur: Any,
+) -> AssuranceMedicamentsQuebec2025:
+    if valeur is None:
+        return AssuranceMedicamentsQuebec2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "L'assurance médicaments enregistrée est invalide."
+        )
+
+    assurance = AssuranceMedicamentsQuebec2025(
+        type_couverture=str(
+            valeur.get("type_couverture", "")
+        ),
+        couverture_toute_annee=bool(
+            valeur.get("couverture_toute_annee", False)
+        ),
+        sans_conjoint_31_decembre_2025=bool(
+            valeur.get(
+                "sans_conjoint_31_decembre_2025",
+                False,
+            )
+        ),
+        revenu_ligne_275=_decimal_depuis_json(
+            valeur.get("revenu_ligne_275", "0"),
+            "assurance_medicaments.revenu_ligne_275",
+        ),
+        revenu_ligne_48_annexe_k=_decimal_depuis_json(
+            valeur.get("revenu_ligne_48_annexe_k", "0"),
+            "assurance_medicaments.revenu_ligne_48_annexe_k",
+        ),
+        aucun_mois_exempt=bool(
+            valeur.get("aucun_mois_exempt", False)
+        ),
+        carte_ramq_valide_2025=bool(
+            valeur.get("carte_ramq_valide_2025", False)
+        ),
+        situation_validee_par_comptable=bool(
+            valeur.get(
+                "situation_validee_par_comptable",
+                False,
+            )
+        ),
+        aucun_cas_particulier=bool(
+            valeur.get("aucun_cas_particulier", False)
+        ),
+        source=str(valeur.get("source", "")),
+        code_case_449=str(
+            valeur.get("code_case_449", "")
+        ),
+    )
+    return valider_assurance_medicaments_2025(assurance)
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
@@ -601,6 +698,7 @@ def sauvegarder_dossier_fiscal(
     frais_medicaux: FraisMedicaux2025 | None = None,
     frais_scolarite: FraisScolarite2025 | None = None,
     credit_deficience: CreditDeficience2025 | None = None,
+    assurance_medicaments: AssuranceMedicamentsQuebec2025 | None = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -651,6 +749,9 @@ def sauvegarder_dossier_fiscal(
         ),
         "credit_deficience": _credit_deficience_vers_dict(
             credit_deficience
+        ),
+        "assurance_medicaments": _assurance_medicaments_vers_dict(
+            assurance_medicaments
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
@@ -774,6 +875,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     credit_deficience = _credit_deficience_depuis_dict(
         contenu.get("credit_deficience")
     )
+    assurance_medicaments = _assurance_medicaments_depuis_dict(
+        contenu.get("assurance_medicaments")
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -789,6 +893,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         frais_medicaux=frais_medicaux,
         frais_scolarite=frais_scolarite,
         credit_deficience=credit_deficience,
+        assurance_medicaments=assurance_medicaments,
     )
 
 

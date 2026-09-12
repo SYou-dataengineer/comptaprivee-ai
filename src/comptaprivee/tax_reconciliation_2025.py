@@ -50,6 +50,7 @@ class RapprochementFiscal2025:
 
     statut: str
     limitations: tuple[str, ...]
+    cotisation_assurance_medicaments: Decimal = ZERO
 
 
 def _verifier_coherence(
@@ -87,6 +88,7 @@ def calculer_rapprochement_fiscal_2025(
     base: BaseFiscaleEmploi2025,
     federal: ImpotFederalPreliminaire2025,
     quebec: ImpotQuebecPreliminaire2025,
+    cotisation_assurance_medicaments: Decimal = ZERO,
 ) -> RapprochementFiscal2025:
     """Calcule une estimation de base du remboursement ou du solde."""
     _verifier_coherence(base, federal, quebec)
@@ -103,9 +105,16 @@ def calculer_rapprochement_fiscal_2025(
         ZERO,
     )
 
+    if cotisation_assurance_medicaments < ZERO:
+        raise ValueError(
+            "La cotisation d'assurance médicaments ne peut pas "
+            "être négative."
+        )
+
     impot_total = arrondir_cent(
         federal_apres_abattement
         + quebec.impot_quebec_preliminaire
+        + cotisation_assurance_medicaments
     )
 
     retenues_totales = arrondir_cent(
@@ -199,10 +208,23 @@ def calculer_rapprochement_fiscal_2025(
             "L'abattement Québec est calculé à 16,5 % de l'impôt fédéral de base.",
             "Les retenues T4 et RL-1 sont comparées aux impôts préliminaires.",
             limitation_credits,
-            "Aucune prime d'assurance médicaments ni contribution Québec additionnelle.",
+            *(
+                (
+                    "Cotisation au régime d'assurance médicaments "
+                    "du Québec incluse.",
+                )
+                if cotisation_assurance_medicaments > ZERO
+                else (
+                    "Aucune prime d'assurance médicaments ni "
+                    "contribution Québec additionnelle.",
+                )
+            ),
             "Aucun remboursement de cotisations excédentaires RRQ/AE/RQAP.",
             "Aucun revenu autonome, placement, location ou gain en capital.",
             "Aucun traitement avancé CNESST/SAAQ.",
             "Aucune transmission ARC ou Revenu Québec.",
+        ),
+        cotisation_assurance_medicaments=(
+            cotisation_assurance_medicaments
         ),
     )

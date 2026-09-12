@@ -23,6 +23,9 @@ from .tax_disability_2025 import (
     credit_federal_handicap_2025,
     credit_quebec_deficience_2025,
 )
+from .tax_drug_insurance_2025 import (
+    code_exemption_case_449_2025,
+)
 
 
 def nom_rapport_fiscal_pdf_2025(estimation: EstimationFiscale2025) -> str:
@@ -43,6 +46,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     medical = estimation.frais_medicaux
     scolarite = estimation.frais_scolarite
     deficience = estimation.credit_deficience
+    assurance_medicaments = estimation.assurance_medicaments
 
     montant = (
         x.remboursement_estime
@@ -391,6 +395,107 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     + (
                         "oui"
                         if deficience.aucun_transfert_federal
+                        else "non"
+                    )
+                ),
+            ]
+        )
+
+    if assurance_medicaments.type_couverture.strip():
+        type_couverture = (
+            assurance_medicaments.type_couverture.strip().lower()
+        )
+        type_affiche = (
+            "Régime public"
+            if type_couverture == "public"
+            else "Couverture collective"
+        )
+        code_449 = code_exemption_case_449_2025(
+            assurance_medicaments
+        )
+
+        lignes.extend(
+            [
+                "",
+                "ASSURANCE MÉDICAMENTS QUÉBEC VALIDÉE",
+                f"Type de couverture : {type_affiche}",
+                (
+                    "Revenu net Québec — ligne 275 : "
+                    f"{formater_montant_estimation(
+                        assurance_medicaments.revenu_ligne_275
+                    )}"
+                ),
+                (
+                    "Annexe K — ligne 48 : "
+                    f"{formater_montant_estimation(
+                        assurance_medicaments.revenu_ligne_48_annexe_k
+                    )}"
+                ),
+                (
+                    "Cotisation Québec — ligne 447 : "
+                    f"{formater_montant_estimation(
+                        x.cotisation_assurance_medicaments
+                    )}"
+                ),
+                *(
+                    [
+                        f"Case 449 — code : {code_449}",
+                    ]
+                    if code_449
+                    else []
+                ),
+                f"Source : {assurance_medicaments.source}",
+                (
+                    "Couverture toute l'année 2025 : "
+                    + (
+                        "oui"
+                        if assurance_medicaments.couverture_toute_annee
+                        else "non"
+                    )
+                ),
+                (
+                    "Sans conjoint au 31 décembre 2025 : "
+                    + (
+                        "oui"
+                        if (
+                            assurance_medicaments
+                            .sans_conjoint_31_decembre_2025
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucun mois d'exemption : "
+                    + (
+                        "oui"
+                        if assurance_medicaments.aucun_mois_exempt
+                        else "non"
+                    )
+                ),
+                (
+                    "Carte RAMQ 2025 confirmée : "
+                    + (
+                        "oui"
+                        if assurance_medicaments.carte_ramq_valide_2025
+                        else "non"
+                    )
+                ),
+                (
+                    "Situation validée par le comptable : "
+                    + (
+                        "oui"
+                        if (
+                            assurance_medicaments
+                            .situation_validee_par_comptable
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucun cas particulier de l'annexe K : "
+                    + (
+                        "oui"
+                        if assurance_medicaments.aucun_cas_particulier
                         else "non"
                     )
                 ),

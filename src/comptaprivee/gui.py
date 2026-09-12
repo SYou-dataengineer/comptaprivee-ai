@@ -151,6 +151,10 @@ from .tax_disability_2025 import (
     CreditDeficience2025,
     valider_credit_deficience_2025,
 )
+from .tax_drug_insurance_2025 import (
+    AssuranceMedicamentsQuebec2025,
+    valider_assurance_medicaments_2025,
+)
 from .tax_estimation_2025 import (
     calculer_estimation_fiscale_2025,
     formater_estimation_fiscale_2025,
@@ -2382,6 +2386,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_medicaux_courants = FraisMedicaux2025()
         frais_scolarite_courants = FraisScolarite2025()
         credit_deficience_courant = CreditDeficience2025()
+        assurance_medicaments_courante = AssuranceMedicamentsQuebec2025()
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
 
@@ -3379,6 +3384,412 @@ class ApplicationComptaPrivee(tk.Tk):
             actions = ttk.Frame(cadre)
             actions.grid(
                 row=15,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(16, 0),
+            )
+
+            ttk.Button(
+                actions,
+                text="Effacer",
+                command=effacer,
+            ).pack(side="left")
+
+            ttk.Button(
+                actions,
+                text="Fermer",
+                command=dialogue.destroy,
+            ).pack(side="right")
+
+            ttk.Button(
+                actions,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right", padx=(0, 8))
+
+        def ouvrir_assurance_medicaments_2025() -> None:
+            nonlocal assurance_medicaments_courante
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Assurance médicaments Québec 2025 — ComptaPrivée AI"
+            )
+            dialogue.geometry("860x760")
+            dialogue.minsize(800, 680)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            cadre = ttk.Frame(dialogue, padding=16)
+            cadre.pack(fill="both", expand=True)
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Assurance médicaments Québec 2025",
+                font=("Segoe UI", 16, "bold"),
+            ).grid(
+                row=0,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil actuellement pris en charge : personne sans "
+                    "conjoint au 31 décembre 2025, couverture toute "
+                    "l'année. Les cas progressifs intermédiaires de "
+                    "l'annexe K restent bloqués par sécurité."
+                ),
+                foreground="#166534",
+                wraplength=740,
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 12),
+            )
+
+            type_var = tk.StringVar(
+                value=assurance_medicaments_courante.type_couverture
+            )
+            ligne275_var = tk.StringVar(
+                value=str(
+                    assurance_medicaments_courante.revenu_ligne_275
+                )
+            )
+            ligne48_var = tk.StringVar(
+                value=str(
+                    assurance_medicaments_courante
+                    .revenu_ligne_48_annexe_k
+                )
+            )
+            source_var = tk.StringVar(
+                value=assurance_medicaments_courante.source
+            )
+            code449_var = tk.StringVar(
+                value=assurance_medicaments_courante.code_case_449
+            )
+
+            couverture_annee_var = tk.BooleanVar(
+                value=(
+                    assurance_medicaments_courante
+                    .couverture_toute_annee
+                )
+            )
+            sans_conjoint_var = tk.BooleanVar(
+                value=(
+                    assurance_medicaments_courante
+                    .sans_conjoint_31_decembre_2025
+                )
+            )
+            aucun_mois_exempt_var = tk.BooleanVar(
+                value=assurance_medicaments_courante.aucun_mois_exempt
+            )
+            carte_ramq_var = tk.BooleanVar(
+                value=(
+                    assurance_medicaments_courante
+                    .carte_ramq_valide_2025
+                )
+            )
+            validation_var = tk.BooleanVar(
+                value=(
+                    assurance_medicaments_courante
+                    .situation_validee_par_comptable
+                )
+            )
+            aucun_cas_var = tk.BooleanVar(
+                value=(
+                    assurance_medicaments_courante
+                    .aucun_cas_particulier
+                )
+            )
+
+            ttk.Label(
+                cadre,
+                text="Type de couverture :",
+            ).grid(
+                row=2,
+                column=0,
+                sticky="w",
+                pady=5,
+            )
+            ttk.Combobox(
+                cadre,
+                textvariable=type_var,
+                values=("", "public", "collectif"),
+                state="readonly",
+                width=28,
+            ).grid(
+                row=2,
+                column=1,
+                sticky="w",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Revenu net Québec — ligne 275 :",
+            ).grid(
+                row=3,
+                column=0,
+                sticky="w",
+                pady=5,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=ligne275_var,
+                width=24,
+            ).grid(
+                row=3,
+                column=1,
+                sticky="w",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Annexe K — ligne 48 :",
+            ).grid(
+                row=4,
+                column=0,
+                sticky="w",
+                pady=5,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=ligne48_var,
+                width=24,
+            ).grid(
+                row=4,
+                column=1,
+                sticky="w",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Case 449 — code d'exemption :",
+            ).grid(
+                row=5,
+                column=0,
+                sticky="w",
+                pady=5,
+            )
+            ttk.Combobox(
+                cadre,
+                textvariable=code449_var,
+                values=("", "14", "16", "32"),
+                state="readonly",
+                width=12,
+            ).grid(
+                row=5,
+                column=1,
+                sticky="w",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Source justificative :",
+            ).grid(
+                row=6,
+                column=0,
+                sticky="w",
+                pady=5,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=source_var,
+                width=52,
+            ).grid(
+                row=6,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            confirmations = (
+                (
+                    "Couverture pendant toute l'année 2025",
+                    couverture_annee_var,
+                ),
+                (
+                    "Sans conjoint au 31 décembre 2025",
+                    sans_conjoint_var,
+                ),
+                (
+                    "Régime public : aucun mois d'exemption",
+                    aucun_mois_exempt_var,
+                ),
+                (
+                    "Régime public : carte RAMQ 2025 confirmée",
+                    carte_ramq_var,
+                ),
+                (
+                    "Situation validée par le comptable",
+                    validation_var,
+                ),
+                (
+                    "Aucun cas particulier de l'annexe K",
+                    aucun_cas_var,
+                ),
+            )
+
+            for ligne, (libelle, variable) in enumerate(
+                confirmations,
+                start=7,
+            ):
+                ttk.Checkbutton(
+                    cadre,
+                    text=libelle,
+                    variable=variable,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    columnspan=2,
+                    sticky="w",
+                    pady=3,
+                )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Cotisation Québec — ligne 447. Contrôles 2025 : "
+                    "seuil sans conjoint 19 890 $, ligne 48 > 8 181 $ "
+                    "pour la cotisation maximale de 755 $. Les codes "
+                    "14, 16 et 32 de la case 449 sont contrôlés."
+                ),
+                foreground="#92400e",
+                wraplength=740,
+            ).grid(
+                row=13,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(12, 8),
+            )
+
+            def lire_montant(
+                variable: tk.StringVar,
+                libelle: str,
+            ) -> Decimal:
+                texte = (
+                    variable.get()
+                    .strip()
+                    .replace("\u00a0", "")
+                    .replace(" ", "")
+                    .replace("$", "")
+                    .replace(",", ".")
+                )
+                if not texte:
+                    return Decimal("0")
+                try:
+                    montant = Decimal(texte)
+                except InvalidOperation as erreur:
+                    raise ValueError(
+                        f"{libelle} doit être un montant valide."
+                    ) from erreur
+                if not montant.is_finite():
+                    raise ValueError(
+                        f"{libelle} doit être un montant fini."
+                    )
+                return montant
+
+            def effacer() -> None:
+                type_var.set("")
+                ligne275_var.set("0")
+                ligne48_var.set("0")
+                code449_var.set("")
+                source_var.set("")
+                couverture_annee_var.set(False)
+                sans_conjoint_var.set(False)
+                aucun_mois_exempt_var.set(False)
+                carte_ramq_var.set(False)
+                validation_var.set(False)
+                aucun_cas_var.set(False)
+
+            def appliquer() -> None:
+                nonlocal assurance_medicaments_courante
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    nouvelle_assurance = (
+                        AssuranceMedicamentsQuebec2025(
+                            type_couverture=type_var.get().strip(),
+                            couverture_toute_annee=(
+                                couverture_annee_var.get()
+                            ),
+                            sans_conjoint_31_decembre_2025=(
+                                sans_conjoint_var.get()
+                            ),
+                            revenu_ligne_275=lire_montant(
+                                ligne275_var,
+                                "La ligne 275",
+                            ),
+                            revenu_ligne_48_annexe_k=lire_montant(
+                                ligne48_var,
+                                "La ligne 48 de l'annexe K",
+                            ),
+                            aucun_mois_exempt=(
+                                aucun_mois_exempt_var.get()
+                            ),
+                            carte_ramq_valide_2025=(
+                                carte_ramq_var.get()
+                            ),
+                            situation_validee_par_comptable=(
+                                validation_var.get()
+                            ),
+                            aucun_cas_particulier=(
+                                aucun_cas_var.get()
+                            ),
+                            source=source_var.get().strip(),
+                            code_case_449=code449_var.get().strip(),
+                        )
+                    )
+                    nouvelle_assurance = (
+                        valider_assurance_medicaments_2025(
+                            nouvelle_assurance
+                        )
+                    )
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Assurance médicaments invalide",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                assurance_medicaments_courante = nouvelle_assurance
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                self.statut.set(
+                    "Assurance médicaments Québec 2025 mise à jour"
+                )
+
+                messagebox.showinfo(
+                    "Assurance médicaments Québec 2025",
+                    (
+                        "Les données de l'assurance médicaments ont été "
+                        "enregistrées pour le prochain calcul fiscal."
+                    ),
+                    parent=dialogue,
+                )
+                dialogue.destroy()
+
+            actions = ttk.Frame(cadre)
+            actions.grid(
+                row=14,
                 column=0,
                 columnspan=2,
                 sticky="ew",
@@ -4834,6 +5245,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal frais_medicaux_courants
             nonlocal frais_scolarite_courants
             nonlocal credit_deficience_courant
+            nonlocal assurance_medicaments_courante
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -4860,6 +5272,7 @@ class ApplicationComptaPrivee(tk.Tk):
             frais_medicaux_courants = FraisMedicaux2025()
             frais_scolarite_courants = FraisScolarite2025()
             credit_deficience_courant = CreditDeficience2025()
+            assurance_medicaments_courante = AssuranceMedicamentsQuebec2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -4975,6 +5388,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             frais_medicaux=frais_medicaux_courants,
                             frais_scolarite=frais_scolarite_courants,
                             credit_deficience=credit_deficience_courant,
+                            assurance_medicaments=assurance_medicaments_courante,
                         )
                     )
                 except (ValueError, Exception):
@@ -5009,6 +5423,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_medicaux=frais_medicaux_courants,
                     frais_scolarite=frais_scolarite_courants,
                     credit_deficience=credit_deficience_courant,
+                    assurance_medicaments=assurance_medicaments_courante,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -5082,6 +5497,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal frais_medicaux_courants
             nonlocal frais_scolarite_courants
             nonlocal credit_deficience_courant
+            nonlocal assurance_medicaments_courante
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -5134,6 +5550,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             credit_deficience_courant = (
                 enregistrement.credit_deficience
+            )
+            assurance_medicaments_courante = (
+                enregistrement.assurance_medicaments
             )
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
@@ -5409,6 +5828,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_medicaux=frais_medicaux_courants,
                     frais_scolarite=frais_scolarite_courants,
                     credit_deficience=credit_deficience_courant,
+                    assurance_medicaments=assurance_medicaments_courante,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation
@@ -5706,6 +6126,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_actions,
             text="Handicap / déficience 2025",
             command=ouvrir_credit_deficience_2025,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        ttk.Button(
+            zone_actions,
+            text="Assurance médicaments 2025",
+            command=ouvrir_assurance_medicaments_2025,
         ).pack(
             side="left",
             padx=(8, 0),

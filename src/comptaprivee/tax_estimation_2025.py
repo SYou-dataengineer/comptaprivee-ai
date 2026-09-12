@@ -29,6 +29,12 @@ from .tax_disability_2025 import (
     credit_federal_handicap_2025,
     credit_quebec_deficience_2025,
 )
+from .tax_drug_insurance_2025 import (
+    AssuranceMedicamentsQuebec2025,
+    code_exemption_case_449_2025,
+    cotisation_assurance_medicaments_2025,
+    valider_assurance_medicaments_2025,
+)
 from .tax_medical_expenses_2025 import (
     FraisMedicaux2025,
     appliquer_credit_federal_frais_medicaux_2025,
@@ -86,6 +92,7 @@ class EstimationFiscale2025:
     frais_medicaux: FraisMedicaux2025
     frais_scolarite: FraisScolarite2025
     credit_deficience: CreditDeficience2025
+    assurance_medicaments: AssuranceMedicamentsQuebec2025
 
 
 def calculer_estimation_fiscale_2025(
@@ -98,6 +105,9 @@ def calculer_estimation_fiscale_2025(
     frais_medicaux: FraisMedicaux2025 | None = None,
     frais_scolarite: FraisScolarite2025 | None = None,
     credit_deficience: CreditDeficience2025 | None = None,
+    assurance_medicaments: (
+        AssuranceMedicamentsQuebec2025 | None
+    ) = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
     if dossier.annee_fiscale != 2025:
@@ -154,6 +164,26 @@ def calculer_estimation_fiscale_2025(
         else CreditDeficience2025()
     )
 
+    assurance_medicaments_effective = (
+        assurance_medicaments
+        if assurance_medicaments is not None
+        else AssuranceMedicamentsQuebec2025()
+    )
+    valider_assurance_medicaments_2025(
+        assurance_medicaments_effective
+    )
+
+    if (
+        assurance_medicaments_effective.type_couverture.strip()
+        and assurance_medicaments_effective.revenu_ligne_275
+        != revenu.revenu_net_quebec
+    ):
+        raise ValueError(
+            "Le revenu de la ligne 275 utilisé pour l'assurance "
+            "médicaments doit correspondre au revenu net Québec "
+            "calculé pour ce dossier."
+        )
+
     federal = calculer_impot_federal_preliminaire_2025(base, revenu)
     federal = appliquer_credit_federal_dons_2025(
         federal,
@@ -200,6 +230,11 @@ def calculer_estimation_fiscale_2025(
         base,
         federal,
         quebec,
+        cotisation_assurance_medicaments=(
+            cotisation_assurance_medicaments_2025(
+                assurance_medicaments_effective
+            )
+        ),
     )
 
     return EstimationFiscale2025(
@@ -215,6 +250,7 @@ def calculer_estimation_fiscale_2025(
         frais_medicaux=frais_medicaux_effectifs,
         frais_scolarite=frais_scolarite_effectifs,
         credit_deficience=credit_deficience_effectif,
+        assurance_medicaments=assurance_medicaments_effective,
     )
 
 
@@ -395,6 +431,44 @@ def formater_estimation_fiscale_2025(
                 estimation.credit_deficience.reclamer_federal
                 or estimation.credit_deficience.reclamer_quebec
             )
+            else []
+        ),
+        *(
+            [
+                "",
+                "ASSURANCE MÉDICAMENTS QUÉBEC VALIDÉE",
+                (
+                    "Type de couverture : "
+                    + (
+                        "Régime public"
+                        if (
+                            estimation.assurance_medicaments
+                            .type_couverture.strip().lower()
+                            == "public"
+                        )
+                        else "Couverture collective"
+                    )
+                ),
+                "Revenu net Québec / ligne 275 : "
+                f"{formater_montant_estimation(estimation.assurance_medicaments.revenu_ligne_275)}",
+                "Ligne 48 — annexe K : "
+                f"{formater_montant_estimation(estimation.assurance_medicaments.revenu_ligne_48_annexe_k)}",
+                "Cotisation Québec — ligne 447 : "
+                f"{formater_montant_estimation(estimation.rapprochement.cotisation_assurance_medicaments)}",
+                *(
+                    [
+                        "Code d'exemption — case 449 : "
+                        f"{code_exemption_case_449_2025(estimation.assurance_medicaments)}",
+                    ]
+                    if code_exemption_case_449_2025(
+                        estimation.assurance_medicaments
+                    )
+                    else []
+                ),
+                "Source : "
+                f"{estimation.assurance_medicaments.source}",
+            ]
+            if estimation.assurance_medicaments.type_couverture.strip()
             else []
         ),
         "",

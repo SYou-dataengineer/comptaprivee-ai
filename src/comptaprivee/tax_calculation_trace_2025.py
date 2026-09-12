@@ -15,6 +15,9 @@ from .tax_disability_2025 import (
     credit_federal_handicap_2025,
     credit_quebec_deficience_2025,
 )
+from .tax_drug_insurance_2025 import (
+    code_exemption_case_449_2025,
+)
 from .tax_medical_expenses_2025 import (
     credit_federal_frais_medicaux_2025,
     credit_quebec_frais_medicaux_2025,
@@ -94,6 +97,7 @@ def construire_trace_calcul_fiscal_2025(
     frais_medicaux = estimation.frais_medicaux
     frais_scolarite = estimation.frais_scolarite
     credit_deficience = estimation.credit_deficience
+    assurance_medicaments = estimation.assurance_medicaments
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -145,6 +149,14 @@ def construire_trace_calcul_fiscal_2025(
     if credit_deficience.reclamer_quebec:
         formule_impot_quebec += (
             " - crédit déficience ligne 376"
+        )
+
+    formule_impot_total = (
+        "Impôt fédéral après abattement + impôt Québec"
+    )
+    if assurance_medicaments.type_couverture.strip():
+        formule_impot_total += (
+            " + cotisation assurance médicaments ligne 447"
         )
 
     if dossier.annee_fiscale != 2025:
@@ -252,7 +264,7 @@ def construire_trace_calcul_fiscal_2025(
         _ligne(
             15, "RAPPROCHEMENT", "Impôt total préliminaire",
             "Moteur fiscal local 2025",
-            "Impôt fédéral après abattement + impôt Québec",
+            formule_impot_total,
             final.impot_total_preliminaire,
         ),
         _ligne(
@@ -498,6 +510,47 @@ def construire_trace_calcul_fiscal_2025(
                 credit_quebec_deficience_2025(
                     credit_deficience
                 ),
+            ),
+        )
+
+    if assurance_medicaments.type_couverture.strip():
+        type_couverture = (
+            assurance_medicaments.type_couverture.strip().lower()
+        )
+        code_449 = code_exemption_case_449_2025(
+            assurance_medicaments
+        )
+
+        if type_couverture == "collectif":
+            formule_assurance = (
+                "Couverture collective toute l'année — "
+                f"case 449 code {code_449} — cotisation 0 $"
+            )
+        elif code_449 == "32":
+            formule_assurance = (
+                "Régime public — revenu ligne 275 ≤ 19 890 $ — "
+                "case 449 code 32 — cotisation 0 $"
+            )
+        else:
+            formule_assurance = (
+                "Régime public toute l'année — ligne 48 annexe K "
+                "> 8 181 $ — cotisation maximale 2025 de 755 $"
+            )
+
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt total préliminaire",
+            _ligne(
+                0,
+                "QUÉBEC",
+                "Cotisation assurance médicaments Québec",
+                (
+                    "Revenu Québec annexe K / ligne 447 — "
+                    + assurance_medicaments.source
+                    + " — validation comptable"
+                ),
+                formule_assurance,
+                final.cotisation_assurance_medicaments,
             ),
         )
 
