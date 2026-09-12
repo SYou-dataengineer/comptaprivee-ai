@@ -34,6 +34,10 @@ from .tax_contribution_overpayments_2025 import (
     CotisationsExcedentaires2025,
     valider_cotisations_excedentaires_2025,
 )
+from .tax_age_retirement_2025 import (
+    MontantsAgeRetraite2025,
+    valider_montants_age_retraite_2025,
+)
 from .tax_living_alone_2025 import (
     PersonneVivantSeule2025,
     valider_personne_vivant_seule_2025,
@@ -89,6 +93,7 @@ class DossierFiscalEnregistre:
     assurance_medicaments: AssuranceMedicamentsQuebec2025
     cotisations_excedentaires: CotisationsExcedentaires2025
     personne_vivant_seule: PersonneVivantSeule2025
+    montants_age_retraite: MontantsAgeRetraite2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -977,6 +982,171 @@ def _personne_vivant_seule_depuis_dict(
     return valider_personne_vivant_seule_2025(profil)
 
 
+def _montants_age_retraite_vers_dict(
+    profil: MontantsAgeRetraite2025 | None,
+):
+    if profil is None:
+        profil = MontantsAgeRetraite2025()
+
+    valider_montants_age_retraite_2025(profil)
+
+    return {
+        "reclamer_age": bool(profil.reclamer_age),
+        "ne_avant_1_janvier_1961": bool(
+            profil.ne_avant_1_janvier_1961
+        ),
+        "reclamer_revenus_retraite": bool(
+            profil.reclamer_revenus_retraite
+        ),
+        "revenu_ligne_122": _decimal_texte(
+            profil.revenu_ligne_122
+        ),
+        "revenu_ligne_123": _decimal_texte(
+            profil.revenu_ligne_123
+        ),
+        "deduction_ligne_250_point_4": _decimal_texte(
+            profil.deduction_ligne_250_point_4
+        ),
+        "deduction_ligne_250_point_6": _decimal_texte(
+            profil.deduction_ligne_250_point_6
+        ),
+        "deduction_ligne_293": _decimal_texte(
+            profil.deduction_ligne_293
+        ),
+        "deduction_ligne_297_points_9_12": _decimal_texte(
+            profil.deduction_ligne_297_points_9_12
+        ),
+        "transfert_revenus_retraite_ligne_245": _decimal_texte(
+            profil.transfert_revenus_retraite_ligne_245
+        ),
+        "revenu_familial_net": _decimal_texte(
+            profil.revenu_familial_net
+        ),
+        "aucun_conjoint_31_decembre_2025": bool(
+            profil.aucun_conjoint_31_decembre_2025
+        ),
+        "resident_quebec_canada_toute_annee": bool(
+            profil.resident_quebec_canada_toute_annee
+        ),
+        "aucun_montant_personne_vivant_seule": bool(
+            profil.aucun_montant_personne_vivant_seule
+        ),
+        "revenus_retraite_admissibles_confirmes": bool(
+            profil.revenus_retraite_admissibles_confirmes
+        ),
+        "revenus_non_admissibles_exclus": bool(
+            profil.revenus_non_admissibles_exclus
+        ),
+        "valide_par_comptable": bool(
+            profil.valide_par_comptable
+        ),
+        "source_age": profil.source_age,
+        "source_retraite": profil.source_retraite,
+    }
+
+
+def _montants_age_retraite_depuis_dict(
+    valeur: Any,
+) -> MontantsAgeRetraite2025:
+    if valeur is None:
+        return MontantsAgeRetraite2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Le profil âge/retraite enregistré est invalide."
+        )
+
+    profil = MontantsAgeRetraite2025(
+        reclamer_age=bool(
+            valeur.get("reclamer_age", False)
+        ),
+        ne_avant_1_janvier_1961=bool(
+            valeur.get("ne_avant_1_janvier_1961", False)
+        ),
+        reclamer_revenus_retraite=bool(
+            valeur.get("reclamer_revenus_retraite", False)
+        ),
+        revenu_ligne_122=_decimal_depuis_json(
+            valeur.get("revenu_ligne_122", "0"),
+            "montants_age_retraite.revenu_ligne_122",
+        ),
+        revenu_ligne_123=_decimal_depuis_json(
+            valeur.get("revenu_ligne_123", "0"),
+            "montants_age_retraite.revenu_ligne_123",
+        ),
+        deduction_ligne_250_point_4=_decimal_depuis_json(
+            valeur.get("deduction_ligne_250_point_4", "0"),
+            "montants_age_retraite.deduction_ligne_250_point_4",
+        ),
+        deduction_ligne_250_point_6=_decimal_depuis_json(
+            valeur.get("deduction_ligne_250_point_6", "0"),
+            "montants_age_retraite.deduction_ligne_250_point_6",
+        ),
+        deduction_ligne_293=_decimal_depuis_json(
+            valeur.get("deduction_ligne_293", "0"),
+            "montants_age_retraite.deduction_ligne_293",
+        ),
+        deduction_ligne_297_points_9_12=_decimal_depuis_json(
+            valeur.get("deduction_ligne_297_points_9_12", "0"),
+            "montants_age_retraite.deduction_ligne_297_points_9_12",
+        ),
+        transfert_revenus_retraite_ligne_245=_decimal_depuis_json(
+            valeur.get(
+                "transfert_revenus_retraite_ligne_245",
+                "0",
+            ),
+            (
+                "montants_age_retraite."
+                "transfert_revenus_retraite_ligne_245"
+            ),
+        ),
+        revenu_familial_net=_decimal_depuis_json(
+            valeur.get("revenu_familial_net", "0"),
+            "montants_age_retraite.revenu_familial_net",
+        ),
+        aucun_conjoint_31_decembre_2025=bool(
+            valeur.get(
+                "aucun_conjoint_31_decembre_2025",
+                False,
+            )
+        ),
+        resident_quebec_canada_toute_annee=bool(
+            valeur.get(
+                "resident_quebec_canada_toute_annee",
+                False,
+            )
+        ),
+        aucun_montant_personne_vivant_seule=bool(
+            valeur.get(
+                "aucun_montant_personne_vivant_seule",
+                False,
+            )
+        ),
+        revenus_retraite_admissibles_confirmes=bool(
+            valeur.get(
+                "revenus_retraite_admissibles_confirmes",
+                False,
+            )
+        ),
+        revenus_non_admissibles_exclus=bool(
+            valeur.get(
+                "revenus_non_admissibles_exclus",
+                False,
+            )
+        ),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        source_age=str(
+            valeur.get("source_age", "")
+        ),
+        source_retraite=str(
+            valeur.get("source_retraite", "")
+        ),
+    )
+    return valider_montants_age_retraite_2025(profil)
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
@@ -992,6 +1162,7 @@ def sauvegarder_dossier_fiscal(
     assurance_medicaments: AssuranceMedicamentsQuebec2025 | None = None,
     cotisations_excedentaires: CotisationsExcedentaires2025 | None = None,
     personne_vivant_seule: PersonneVivantSeule2025 | None = None,
+    montants_age_retraite: MontantsAgeRetraite2025 | None = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -1051,6 +1222,9 @@ def sauvegarder_dossier_fiscal(
         ),
         "personne_vivant_seule": _personne_vivant_seule_vers_dict(
             personne_vivant_seule
+        ),
+        "montants_age_retraite": _montants_age_retraite_vers_dict(
+            montants_age_retraite
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
@@ -1183,6 +1357,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     personne_vivant_seule = _personne_vivant_seule_depuis_dict(
         contenu.get("personne_vivant_seule")
     )
+    montants_age_retraite = _montants_age_retraite_depuis_dict(
+        contenu.get("montants_age_retraite")
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -1201,6 +1378,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         assurance_medicaments=assurance_medicaments,
         cotisations_excedentaires=cotisations_excedentaires,
         personne_vivant_seule=personne_vivant_seule,
+        montants_age_retraite=montants_age_retraite,
     )
 
 

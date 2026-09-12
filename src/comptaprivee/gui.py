@@ -159,6 +159,10 @@ from .tax_contribution_overpayments_2025 import (
     CotisationsExcedentaires2025,
     valider_cotisations_excedentaires_2025,
 )
+from .tax_age_retirement_2025 import (
+    MontantsAgeRetraite2025,
+    valider_montants_age_retraite_2025,
+)
 from .tax_living_alone_2025 import (
     PersonneVivantSeule2025,
     valider_personne_vivant_seule_2025,
@@ -2397,6 +2401,7 @@ class ApplicationComptaPrivee(tk.Tk):
         assurance_medicaments_courante = AssuranceMedicamentsQuebec2025()
         cotisations_excedentaires_courantes = CotisationsExcedentaires2025()
         personne_vivant_seule_courante = PersonneVivantSeule2025()
+        montants_age_retraite_courants = MontantsAgeRetraite2025()
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
 
@@ -3418,8 +3423,578 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+
+        def ouvrir_age_retraite_2025() -> None:
+            nonlocal montants_age_retraite_courants
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Âge / revenus de retraite Québec 2025 — ComptaPrivée AI"
+            )
+            dialogue.geometry("940x860")
+            dialogue.minsize(860, 720)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            zone = ttk.Frame(dialogue)
+            zone.pack(fill="both", expand=True)
+
+            canvas = tk.Canvas(
+                zone,
+                highlightthickness=0,
+                borderwidth=0,
+            )
+            barre = ttk.Scrollbar(
+                zone,
+                orient="vertical",
+                command=canvas.yview,
+            )
+            canvas.configure(yscrollcommand=barre.set)
+            barre.pack(side="right", fill="y")
+            canvas.pack(side="left", fill="both", expand=True)
+
+            cadre = ttk.Frame(canvas, padding=18)
+            fenetre_canvas = canvas.create_window(
+                (0, 0),
+                window=cadre,
+                anchor="nw",
+            )
+            cadre.columnconfigure(1, weight=1)
+
+            def ajuster_defilement(_event=None) -> None:
+                canvas.configure(
+                    scrollregion=canvas.bbox("all")
+                )
+
+            def ajuster_largeur(event) -> None:
+                canvas.itemconfigure(
+                    fenetre_canvas,
+                    width=event.width,
+                )
+
+            cadre.bind("<Configure>", ajuster_defilement)
+            canvas.bind("<Configure>", ajuster_largeur)
+
+            ttk.Label(
+                cadre,
+                text="Âge / revenus de retraite — Québec 2025",
+                font=("Segoe UI", 16, "bold"),
+            ).grid(
+                row=0,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Annexe B / ligne 361. Version sécurisée : "
+                    "personne sans conjoint, aucun transfert entre "
+                    "conjoints et aucune combinaison avec le montant "
+                    "pour personne vivant seule."
+                ),
+                foreground="#166534",
+                wraplength=820,
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 10),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Règles 2025 : montant en raison de l'âge 3 906 $, "
+                    "revenus de retraite admissibles × 1,25, maximum "
+                    "3 470 $, seuil de réduction 42 090 $, réduction "
+                    "18,75 %, crédit Québec 14 %."
+                ),
+                foreground="#92400e",
+                wraplength=820,
+            ).grid(
+                row=2,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 14),
+            )
+
+            reclamer_age_var = tk.BooleanVar(
+                value=montants_age_retraite_courants.reclamer_age
+            )
+            naissance_var = tk.BooleanVar(
+                value=(
+                    montants_age_retraite_courants
+                    .ne_avant_1_janvier_1961
+                )
+            )
+            reclamer_retraite_var = tk.BooleanVar(
+                value=(
+                    montants_age_retraite_courants
+                    .reclamer_revenus_retraite
+                )
+            )
+            ligne122_var = tk.StringVar(
+                value=str(
+                    montants_age_retraite_courants.revenu_ligne_122
+                )
+            )
+            ligne123_var = tk.StringVar(
+                value=str(
+                    montants_age_retraite_courants.revenu_ligne_123
+                )
+            )
+            deduction2504_var = tk.StringVar(
+                value=str(
+                    montants_age_retraite_courants
+                    .deduction_ligne_250_point_4
+                )
+            )
+            deduction2506_var = tk.StringVar(
+                value=str(
+                    montants_age_retraite_courants
+                    .deduction_ligne_250_point_6
+                )
+            )
+            deduction293_var = tk.StringVar(
+                value=str(
+                    montants_age_retraite_courants.deduction_ligne_293
+                )
+            )
+            deduction297_var = tk.StringVar(
+                value=str(
+                    montants_age_retraite_courants
+                    .deduction_ligne_297_points_9_12
+                )
+            )
+            transfert245_var = tk.StringVar(
+                value=str(
+                    montants_age_retraite_courants
+                    .transfert_revenus_retraite_ligne_245
+                )
+            )
+            revenu_familial_var = tk.StringVar(
+                value=str(
+                    montants_age_retraite_courants.revenu_familial_net
+                )
+            )
+            sans_conjoint_var = tk.BooleanVar(
+                value=(
+                    montants_age_retraite_courants
+                    .aucun_conjoint_31_decembre_2025
+                )
+            )
+            resident_var = tk.BooleanVar(
+                value=(
+                    montants_age_retraite_courants
+                    .resident_quebec_canada_toute_annee
+                )
+            )
+            sans_personne_seule_var = tk.BooleanVar(
+                value=(
+                    montants_age_retraite_courants
+                    .aucun_montant_personne_vivant_seule
+                )
+            )
+            admissibles_var = tk.BooleanVar(
+                value=(
+                    montants_age_retraite_courants
+                    .revenus_retraite_admissibles_confirmes
+                )
+            )
+            exclus_var = tk.BooleanVar(
+                value=(
+                    montants_age_retraite_courants
+                    .revenus_non_admissibles_exclus
+                )
+            )
+            validation_var = tk.BooleanVar(
+                value=montants_age_retraite_courants.valide_par_comptable
+            )
+            source_age_var = tk.StringVar(
+                value=montants_age_retraite_courants.source_age
+            )
+            source_retraite_var = tk.StringVar(
+                value=montants_age_retraite_courants.source_retraite
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Réclamer le montant en raison de l'âge",
+                variable=reclamer_age_var,
+            ).grid(
+                row=3,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Né avant le 1er janvier 1961",
+                variable=naissance_var,
+            ).grid(
+                row=4,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Source confirmant l'âge :",
+            ).grid(row=5, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                textvariable=source_age_var,
+                width=54,
+            ).grid(
+                row=5,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Separator(
+                cadre,
+                orient="horizontal",
+            ).grid(
+                row=6,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=10,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Réclamer le montant pour revenus de retraite",
+                variable=reclamer_retraite_var,
+            ).grid(
+                row=7,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            champs = (
+                (
+                    "Revenus de retraite admissibles — ligne 122 :",
+                    ligne122_var,
+                ),
+                (
+                    "Revenus — ligne 123 (profil simple : 0) :",
+                    ligne123_var,
+                ),
+                (
+                    "Déduction ligne 250 point 4 :",
+                    deduction2504_var,
+                ),
+                (
+                    "Déduction ligne 250 point 6 :",
+                    deduction2506_var,
+                ),
+                (
+                    "Déduction ligne 293 :",
+                    deduction293_var,
+                ),
+                (
+                    "Déductions ligne 297 points 9 à 12 :",
+                    deduction297_var,
+                ),
+                (
+                    "Transfert revenus retraite — ligne 245 (doit être 0) :",
+                    transfert245_var,
+                ),
+                (
+                    "Revenu familial net 2025 :",
+                    revenu_familial_var,
+                ),
+            )
+
+            for ligne, (libelle, variable) in enumerate(
+                champs,
+                start=8,
+            ):
+                ttk.Label(
+                    cadre,
+                    text=libelle,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    sticky="w",
+                    pady=4,
+                )
+                ttk.Entry(
+                    cadre,
+                    textvariable=variable,
+                    width=24,
+                ).grid(
+                    row=ligne,
+                    column=1,
+                    sticky="w",
+                    padx=(12, 0),
+                    pady=4,
+                )
+
+            ttk.Label(
+                cadre,
+                text="Source des revenus de retraite :",
+            ).grid(row=16, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                textvariable=source_retraite_var,
+                width=54,
+            ).grid(
+                row=16,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            confirmations = (
+                (
+                    "Aucun conjoint au 31 décembre 2025",
+                    sans_conjoint_var,
+                ),
+                (
+                    "Résident du Québec et du Canada toute l'année 2025",
+                    resident_var,
+                ),
+                (
+                    "Aucun montant pour personne vivant seule combiné",
+                    sans_personne_seule_var,
+                ),
+                (
+                    "Revenus de retraite admissibles confirmés",
+                    admissibles_var,
+                ),
+                (
+                    "PSV, RRQ et RPC exclus des revenus admissibles",
+                    exclus_var,
+                ),
+                (
+                    "Situation validée par le comptable",
+                    validation_var,
+                ),
+            )
+
+            for ligne, (libelle, variable) in enumerate(
+                confirmations,
+                start=17,
+            ):
+                ttk.Checkbutton(
+                    cadre,
+                    text=libelle,
+                    variable=variable,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    columnspan=2,
+                    sticky="w",
+                    pady=3,
+                )
+
+            def lire_montant(
+                variable: tk.StringVar,
+                libelle: str,
+            ) -> Decimal:
+                texte = (
+                    variable.get()
+                    .strip()
+                    .replace("\u00a0", "")
+                    .replace("\u202f", "")
+                    .replace(" ", "")
+                    .replace("$", "")
+                    .replace(",", ".")
+                )
+                if not texte:
+                    return Decimal("0")
+                try:
+                    montant = Decimal(texte)
+                except InvalidOperation as erreur:
+                    raise ValueError(
+                        f"{libelle} doit être un montant valide."
+                    ) from erreur
+                if not montant.is_finite():
+                    raise ValueError(
+                        f"{libelle} doit être un montant fini."
+                    )
+                return montant
+
+            def effacer() -> None:
+                reclamer_age_var.set(False)
+                naissance_var.set(False)
+                reclamer_retraite_var.set(False)
+                ligne122_var.set("0")
+                ligne123_var.set("0")
+                deduction2504_var.set("0")
+                deduction2506_var.set("0")
+                deduction293_var.set("0")
+                deduction297_var.set("0")
+                transfert245_var.set("0")
+                revenu_familial_var.set("0")
+                sans_conjoint_var.set(False)
+                resident_var.set(False)
+                sans_personne_seule_var.set(False)
+                admissibles_var.set(False)
+                exclus_var.set(False)
+                validation_var.set(False)
+                source_age_var.set("")
+                source_retraite_var.set("")
+
+            def appliquer() -> None:
+                nonlocal montants_age_retraite_courants
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    nouveau_profil = MontantsAgeRetraite2025(
+                        reclamer_age=reclamer_age_var.get(),
+                        ne_avant_1_janvier_1961=naissance_var.get(),
+                        reclamer_revenus_retraite=(
+                            reclamer_retraite_var.get()
+                        ),
+                        revenu_ligne_122=lire_montant(
+                            ligne122_var,
+                            "La ligne 122",
+                        ),
+                        revenu_ligne_123=lire_montant(
+                            ligne123_var,
+                            "La ligne 123",
+                        ),
+                        deduction_ligne_250_point_4=lire_montant(
+                            deduction2504_var,
+                            "La déduction ligne 250 point 4",
+                        ),
+                        deduction_ligne_250_point_6=lire_montant(
+                            deduction2506_var,
+                            "La déduction ligne 250 point 6",
+                        ),
+                        deduction_ligne_293=lire_montant(
+                            deduction293_var,
+                            "La déduction ligne 293",
+                        ),
+                        deduction_ligne_297_points_9_12=lire_montant(
+                            deduction297_var,
+                            "La déduction ligne 297 points 9 à 12",
+                        ),
+                        transfert_revenus_retraite_ligne_245=(
+                            lire_montant(
+                                transfert245_var,
+                                "Le transfert ligne 245",
+                            )
+                        ),
+                        revenu_familial_net=lire_montant(
+                            revenu_familial_var,
+                            "Le revenu familial net",
+                        ),
+                        aucun_conjoint_31_decembre_2025=(
+                            sans_conjoint_var.get()
+                        ),
+                        resident_quebec_canada_toute_annee=(
+                            resident_var.get()
+                        ),
+                        aucun_montant_personne_vivant_seule=(
+                            sans_personne_seule_var.get()
+                        ),
+                        revenus_retraite_admissibles_confirmes=(
+                            admissibles_var.get()
+                        ),
+                        revenus_non_admissibles_exclus=(
+                            exclus_var.get()
+                        ),
+                        valide_par_comptable=validation_var.get(),
+                        source_age=source_age_var.get().strip(),
+                        source_retraite=(
+                            source_retraite_var.get().strip()
+                        ),
+                    )
+
+                    nouveau_profil = (
+                        valider_montants_age_retraite_2025(
+                            nouveau_profil
+                        )
+                    )
+
+                    if (
+                        (
+                            nouveau_profil.reclamer_age
+                            or nouveau_profil.reclamer_revenus_retraite
+                        )
+                        and personne_vivant_seule_courante.reclamer_montant
+                    ):
+                        raise ValueError(
+                            "Désactivez d'abord le profil personne vivant "
+                            "seule 2025. Les deux profils utilisent la "
+                            "même réduction de l'annexe B et ne sont pas "
+                            "encore combinés dans cette version."
+                        )
+
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Âge / revenus de retraite invalides",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                montants_age_retraite_courants = nouveau_profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                self.statut.set(
+                    "Profil âge / revenus de retraite 2025 mis à jour"
+                )
+
+                messagebox.showinfo(
+                    "Âge / revenus de retraite Québec 2025",
+                    (
+                        "Le profil a été enregistré pour le prochain "
+                        "calcul fiscal."
+                    ),
+                    parent=dialogue,
+                )
+                dialogue.destroy()
+
+            actions = ttk.Frame(cadre)
+            actions.grid(
+                row=23,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(16, 0),
+            )
+
+            ttk.Button(
+                actions,
+                text="Effacer",
+                command=effacer,
+            ).pack(side="left")
+
+            ttk.Button(
+                actions,
+                text="Fermer",
+                command=dialogue.destroy,
+            ).pack(side="right")
+
+            ttk.Button(
+                actions,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right", padx=(0, 8))
+
         def ouvrir_personne_vivant_seule_2025() -> None:
             nonlocal personne_vivant_seule_courante
+            nonlocal montants_age_retraite_courants
             nonlocal derniere_estimation, dernier_rapport_pdf
 
             dialogue = tk.Toplevel(fenetre)
@@ -3831,6 +4406,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
             def appliquer() -> None:
                 nonlocal personne_vivant_seule_courante
+                nonlocal montants_age_retraite_courants
                 nonlocal derniere_estimation, dernier_rapport_pdf
 
                 try:
@@ -6190,6 +6766,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal assurance_medicaments_courante
             nonlocal cotisations_excedentaires_courantes
             nonlocal personne_vivant_seule_courante
+            nonlocal montants_age_retraite_courants
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -6219,6 +6796,7 @@ class ApplicationComptaPrivee(tk.Tk):
             assurance_medicaments_courante = AssuranceMedicamentsQuebec2025()
             cotisations_excedentaires_courantes = CotisationsExcedentaires2025()
             personne_vivant_seule_courante = PersonneVivantSeule2025()
+            montants_age_retraite_courants = MontantsAgeRetraite2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -6337,6 +6915,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             assurance_medicaments=assurance_medicaments_courante,
                             cotisations_excedentaires=cotisations_excedentaires_courantes,
                             personne_vivant_seule=personne_vivant_seule_courante,
+                            montants_age_retraite=montants_age_retraite_courants,
                         )
                     )
                 except (ValueError, Exception):
@@ -6374,6 +6953,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     assurance_medicaments=assurance_medicaments_courante,
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
                     personne_vivant_seule=personne_vivant_seule_courante,
+                    montants_age_retraite=montants_age_retraite_courants,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -6450,6 +7030,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal assurance_medicaments_courante
             nonlocal cotisations_excedentaires_courantes
             nonlocal personne_vivant_seule_courante
+            nonlocal montants_age_retraite_courants
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -6511,6 +7092,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             personne_vivant_seule_courante = (
                 enregistrement.personne_vivant_seule
+            )
+            montants_age_retraite_courants = (
+                enregistrement.montants_age_retraite
             )
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
@@ -6789,6 +7373,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     assurance_medicaments=assurance_medicaments_courante,
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
                     personne_vivant_seule=personne_vivant_seule_courante,
+                    montants_age_retraite=montants_age_retraite_courants,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation
@@ -7113,6 +7698,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_actions,
             text="Personne vivant seule 2025",
             command=ouvrir_personne_vivant_seule_2025,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        ttk.Button(
+            zone_actions,
+            text="Âge / retraite 2025",
+            command=ouvrir_age_retraite_2025,
         ).pack(
             side="left",
             padx=(8, 0),

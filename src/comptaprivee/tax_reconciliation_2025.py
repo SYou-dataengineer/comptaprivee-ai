@@ -196,6 +196,11 @@ def calculer_rapprochement_fiscal_2025(
         "Montant Québec pour personne vivant seule inclus à la ligne 361."
         in quebec.limitations
     )
+    credit_age_retraite_inclus = (
+        "Montants Québec en raison de l\'âge ou pour revenus de retraite "
+        "inclus à la ligne 361."
+        in quebec.limitations
+    )
 
     credits_absents = []
     if not credit_familial_inclus:
@@ -248,6 +253,14 @@ def calculer_rapprochement_fiscal_2025(
             "L'abattement Québec est calculé à 16,5 % de l'impôt fédéral de base.",
             "Les retenues T4 et RL-1 sont comparées aux impôts préliminaires.",
             limitation_credits,
+            *(
+                (
+                    "Montants Québec en raison de l\'âge ou pour revenus "
+                    "de retraite inclus.",
+                )
+                if credit_age_retraite_inclus
+                else ()
+            ),
             *(
                 (
                     "Cotisation au régime d'assurance médicaments "

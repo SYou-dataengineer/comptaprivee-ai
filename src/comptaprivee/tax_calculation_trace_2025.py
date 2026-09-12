@@ -7,6 +7,13 @@ déjà calculée à partir d'un dossier verrouillé et validé par le comptable.
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_age_retirement_2025 import (
+    credit_quebec_age_retraite_2025,
+    montant_age_2025,
+    montant_ligne_361_age_retraite_2025,
+    montant_revenus_retraite_2025,
+    reduction_annexe_b_age_retraite_2025,
+)
 from .tax_donations_2025 import (
     credit_federal_dons_2025,
     credit_quebec_dons_2025,
@@ -105,6 +112,7 @@ def construire_trace_calcul_fiscal_2025(
     assurance_medicaments = estimation.assurance_medicaments
     cotisations_excedentaires = estimation.cotisations_excedentaires
     personne_vivant_seule = estimation.personne_vivant_seule
+    montants_age_retraite = estimation.montants_age_retraite
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -160,6 +168,13 @@ def construire_trace_calcul_fiscal_2025(
     if personne_vivant_seule.reclamer_montant:
         formule_impot_quebec += (
             " - crédit personne vivant seule ligne 361"
+        )
+    if (
+        montants_age_retraite.reclamer_age
+        or montants_age_retraite.reclamer_revenus_retraite
+    ):
+        formule_impot_quebec += (
+            " - crédit âge/retraite ligne 361"
         )
 
     formule_impot_total = (
@@ -520,6 +535,60 @@ def construire_trace_calcul_fiscal_2025(
                 ),
                 credit_quebec_deficience_2025(
                     credit_deficience
+                ),
+            ),
+        )
+
+    if (
+        montants_age_retraite.reclamer_age
+        or montants_age_retraite.reclamer_revenus_retraite
+    ):
+        montant_age = montant_age_2025(montants_age_retraite)
+        montant_retraite = montant_revenus_retraite_2025(
+            montants_age_retraite
+        )
+        reduction = reduction_annexe_b_age_retraite_2025(
+            montants_age_retraite
+        )
+        montant_ligne_361_age_retraite = (
+            montant_ligne_361_age_retraite_2025(
+                montants_age_retraite
+            )
+        )
+        sources = []
+        if montants_age_retraite.reclamer_age:
+            sources.append(montants_age_retraite.source_age)
+        if montants_age_retraite.reclamer_revenus_retraite:
+            sources.append(montants_age_retraite.source_retraite)
+
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt Québec préliminaire",
+            _ligne(
+                0,
+                "QUÉBEC",
+                "Crédit Québec — âge / revenus de retraite",
+                (
+                    "Revenu Québec annexe B / ligne 361 — "
+                    + " — ".join(sources)
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant âge "
+                    + formater_montant_estimation(montant_age)
+                    + " + montant revenus de retraite "
+                    + formater_montant_estimation(montant_retraite)
+                    + " - réduction annexe B "
+                    + formater_montant_estimation(reduction)
+                    + " = ligne 361 "
+                    + formater_montant_estimation(
+                        montant_ligne_361_age_retraite
+                    )
+                    + "; seuil 42 090 $, réduction 18,75 %, "
+                    + "puis crédit Québec × 14 %"
+                ),
+                credit_quebec_age_retraite_2025(
+                    montants_age_retraite
                 ),
             ),
         )

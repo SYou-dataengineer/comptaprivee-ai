@@ -11,6 +11,16 @@ d'estimation soumise à validation comptable.
 from dataclasses import dataclass
 from decimal import Decimal
 
+from .tax_age_retirement_2025 import (
+    MontantsAgeRetraite2025,
+    appliquer_credit_quebec_age_retraite_2025,
+    credit_quebec_age_retraite_2025,
+    montant_age_2025,
+    montant_ligne_361_age_retraite_2025,
+    montant_revenus_retraite_2025,
+    revenu_retraite_net_admissible_2025,
+    valider_montants_age_retraite_2025,
+)
 from .tax_adjustments_2025 import (
     AjustementReer2025,
     appliquer_ajustement_reer_2025,
@@ -107,6 +117,7 @@ class EstimationFiscale2025:
     assurance_medicaments: AssuranceMedicamentsQuebec2025
     cotisations_excedentaires: CotisationsExcedentaires2025
     personne_vivant_seule: PersonneVivantSeule2025
+    montants_age_retraite: MontantsAgeRetraite2025
 
 
 def calculer_estimation_fiscale_2025(
@@ -127,6 +138,9 @@ def calculer_estimation_fiscale_2025(
     ) = None,
     personne_vivant_seule: (
         PersonneVivantSeule2025 | None
+    ) = None,
+    montants_age_retraite: (
+        MontantsAgeRetraite2025 | None
     ) = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
@@ -270,6 +284,42 @@ def calculer_estimation_fiscale_2025(
             "ce dossier."
         )
 
+    montants_age_retraite_effectifs = (
+        montants_age_retraite
+        if montants_age_retraite is not None
+        else MontantsAgeRetraite2025()
+    )
+    valider_montants_age_retraite_2025(
+        montants_age_retraite_effectifs
+    )
+
+    age_retraite_actif = (
+        montants_age_retraite_effectifs.reclamer_age
+        or montants_age_retraite_effectifs.reclamer_revenus_retraite
+    )
+
+    if (
+        age_retraite_actif
+        and montants_age_retraite_effectifs.revenu_familial_net
+        != revenu.revenu_net_quebec
+    ):
+        raise ValueError(
+            "Le revenu familial net du profil âge/retraite "
+            "doit correspondre au revenu net Québec calculé pour "
+            "ce dossier."
+        )
+
+    if (
+        age_retraite_actif
+        and personne_vivant_seule_effective.reclamer_montant
+    ):
+        raise ValueError(
+            "Cette version ne peut pas combiner le montant pour "
+            "personne vivant seule avec les montants pour âge ou "
+            "revenus de retraite, car ils partagent la réduction "
+            "de l\'annexe B."
+        )
+
     assurance_medicaments_effective = (
         assurance_medicaments
         if assurance_medicaments is not None
@@ -342,6 +392,10 @@ def calculer_estimation_fiscale_2025(
         quebec,
         personne_vivant_seule_effective,
     )
+    quebec = appliquer_credit_quebec_age_retraite_2025(
+        quebec,
+        montants_age_retraite_effectifs,
+    )
     remboursements_cotisations = (
         calculer_remboursements_cotisations_2025(
             cotisations_excedentaires_effectives
@@ -389,6 +443,7 @@ def calculer_estimation_fiscale_2025(
             cotisations_excedentaires_effectives
         ),
         personne_vivant_seule=personne_vivant_seule_effective,
+        montants_age_retraite=montants_age_retraite_effectifs,
     )
 
 
@@ -623,6 +678,51 @@ def formater_estimation_fiscale_2025(
                 f"{estimation.personne_vivant_seule.source}",
             ]
             if estimation.personne_vivant_seule.reclamer_montant
+            else []
+        ),
+        *(
+            [
+                "",
+                "ÂGE / REVENUS DE RETRAITE — QUÉBEC 2025",
+                "Revenu familial net : "
+                f"{formater_montant_estimation(estimation.montants_age_retraite.revenu_familial_net)}",
+                *(
+                    [
+                        "Montant âge — annexe B ligne 22 : "
+                        f"{formater_montant_estimation(montant_age_2025(estimation.montants_age_retraite))}",
+                        "Source âge : "
+                        f"{estimation.montants_age_retraite.source_age}",
+                    ]
+                    if estimation.montants_age_retraite.reclamer_age
+                    else []
+                ),
+                *(
+                    [
+                        "Revenu retraite net admissible : "
+                        f"{formater_montant_estimation(revenu_retraite_net_admissible_2025(estimation.montants_age_retraite))}",
+                        "Montant revenus de retraite : "
+                        f"{formater_montant_estimation(montant_revenus_retraite_2025(estimation.montants_age_retraite))}",
+                        "Source retraite : "
+                        f"{estimation.montants_age_retraite.source_retraite}",
+                    ]
+                    if (
+                        estimation.montants_age_retraite
+                        .reclamer_revenus_retraite
+                    )
+                    else []
+                ),
+                "Montant annexe B / ligne 361 : "
+                f"{formater_montant_estimation(montant_ligne_361_age_retraite_2025(estimation.montants_age_retraite))}",
+                "Crédit Québec : "
+                f"{formater_montant_estimation(credit_quebec_age_retraite_2025(estimation.montants_age_retraite))}",
+            ]
+            if (
+                estimation.montants_age_retraite.reclamer_age
+                or (
+                    estimation.montants_age_retraite
+                    .reclamer_revenus_retraite
+                )
+            )
             else []
         ),
         *(

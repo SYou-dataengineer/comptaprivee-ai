@@ -9,9 +9,18 @@ from .tax_estimation_2025 import (
     EstimationFiscale2025,
     formater_montant_estimation,
 )
+from .tax_age_retirement_2025 import (
+    MONTANT_REVENUS_RETRAITE_MAX_2025,
+    SEUIL_REDUCTION_ANNEXE_B_2025,
+    credit_quebec_age_retraite_2025,
+    montant_age_2025,
+    montant_ligne_361_age_retraite_2025,
+    montant_revenus_retraite_2025,
+    reduction_annexe_b_age_retraite_2025,
+    revenu_retraite_net_admissible_2025,
+)
 from .tax_living_alone_2025 import (
     MONTANT_PERSONNE_VIVANT_SEULE_2025,
-    SEUIL_REDUCTION_ANNEXE_B_2025,
     credit_quebec_personne_vivant_seule_2025,
     montant_ligne_361_personne_vivant_seule_2025,
 )
@@ -55,6 +64,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     assurance_medicaments = estimation.assurance_medicaments
     cotisations_excedentaires = estimation.cotisations_excedentaires
     personne_vivant_seule = estimation.personne_vivant_seule
+    montants_age_retraite = estimation.montants_age_retraite
 
     montant = (
         x.remboursement_estime
@@ -408,6 +418,192 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                 ),
             ]
         )
+
+    if (
+        montants_age_retraite.reclamer_age
+        or montants_age_retraite.reclamer_revenus_retraite
+    ):
+        montant_age = montant_age_2025(
+            montants_age_retraite
+        )
+        revenu_retraite_net = (
+            revenu_retraite_net_admissible_2025(
+                montants_age_retraite
+            )
+        )
+        montant_retraite = montant_revenus_retraite_2025(
+            montants_age_retraite
+        )
+        reduction_age_retraite = (
+            reduction_annexe_b_age_retraite_2025(
+                montants_age_retraite
+            )
+        )
+        montant_ligne_361_age_retraite = (
+            montant_ligne_361_age_retraite_2025(
+                montants_age_retraite
+            )
+        )
+        credit_age_retraite = (
+            credit_quebec_age_retraite_2025(
+                montants_age_retraite
+            )
+        )
+
+        lignes.extend(
+            [
+                "",
+                "ÂGE / REVENUS DE RETRAITE - QUÉBEC 2025",
+                (
+                    "Revenu familial net : "
+                    f"{formater_montant_estimation(
+                        montants_age_retraite.revenu_familial_net
+                    )}"
+                ),
+                (
+                    "Montant en raison de l'âge : "
+                    f"{formater_montant_estimation(montant_age)}"
+                ),
+                (
+                    "Revenu ligne 122 : "
+                    f"{formater_montant_estimation(
+                        montants_age_retraite.revenu_ligne_122
+                    )}"
+                ),
+                (
+                    "Revenu ligne 123 : "
+                    f"{formater_montant_estimation(
+                        montants_age_retraite.revenu_ligne_123
+                    )}"
+                ),
+                (
+                    "Revenu retraite net admissible : "
+                    f"{formater_montant_estimation(
+                        revenu_retraite_net
+                    )}"
+                ),
+                (
+                    "Montant pour revenus de retraite : "
+                    f"{formater_montant_estimation(
+                        montant_retraite
+                    )}"
+                ),
+                "Coefficient revenus de retraite : 1,25",
+                (
+                    "Maximum revenus de retraite : "
+                    f"{formater_montant_estimation(
+                        MONTANT_REVENUS_RETRAITE_MAX_2025
+                    )}"
+                ),
+                (
+                    "Seuil de réduction : "
+                    f"{formater_montant_estimation(
+                        SEUIL_REDUCTION_ANNEXE_B_2025
+                    )}"
+                ),
+                "Taux de réduction : 18,75 %",
+                (
+                    "Réduction annexe B : "
+                    f"{formater_montant_estimation(
+                        reduction_age_retraite
+                    )}"
+                ),
+                (
+                    "Annexe B / ligne 361 : "
+                    f"{formater_montant_estimation(
+                        montant_ligne_361_age_retraite
+                    )}"
+                ),
+                (
+                    "Crédit Québec : "
+                    f"{formater_montant_estimation(
+                        credit_age_retraite
+                    )}"
+                ),
+                "Taux du crédit Québec : 14 %",
+                (
+                    "Transfert ligne 245 : "
+                    f"{formater_montant_estimation(
+                        montants_age_retraite
+                        .transfert_revenus_retraite_ligne_245
+                    )}"
+                ),
+                (
+                    "Sans conjoint au 31 décembre 2025 : "
+                    + (
+                        "oui"
+                        if (
+                            montants_age_retraite
+                            .aucun_conjoint_31_decembre_2025
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Résident Québec/Canada toute l'année : "
+                    + (
+                        "oui"
+                        if (
+                            montants_age_retraite
+                            .resident_quebec_canada_toute_annee
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucun montant personne vivant seule combiné : "
+                    + (
+                        "oui"
+                        if (
+                            montants_age_retraite
+                            .aucun_montant_personne_vivant_seule
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Revenus de retraite admissibles confirmés : "
+                    + (
+                        "oui"
+                        if (
+                            montants_age_retraite
+                            .revenus_retraite_admissibles_confirmes
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "PSV, RRQ et RPC exclus : "
+                    + (
+                        "oui"
+                        if (
+                            montants_age_retraite
+                            .revenus_non_admissibles_exclus
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Validation comptable : "
+                    + (
+                        "confirmée"
+                        if montants_age_retraite.valide_par_comptable
+                        else "non confirmée"
+                    )
+                ),
+            ]
+        )
+
+        if montants_age_retraite.reclamer_age:
+            lignes.append(
+                f"Source âge : {montants_age_retraite.source_age}"
+            )
+
+        if montants_age_retraite.reclamer_revenus_retraite:
+            lignes.append(
+                "Source retraite : "
+                f"{montants_age_retraite.source_retraite}"
+            )
 
     if personne_vivant_seule.reclamer_montant:
         montant_ligne_361 = (
