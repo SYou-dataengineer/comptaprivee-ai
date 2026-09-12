@@ -51,6 +51,10 @@ class RapprochementFiscal2025:
     statut: str
     limitations: tuple[str, ...]
     cotisation_assurance_medicaments: Decimal = ZERO
+    remboursement_rrq_excedentaire: Decimal = ZERO
+    remboursement_ae_excedentaire: Decimal = ZERO
+    remboursement_rqap_excedentaire: Decimal = ZERO
+    remboursements_cotisations_totaux: Decimal = ZERO
 
 
 def _verifier_coherence(
@@ -89,6 +93,10 @@ def calculer_rapprochement_fiscal_2025(
     federal: ImpotFederalPreliminaire2025,
     quebec: ImpotQuebecPreliminaire2025,
     cotisation_assurance_medicaments: Decimal = ZERO,
+    remboursement_rrq_excedentaire: Decimal = ZERO,
+    remboursement_ae_excedentaire: Decimal = ZERO,
+    remboursement_rqap_excedentaire: Decimal = ZERO,
+    cotisations_excedentaires_verifiees: bool = False,
 ) -> RapprochementFiscal2025:
     """Calcule une estimation de base du remboursement ou du solde."""
     _verifier_coherence(base, federal, quebec)
@@ -111,6 +119,25 @@ def calculer_rapprochement_fiscal_2025(
             "être négative."
         )
 
+    for nom, montant in (
+        ("remboursement RRQ", remboursement_rrq_excedentaire),
+        (
+            "remboursement assurance-emploi",
+            remboursement_ae_excedentaire,
+        ),
+        ("remboursement RQAP", remboursement_rqap_excedentaire),
+    ):
+        if montant < ZERO:
+            raise ValueError(
+                f"Le {nom} ne peut pas être négatif."
+            )
+
+    remboursements_cotisations_totaux = arrondir_cent(
+        remboursement_rrq_excedentaire
+        + remboursement_ae_excedentaire
+        + remboursement_rqap_excedentaire
+    )
+
     impot_total = arrondir_cent(
         federal_apres_abattement
         + quebec.impot_quebec_preliminaire
@@ -123,7 +150,9 @@ def calculer_rapprochement_fiscal_2025(
     )
 
     difference = arrondir_cent(
-        retenues_totales - impot_total
+        retenues_totales
+        + remboursements_cotisations_totaux
+        - impot_total
     )
 
     if difference > ZERO:
@@ -219,12 +248,42 @@ def calculer_rapprochement_fiscal_2025(
                     "contribution Québec additionnelle.",
                 )
             ),
-            "Aucun remboursement de cotisations excédentaires RRQ/AE/RQAP.",
+            *(
+                (
+                    "Remboursements de cotisations excédentaires "
+                    "RRQ/AE/RQAP inclus.",
+                )
+                if remboursements_cotisations_totaux > ZERO
+                else (
+                    (
+                        "Cotisations RRQ/AE/RQAP vérifiées : "
+                        "aucun excédent remboursable selon le profil "
+                        "standard supporté.",
+                    )
+                    if cotisations_excedentaires_verifiees
+                    else (
+                        "Aucun remboursement de cotisations "
+                        "excédentaires RRQ/AE/RQAP.",
+                    )
+                )
+            ),
             "Aucun revenu autonome, placement, location ou gain en capital.",
             "Aucun traitement avancé CNESST/SAAQ.",
             "Aucune transmission ARC ou Revenu Québec.",
         ),
         cotisation_assurance_medicaments=(
             cotisation_assurance_medicaments
+        ),
+        remboursement_rrq_excedentaire=(
+            remboursement_rrq_excedentaire
+        ),
+        remboursement_ae_excedentaire=(
+            remboursement_ae_excedentaire
+        ),
+        remboursement_rqap_excedentaire=(
+            remboursement_rqap_excedentaire
+        ),
+        remboursements_cotisations_totaux=(
+            remboursements_cotisations_totaux
         ),
     )

@@ -125,8 +125,28 @@ def _verifier_proche(nom: str, valeur: Decimal, attendue: Decimal) -> None:
         )
 
 
+def _verifier_cotisation_emploi_simple(
+    nom: str,
+    valeur: Decimal,
+    attendue: Decimal,
+    autoriser_cotisations_excedentaires: bool,
+) -> None:
+    if autoriser_cotisations_excedentaires:
+        if valeur + TOLERANCE_COTISATION < attendue:
+            raise ValueError(
+                f"{nom} incohérente pour le profil automatique 2025 : "
+                f"valeur validée={valeur}, valeur attendue≈{attendue}. "
+                "Une cotisation inférieure au calcul standard exige "
+                "une vérification comptable avancée."
+            )
+        return
+
+    _verifier_proche(nom, valeur, attendue)
+
+
 def verifier_profil_emploi_simple_2025(
     base: BaseFiscaleEmploi2025,
+    autoriser_cotisations_excedentaires: bool = False,
 ) -> CotisationsAttendues2025:
     if base.annee_fiscale != 2025:
         raise ValueError("Cette version du calcul accepte uniquement l'année 2025.")
@@ -142,25 +162,29 @@ def verifier_profil_emploi_simple_2025(
 
     attendues = calculer_cotisations_attendues_2025(base)
 
-    _verifier_proche(
+    _verifier_cotisation_emploi_simple(
         "Cotisation RRQ B.A / T4 case 17",
         base.rrq_base_premiere_supplementaire,
         attendues.rrq_ba,
+        autoriser_cotisations_excedentaires,
     )
-    _verifier_proche(
+    _verifier_cotisation_emploi_simple(
         "Deuxième cotisation RRQ B.B / T4 case 17A",
         base.rrq_deuxieme_supplementaire,
         attendues.rrq_bb,
+        autoriser_cotisations_excedentaires,
     )
-    _verifier_proche(
+    _verifier_cotisation_emploi_simple(
         "Cotisation d'assurance-emploi",
         base.assurance_emploi,
         attendues.assurance_emploi,
+        autoriser_cotisations_excedentaires,
     )
-    _verifier_proche(
+    _verifier_cotisation_emploi_simple(
         "Cotisation RQAP",
         base.rqap,
         attendues.rqap,
+        autoriser_cotisations_excedentaires,
     )
 
     return attendues
@@ -168,8 +192,14 @@ def verifier_profil_emploi_simple_2025(
 
 def calculer_revenu_net_imposable_2025(
     base: BaseFiscaleEmploi2025,
+    autoriser_cotisations_excedentaires: bool = False,
 ) -> RevenuNetImposable2025:
-    attendues = verifier_profil_emploi_simple_2025(base)
+    attendues = verifier_profil_emploi_simple_2025(
+        base,
+        autoriser_cotisations_excedentaires=(
+            autoriser_cotisations_excedentaires
+        ),
+    )
 
     deduction_rrq = arrondir_cent(
         attendues.rrq_premiere_supplementaire

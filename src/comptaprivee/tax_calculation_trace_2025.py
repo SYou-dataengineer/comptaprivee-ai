@@ -53,6 +53,7 @@ class TraceCalculFiscal2025:
     lignes: tuple[LigneTraceCalcul2025, ...]
     resultat: str
     montant_resultat: Decimal
+    formule_resultat: str
     avertissements: tuple[str, ...]
     limitations: tuple[str, ...]
 
@@ -98,6 +99,7 @@ def construire_trace_calcul_fiscal_2025(
     frais_scolarite = estimation.frais_scolarite
     credit_deficience = estimation.credit_deficience
     assurance_medicaments = estimation.assurance_medicaments
+    cotisations_excedentaires = estimation.cotisations_excedentaires
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -554,14 +556,82 @@ def construire_trace_calcul_fiscal_2025(
             ),
         )
 
+    if cotisations_excedentaires.source.strip():
+        nouvelles_lignes = (
+            _ligne(
+                0,
+                "REMBOURSEMENTS",
+                "Remboursement RRQ excédentaire",
+                (
+                    "Revenu Québec ligne 452 — "
+                    + cotisations_excedentaires.source
+                    + " — validation comptable"
+                ),
+                (
+                    "RRQ B.A + B.B payées - cotisations RRQ attendues "
+                    "selon les gains admissibles validés"
+                ),
+                final.remboursement_rrq_excedentaire,
+            ),
+            _ligne(
+                0,
+                "REMBOURSEMENTS",
+                "Remboursement assurance-emploi excédentaire",
+                (
+                    "ARC ligne 45000 — "
+                    + cotisations_excedentaires.source
+                    + " — validation comptable"
+                ),
+                (
+                    "Cotisation AE payée - prime AE Québec attendue "
+                    "selon les gains assurables validés"
+                ),
+                final.remboursement_ae_excedentaire,
+            ),
+            _ligne(
+                0,
+                "REMBOURSEMENTS",
+                "Remboursement RQAP excédentaire",
+                (
+                    "Revenu Québec ligne 457 — "
+                    + cotisations_excedentaires.source
+                    + " — validation comptable"
+                ),
+                (
+                    "Cotisation RQAP payée - cotisation attendue selon "
+                    "les revenus assujettis; remboursement complet si "
+                    "les revenus assujettis sont sous 2 000 $"
+                ),
+                final.remboursement_rqap_excedentaire,
+            ),
+        )
+        lignes = tuple(
+            replace(ligne, ordre=i + 1)
+            for i, ligne in enumerate(
+                lignes + nouvelles_lignes
+            )
+        )
+
     prochain_ordre = len(lignes) + 1
 
     if final.remboursement_estime > Decimal("0"):
         montant = final.remboursement_estime
-        formule = "Retenues totales - impôt total préliminaire"
+        if final.remboursements_cotisations_totaux > Decimal("0"):
+            formule = (
+                "Retenues + remboursements cotisations RRQ/AE/RQAP "
+                "- impôt total préliminaire"
+            )
+        else:
+            formule = "Retenues totales - impôt total préliminaire"
     elif final.solde_estime > Decimal("0"):
         montant = final.solde_estime
-        formule = "Impôt total préliminaire - retenues totales"
+        if final.remboursements_cotisations_totaux > Decimal("0"):
+            formule = (
+                "Impôt total préliminaire - retenues - remboursements "
+                "cotisations RRQ/AE/RQAP"
+            )
+        else:
+            formule = "Impôt total préliminaire - retenues totales"
     else:
         montant = Decimal("0")
         formule = "Retenues totales = impôt total préliminaire"
@@ -582,6 +652,7 @@ def construire_trace_calcul_fiscal_2025(
         lignes=lignes,
         resultat=final.resultat,
         montant_resultat=montant,
+        formule_resultat=formule,
         avertissements=base.avertissements,
         limitations=final.limitations,
     )

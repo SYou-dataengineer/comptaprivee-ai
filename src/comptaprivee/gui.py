@@ -155,6 +155,10 @@ from .tax_drug_insurance_2025 import (
     AssuranceMedicamentsQuebec2025,
     valider_assurance_medicaments_2025,
 )
+from .tax_contribution_overpayments_2025 import (
+    CotisationsExcedentaires2025,
+    valider_cotisations_excedentaires_2025,
+)
 from .tax_estimation_2025 import (
     calculer_estimation_fiscale_2025,
     formater_estimation_fiscale_2025,
@@ -2387,6 +2391,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_scolarite_courants = FraisScolarite2025()
         credit_deficience_courant = CreditDeficience2025()
         assurance_medicaments_courante = AssuranceMedicamentsQuebec2025()
+        cotisations_excedentaires_courantes = CotisationsExcedentaires2025()
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
 
@@ -3384,6 +3389,425 @@ class ApplicationComptaPrivee(tk.Tk):
             actions = ttk.Frame(cadre)
             actions.grid(
                 row=15,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(16, 0),
+            )
+
+            ttk.Button(
+                actions,
+                text="Effacer",
+                command=effacer,
+            ).pack(side="left")
+
+            ttk.Button(
+                actions,
+                text="Fermer",
+                command=dialogue.destroy,
+            ).pack(side="right")
+
+            ttk.Button(
+                actions,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right", padx=(0, 8))
+
+        def ouvrir_cotisations_excedentaires_2025() -> None:
+            nonlocal cotisations_excedentaires_courantes
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Cotisations excédentaires RRQ / AE / RQAP 2025"
+            )
+            dialogue.geometry("930x850")
+            dialogue.minsize(850, 740)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            cadre = ttk.Frame(dialogue, padding=16)
+            cadre.pack(fill="both", expand=True)
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Cotisations excédentaires 2025",
+                font=("Segoe UI", 16, "bold"),
+            ).grid(
+                row=0,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Utiliser uniquement avec les montants validés des "
+                    "T4 / RL-1. Le moteur contrôle la cohérence exacte "
+                    "des cotisations et des gains avec le dossier avant "
+                    "d'accorder un remboursement."
+                ),
+                foreground="#166534",
+                wraplength=790,
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 12),
+            )
+
+            rrq_ba_var = tk.StringVar(
+                value=str(cotisations_excedentaires_courantes.rrq_ba)
+            )
+            rrq_bb_var = tk.StringVar(
+                value=str(cotisations_excedentaires_courantes.rrq_bb)
+            )
+            gains_rrq_var = tk.StringVar(
+                value=str(
+                    cotisations_excedentaires_courantes
+                    .gains_admissibles_rrq
+                )
+            )
+            ae_var = tk.StringVar(
+                value=str(
+                    cotisations_excedentaires_courantes.assurance_emploi
+                )
+            )
+            gains_ae_var = tk.StringVar(
+                value=str(
+                    cotisations_excedentaires_courantes.gains_assurables_ae
+                )
+            )
+            rqap_var = tk.StringVar(
+                value=str(cotisations_excedentaires_courantes.rqap)
+            )
+            revenus_rqap_var = tk.StringVar(
+                value=str(
+                    cotisations_excedentaires_courantes
+                    .revenus_assujettis_rqap
+                )
+            )
+            source_var = tk.StringVar(
+                value=cotisations_excedentaires_courantes.source
+            )
+
+            validation_var = tk.BooleanVar(
+                value=(
+                    cotisations_excedentaires_courantes
+                    .valide_par_comptable
+                )
+            )
+            resident_var = tk.BooleanVar(
+                value=(
+                    cotisations_excedentaires_courantes
+                    .resident_quebec_31_decembre_2025
+                )
+            )
+            emploi_qc_var = tk.BooleanVar(
+                value=(
+                    cotisations_excedentaires_courantes
+                    .emploi_quebec_uniquement
+                )
+            )
+            rrq_sans_rpc_var = tk.BooleanVar(
+                value=(
+                    cotisations_excedentaires_courantes
+                    .rrq_uniquement_sans_rpc
+                )
+            )
+            sans_autonome_var = tk.BooleanVar(
+                value=(
+                    cotisations_excedentaires_courantes
+                    .aucun_travail_autonome
+                )
+            )
+            profil_rrq_var = tk.BooleanVar(
+                value=(
+                    cotisations_excedentaires_courantes
+                    .profil_rrq_standard_18_64
+                )
+            )
+            ae_simple_var = tk.BooleanVar(
+                value=(
+                    cotisations_excedentaires_courantes
+                    .aucun_cas_particulier_ae
+                )
+            )
+            rqap_simple_var = tk.BooleanVar(
+                value=(
+                    cotisations_excedentaires_courantes
+                    .aucun_cas_particulier_rqap
+                )
+            )
+            calcul_standard_var = tk.BooleanVar(
+                value=(
+                    cotisations_excedentaires_courantes
+                    .calcul_standard_confirme
+                )
+            )
+
+            champs = (
+                ("RRQ B.A payé :", rrq_ba_var),
+                ("RRQ B.B payé :", rrq_bb_var),
+                ("Gains admissibles RRQ :", gains_rrq_var),
+                ("Assurance-emploi payée :", ae_var),
+                ("Gains assurables AE :", gains_ae_var),
+                ("RQAP payé :", rqap_var),
+                ("Revenus assujettis RQAP :", revenus_rqap_var),
+            )
+
+            for ligne, (libelle, variable) in enumerate(
+                champs,
+                start=2,
+            ):
+                ttk.Label(
+                    cadre,
+                    text=libelle,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    sticky="w",
+                    pady=4,
+                )
+                ttk.Entry(
+                    cadre,
+                    textvariable=variable,
+                    width=26,
+                ).grid(
+                    row=ligne,
+                    column=1,
+                    sticky="w",
+                    padx=(12, 0),
+                    pady=4,
+                )
+
+            ttk.Label(
+                cadre,
+                text="Source justificative :",
+            ).grid(
+                row=9,
+                column=0,
+                sticky="w",
+                pady=4,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=source_var,
+                width=55,
+            ).grid(
+                row=9,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=4,
+            )
+
+            confirmations = (
+                (
+                    "Situation validée par le comptable",
+                    validation_var,
+                ),
+                (
+                    "Résident du Québec au 31 décembre 2025",
+                    resident_var,
+                ),
+                (
+                    "Emplois exercés au Québec uniquement",
+                    emploi_qc_var,
+                ),
+                (
+                    "RRQ uniquement, sans RPC",
+                    rrq_sans_rpc_var,
+                ),
+                (
+                    "Aucun travail autonome",
+                    sans_autonome_var,
+                ),
+                (
+                    "Profil RRQ standard 18 à 64 ans toute l'année",
+                    profil_rrq_var,
+                ),
+                (
+                    "Aucun cas particulier d'assurance-emploi",
+                    ae_simple_var,
+                ),
+                (
+                    "Aucun cas particulier du RQAP",
+                    rqap_simple_var,
+                ),
+                (
+                    "Calcul standard RRQ / AE / RQAP confirmé",
+                    calcul_standard_var,
+                ),
+            )
+
+            for ligne, (libelle, variable) in enumerate(
+                confirmations,
+                start=10,
+            ):
+                ttk.Checkbutton(
+                    cadre,
+                    text=libelle,
+                    variable=variable,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    columnspan=2,
+                    sticky="w",
+                    pady=2,
+                )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Remboursements visés : RRQ ligne Québec 452, "
+                    "assurance-emploi ligne fédérale 45000 et RQAP "
+                    "ligne Québec 457. Les cas complexes restent "
+                    "bloqués par sécurité."
+                ),
+                foreground="#92400e",
+                wraplength=790,
+            ).grid(
+                row=19,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(12, 8),
+            )
+
+            def lire_montant(
+                variable: tk.StringVar,
+                libelle: str,
+            ) -> Decimal:
+                texte = (
+                    variable.get()
+                    .strip()
+                    .replace("\u00a0", "")
+                    .replace(" ", "")
+                    .replace("$", "")
+                    .replace(",", ".")
+                )
+                if not texte:
+                    return Decimal("0")
+                try:
+                    montant = Decimal(texte)
+                except InvalidOperation as erreur:
+                    raise ValueError(
+                        f"{libelle} doit être un montant valide."
+                    ) from erreur
+                if not montant.is_finite():
+                    raise ValueError(
+                        f"{libelle} doit être un montant fini."
+                    )
+                return montant
+
+            def effacer() -> None:
+                rrq_ba_var.set("0")
+                rrq_bb_var.set("0")
+                gains_rrq_var.set("0")
+                ae_var.set("0")
+                gains_ae_var.set("0")
+                rqap_var.set("0")
+                revenus_rqap_var.set("0")
+                source_var.set("")
+                validation_var.set(False)
+                resident_var.set(False)
+                emploi_qc_var.set(False)
+                rrq_sans_rpc_var.set(False)
+                sans_autonome_var.set(False)
+                profil_rrq_var.set(False)
+                ae_simple_var.set(False)
+                rqap_simple_var.set(False)
+                calcul_standard_var.set(False)
+
+            def appliquer() -> None:
+                nonlocal cotisations_excedentaires_courantes
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    nouvelles_cotisations = CotisationsExcedentaires2025(
+                        rrq_ba=lire_montant(
+                            rrq_ba_var,
+                            "RRQ B.A",
+                        ),
+                        rrq_bb=lire_montant(
+                            rrq_bb_var,
+                            "RRQ B.B",
+                        ),
+                        gains_admissibles_rrq=lire_montant(
+                            gains_rrq_var,
+                            "Les gains admissibles RRQ",
+                        ),
+                        assurance_emploi=lire_montant(
+                            ae_var,
+                            "L'assurance-emploi",
+                        ),
+                        gains_assurables_ae=lire_montant(
+                            gains_ae_var,
+                            "Les gains assurables AE",
+                        ),
+                        rqap=lire_montant(
+                            rqap_var,
+                            "Le RQAP",
+                        ),
+                        revenus_assujettis_rqap=lire_montant(
+                            revenus_rqap_var,
+                            "Les revenus assujettis RQAP",
+                        ),
+                        source=source_var.get().strip(),
+                        valide_par_comptable=validation_var.get(),
+                        resident_quebec_31_decembre_2025=(
+                            resident_var.get()
+                        ),
+                        emploi_quebec_uniquement=emploi_qc_var.get(),
+                        rrq_uniquement_sans_rpc=rrq_sans_rpc_var.get(),
+                        aucun_travail_autonome=sans_autonome_var.get(),
+                        profil_rrq_standard_18_64=profil_rrq_var.get(),
+                        aucun_cas_particulier_ae=ae_simple_var.get(),
+                        aucun_cas_particulier_rqap=(
+                            rqap_simple_var.get()
+                        ),
+                        calcul_standard_confirme=(
+                            calcul_standard_var.get()
+                        ),
+                    )
+                    nouvelles_cotisations = (
+                        valider_cotisations_excedentaires_2025(
+                            nouvelles_cotisations
+                        )
+                    )
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Cotisations excédentaires invalides",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                cotisations_excedentaires_courantes = nouvelles_cotisations
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                self.statut.set(
+                    "Cotisations excédentaires 2025 mises à jour"
+                )
+
+                messagebox.showinfo(
+                    "Cotisations excédentaires 2025",
+                    (
+                        "Les données RRQ / AE / RQAP ont été "
+                        "enregistrées pour le prochain calcul fiscal."
+                    ),
+                    parent=dialogue,
+                )
+                dialogue.destroy()
+
+            actions = ttk.Frame(cadre)
+            actions.grid(
+                row=20,
                 column=0,
                 columnspan=2,
                 sticky="ew",
@@ -5246,6 +5670,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal frais_scolarite_courants
             nonlocal credit_deficience_courant
             nonlocal assurance_medicaments_courante
+            nonlocal cotisations_excedentaires_courantes
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -5273,6 +5698,7 @@ class ApplicationComptaPrivee(tk.Tk):
             frais_scolarite_courants = FraisScolarite2025()
             credit_deficience_courant = CreditDeficience2025()
             assurance_medicaments_courante = AssuranceMedicamentsQuebec2025()
+            cotisations_excedentaires_courantes = CotisationsExcedentaires2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -5389,6 +5815,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             frais_scolarite=frais_scolarite_courants,
                             credit_deficience=credit_deficience_courant,
                             assurance_medicaments=assurance_medicaments_courante,
+                            cotisations_excedentaires=cotisations_excedentaires_courantes,
                         )
                     )
                 except (ValueError, Exception):
@@ -5424,6 +5851,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_scolarite=frais_scolarite_courants,
                     credit_deficience=credit_deficience_courant,
                     assurance_medicaments=assurance_medicaments_courante,
+                    cotisations_excedentaires=cotisations_excedentaires_courantes,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -5498,6 +5926,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal frais_scolarite_courants
             nonlocal credit_deficience_courant
             nonlocal assurance_medicaments_courante
+            nonlocal cotisations_excedentaires_courantes
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -5553,6 +5982,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             assurance_medicaments_courante = (
                 enregistrement.assurance_medicaments
+            )
+            cotisations_excedentaires_courantes = (
+                enregistrement.cotisations_excedentaires
             )
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
@@ -5829,6 +6261,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_scolarite=frais_scolarite_courants,
                     credit_deficience=credit_deficience_courant,
                     assurance_medicaments=assurance_medicaments_courante,
+                    cotisations_excedentaires=cotisations_excedentaires_courantes,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation
@@ -6135,6 +6568,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_actions,
             text="Assurance médicaments 2025",
             command=ouvrir_assurance_medicaments_2025,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        ttk.Button(
+            zone_actions,
+            text="Cotisations excédentaires 2025",
+            command=ouvrir_cotisations_excedentaires_2025,
         ).pack(
             side="left",
             padx=(8, 0),

@@ -47,6 +47,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     scolarite = estimation.frais_scolarite
     deficience = estimation.credit_deficience
     assurance_medicaments = estimation.assurance_medicaments
+    cotisations_excedentaires = estimation.cotisations_excedentaires
 
     montant = (
         x.remboursement_estime
@@ -496,6 +497,163 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     + (
                         "oui"
                         if assurance_medicaments.aucun_cas_particulier
+                        else "non"
+                    )
+                ),
+            ]
+        )
+
+    if cotisations_excedentaires.source.strip():
+        lignes.extend(
+            [
+                "",
+                "COTISATIONS EXCÉDENTAIRES VALIDÉES",
+                (
+                    "RRQ B.A payé : "
+                    f"{formater_montant_estimation(
+                        cotisations_excedentaires.rrq_ba
+                    )}"
+                ),
+                (
+                    "RRQ B.B payé : "
+                    f"{formater_montant_estimation(
+                        cotisations_excedentaires.rrq_bb
+                    )}"
+                ),
+                (
+                    "Gains admissibles RRQ : "
+                    f"{formater_montant_estimation(
+                        cotisations_excedentaires.gains_admissibles_rrq
+                    )}"
+                ),
+                (
+                    "Remboursement RRQ — ligne Québec 452 : "
+                    f"{formater_montant_estimation(
+                        x.remboursement_rrq_excedentaire
+                    )}"
+                ),
+                (
+                    "Assurance-emploi payée : "
+                    f"{formater_montant_estimation(
+                        cotisations_excedentaires.assurance_emploi
+                    )}"
+                ),
+                (
+                    "Gains assurables AE : "
+                    f"{formater_montant_estimation(
+                        cotisations_excedentaires.gains_assurables_ae
+                    )}"
+                ),
+                (
+                    "Remboursement assurance-emploi — ligne fédérale "
+                    "45000 : "
+                    f"{formater_montant_estimation(
+                        x.remboursement_ae_excedentaire
+                    )}"
+                ),
+                (
+                    "RQAP payé : "
+                    f"{formater_montant_estimation(
+                        cotisations_excedentaires.rqap
+                    )}"
+                ),
+                (
+                    "Revenus assujettis RQAP : "
+                    f"{formater_montant_estimation(
+                        cotisations_excedentaires.revenus_assujettis_rqap
+                    )}"
+                ),
+                (
+                    "Remboursement RQAP — ligne Québec 457 : "
+                    f"{formater_montant_estimation(
+                        x.remboursement_rqap_excedentaire
+                    )}"
+                ),
+                (
+                    "Total remboursable RRQ / AE / RQAP : "
+                    f"{formater_montant_estimation(
+                        x.remboursements_cotisations_totaux
+                    )}"
+                ),
+                f"Source : {cotisations_excedentaires.source}",
+                (
+                    "Situation validée par le comptable : "
+                    + (
+                        "oui"
+                        if cotisations_excedentaires.valide_par_comptable
+                        else "non"
+                    )
+                ),
+                (
+                    "Résident du Québec au 31 décembre 2025 : "
+                    + (
+                        "oui"
+                        if (
+                            cotisations_excedentaires
+                            .resident_quebec_31_decembre_2025
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Emplois exercés au Québec uniquement : "
+                    + (
+                        "oui"
+                        if cotisations_excedentaires.emploi_quebec_uniquement
+                        else "non"
+                    )
+                ),
+                (
+                    "RRQ uniquement, sans RPC : "
+                    + (
+                        "oui"
+                        if cotisations_excedentaires.rrq_uniquement_sans_rpc
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucun travail autonome : "
+                    + (
+                        "oui"
+                        if cotisations_excedentaires.aucun_travail_autonome
+                        else "non"
+                    )
+                ),
+                (
+                    "Profil RRQ standard 18 à 64 ans : "
+                    + (
+                        "oui"
+                        if (
+                            cotisations_excedentaires
+                            .profil_rrq_standard_18_64
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucun cas particulier d'assurance-emploi : "
+                    + (
+                        "oui"
+                        if cotisations_excedentaires.aucun_cas_particulier_ae
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucun cas particulier du RQAP : "
+                    + (
+                        "oui"
+                        if (
+                            cotisations_excedentaires
+                            .aucun_cas_particulier_rqap
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Calcul standard RRQ / AE / RQAP confirmé : "
+                    + (
+                        "oui"
+                        if cotisations_excedentaires.calcul_standard_confirme
                         else "non"
                     )
                 ),

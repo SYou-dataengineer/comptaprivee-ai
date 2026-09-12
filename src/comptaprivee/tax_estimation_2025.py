@@ -15,6 +15,11 @@ from .tax_adjustments_2025 import (
     AjustementReer2025,
     appliquer_ajustement_reer_2025,
 )
+from .tax_contribution_overpayments_2025 import (
+    CotisationsExcedentaires2025,
+    calculer_remboursements_cotisations_2025,
+    valider_cotisations_excedentaires_2025,
+)
 from .tax_donations_2025 import (
     DonsBienfaisance2025,
     appliquer_credit_federal_dons_2025,
@@ -93,6 +98,7 @@ class EstimationFiscale2025:
     frais_scolarite: FraisScolarite2025
     credit_deficience: CreditDeficience2025
     assurance_medicaments: AssuranceMedicamentsQuebec2025
+    cotisations_excedentaires: CotisationsExcedentaires2025
 
 
 def calculer_estimation_fiscale_2025(
@@ -108,6 +114,9 @@ def calculer_estimation_fiscale_2025(
     assurance_medicaments: (
         AssuranceMedicamentsQuebec2025 | None
     ) = None,
+    cotisations_excedentaires: (
+        CotisationsExcedentaires2025 | None
+    ) = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
     if dossier.annee_fiscale != 2025:
@@ -117,7 +126,73 @@ def calculer_estimation_fiscale_2025(
         )
 
     base = consolider_base_fiscale_emploi_2025(dossier)
-    revenu = calculer_revenu_net_imposable_2025(base)
+
+    cotisations_excedentaires_effectives = (
+        cotisations_excedentaires
+        if cotisations_excedentaires is not None
+        else CotisationsExcedentaires2025()
+    )
+    valider_cotisations_excedentaires_2025(
+        cotisations_excedentaires_effectives
+    )
+
+    cotisations_excedentaires_presentes = (
+        cotisations_excedentaires_effectives
+        != CotisationsExcedentaires2025()
+    )
+
+    if cotisations_excedentaires_presentes:
+        controles = (
+            (
+                "RRQ B.A",
+                cotisations_excedentaires_effectives.rrq_ba,
+                base.rrq_base_premiere_supplementaire,
+            ),
+            (
+                "RRQ B.B",
+                cotisations_excedentaires_effectives.rrq_bb,
+                base.rrq_deuxieme_supplementaire,
+            ),
+            (
+                "gains admissibles RRQ",
+                cotisations_excedentaires_effectives.gains_admissibles_rrq,
+                base.gains_admissibles_rrq,
+            ),
+            (
+                "assurance-emploi",
+                cotisations_excedentaires_effectives.assurance_emploi,
+                base.assurance_emploi,
+            ),
+            (
+                "gains assurables AE",
+                cotisations_excedentaires_effectives.gains_assurables_ae,
+                base.gains_assurables_ae,
+            ),
+            (
+                "RQAP",
+                cotisations_excedentaires_effectives.rqap,
+                base.rqap,
+            ),
+            (
+                "revenus assujettis RQAP",
+                cotisations_excedentaires_effectives.revenus_assujettis_rqap,
+                base.gains_assurables_rqap,
+            ),
+        )
+        for nom, valeur_profil, valeur_dossier in controles:
+            if valeur_profil != valeur_dossier:
+                raise ValueError(
+                    f"{nom} du profil de cotisations excédentaires "
+                    "doit correspondre exactement aux données "
+                    "validées du dossier."
+                )
+
+    revenu = calculer_revenu_net_imposable_2025(
+        base,
+        autoriser_cotisations_excedentaires=(
+            cotisations_excedentaires_presentes
+        ),
+    )
 
     ajustement_reer_effectif = (
         ajustement_reer
@@ -184,7 +259,13 @@ def calculer_estimation_fiscale_2025(
             "calculé pour ce dossier."
         )
 
-    federal = calculer_impot_federal_preliminaire_2025(base, revenu)
+    federal = calculer_impot_federal_preliminaire_2025(
+        base,
+        revenu,
+        utiliser_cotisations_attendues=(
+            cotisations_excedentaires_presentes
+        ),
+    )
     federal = appliquer_credit_federal_dons_2025(
         federal,
         dons_effectifs,
@@ -226,6 +307,12 @@ def calculer_estimation_fiscale_2025(
         quebec,
         credit_deficience_effectif,
     )
+    remboursements_cotisations = (
+        calculer_remboursements_cotisations_2025(
+            cotisations_excedentaires_effectives
+        )
+    )
+
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
         federal,
@@ -234,6 +321,18 @@ def calculer_estimation_fiscale_2025(
             cotisation_assurance_medicaments_2025(
                 assurance_medicaments_effective
             )
+        ),
+        remboursement_rrq_excedentaire=(
+            remboursements_cotisations.rrq_ligne_452
+        ),
+        remboursement_ae_excedentaire=(
+            remboursements_cotisations.assurance_emploi_ligne_45000
+        ),
+        remboursement_rqap_excedentaire=(
+            remboursements_cotisations.rqap_ligne_457
+        ),
+        cotisations_excedentaires_verifiees=(
+            cotisations_excedentaires_presentes
         ),
     )
 
@@ -251,6 +350,9 @@ def calculer_estimation_fiscale_2025(
         frais_scolarite=frais_scolarite_effectifs,
         credit_deficience=credit_deficience_effectif,
         assurance_medicaments=assurance_medicaments_effective,
+        cotisations_excedentaires=(
+            cotisations_excedentaires_effectives
+        ),
     )
 
 
@@ -469,6 +571,27 @@ def formater_estimation_fiscale_2025(
                 f"{estimation.assurance_medicaments.source}",
             ]
             if estimation.assurance_medicaments.type_couverture.strip()
+            else []
+        ),
+        *(
+            [
+                "",
+                "COTISATIONS EXCÉDENTAIRES VALIDÉES",
+                "RRQ — ligne Québec 452 : "
+                f"{formater_montant_estimation(final.remboursement_rrq_excedentaire)}",
+                "Assurance-emploi — ligne fédérale 45000 : "
+                f"{formater_montant_estimation(final.remboursement_ae_excedentaire)}",
+                "RQAP — ligne Québec 457 : "
+                f"{formater_montant_estimation(final.remboursement_rqap_excedentaire)}",
+                "Total remboursable : "
+                f"{formater_montant_estimation(final.remboursements_cotisations_totaux)}",
+                "Source : "
+                f"{estimation.cotisations_excedentaires.source}",
+            ]
+            if (
+                estimation.cotisations_excedentaires
+                != CotisationsExcedentaires2025()
+            )
             else []
         ),
         "",

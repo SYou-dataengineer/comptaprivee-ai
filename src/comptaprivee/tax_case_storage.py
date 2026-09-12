@@ -30,6 +30,10 @@ from .tax_drug_insurance_2025 import (
     AssuranceMedicamentsQuebec2025,
     valider_assurance_medicaments_2025,
 )
+from .tax_contribution_overpayments_2025 import (
+    CotisationsExcedentaires2025,
+    valider_cotisations_excedentaires_2025,
+)
 from .tax_medical_expenses_2025 import (
     FraisMedicaux2025,
     valider_frais_medicaux_2025,
@@ -79,6 +83,7 @@ class DossierFiscalEnregistre:
     frais_scolarite: FraisScolarite2025
     credit_deficience: CreditDeficience2025
     assurance_medicaments: AssuranceMedicamentsQuebec2025
+    cotisations_excedentaires: CotisationsExcedentaires2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -686,6 +691,136 @@ def _assurance_medicaments_depuis_dict(
     return valider_assurance_medicaments_2025(assurance)
 
 
+def _cotisations_excedentaires_vers_dict(
+    cotisations: CotisationsExcedentaires2025 | None,
+):
+    if cotisations is None:
+        cotisations = CotisationsExcedentaires2025()
+
+    valider_cotisations_excedentaires_2025(cotisations)
+
+    return {
+        "rrq_ba": _decimal_texte(cotisations.rrq_ba),
+        "rrq_bb": _decimal_texte(cotisations.rrq_bb),
+        "gains_admissibles_rrq": _decimal_texte(
+            cotisations.gains_admissibles_rrq
+        ),
+        "assurance_emploi": _decimal_texte(
+            cotisations.assurance_emploi
+        ),
+        "gains_assurables_ae": _decimal_texte(
+            cotisations.gains_assurables_ae
+        ),
+        "rqap": _decimal_texte(cotisations.rqap),
+        "revenus_assujettis_rqap": _decimal_texte(
+            cotisations.revenus_assujettis_rqap
+        ),
+        "source": cotisations.source,
+        "valide_par_comptable": bool(
+            cotisations.valide_par_comptable
+        ),
+        "resident_quebec_31_decembre_2025": bool(
+            cotisations.resident_quebec_31_decembre_2025
+        ),
+        "emploi_quebec_uniquement": bool(
+            cotisations.emploi_quebec_uniquement
+        ),
+        "rrq_uniquement_sans_rpc": bool(
+            cotisations.rrq_uniquement_sans_rpc
+        ),
+        "aucun_travail_autonome": bool(
+            cotisations.aucun_travail_autonome
+        ),
+        "profil_rrq_standard_18_64": bool(
+            cotisations.profil_rrq_standard_18_64
+        ),
+        "aucun_cas_particulier_ae": bool(
+            cotisations.aucun_cas_particulier_ae
+        ),
+        "aucun_cas_particulier_rqap": bool(
+            cotisations.aucun_cas_particulier_rqap
+        ),
+        "calcul_standard_confirme": bool(
+            cotisations.calcul_standard_confirme
+        ),
+    }
+
+
+def _cotisations_excedentaires_depuis_dict(
+    valeur: Any,
+) -> CotisationsExcedentaires2025:
+    if valeur is None:
+        return CotisationsExcedentaires2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Les cotisations excédentaires enregistrées sont invalides."
+        )
+
+    cotisations = CotisationsExcedentaires2025(
+        rrq_ba=_decimal_depuis_json(
+            valeur.get("rrq_ba", "0"),
+            "cotisations_excedentaires.rrq_ba",
+        ),
+        rrq_bb=_decimal_depuis_json(
+            valeur.get("rrq_bb", "0"),
+            "cotisations_excedentaires.rrq_bb",
+        ),
+        gains_admissibles_rrq=_decimal_depuis_json(
+            valeur.get("gains_admissibles_rrq", "0"),
+            "cotisations_excedentaires.gains_admissibles_rrq",
+        ),
+        assurance_emploi=_decimal_depuis_json(
+            valeur.get("assurance_emploi", "0"),
+            "cotisations_excedentaires.assurance_emploi",
+        ),
+        gains_assurables_ae=_decimal_depuis_json(
+            valeur.get("gains_assurables_ae", "0"),
+            "cotisations_excedentaires.gains_assurables_ae",
+        ),
+        rqap=_decimal_depuis_json(
+            valeur.get("rqap", "0"),
+            "cotisations_excedentaires.rqap",
+        ),
+        revenus_assujettis_rqap=_decimal_depuis_json(
+            valeur.get("revenus_assujettis_rqap", "0"),
+            "cotisations_excedentaires.revenus_assujettis_rqap",
+        ),
+        source=str(valeur.get("source", "")),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        resident_quebec_31_decembre_2025=bool(
+            valeur.get(
+                "resident_quebec_31_decembre_2025",
+                False,
+            )
+        ),
+        emploi_quebec_uniquement=bool(
+            valeur.get("emploi_quebec_uniquement", False)
+        ),
+        rrq_uniquement_sans_rpc=bool(
+            valeur.get("rrq_uniquement_sans_rpc", False)
+        ),
+        aucun_travail_autonome=bool(
+            valeur.get("aucun_travail_autonome", False)
+        ),
+        profil_rrq_standard_18_64=bool(
+            valeur.get("profil_rrq_standard_18_64", False)
+        ),
+        aucun_cas_particulier_ae=bool(
+            valeur.get("aucun_cas_particulier_ae", False)
+        ),
+        aucun_cas_particulier_rqap=bool(
+            valeur.get("aucun_cas_particulier_rqap", False)
+        ),
+        calcul_standard_confirme=bool(
+            valeur.get("calcul_standard_confirme", False)
+        ),
+    )
+    return valider_cotisations_excedentaires_2025(cotisations)
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
@@ -699,6 +834,7 @@ def sauvegarder_dossier_fiscal(
     frais_scolarite: FraisScolarite2025 | None = None,
     credit_deficience: CreditDeficience2025 | None = None,
     assurance_medicaments: AssuranceMedicamentsQuebec2025 | None = None,
+    cotisations_excedentaires: CotisationsExcedentaires2025 | None = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -752,6 +888,9 @@ def sauvegarder_dossier_fiscal(
         ),
         "assurance_medicaments": _assurance_medicaments_vers_dict(
             assurance_medicaments
+        ),
+        "cotisations_excedentaires": _cotisations_excedentaires_vers_dict(
+            cotisations_excedentaires
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
@@ -878,6 +1017,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     assurance_medicaments = _assurance_medicaments_depuis_dict(
         contenu.get("assurance_medicaments")
     )
+    cotisations_excedentaires = _cotisations_excedentaires_depuis_dict(
+        contenu.get("cotisations_excedentaires")
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -894,6 +1036,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         frais_scolarite=frais_scolarite,
         credit_deficience=credit_deficience,
         assurance_medicaments=assurance_medicaments,
+        cotisations_excedentaires=cotisations_excedentaires,
     )
 
 

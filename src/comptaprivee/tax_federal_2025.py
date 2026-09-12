@@ -50,6 +50,7 @@ def _verifier(base: BaseFiscaleEmploi2025, revenu: RevenuNetImposable2025) -> No
 def calculer_impot_federal_preliminaire_2025(
     base: BaseFiscaleEmploi2025,
     revenu: RevenuNetImposable2025,
+    utiliser_cotisations_attendues: bool = False,
 ) -> ImpotFederalPreliminaire2025:
     _verifier(base, revenu)
     attendues = calculer_cotisations_attendues_2025(base)
@@ -58,15 +59,26 @@ def calculer_impot_federal_preliminaire_2025(
         attendues.rrq_ba - attendues.rrq_premiere_supplementaire
     )
 
+    ae_source = (
+        attendues.assurance_emploi
+        if utiliser_cotisations_attendues
+        else base.assurance_emploi
+    )
+    rqap_source = (
+        attendues.rqap
+        if utiliser_cotisations_attendues
+        else base.rqap
+    )
+
     ae = (
         ZERO
         if base.gains_assurables_ae <= MIN_INSURABLE_EARNINGS_CREDIT
-        else base.assurance_emploi
+        else ae_source
     )
     rqap = (
         ZERO
         if base.gains_assurables_rqap < MIN_INSURABLE_EARNINGS_CREDIT
-        else base.rqap
+        else rqap_source
     )
 
     bpa = montant_personnel_base_federal_2025(revenu.revenu_net_federal)
