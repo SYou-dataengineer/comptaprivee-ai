@@ -22,6 +22,10 @@ from .tax_donations_2025 import (
     DonsBienfaisance2025,
     valider_dons_bienfaisance_2025,
 )
+from .tax_disability_2025 import (
+    CreditDeficience2025,
+    valider_credit_deficience_2025,
+)
 from .tax_medical_expenses_2025 import (
     FraisMedicaux2025,
     valider_frais_medicaux_2025,
@@ -69,6 +73,7 @@ class DossierFiscalEnregistre:
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
     frais_scolarite: FraisScolarite2025
+    credit_deficience: CreditDeficience2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -493,6 +498,97 @@ def _frais_scolarite_depuis_dict(
     return valider_frais_scolarite_2025(frais)
 
 
+def _credit_deficience_vers_dict(
+    credit: CreditDeficience2025 | None,
+):
+    if credit is None:
+        credit = CreditDeficience2025()
+
+    valider_credit_deficience_2025(credit)
+
+    return {
+        "reclamer_federal": bool(credit.reclamer_federal),
+        "reclamer_quebec": bool(credit.reclamer_quebec),
+        "source_federale": credit.source_federale,
+        "source_quebec": credit.source_quebec,
+        "valide_par_comptable": bool(credit.valide_par_comptable),
+        "age_18_plus_au_1_janvier_2025": bool(
+            credit.age_18_plus_au_1_janvier_2025
+        ),
+        "deficience_12_mois_confirmee": bool(
+            credit.deficience_12_mois_confirmee
+        ),
+        "profil_soi_meme_resident_quebec": bool(
+            credit.profil_soi_meme_resident_quebec
+        ),
+        "ciph_approuve_arc": bool(credit.ciph_approuve_arc),
+        "attestation_quebec_confirmee": bool(
+            credit.attestation_quebec_confirmee
+        ),
+        "aucun_conflit_soins_prepose_etablissement": bool(
+            credit.aucun_conflit_soins_prepose_etablissement
+        ),
+        "aucun_transfert_federal": bool(
+            credit.aucun_transfert_federal
+        ),
+    }
+
+
+def _credit_deficience_depuis_dict(
+    valeur: Any,
+) -> CreditDeficience2025:
+    if valeur is None:
+        return CreditDeficience2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Le crédit handicap/déficience enregistré est invalide."
+        )
+
+    credit = CreditDeficience2025(
+        reclamer_federal=bool(
+            valeur.get("reclamer_federal", False)
+        ),
+        reclamer_quebec=bool(
+            valeur.get("reclamer_quebec", False)
+        ),
+        source_federale=str(
+            valeur.get("source_federale", "")
+        ),
+        source_quebec=str(
+            valeur.get("source_quebec", "")
+        ),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        age_18_plus_au_1_janvier_2025=bool(
+            valeur.get("age_18_plus_au_1_janvier_2025", False)
+        ),
+        deficience_12_mois_confirmee=bool(
+            valeur.get("deficience_12_mois_confirmee", False)
+        ),
+        profil_soi_meme_resident_quebec=bool(
+            valeur.get("profil_soi_meme_resident_quebec", False)
+        ),
+        ciph_approuve_arc=bool(
+            valeur.get("ciph_approuve_arc", False)
+        ),
+        attestation_quebec_confirmee=bool(
+            valeur.get("attestation_quebec_confirmee", False)
+        ),
+        aucun_conflit_soins_prepose_etablissement=bool(
+            valeur.get(
+                "aucun_conflit_soins_prepose_etablissement",
+                False,
+            )
+        ),
+        aucun_transfert_federal=bool(
+            valeur.get("aucun_transfert_federal", False)
+        ),
+    )
+    return valider_credit_deficience_2025(credit)
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
@@ -504,6 +600,7 @@ def sauvegarder_dossier_fiscal(
     dons_bienfaisance: DonsBienfaisance2025 | None = None,
     frais_medicaux: FraisMedicaux2025 | None = None,
     frais_scolarite: FraisScolarite2025 | None = None,
+    credit_deficience: CreditDeficience2025 | None = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -551,6 +648,9 @@ def sauvegarder_dossier_fiscal(
         ),
         "frais_scolarite": _frais_scolarite_vers_dict(
             frais_scolarite
+        ),
+        "credit_deficience": _credit_deficience_vers_dict(
+            credit_deficience
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
@@ -671,6 +771,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     frais_scolarite = _frais_scolarite_depuis_dict(
         contenu.get("frais_scolarite")
     )
+    credit_deficience = _credit_deficience_depuis_dict(
+        contenu.get("credit_deficience")
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -685,6 +788,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         dons_bienfaisance=dons_bienfaisance,
         frais_medicaux=frais_medicaux,
         frais_scolarite=frais_scolarite,
+        credit_deficience=credit_deficience,
     )
 
 

@@ -11,6 +11,10 @@ from .tax_donations_2025 import (
     credit_federal_dons_2025,
     credit_quebec_dons_2025,
 )
+from .tax_disability_2025 import (
+    credit_federal_handicap_2025,
+    credit_quebec_deficience_2025,
+)
 from .tax_medical_expenses_2025 import (
     credit_federal_frais_medicaux_2025,
     credit_quebec_frais_medicaux_2025,
@@ -89,6 +93,7 @@ def construire_trace_calcul_fiscal_2025(
     dons = estimation.dons_bienfaisance
     frais_medicaux = estimation.frais_medicaux
     frais_scolarite = estimation.frais_scolarite
+    credit_deficience = estimation.credit_deficience
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -119,6 +124,10 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_federal += (
             " - crédit frais de scolarité ligne 32300"
         )
+    if credit_deficience.reclamer_federal:
+        formule_impot_federal += (
+            " - crédit handicap ligne 31600"
+        )
 
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
     if cotisations.montant_quebec_admissible > Decimal("0"):
@@ -132,6 +141,10 @@ def construire_trace_calcul_fiscal_2025(
     if frais_scolarite.montant_admissible_quebec > Decimal("0"):
         formule_impot_quebec += (
             " - crédit frais de scolarité/examen ligne 398"
+        )
+    if credit_deficience.reclamer_quebec:
+        formule_impot_quebec += (
+            " - crédit déficience ligne 376"
         )
 
     if dossier.annee_fiscale != 2025:
@@ -438,6 +451,52 @@ def construire_trace_calcul_fiscal_2025(
                 ),
                 credit_quebec_frais_scolarite_2025(
                     frais_scolarite
+                ),
+            ),
+        )
+
+    if credit_deficience.reclamer_federal:
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt fédéral de base",
+            _ligne(
+                0,
+                "FÉDÉRAL",
+                "Crédit fédéral pour personnes handicapées",
+                (
+                    "ARC ligne 31600 — "
+                    + credit_deficience.source_federale
+                    + " — admissibilité CIPH validée"
+                ),
+                (
+                    "Montant fédéral 2025 de 10 138 $ × 14,5 % "
+                    "— personne elle-même, 18 ans ou plus"
+                ),
+                credit_federal_handicap_2025(
+                    credit_deficience
+                ),
+            ),
+        )
+
+    if credit_deficience.reclamer_quebec:
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt Québec préliminaire",
+            _ligne(
+                0,
+                "QUÉBEC",
+                "Crédit Québec pour déficience grave et prolongée",
+                (
+                    "Revenu Québec ligne 376 — "
+                    + credit_deficience.source_quebec
+                    + " — attestation professionnelle validée"
+                ),
+                (
+                    "Montant Québec 2025 de 4 123 $ × 14 % "
+                    "— profil simple validé"
+                ),
+                credit_quebec_deficience_2025(
+                    credit_deficience
                 ),
             ),
         )

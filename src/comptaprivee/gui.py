@@ -147,6 +147,10 @@ from .tax_tuition_2025 import (
     FraisScolarite2025,
     valider_frais_scolarite_2025,
 )
+from .tax_disability_2025 import (
+    CreditDeficience2025,
+    valider_credit_deficience_2025,
+)
 from .tax_estimation_2025 import (
     calculer_estimation_fiscale_2025,
     formater_estimation_fiscale_2025,
@@ -2377,6 +2381,7 @@ class ApplicationComptaPrivee(tk.Tk):
         dons_bienfaisance_courants = DonsBienfaisance2025()
         frais_medicaux_courants = FraisMedicaux2025()
         frais_scolarite_courants = FraisScolarite2025()
+        credit_deficience_courant = CreditDeficience2025()
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
 
@@ -3041,6 +3046,339 @@ class ApplicationComptaPrivee(tk.Tk):
             actions = ttk.Frame(cadre)
             actions.grid(
                 row=17,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(16, 0),
+            )
+
+            ttk.Button(
+                actions,
+                text="Effacer",
+                command=effacer,
+            ).pack(side="left")
+
+            ttk.Button(
+                actions,
+                text="Fermer",
+                command=dialogue.destroy,
+            ).pack(side="right")
+
+            ttk.Button(
+                actions,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right", padx=(0, 8))
+
+        def ouvrir_credit_deficience_2025() -> None:
+            nonlocal credit_deficience_courant
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Handicap / déficience 2025 — ComptaPrivée AI"
+            )
+            dialogue.geometry("820x720")
+            dialogue.minsize(760, 640)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            cadre = ttk.Frame(dialogue, padding=16)
+            cadre.pack(fill="both", expand=True)
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Crédits handicap / déficience 2025",
+                font=("Segoe UI", 16, "bold"),
+            ).grid(
+                row=0,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil actuel : crédit pour la personne elle-même, "
+                    "18 ans ou plus au 1er janvier 2025, sans transfert "
+                    "fédéral. L'admissibilité et les pièces doivent être "
+                    "validées par le comptable."
+                ),
+                foreground="#166534",
+                wraplength=710,
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 12),
+            )
+
+            reclamer_fed_var = tk.BooleanVar(
+                value=credit_deficience_courant.reclamer_federal
+            )
+            reclamer_qc_var = tk.BooleanVar(
+                value=credit_deficience_courant.reclamer_quebec
+            )
+            source_fed_var = tk.StringVar(
+                value=credit_deficience_courant.source_federale
+            )
+            source_qc_var = tk.StringVar(
+                value=credit_deficience_courant.source_quebec
+            )
+            validation_var = tk.BooleanVar(
+                value=credit_deficience_courant.valide_par_comptable
+            )
+            age_var = tk.BooleanVar(
+                value=(
+                    credit_deficience_courant
+                    .age_18_plus_au_1_janvier_2025
+                )
+            )
+            duree_var = tk.BooleanVar(
+                value=(
+                    credit_deficience_courant
+                    .deficience_12_mois_confirmee
+                )
+            )
+            profil_var = tk.BooleanVar(
+                value=(
+                    credit_deficience_courant
+                    .profil_soi_meme_resident_quebec
+                )
+            )
+            ciph_var = tk.BooleanVar(
+                value=credit_deficience_courant.ciph_approuve_arc
+            )
+            attestation_qc_var = tk.BooleanVar(
+                value=(
+                    credit_deficience_courant
+                    .attestation_quebec_confirmee
+                )
+            )
+            aucun_conflit_var = tk.BooleanVar(
+                value=(
+                    credit_deficience_courant
+                    .aucun_conflit_soins_prepose_etablissement
+                )
+            )
+            aucun_transfert_var = tk.BooleanVar(
+                value=credit_deficience_courant.aucun_transfert_federal
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text=(
+                    "Réclamer le montant fédéral — ligne 31600 "
+                    "(10 138 $)"
+                ),
+                variable=reclamer_fed_var,
+            ).grid(
+                row=2,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=4,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Source fédérale / T2201 / décision ARC :",
+            ).grid(
+                row=3,
+                column=0,
+                sticky="w",
+                pady=5,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=source_fed_var,
+                width=48,
+            ).grid(
+                row=3,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text=(
+                    "Réclamer le montant Québec — ligne 376 "
+                    "(4 123 $)"
+                ),
+                variable=reclamer_qc_var,
+            ).grid(
+                row=4,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=4,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Source Québec / attestation professionnelle :",
+            ).grid(
+                row=5,
+                column=0,
+                sticky="w",
+                pady=5,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=source_qc_var,
+                width=48,
+            ).grid(
+                row=5,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=5,
+            )
+
+            confirmations = (
+                (
+                    "Admissibilité validée par le comptable",
+                    validation_var,
+                ),
+                (
+                    "18 ans ou plus au 1er janvier 2025",
+                    age_var,
+                ),
+                (
+                    "Déficience d'au moins 12 mois confirmée",
+                    duree_var,
+                ),
+                (
+                    "Crédit réclamé pour soi-même — résident Québec/Canada",
+                    profil_var,
+                ),
+                (
+                    "CIPH / T2201 approuvé par l'ARC",
+                    ciph_var,
+                ),
+                (
+                    "Attestation professionnelle Québec confirmée",
+                    attestation_qc_var,
+                ),
+                (
+                    "Aucun conflit avec soins de préposé / établissement",
+                    aucun_conflit_var,
+                ),
+                (
+                    "Aucun transfert fédéral du montant pour handicap",
+                    aucun_transfert_var,
+                ),
+            )
+
+            for ligne, (libelle, variable) in enumerate(
+                confirmations,
+                start=6,
+            ):
+                ttk.Checkbutton(
+                    cadre,
+                    text=libelle,
+                    variable=variable,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    columnspan=2,
+                    sticky="w",
+                    pady=3,
+                )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Cette version ne traite pas les transferts du montant "
+                    "fédéral ni les règles particulières liées aux soins "
+                    "en établissement ou aux frais d'un préposé."
+                ),
+                foreground="#92400e",
+                wraplength=710,
+            ).grid(
+                row=14,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(12, 8),
+            )
+
+            def effacer() -> None:
+                reclamer_fed_var.set(False)
+                reclamer_qc_var.set(False)
+                source_fed_var.set("")
+                source_qc_var.set("")
+                validation_var.set(False)
+                age_var.set(False)
+                duree_var.set(False)
+                profil_var.set(False)
+                ciph_var.set(False)
+                attestation_qc_var.set(False)
+                aucun_conflit_var.set(False)
+                aucun_transfert_var.set(False)
+
+            def appliquer() -> None:
+                nonlocal credit_deficience_courant
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    nouveau_credit = CreditDeficience2025(
+                        reclamer_federal=reclamer_fed_var.get(),
+                        reclamer_quebec=reclamer_qc_var.get(),
+                        source_federale=source_fed_var.get().strip(),
+                        source_quebec=source_qc_var.get().strip(),
+                        valide_par_comptable=validation_var.get(),
+                        age_18_plus_au_1_janvier_2025=age_var.get(),
+                        deficience_12_mois_confirmee=duree_var.get(),
+                        profil_soi_meme_resident_quebec=profil_var.get(),
+                        ciph_approuve_arc=ciph_var.get(),
+                        attestation_quebec_confirmee=(
+                            attestation_qc_var.get()
+                        ),
+                        aucun_conflit_soins_prepose_etablissement=(
+                            aucun_conflit_var.get()
+                        ),
+                        aucun_transfert_federal=(
+                            aucun_transfert_var.get()
+                        ),
+                    )
+                    nouveau_credit = valider_credit_deficience_2025(
+                        nouveau_credit
+                    )
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Crédit handicap / déficience invalide",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                credit_deficience_courant = nouveau_credit
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                self.statut.set(
+                    "Crédit handicap / déficience 2025 mis à jour"
+                )
+
+                messagebox.showinfo(
+                    "Handicap / déficience 2025",
+                    (
+                        "Les validations handicap/déficience ont été "
+                        "enregistrées pour le prochain calcul fiscal."
+                    ),
+                    parent=dialogue,
+                )
+                dialogue.destroy()
+
+            actions = ttk.Frame(cadre)
+            actions.grid(
+                row=15,
                 column=0,
                 columnspan=2,
                 sticky="ew",
@@ -4495,6 +4833,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal dons_bienfaisance_courants
             nonlocal frais_medicaux_courants
             nonlocal frais_scolarite_courants
+            nonlocal credit_deficience_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -4520,6 +4859,7 @@ class ApplicationComptaPrivee(tk.Tk):
             dons_bienfaisance_courants = DonsBienfaisance2025()
             frais_medicaux_courants = FraisMedicaux2025()
             frais_scolarite_courants = FraisScolarite2025()
+            credit_deficience_courant = CreditDeficience2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -4634,6 +4974,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             ),
                             frais_medicaux=frais_medicaux_courants,
                             frais_scolarite=frais_scolarite_courants,
+                            credit_deficience=credit_deficience_courant,
                         )
                     )
                 except (ValueError, Exception):
@@ -4667,6 +5008,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     dons_bienfaisance=dons_bienfaisance_courants,
                     frais_medicaux=frais_medicaux_courants,
                     frais_scolarite=frais_scolarite_courants,
+                    credit_deficience=credit_deficience_courant,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -4739,6 +5081,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal dons_bienfaisance_courants
             nonlocal frais_medicaux_courants
             nonlocal frais_scolarite_courants
+            nonlocal credit_deficience_courant
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -4788,6 +5131,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             frais_scolarite_courants = (
                 enregistrement.frais_scolarite
+            )
+            credit_deficience_courant = (
+                enregistrement.credit_deficience
             )
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
@@ -5062,6 +5408,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     dons_bienfaisance=dons_bienfaisance_courants,
                     frais_medicaux=frais_medicaux_courants,
                     frais_scolarite=frais_scolarite_courants,
+                    credit_deficience=credit_deficience_courant,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation
@@ -5350,6 +5697,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_actions,
             text="Frais de scolarité 2025",
             command=ouvrir_frais_scolarite_2025,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        ttk.Button(
+            zone_actions,
+            text="Handicap / déficience 2025",
+            command=ouvrir_credit_deficience_2025,
         ).pack(
             side="left",
             padx=(8, 0),

@@ -17,6 +17,12 @@ from .tax_tuition_2025 import (
     credit_federal_frais_scolarite_2025,
     credit_quebec_frais_scolarite_2025,
 )
+from .tax_disability_2025 import (
+    MONTANT_FEDERAL_HANDICAP_2025,
+    MONTANT_QUEBEC_DEFICIENCE_2025,
+    credit_federal_handicap_2025,
+    credit_quebec_deficience_2025,
+)
 
 
 def nom_rapport_fiscal_pdf_2025(estimation: EstimationFiscale2025) -> str:
@@ -36,6 +42,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     x = estimation.rapprochement
     medical = estimation.frais_medicaux
     scolarite = estimation.frais_scolarite
+    deficience = estimation.credit_deficience
 
     montant = (
         x.remboursement_estime
@@ -253,6 +260,137 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     + (
                         "oui"
                         if scolarite.aucun_transfert
+                        else "non"
+                    )
+                ),
+            ]
+        )
+
+    if (
+        deficience.reclamer_federal
+        or deficience.reclamer_quebec
+    ):
+        lignes.extend(
+            [
+                "",
+                "HANDICAP / DÉFICIENCE VALIDÉ(E)",
+            ]
+        )
+
+        if deficience.reclamer_federal:
+            lignes.extend(
+                [
+                    (
+                        "Montant fédéral — ligne 31600 : "
+                        f"{formater_montant_estimation(
+                            MONTANT_FEDERAL_HANDICAP_2025
+                        )}"
+                    ),
+                    (
+                        "Crédit fédéral — ligne 31600 : "
+                        f"{formater_montant_estimation(
+                            credit_federal_handicap_2025(
+                                deficience
+                            )
+                        )}"
+                    ),
+                    (
+                        "Source fédérale : "
+                        f"{deficience.source_federale}"
+                    ),
+                ]
+            )
+
+        if deficience.reclamer_quebec:
+            lignes.extend(
+                [
+                    (
+                        "Montant Québec — ligne 376 : "
+                        f"{formater_montant_estimation(
+                            MONTANT_QUEBEC_DEFICIENCE_2025
+                        )}"
+                    ),
+                    (
+                        "Crédit Québec — ligne 376 : "
+                        f"{formater_montant_estimation(
+                            credit_quebec_deficience_2025(
+                                deficience
+                            )
+                        )}"
+                    ),
+                    (
+                        "Source Québec : "
+                        f"{deficience.source_quebec}"
+                    ),
+                ]
+            )
+
+        lignes.extend(
+            [
+                (
+                    "Validation comptable : "
+                    + (
+                        "confirmée"
+                        if deficience.valide_par_comptable
+                        else "non confirmée"
+                    )
+                ),
+                (
+                    "18 ans ou plus au 1er janvier 2025 : "
+                    + (
+                        "oui"
+                        if deficience.age_18_plus_au_1_janvier_2025
+                        else "non"
+                    )
+                ),
+                (
+                    "Déficience d'au moins 12 mois : "
+                    + (
+                        "confirmée"
+                        if deficience.deficience_12_mois_confirmee
+                        else "non confirmée"
+                    )
+                ),
+                (
+                    "Profil pour soi-même Québec/Canada : "
+                    + (
+                        "confirmé"
+                        if deficience.profil_soi_meme_resident_quebec
+                        else "non confirmé"
+                    )
+                ),
+                (
+                    "CIPH / T2201 approuvé par l'ARC : "
+                    + (
+                        "oui"
+                        if deficience.ciph_approuve_arc
+                        else "non"
+                    )
+                ),
+                (
+                    "Attestation professionnelle Québec : "
+                    + (
+                        "confirmée"
+                        if deficience.attestation_quebec_confirmee
+                        else "non confirmée"
+                    )
+                ),
+                (
+                    "Aucun conflit soins préposé / établissement : "
+                    + (
+                        "oui"
+                        if (
+                            deficience
+                            .aucun_conflit_soins_prepose_etablissement
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucun transfert fédéral : "
+                    + (
+                        "oui"
+                        if deficience.aucun_transfert_federal
                         else "non"
                     )
                 ),

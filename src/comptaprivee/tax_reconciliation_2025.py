@@ -145,16 +145,37 @@ def calculer_rapprochement_fiscal_2025(
         )
         in quebec.limitations
     )
+    credit_handicap_inclus = (
+        "Crédit fédéral pour personnes handicapées inclus."
+        in federal.limitations
+        or (
+            "Crédit Québec pour déficience grave et prolongée inclus."
+            in quebec.limitations
+        )
+    )
 
-    if credit_medical_inclus and credit_scolarite_inclus:
-        limitation_credits = "Aucun crédit familial ou handicap."
-    elif credit_medical_inclus:
-        limitation_credits = "Aucun crédit familial, étude ou handicap."
-    elif credit_scolarite_inclus:
-        limitation_credits = "Aucun crédit familial, médical ou handicap."
+    credits_absents = ["familial"]
+    if not credit_medical_inclus:
+        credits_absents.append("médical")
+    if not credit_scolarite_inclus:
+        credits_absents.append("étude")
+    if not credit_handicap_inclus:
+        credits_absents.append("handicap")
+
+    if len(credits_absents) == 1:
+        limitation_credits = "Aucun crédit familial."
+    elif len(credits_absents) == 2:
+        limitation_credits = (
+            f"Aucun crédit {credits_absents[0]} "
+            f"ou {credits_absents[1]}."
+        )
     else:
         limitation_credits = (
-            "Aucun crédit familial, médical, étude ou handicap."
+            "Aucun crédit "
+            + ", ".join(credits_absents[:-1])
+            + " ou "
+            + credits_absents[-1]
+            + "."
         )
 
     return RapprochementFiscal2025(

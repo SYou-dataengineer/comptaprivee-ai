@@ -22,6 +22,13 @@ from .tax_donations_2025 import (
     credit_federal_dons_2025,
     credit_quebec_dons_2025,
 )
+from .tax_disability_2025 import (
+    CreditDeficience2025,
+    appliquer_credit_federal_handicap_2025,
+    appliquer_credit_quebec_deficience_2025,
+    credit_federal_handicap_2025,
+    credit_quebec_deficience_2025,
+)
 from .tax_medical_expenses_2025 import (
     FraisMedicaux2025,
     appliquer_credit_federal_frais_medicaux_2025,
@@ -78,6 +85,7 @@ class EstimationFiscale2025:
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
     frais_scolarite: FraisScolarite2025
+    credit_deficience: CreditDeficience2025
 
 
 def calculer_estimation_fiscale_2025(
@@ -89,6 +97,7 @@ def calculer_estimation_fiscale_2025(
     dons_bienfaisance: DonsBienfaisance2025 | None = None,
     frais_medicaux: FraisMedicaux2025 | None = None,
     frais_scolarite: FraisScolarite2025 | None = None,
+    credit_deficience: CreditDeficience2025 | None = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
     if dossier.annee_fiscale != 2025:
@@ -139,6 +148,12 @@ def calculer_estimation_fiscale_2025(
         else FraisScolarite2025()
     )
 
+    credit_deficience_effectif = (
+        credit_deficience
+        if credit_deficience is not None
+        else CreditDeficience2025()
+    )
+
     federal = calculer_impot_federal_preliminaire_2025(base, revenu)
     federal = appliquer_credit_federal_dons_2025(
         federal,
@@ -153,6 +168,10 @@ def calculer_estimation_fiscale_2025(
     federal = appliquer_credit_federal_frais_scolarite_2025(
         federal,
         frais_scolarite_effectifs,
+    )
+    federal = appliquer_credit_federal_handicap_2025(
+        federal,
+        credit_deficience_effectif,
     )
     quebec = calculer_impot_quebec_preliminaire_2025(revenu)
     quebec = appliquer_credit_quebec_cotisations_2025(
@@ -173,6 +192,10 @@ def calculer_estimation_fiscale_2025(
         quebec,
         frais_scolarite_effectifs,
     )
+    quebec = appliquer_credit_quebec_deficience_2025(
+        quebec,
+        credit_deficience_effectif,
+    )
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
         federal,
@@ -191,6 +214,7 @@ def calculer_estimation_fiscale_2025(
         dons_bienfaisance=dons_effectifs,
         frais_medicaux=frais_medicaux_effectifs,
         frais_scolarite=frais_scolarite_effectifs,
+        credit_deficience=credit_deficience_effectif,
     )
 
 
@@ -335,6 +359,41 @@ def formater_estimation_fiscale_2025(
                 > Decimal("0")
                 or estimation.frais_scolarite.montant_admissible_quebec
                 > Decimal("0")
+            )
+            else []
+        ),
+        *(
+            [
+                "",
+                "HANDICAP / DÉFICIENCE VALIDÉ(E)",
+                *(
+                    [
+                        "Montant fédéral — ligne 31600 : "
+                        "10 138,00 $",
+                        "Crédit fédéral — ligne 31600 : "
+                        f"{formater_montant_estimation(credit_federal_handicap_2025(estimation.credit_deficience))}",
+                        "Source fédérale : "
+                        f"{estimation.credit_deficience.source_federale}",
+                    ]
+                    if estimation.credit_deficience.reclamer_federal
+                    else []
+                ),
+                *(
+                    [
+                        "Montant Québec — ligne 376 : "
+                        "4 123,00 $",
+                        "Crédit Québec — ligne 376 : "
+                        f"{formater_montant_estimation(credit_quebec_deficience_2025(estimation.credit_deficience))}",
+                        "Source Québec : "
+                        f"{estimation.credit_deficience.source_quebec}",
+                    ]
+                    if estimation.credit_deficience.reclamer_quebec
+                    else []
+                ),
+            ]
+            if (
+                estimation.credit_deficience.reclamer_federal
+                or estimation.credit_deficience.reclamer_quebec
             )
             else []
         ),
