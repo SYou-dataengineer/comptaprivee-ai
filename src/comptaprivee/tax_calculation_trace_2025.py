@@ -14,6 +14,11 @@ from .tax_age_retirement_2025 import (
     montant_revenus_retraite_2025,
     reduction_annexe_b_age_retraite_2025,
 )
+from .tax_federal_caregiver_child_2025 import (
+    credit_federal_aidant_enfant_moins18_2025,
+    montant_ligne_30500_2025,
+    nombre_enfants_ligne_30499_2025,
+)
 from .tax_federal_eligible_dependant_2025 import (
     credit_federal_personne_charge_admissible_2025,
     montant_ligne_30400_2025,
@@ -135,6 +140,9 @@ def construire_trace_calcul_fiscal_2025(
     personne_charge_admissible_federale = (
         estimation.personne_charge_admissible_federale
     )
+    aidant_enfant_federal = (
+        estimation.aidant_enfant_federal
+    )
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -183,6 +191,10 @@ def construire_trace_calcul_fiscal_2025(
     if personne_charge_admissible_federale.reclamer_montant:
         formule_impot_federal += (
             " - crédit personne à charge admissible ligne 30400"
+        )
+    if aidant_enfant_federal.reclamer_montant:
+        formule_impot_federal += (
+            " - crédit aidant naturel enfant ligne 30500"
         )
 
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
@@ -526,6 +538,42 @@ def construire_trace_calcul_fiscal_2025(
                 ),
                 credit_quebec_frais_scolarite_2025(
                     frais_scolarite
+                ),
+            ),
+        )
+
+    if aidant_enfant_federal.reclamer_montant:
+        montant_30500 = montant_ligne_30500_2025(
+            aidant_enfant_federal
+        )
+        nombre_enfants_30499 = nombre_enfants_ligne_30499_2025(
+            aidant_enfant_federal
+        )
+
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt fédéral de base",
+            _ligne(
+                0,
+                "FÉDÉRAL",
+                "Crédit fédéral — aidant naturel enfant de moins de 18 ans",
+                (
+                    "ARC lignes 30499 / 30500 — "
+                    + aidant_enfant_federal.source_enfant
+                    + " — validation comptable"
+                ),
+                (
+                    str(nombre_enfants_30499)
+                    + " enfant admissible × "
+                    + formater_montant_estimation(montant_30500)
+                    + " = ligne 30500 "
+                    + formater_montant_estimation(montant_30500)
+                    + "; crédit fédéral × 14,5 % — "
+                    + "preuve médicale ou T2201 confirmée, "
+                    + "aucune garde partagée, aucune pension alimentaire"
+                ),
+                credit_federal_aidant_enfant_moins18_2025(
+                    aidant_enfant_federal
                 ),
             ),
         )

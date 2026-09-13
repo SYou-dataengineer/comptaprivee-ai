@@ -46,6 +46,10 @@ from .tax_federal_spouse_2025 import (
     MontantConjointFederal2025,
     valider_montant_conjoint_federal_2025,
 )
+from .tax_federal_caregiver_child_2025 import (
+    AidantNaturelEnfantMoins18Federal2025,
+    valider_aidant_naturel_enfant_moins18_federal_2025,
+)
 from .tax_federal_eligible_dependant_2025 import (
     MontantPersonneChargeAdmissibleFederal2025,
     valider_montant_personne_charge_admissible_federal_2025,
@@ -109,6 +113,7 @@ class DossierFiscalEnregistre:
     credits_federaux_age_pension: CreditsFederauxAgePension2025
     montant_conjoint_federal: MontantConjointFederal2025
     personne_charge_admissible_federale: MontantPersonneChargeAdmissibleFederal2025
+    aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -1436,6 +1441,130 @@ def _personne_charge_admissible_federale_depuis_dict(
         profil
     )
 
+
+def _aidant_enfant_federal_vers_dict(
+    profil: AidantNaturelEnfantMoins18Federal2025 | None,
+):
+    if profil is None:
+        profil = AidantNaturelEnfantMoins18Federal2025()
+
+    valider_aidant_naturel_enfant_moins18_federal_2025(profil)
+
+    return {
+        "reclamer_montant": bool(profil.reclamer_montant),
+        "enfant_biologique_ou_adopte": bool(
+            profil.enfant_biologique_ou_adopte
+        ),
+        "enfant_moins_18_fin_2025": bool(
+            profil.enfant_moins_18_fin_2025
+        ),
+        "infirmite_physique_ou_mentale": bool(
+            profil.infirmite_physique_ou_mentale
+        ),
+        "dependance_longue_continue_duree_indeterminee": bool(
+            profil.dependance_longue_continue_duree_indeterminee
+        ),
+        "besoin_aide_beaucoup_plus_que_meme_age": bool(
+            profil.besoin_aide_beaucoup_plus_que_meme_age
+        ),
+        "enfant_avec_deux_parents_toute_annee": bool(
+            profil.enfant_avec_deux_parents_toute_annee
+        ),
+        "aucune_garde_partagee": bool(
+            profil.aucune_garde_partagee
+        ),
+        "aucune_pension_alimentaire": bool(
+            profil.aucune_pension_alimentaire
+        ),
+        "aucun_autre_reclamant_30500": bool(
+            profil.aucun_autre_reclamant_30500
+        ),
+        "aucun_transfert_conjoint_32600": bool(
+            profil.aucun_transfert_conjoint_32600
+        ),
+        "preuve_medicale_ou_t2201_confirmee": bool(
+            profil.preuve_medicale_ou_t2201_confirmee
+        ),
+        "valide_par_comptable": bool(
+            profil.valide_par_comptable
+        ),
+        "source_enfant": profil.source_enfant,
+    }
+
+
+def _aidant_enfant_federal_depuis_dict(
+    valeur: Any,
+) -> AidantNaturelEnfantMoins18Federal2025:
+    if valeur is None:
+        return AidantNaturelEnfantMoins18Federal2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Le montant fédéral pour aidant naturel enfant "
+            "enregistré est invalide."
+        )
+
+    profil = AidantNaturelEnfantMoins18Federal2025(
+        reclamer_montant=bool(
+            valeur.get("reclamer_montant", False)
+        ),
+        enfant_biologique_ou_adopte=bool(
+            valeur.get("enfant_biologique_ou_adopte", False)
+        ),
+        enfant_moins_18_fin_2025=bool(
+            valeur.get("enfant_moins_18_fin_2025", False)
+        ),
+        infirmite_physique_ou_mentale=bool(
+            valeur.get("infirmite_physique_ou_mentale", False)
+        ),
+        dependance_longue_continue_duree_indeterminee=bool(
+            valeur.get(
+                "dependance_longue_continue_duree_indeterminee",
+                False,
+            )
+        ),
+        besoin_aide_beaucoup_plus_que_meme_age=bool(
+            valeur.get(
+                "besoin_aide_beaucoup_plus_que_meme_age",
+                False,
+            )
+        ),
+        enfant_avec_deux_parents_toute_annee=bool(
+            valeur.get(
+                "enfant_avec_deux_parents_toute_annee",
+                False,
+            )
+        ),
+        aucune_garde_partagee=bool(
+            valeur.get("aucune_garde_partagee", False)
+        ),
+        aucune_pension_alimentaire=bool(
+            valeur.get("aucune_pension_alimentaire", False)
+        ),
+        aucun_autre_reclamant_30500=bool(
+            valeur.get("aucun_autre_reclamant_30500", False)
+        ),
+        aucun_transfert_conjoint_32600=bool(
+            valeur.get("aucun_transfert_conjoint_32600", False)
+        ),
+        preuve_medicale_ou_t2201_confirmee=bool(
+            valeur.get(
+                "preuve_medicale_ou_t2201_confirmee",
+                False,
+            )
+        ),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        source_enfant=str(
+            valeur.get("source_enfant", "")
+        ),
+    )
+
+    return valider_aidant_naturel_enfant_moins18_federal_2025(
+        profil
+    )
+
 def _montants_age_retraite_vers_dict(
     profil: MontantsAgeRetraite2025 | None,
 ):
@@ -1622,6 +1751,9 @@ def sauvegarder_dossier_fiscal(
     personne_charge_admissible_federale: (
         MontantPersonneChargeAdmissibleFederal2025 | None
     ) = None,
+    aidant_enfant_federal: (
+        AidantNaturelEnfantMoins18Federal2025 | None
+    ) = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -1694,6 +1826,11 @@ def sauvegarder_dossier_fiscal(
         "personne_charge_admissible_federale": (
             _personne_charge_admissible_federale_vers_dict(
                 personne_charge_admissible_federale
+            )
+        ),
+        "aidant_enfant_federal": (
+            _aidant_enfant_federal_vers_dict(
+                aidant_enfant_federal
             )
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
@@ -1841,6 +1978,11 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             contenu.get("personne_charge_admissible_federale")
         )
     )
+    aidant_enfant_federal = (
+        _aidant_enfant_federal_depuis_dict(
+            contenu.get("aidant_enfant_federal")
+        )
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -1868,6 +2010,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         ),
         personne_charge_admissible_federale=(
             personne_charge_admissible_federale
+        ),
+        aidant_enfant_federal=(
+            aidant_enfant_federal
         ),
     )
 

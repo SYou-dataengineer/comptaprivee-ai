@@ -205,10 +205,16 @@ def calculer_rapprochement_fiscal_2025(
         "ligne 30400 inclus."
         in federal.limitations
     )
+    credit_aidant_enfant_federal_inclus = (
+        "Montant canadien pour aidant naturel enfant de moins de 18 ans "
+        "ligne 30500 inclus."
+        in federal.limitations
+    )
     credit_familial_inclus = (
         credit_personne_seule_inclus
         or credit_conjoint_federal_inclus
         or credit_personne_charge_federal_inclus
+        or credit_aidant_enfant_federal_inclus
     )
     credit_age_retraite_inclus = (
         "Montants Québec en raison de l\'âge ou pour revenus de retraite "
@@ -306,6 +312,13 @@ def calculer_rapprochement_fiscal_2025(
                     "Montant fédéral pour personne à charge admissible ligne 30400 inclus.",
                 )
                 if credit_personne_charge_federal_inclus
+                else ()
+            ),
+            *(
+                (
+                    "Montant canadien pour aidant naturel enfant de moins de 18 ans ligne 30500 inclus.",
+                )
+                if credit_aidant_enfant_federal_inclus
                 else ()
             ),
             *(

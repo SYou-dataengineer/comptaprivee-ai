@@ -13,6 +13,11 @@ from .tax_federal_spouse_2025 import (
     credit_federal_montant_conjoint_2025,
     montant_ligne_30300_2025,
 )
+from .tax_federal_caregiver_child_2025 import (
+    credit_federal_aidant_enfant_moins18_2025,
+    montant_ligne_30500_2025,
+    nombre_enfants_ligne_30499_2025,
+)
 from .tax_federal_eligible_dependant_2025 import (
     credit_federal_personne_charge_admissible_2025,
     montant_ligne_30400_2025,
@@ -86,6 +91,9 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     )
     personne_charge_admissible_federale = (
         estimation.personne_charge_admissible_federale
+    )
+    aidant_enfant_federal = (
+        estimation.aidant_enfant_federal
     )
 
     montant = (
@@ -437,6 +445,71 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                         if deficience.aucun_transfert_federal
                         else "non"
                     )
+                ),
+            ]
+        )
+
+    if aidant_enfant_federal.reclamer_montant:
+        nombre_enfants_30499 = nombre_enfants_ligne_30499_2025(
+            aidant_enfant_federal
+        )
+        montant_30500 = montant_ligne_30500_2025(
+            aidant_enfant_federal
+        )
+        credit_aidant_enfant = (
+            credit_federal_aidant_enfant_moins18_2025(
+                aidant_enfant_federal
+            )
+        )
+
+        lignes.extend(
+            [
+                "",
+                "AIDANT NATUREL - ENFANT DE MOINS DE 18 ANS - FÉDÉRAL 2025",
+                (
+                    "Nombre d'enfants - ligne 30499 : "
+                    f"{nombre_enfants_30499}"
+                ),
+                (
+                    "Montant admissible - ligne 30500 : "
+                    f"{formater_montant_estimation(montant_30500)}"
+                ),
+                (
+                    "Crédit fédéral - ligne 30500 : "
+                    f"{formater_montant_estimation(
+                        credit_aidant_enfant
+                    )}"
+                ),
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                "Enfant biologique ou adopté : oui",
+                "Enfant de moins de 18 ans à la fin de 2025 : oui",
+                "Infirmité physique ou mentale confirmée : oui",
+                (
+                    "Dépendance longue, continue et de durée "
+                    "indéterminée : oui"
+                ),
+                (
+                    "Besoin de beaucoup plus d'aide que les enfants "
+                    "du même âge : oui"
+                ),
+                "Enfant avec ses deux parents toute l'année 2025 : oui",
+                "Aucune garde partagée : oui",
+                "Aucune pension alimentaire : oui",
+                "Aucun autre réclamant ligne 30500 : oui",
+                "Aucun transfert au conjoint - ligne 32600 : oui",
+                (
+                    "Preuve médicale admissible ou T2201 approuvé : "
+                    "confirmée"
+                ),
+                "Validation comptable : confirmée",
+                f"Source : {aidant_enfant_federal.source_enfant}",
+                (
+                    "Ligne 34990 : garde-fou actif pour les profils "
+                    "au-delà de la première tranche fédérale."
+                ),
+                (
+                    "Combinaison ligne 30400 + ligne 30500 : "
+                    "non supportée dans ce profil simple."
                 ),
             ]
         )

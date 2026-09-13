@@ -75,6 +75,15 @@ from .tax_engine_input_2025 import (
     BaseFiscaleEmploi2025,
     consolider_base_fiscale_emploi_2025,
 )
+from .tax_federal_caregiver_child_2025 import (
+    AidantNaturelEnfantMoins18Federal2025,
+    appliquer_credit_federal_aidant_enfant_moins18_2025,
+    credit_federal_aidant_enfant_moins18_2025,
+    integration_sans_credit_compensatoire_autorisee_2025 as integration_aidant_enfant_sans_34990_2025,
+    montant_ligne_30500_2025,
+    nombre_enfants_ligne_30499_2025,
+    valider_aidant_naturel_enfant_moins18_federal_2025,
+)
 from .tax_federal_eligible_dependant_2025 import (
     MontantPersonneChargeAdmissibleFederal2025,
     appliquer_credit_federal_personne_charge_admissible_2025,
@@ -146,6 +155,7 @@ class EstimationFiscale2025:
     credits_federaux_age_pension: CreditsFederauxAgePension2025
     montant_conjoint_federal: MontantConjointFederal2025
     personne_charge_admissible_federale: MontantPersonneChargeAdmissibleFederal2025
+    aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
 
 
 def calculer_estimation_fiscale_2025(
@@ -178,6 +188,9 @@ def calculer_estimation_fiscale_2025(
     ) = None,
     personne_charge_admissible_federale: (
         MontantPersonneChargeAdmissibleFederal2025 | None
+    ) = None,
+    aidant_enfant_federal: (
+        AidantNaturelEnfantMoins18Federal2025 | None
     ) = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
@@ -487,6 +500,40 @@ def calculer_estimation_fiscale_2025(
             "intégrée complètement."
         )
 
+    aidant_enfant_federal_effectif = (
+        aidant_enfant_federal
+        if aidant_enfant_federal is not None
+        else AidantNaturelEnfantMoins18Federal2025()
+    )
+    valider_aidant_naturel_enfant_moins18_federal_2025(
+        aidant_enfant_federal_effectif
+    )
+
+    if (
+        aidant_enfant_federal_effectif.reclamer_montant
+        and personne_charge_admissible_federale_effective.reclamer_montant
+    ):
+        raise ValueError(
+            "Cette première version ne combine pas encore la ligne 30400 "
+            "avec la ligne 30500. Le profil ligne 30500 intégré ici exige "
+            "que l'enfant ait vécu avec ses deux parents pendant toute "
+            "l'année 2025; les situations où la ligne 30400 détermine "
+            "le réclamant seront traitées séparément."
+        )
+
+    if (
+        aidant_enfant_federal_effectif.reclamer_montant
+        and not integration_aidant_enfant_sans_34990_2025(
+            revenu.revenu_imposable_federal
+        )
+    ):
+        raise ValueError(
+            "Ce dossier peut nécessiter le crédit compensatoire fédéral "
+            "de la ligne 34990. Cette première version refuse la ligne "
+            "30500 automatique au-delà de la première tranche tant que "
+            "la ligne 34990 n'est pas intégrée complètement."
+        )
+
     assurance_medicaments_effective = (
         assurance_medicaments
         if assurance_medicaments is not None
@@ -543,6 +590,10 @@ def calculer_estimation_fiscale_2025(
     federal = appliquer_credit_federal_personne_charge_admissible_2025(
         federal,
         personne_charge_admissible_federale_effective,
+    )
+    federal = appliquer_credit_federal_aidant_enfant_moins18_2025(
+        federal,
+        aidant_enfant_federal_effectif,
     )
     quebec = calculer_impot_quebec_preliminaire_2025(revenu)
     quebec = appliquer_credit_quebec_cotisations_2025(
@@ -631,6 +682,9 @@ def calculer_estimation_fiscale_2025(
         ),
         personne_charge_admissible_federale=(
             personne_charge_admissible_federale_effective
+        ),
+        aidant_enfant_federal=(
+            aidant_enfant_federal_effectif
         ),
     )
 
@@ -866,6 +920,46 @@ def formater_estimation_fiscale_2025(
                 f"{estimation.personne_vivant_seule.source}",
             ]
             if estimation.personne_vivant_seule.reclamer_montant
+            else []
+        ),
+        *(
+            [
+                "",
+                "AIDANT NATUREL — ENFANT DE MOINS DE 18 ANS — FÉDÉRAL 2025",
+                "Nombre d'enfants — ligne 30499 : 1",
+                (
+                    "Montant canadien pour aidant naturel — ligne 30500 : "
+                    f"{formater_montant_estimation(
+                        montant_ligne_30500_2025(
+                            estimation.aidant_enfant_federal
+                        )
+                    )}"
+                ),
+                (
+                    "Crédit fédéral calculé : "
+                    f"{formater_montant_estimation(
+                        credit_federal_aidant_enfant_moins18_2025(
+                            estimation.aidant_enfant_federal
+                        )
+                    )}"
+                ),
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                "Enfant de moins de 18 ans : oui",
+                "Infirmité physique ou mentale confirmée : oui",
+                "Besoin de beaucoup plus d'aide que les enfants du même âge : oui",
+                "Enfant avec ses deux parents toute l'année : oui",
+                "Aucune garde partagée : oui",
+                "Aucune pension alimentaire : oui",
+                "Aucun autre réclamant ligne 30500 : oui",
+                "Aucun transfert au conjoint ligne 32600 : oui",
+                "Preuve médicale ou T2201 : confirmée",
+                "Validation comptable : confirmée",
+                (
+                    "Source : "
+                    f"{estimation.aidant_enfant_federal.source_enfant}"
+                ),
+            ]
+            if estimation.aidant_enfant_federal.reclamer_montant
             else []
         ),
         *(

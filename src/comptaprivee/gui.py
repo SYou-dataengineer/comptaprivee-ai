@@ -171,6 +171,10 @@ from .tax_federal_spouse_2025 import (
     MontantConjointFederal2025,
     valider_montant_conjoint_federal_2025,
 )
+from .tax_federal_caregiver_child_2025 import (
+    AidantNaturelEnfantMoins18Federal2025,
+    valider_aidant_naturel_enfant_moins18_federal_2025,
+)
 from .tax_federal_eligible_dependant_2025 import (
     MontantPersonneChargeAdmissibleFederal2025,
     valider_montant_personne_charge_admissible_federal_2025,
@@ -2417,6 +2421,7 @@ class ApplicationComptaPrivee(tk.Tk):
         credits_federaux_age_pension_courants = CreditsFederauxAgePension2025()
         montant_conjoint_federal_courant = MontantConjointFederal2025()
         personne_charge_admissible_federale_courante = MontantPersonneChargeAdmissibleFederal2025()
+        aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
 
@@ -3439,6 +3444,161 @@ class ApplicationComptaPrivee(tk.Tk):
             ).pack(side="right", padx=(0, 8))
 
 
+
+
+
+        def ouvrir_aidant_naturel_enfant_federal_2025() -> None:
+            nonlocal aidant_enfant_federal_courant
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Aidant naturel — enfant < 18 ans — fédéral 2025"
+            )
+            dialogue.geometry("760x720")
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            cadre = ttk.Frame(dialogue, padding=16)
+            cadre.pack(fill="both", expand=True)
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Lignes 30499 / 30500 — montant 2 687 $ — "
+                    "crédit fédéral 14,5 %"
+                ),
+                font=("Segoe UI", 12, "bold"),
+            ).pack(anchor="w", pady=(0, 8))
+
+            reclamer_var = tk.BooleanVar(
+                value=aidant_enfant_federal_courant.reclamer_montant
+            )
+            ttk.Checkbutton(
+                cadre,
+                text="Réclamer les lignes 30499 / 30500",
+                variable=reclamer_var,
+            ).pack(anchor="w", pady=(0, 8))
+
+            champs = [
+                (
+                    "Enfant biologique ou adopté du contribuable ou du conjoint",
+                    "enfant_biologique_ou_adopte",
+                ),
+                (
+                    "Enfant de moins de 18 ans à la fin de 2025",
+                    "enfant_moins_18_fin_2025",
+                ),
+                (
+                    "Infirmité physique ou mentale confirmée",
+                    "infirmite_physique_ou_mentale",
+                ),
+                (
+                    "Dépendance longue, continue et de durée indéterminée",
+                    "dependance_longue_continue_duree_indeterminee",
+                ),
+                (
+                    "Besoin de beaucoup plus d'aide que les enfants du même âge",
+                    "besoin_aide_beaucoup_plus_que_meme_age",
+                ),
+                (
+                    "Enfant avec ses deux parents pendant toute l'année 2025",
+                    "enfant_avec_deux_parents_toute_annee",
+                ),
+                ("Aucune garde partagée", "aucune_garde_partagee"),
+                ("Aucune pension alimentaire", "aucune_pension_alimentaire"),
+                (
+                    "Aucun autre réclamant pour la ligne 30500",
+                    "aucun_autre_reclamant_30500",
+                ),
+                (
+                    "Aucun transfert au conjoint — ligne 32600",
+                    "aucun_transfert_conjoint_32600",
+                ),
+                (
+                    "Preuve médicale admissible ou T2201 approuvé confirmé",
+                    "preuve_medicale_ou_t2201_confirmee",
+                ),
+                ("Validation comptable confirmée", "valide_par_comptable"),
+            ]
+
+            variables = {}
+            for texte, champ in champs:
+                variable = tk.BooleanVar(
+                    value=getattr(aidant_enfant_federal_courant, champ)
+                )
+                variables[champ] = variable
+                ttk.Checkbutton(
+                    cadre,
+                    text=texte,
+                    variable=variable,
+                ).pack(anchor="w", pady=2)
+
+            ttk.Label(
+                cadre,
+                text="Source / justificatif :",
+            ).pack(anchor="w", pady=(10, 4))
+
+            source_var = tk.StringVar(
+                value=aidant_enfant_federal_courant.source_enfant
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=source_var,
+                width=88,
+            ).pack(fill="x")
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Garde-fou ligne 34990 actif. La combinaison "
+                    "ligne 30400 + ligne 30500 est bloquée dans ce profil."
+                ),
+                wraplength=700,
+            ).pack(anchor="w", pady=(10, 8))
+
+            def appliquer() -> None:
+                nonlocal aidant_enfant_federal_courant
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                profil = AidantNaturelEnfantMoins18Federal2025(
+                    reclamer_montant=reclamer_var.get(),
+                    source_enfant=source_var.get().strip(),
+                    **{
+                        champ: variable.get()
+                        for champ, variable in variables.items()
+                    },
+                )
+                try:
+                    valider_aidant_naturel_enfant_moins18_federal_2025(
+                        profil
+                    )
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Aidant naturel — validation",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                aidant_enfant_federal_courant = profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                dialogue.destroy()
+
+            zone = ttk.Frame(cadre)
+            zone.pack(fill="x", pady=(12, 0))
+
+            ttk.Button(
+                zone,
+                text="Annuler",
+                command=dialogue.destroy,
+            ).pack(side="right")
+            ttk.Button(
+                zone,
+                text="Appliquer",
+                command=appliquer,
+            ).pack(side="right", padx=(0, 8))
 
 
         def ouvrir_personne_charge_admissible_federale_2025() -> None:
@@ -8042,6 +8202,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal credits_federaux_age_pension_courants
             nonlocal montant_conjoint_federal_courant
             nonlocal personne_charge_admissible_federale_courante
+            nonlocal aidant_enfant_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -8075,6 +8236,7 @@ class ApplicationComptaPrivee(tk.Tk):
             credits_federaux_age_pension_courants = CreditsFederauxAgePension2025()
             montant_conjoint_federal_courant = MontantConjointFederal2025()
             personne_charge_admissible_federale_courante = MontantPersonneChargeAdmissibleFederal2025()
+            aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -8197,6 +8359,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             credits_federaux_age_pension=credits_federaux_age_pension_courants,
                             montant_conjoint_federal=montant_conjoint_federal_courant,
                             personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
+                            aidant_enfant_federal=aidant_enfant_federal_courant,
                         )
                     )
                 except (ValueError, Exception):
@@ -8238,6 +8401,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     credits_federaux_age_pension=credits_federaux_age_pension_courants,
                     montant_conjoint_federal=montant_conjoint_federal_courant,
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
+                    aidant_enfant_federal=aidant_enfant_federal_courant,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -8318,6 +8482,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal credits_federaux_age_pension_courants
             nonlocal montant_conjoint_federal_courant
             nonlocal personne_charge_admissible_federale_courante
+            nonlocal aidant_enfant_federal_courant
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -8392,6 +8557,7 @@ class ApplicationComptaPrivee(tk.Tk):
             personne_charge_admissible_federale_courante = (
                 enregistrement.personne_charge_admissible_federale
             )
+            aidant_enfant_federal_courant = enregistrement.aidant_enfant_federal
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
             statut_dossier.set("Validé — dossier rouvert localement")
@@ -8673,6 +8839,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     credits_federaux_age_pension=credits_federaux_age_pension_courants,
                     montant_conjoint_federal=montant_conjoint_federal_courant,
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
+                    aidant_enfant_federal=aidant_enfant_federal_courant,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation
@@ -9015,6 +9182,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_actions,
             text="Âge / pension fédéral 2025",
             command=ouvrir_age_pension_federal_2025,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        ttk.Button(
+            zone_actions,
+            text="Aidant enfant fédéral 2025",
+            command=ouvrir_aidant_naturel_enfant_federal_2025,
         ).pack(
             side="left",
             padx=(8, 0),
