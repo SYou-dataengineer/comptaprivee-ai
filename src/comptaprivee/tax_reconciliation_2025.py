@@ -200,9 +200,15 @@ def calculer_rapprochement_fiscal_2025(
         "Montant fédéral pour époux ou conjoint de fait ligne 30300 inclus."
         in federal.limitations
     )
+    credit_personne_charge_federal_inclus = (
+        "Montant fédéral pour personne à charge admissible "
+        "ligne 30400 inclus."
+        in federal.limitations
+    )
     credit_familial_inclus = (
         credit_personne_seule_inclus
         or credit_conjoint_federal_inclus
+        or credit_personne_charge_federal_inclus
     )
     credit_age_retraite_inclus = (
         "Montants Québec en raison de l\'âge ou pour revenus de retraite "
@@ -231,9 +237,21 @@ def calculer_rapprochement_fiscal_2025(
             limitation_credits = (
                 "Crédits familiaux fédéral et Québec inclus."
             )
+        elif (
+            credit_personne_charge_federal_inclus
+            and credit_personne_seule_inclus
+        ):
+            limitation_credits = (
+                "Montant fédéral pour personne à charge admissible "
+                "et crédit familial Québec inclus."
+            )
         elif credit_conjoint_federal_inclus:
             limitation_credits = (
                 "Montant fédéral pour époux ou conjoint de fait inclus."
+            )
+        elif credit_personne_charge_federal_inclus:
+            limitation_credits = (
+                "Montant fédéral pour personne à charge admissible inclus."
             )
         else:
             limitation_credits = (
@@ -281,6 +299,13 @@ def calculer_rapprochement_fiscal_2025(
                     "Montant fédéral pour époux ou conjoint de fait ligne 30300 inclus.",
                 )
                 if credit_conjoint_federal_inclus
+                else ()
+            ),
+            *(
+                (
+                    "Montant fédéral pour personne à charge admissible ligne 30400 inclus.",
+                )
+                if credit_personne_charge_federal_inclus
                 else ()
             ),
             *(

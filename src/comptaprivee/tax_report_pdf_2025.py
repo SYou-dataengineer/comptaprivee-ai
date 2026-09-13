@@ -13,6 +13,10 @@ from .tax_federal_spouse_2025 import (
     credit_federal_montant_conjoint_2025,
     montant_ligne_30300_2025,
 )
+from .tax_federal_eligible_dependant_2025 import (
+    credit_federal_personne_charge_admissible_2025,
+    montant_ligne_30400_2025,
+)
 from .tax_federal_age_pension_2025 import (
     credit_federal_age_pension_2025,
     montant_age_federal_2025,
@@ -79,6 +83,9 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     )
     montant_conjoint_federal = (
         estimation.montant_conjoint_federal
+    )
+    personne_charge_admissible_federale = (
+        estimation.personne_charge_admissible_federale
     )
 
     montant = (
@@ -430,6 +437,73 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                         if deficience.aucun_transfert_federal
                         else "non"
                     )
+                ),
+            ]
+        )
+
+    if personne_charge_admissible_federale.reclamer_montant:
+        montant_30400 = montant_ligne_30400_2025(
+            personne_charge_admissible_federale
+        )
+        credit_personne_charge_federal = (
+            credit_federal_personne_charge_admissible_2025(
+                personne_charge_admissible_federale
+            )
+        )
+
+        lignes.extend(
+            [
+                "",
+                "PERSONNE À CHARGE ADMISSIBLE - FÉDÉRAL 2025",
+                (
+                    "Revenu net du contribuable - ligne 23600 : "
+                    f"{formater_montant_estimation(
+                        personne_charge_admissible_federale
+                        .revenu_net_contribuable_ligne_23600
+                    )}"
+                ),
+                (
+                    "Revenu net de la personne à charge : "
+                    f"{formater_montant_estimation(
+                        personne_charge_admissible_federale
+                        .revenu_net_personne_charge_2025
+                    )}"
+                ),
+                (
+                    "Montant admissible - ligne 30400 : "
+                    f"{formater_montant_estimation(
+                        montant_30400
+                    )}"
+                ),
+                (
+                    "Crédit fédéral - ligne 30400 : "
+                    f"{formater_montant_estimation(
+                        credit_personne_charge_federal
+                    )}"
+                ),
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                "Contribuable résident du Canada toute l'année 2025 : oui",
+                "Aucun époux/conjoint pendant toute l'année 2025 : oui",
+                "Personne à charge = enfant du contribuable : oui",
+                "Enfant de moins de 18 ans à la fin de 2025 : oui",
+                "Aucune déficience de l'enfant : oui",
+                "Enfant soutenu par le contribuable en 2025 : oui",
+                "Enfant ayant vécu avec le contribuable : oui",
+                "Habitation maintenue par le contribuable : oui",
+                "Enfant résident du Canada toute l'année 2025 : oui",
+                "Aucune garde partagée : oui",
+                "Aucune pension alimentaire : oui",
+                "Un seul montant ligne 30400 par ménage : oui",
+                "Aucun autre réclamant ligne 30400 : oui",
+                "Revenu net de la personne à charge confirmé : oui",
+                "Validation comptable : confirmée",
+                (
+                    "Source : "
+                    f"{personne_charge_admissible_federale.source_personne_charge}"
+                ),
+                (
+                    "Ligne 34990 : garde-fou actif pour les profils "
+                    "au-delà de la première tranche fédérale."
                 ),
             ]
         )

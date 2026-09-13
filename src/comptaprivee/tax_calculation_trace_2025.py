@@ -14,6 +14,10 @@ from .tax_age_retirement_2025 import (
     montant_revenus_retraite_2025,
     reduction_annexe_b_age_retraite_2025,
 )
+from .tax_federal_eligible_dependant_2025 import (
+    credit_federal_personne_charge_admissible_2025,
+    montant_ligne_30400_2025,
+)
 from .tax_federal_spouse_2025 import (
     credit_federal_montant_conjoint_2025,
     montant_ligne_30300_2025,
@@ -128,6 +132,9 @@ def construire_trace_calcul_fiscal_2025(
     montant_conjoint_federal = (
         estimation.montant_conjoint_federal
     )
+    personne_charge_admissible_federale = (
+        estimation.personne_charge_admissible_federale
+    )
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -172,6 +179,10 @@ def construire_trace_calcul_fiscal_2025(
     if montant_conjoint_federal.reclamer_montant:
         formule_impot_federal += (
             " - crédit conjoint ligne 30300"
+        )
+    if personne_charge_admissible_federale.reclamer_montant:
+        formule_impot_federal += (
+            " - crédit personne à charge admissible ligne 30400"
         )
 
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
@@ -515,6 +526,57 @@ def construire_trace_calcul_fiscal_2025(
                 ),
                 credit_quebec_frais_scolarite_2025(
                     frais_scolarite
+                ),
+            ),
+        )
+
+    if personne_charge_admissible_federale.reclamer_montant:
+        montant_ligne_30400 = montant_ligne_30400_2025(
+            personne_charge_admissible_federale
+        )
+        montant_personnel_contribuable_30400 = (
+            montant_ligne_30400
+            + (
+                personne_charge_admissible_federale
+                .revenu_net_personne_charge_2025
+            )
+        )
+
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt fédéral de base",
+            _ligne(
+                0,
+                "FÉDÉRAL",
+                "Crédit fédéral — personne à charge admissible",
+                (
+                    "ARC annexe 5 / ligne 30400 — "
+                    + (
+                        personne_charge_admissible_federale
+                        .source_personne_charge
+                    )
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant personnel fédéral "
+                    + formater_montant_estimation(
+                        montant_personnel_contribuable_30400
+                    )
+                    + " - revenu net de la personne à charge "
+                    + formater_montant_estimation(
+                        personne_charge_admissible_federale
+                        .revenu_net_personne_charge_2025
+                    )
+                    + " = ligne 30400 "
+                    + formater_montant_estimation(
+                        montant_ligne_30400
+                    )
+                    + "; crédit fédéral × 14,5 % — "
+                    + "profil enfant de moins de 18 ans, "
+                    + "sans garde partagée ni pension alimentaire"
+                ),
+                credit_federal_personne_charge_admissible_2025(
+                    personne_charge_admissible_federale
                 ),
             ),
         )

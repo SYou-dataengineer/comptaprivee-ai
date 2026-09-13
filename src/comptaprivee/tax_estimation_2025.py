@@ -75,6 +75,14 @@ from .tax_engine_input_2025 import (
     BaseFiscaleEmploi2025,
     consolider_base_fiscale_emploi_2025,
 )
+from .tax_federal_eligible_dependant_2025 import (
+    MontantPersonneChargeAdmissibleFederal2025,
+    appliquer_credit_federal_personne_charge_admissible_2025,
+    credit_federal_personne_charge_admissible_2025,
+    integration_sans_credit_compensatoire_autorisee_2025 as integration_personne_charge_sans_34990_2025,
+    montant_ligne_30400_2025,
+    valider_montant_personne_charge_admissible_federal_2025,
+)
 from .tax_federal_spouse_2025 import (
     MontantConjointFederal2025,
     appliquer_credit_federal_montant_conjoint_2025,
@@ -137,6 +145,7 @@ class EstimationFiscale2025:
     montants_age_retraite: MontantsAgeRetraite2025
     credits_federaux_age_pension: CreditsFederauxAgePension2025
     montant_conjoint_federal: MontantConjointFederal2025
+    personne_charge_admissible_federale: MontantPersonneChargeAdmissibleFederal2025
 
 
 def calculer_estimation_fiscale_2025(
@@ -166,6 +175,9 @@ def calculer_estimation_fiscale_2025(
     ) = None,
     montant_conjoint_federal: (
         MontantConjointFederal2025 | None
+    ) = None,
+    personne_charge_admissible_federale: (
+        MontantPersonneChargeAdmissibleFederal2025 | None
     ) = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
@@ -428,6 +440,53 @@ def calculer_estimation_fiscale_2025(
             "intégrée complètement."
         )
 
+    personne_charge_admissible_federale_effective = (
+        personne_charge_admissible_federale
+        if personne_charge_admissible_federale is not None
+        else MontantPersonneChargeAdmissibleFederal2025()
+    )
+    valider_montant_personne_charge_admissible_federal_2025(
+        personne_charge_admissible_federale_effective
+    )
+
+    if (
+        personne_charge_admissible_federale_effective.reclamer_montant
+        and (
+            personne_charge_admissible_federale_effective
+            .revenu_net_contribuable_ligne_23600
+            != revenu.revenu_net_federal
+        )
+    ):
+        raise ValueError(
+            "Le revenu net du contribuable à la ligne 23600 du "
+            "profil personne à charge admissible doit correspondre "
+            "au revenu net fédéral calculé pour ce dossier."
+        )
+
+    if (
+        personne_charge_admissible_federale_effective.reclamer_montant
+        and montant_conjoint_federal_effectif.reclamer_montant
+    ):
+        raise ValueError(
+            "Cette version ne peut pas combiner les lignes 30300 et "
+            "30400 : le profil personne à charge admissible exige "
+            "l'absence d'époux ou conjoint de fait."
+        )
+
+    if (
+        personne_charge_admissible_federale_effective.reclamer_montant
+        and not integration_personne_charge_sans_34990_2025(
+            revenu.revenu_imposable_federal
+        )
+    ):
+        raise ValueError(
+            "Ce dossier peut nécessiter le crédit compensatoire "
+            "fédéral de la ligne 34990. Cette première version "
+            "refuse la ligne 30400 automatique au-delà de la "
+            "première tranche tant que la ligne 34990 n'est pas "
+            "intégrée complètement."
+        )
+
     assurance_medicaments_effective = (
         assurance_medicaments
         if assurance_medicaments is not None
@@ -480,6 +539,10 @@ def calculer_estimation_fiscale_2025(
     federal = appliquer_credit_federal_montant_conjoint_2025(
         federal,
         montant_conjoint_federal_effectif,
+    )
+    federal = appliquer_credit_federal_personne_charge_admissible_2025(
+        federal,
+        personne_charge_admissible_federale_effective,
     )
     quebec = calculer_impot_quebec_preliminaire_2025(revenu)
     quebec = appliquer_credit_quebec_cotisations_2025(
@@ -565,6 +628,9 @@ def calculer_estimation_fiscale_2025(
         ),
         montant_conjoint_federal=(
             montant_conjoint_federal_effectif
+        ),
+        personne_charge_admissible_federale=(
+            personne_charge_admissible_federale_effective
         ),
     )
 
@@ -800,6 +866,54 @@ def formater_estimation_fiscale_2025(
                 f"{estimation.personne_vivant_seule.source}",
             ]
             if estimation.personne_vivant_seule.reclamer_montant
+            else []
+        ),
+        *(
+            [
+                "",
+                "PERSONNE À CHARGE ADMISSIBLE — FÉDÉRAL 2025",
+                (
+                    "Revenu net du contribuable — ligne 23600 : "
+                    f"{formater_montant_estimation(
+                        estimation.personne_charge_admissible_federale
+                        .revenu_net_contribuable_ligne_23600
+                    )}"
+                ),
+                (
+                    "Revenu net de la personne à charge : "
+                    f"{formater_montant_estimation(
+                        estimation.personne_charge_admissible_federale
+                        .revenu_net_personne_charge_2025
+                    )}"
+                ),
+                (
+                    "Ligne 30400 : "
+                    f"{formater_montant_estimation(
+                        montant_ligne_30400_2025(
+                            estimation.personne_charge_admissible_federale
+                        )
+                    )}"
+                ),
+                (
+                    "Crédit fédéral calculé : "
+                    f"{formater_montant_estimation(
+                        credit_federal_personne_charge_admissible_2025(
+                            estimation.personne_charge_admissible_federale
+                        )
+                    )}"
+                ),
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                "Personne à charge : enfant de moins de 18 ans",
+                "Aucune garde partagée : oui",
+                "Aucune pension alimentaire : oui",
+                "Aucune déficience de l'enfant : oui",
+                "Validation comptable : confirmée",
+                (
+                    "Source : "
+                    f"{estimation.personne_charge_admissible_federale.source_personne_charge}"
+                ),
+            ]
+            if estimation.personne_charge_admissible_federale.reclamer_montant
             else []
         ),
         *(

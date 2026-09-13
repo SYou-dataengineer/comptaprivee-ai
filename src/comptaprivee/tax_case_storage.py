@@ -46,6 +46,10 @@ from .tax_federal_spouse_2025 import (
     MontantConjointFederal2025,
     valider_montant_conjoint_federal_2025,
 )
+from .tax_federal_eligible_dependant_2025 import (
+    MontantPersonneChargeAdmissibleFederal2025,
+    valider_montant_personne_charge_admissible_federal_2025,
+)
 from .tax_living_alone_2025 import (
     PersonneVivantSeule2025,
     valider_personne_vivant_seule_2025,
@@ -104,6 +108,7 @@ class DossierFiscalEnregistre:
     montants_age_retraite: MontantsAgeRetraite2025
     credits_federaux_age_pension: CreditsFederauxAgePension2025
     montant_conjoint_federal: MontantConjointFederal2025
+    personne_charge_admissible_federale: MontantPersonneChargeAdmissibleFederal2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -1249,6 +1254,188 @@ def _montant_conjoint_federal_depuis_dict(
     return valider_montant_conjoint_federal_2025(profil)
 
 
+
+def _personne_charge_admissible_federale_vers_dict(
+    profil: MontantPersonneChargeAdmissibleFederal2025 | None,
+):
+    if profil is None:
+        profil = MontantPersonneChargeAdmissibleFederal2025()
+
+    valider_montant_personne_charge_admissible_federal_2025(
+        profil
+    )
+
+    return {
+        "reclamer_montant": bool(profil.reclamer_montant),
+        "revenu_net_contribuable_ligne_23600": _decimal_texte(
+            profil.revenu_net_contribuable_ligne_23600
+        ),
+        "revenu_net_personne_charge_2025": _decimal_texte(
+            profil.revenu_net_personne_charge_2025
+        ),
+        "contribuable_resident_canada_toute_annee": bool(
+            profil.contribuable_resident_canada_toute_annee
+        ),
+        "aucun_epoux_conjoint_2025": bool(
+            profil.aucun_epoux_conjoint_2025
+        ),
+        "personne_charge_est_enfant": bool(
+            profil.personne_charge_est_enfant
+        ),
+        "enfant_moins_18_fin_2025": bool(
+            profil.enfant_moins_18_fin_2025
+        ),
+        "aucune_infirmite_enfant": bool(
+            profil.aucune_infirmite_enfant
+        ),
+        "enfant_soutenu_2025": bool(
+            profil.enfant_soutenu_2025
+        ),
+        "enfant_a_vecu_avec_contribuable": bool(
+            profil.enfant_a_vecu_avec_contribuable
+        ),
+        "habitation_maintenue_par_contribuable": bool(
+            profil.habitation_maintenue_par_contribuable
+        ),
+        "enfant_resident_canada_toute_annee": bool(
+            profil.enfant_resident_canada_toute_annee
+        ),
+        "aucune_garde_partagee": bool(
+            profil.aucune_garde_partagee
+        ),
+        "aucun_paiement_pension_alimentaire": bool(
+            profil.aucun_paiement_pension_alimentaire
+        ),
+        "un_seul_montant_30400_par_menage": bool(
+            profil.un_seul_montant_30400_par_menage
+        ),
+        "aucun_autre_reclamant_30400": bool(
+            profil.aucun_autre_reclamant_30400
+        ),
+        "revenu_personne_charge_confirme": bool(
+            profil.revenu_personne_charge_confirme
+        ),
+        "valide_par_comptable": bool(
+            profil.valide_par_comptable
+        ),
+        "source_personne_charge": profil.source_personne_charge,
+    }
+
+
+def _personne_charge_admissible_federale_depuis_dict(
+    valeur: Any,
+) -> MontantPersonneChargeAdmissibleFederal2025:
+    if valeur is None:
+        return MontantPersonneChargeAdmissibleFederal2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Le montant fédéral pour personne à charge "
+            "admissible enregistré est invalide."
+        )
+
+    profil = MontantPersonneChargeAdmissibleFederal2025(
+        reclamer_montant=bool(
+            valeur.get("reclamer_montant", False)
+        ),
+        revenu_net_contribuable_ligne_23600=_decimal_depuis_json(
+            valeur.get(
+                "revenu_net_contribuable_ligne_23600",
+                "0",
+            ),
+            (
+                "personne_charge_admissible_federale."
+                "revenu_net_contribuable_ligne_23600"
+            ),
+        ),
+        revenu_net_personne_charge_2025=_decimal_depuis_json(
+            valeur.get(
+                "revenu_net_personne_charge_2025",
+                "0",
+            ),
+            (
+                "personne_charge_admissible_federale."
+                "revenu_net_personne_charge_2025"
+            ),
+        ),
+        contribuable_resident_canada_toute_annee=bool(
+            valeur.get(
+                "contribuable_resident_canada_toute_annee",
+                False,
+            )
+        ),
+        aucun_epoux_conjoint_2025=bool(
+            valeur.get("aucun_epoux_conjoint_2025", False)
+        ),
+        personne_charge_est_enfant=bool(
+            valeur.get("personne_charge_est_enfant", False)
+        ),
+        enfant_moins_18_fin_2025=bool(
+            valeur.get("enfant_moins_18_fin_2025", False)
+        ),
+        aucune_infirmite_enfant=bool(
+            valeur.get("aucune_infirmite_enfant", False)
+        ),
+        enfant_soutenu_2025=bool(
+            valeur.get("enfant_soutenu_2025", False)
+        ),
+        enfant_a_vecu_avec_contribuable=bool(
+            valeur.get(
+                "enfant_a_vecu_avec_contribuable",
+                False,
+            )
+        ),
+        habitation_maintenue_par_contribuable=bool(
+            valeur.get(
+                "habitation_maintenue_par_contribuable",
+                False,
+            )
+        ),
+        enfant_resident_canada_toute_annee=bool(
+            valeur.get(
+                "enfant_resident_canada_toute_annee",
+                False,
+            )
+        ),
+        aucune_garde_partagee=bool(
+            valeur.get("aucune_garde_partagee", False)
+        ),
+        aucun_paiement_pension_alimentaire=bool(
+            valeur.get(
+                "aucun_paiement_pension_alimentaire",
+                False,
+            )
+        ),
+        un_seul_montant_30400_par_menage=bool(
+            valeur.get(
+                "un_seul_montant_30400_par_menage",
+                False,
+            )
+        ),
+        aucun_autre_reclamant_30400=bool(
+            valeur.get(
+                "aucun_autre_reclamant_30400",
+                False,
+            )
+        ),
+        revenu_personne_charge_confirme=bool(
+            valeur.get(
+                "revenu_personne_charge_confirme",
+                False,
+            )
+        ),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        source_personne_charge=str(
+            valeur.get("source_personne_charge", "")
+        ),
+    )
+
+    return valider_montant_personne_charge_admissible_federal_2025(
+        profil
+    )
+
 def _montants_age_retraite_vers_dict(
     profil: MontantsAgeRetraite2025 | None,
 ):
@@ -1432,6 +1619,9 @@ def sauvegarder_dossier_fiscal(
     montants_age_retraite: MontantsAgeRetraite2025 | None = None,
     credits_federaux_age_pension: CreditsFederauxAgePension2025 | None = None,
     montant_conjoint_federal: MontantConjointFederal2025 | None = None,
+    personne_charge_admissible_federale: (
+        MontantPersonneChargeAdmissibleFederal2025 | None
+    ) = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -1500,6 +1690,11 @@ def sauvegarder_dossier_fiscal(
         ),
         "montant_conjoint_federal": _montant_conjoint_federal_vers_dict(
             montant_conjoint_federal
+        ),
+        "personne_charge_admissible_federale": (
+            _personne_charge_admissible_federale_vers_dict(
+                personne_charge_admissible_federale
+            )
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
@@ -1641,6 +1836,11 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     montant_conjoint_federal = _montant_conjoint_federal_depuis_dict(
         contenu.get("montant_conjoint_federal")
     )
+    personne_charge_admissible_federale = (
+        _personne_charge_admissible_federale_depuis_dict(
+            contenu.get("personne_charge_admissible_federale")
+        )
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -1665,6 +1865,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         ),
         montant_conjoint_federal=(
             montant_conjoint_federal
+        ),
+        personne_charge_admissible_federale=(
+            personne_charge_admissible_federale
         ),
     )
 

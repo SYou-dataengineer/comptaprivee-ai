@@ -171,6 +171,10 @@ from .tax_federal_spouse_2025 import (
     MontantConjointFederal2025,
     valider_montant_conjoint_federal_2025,
 )
+from .tax_federal_eligible_dependant_2025 import (
+    MontantPersonneChargeAdmissibleFederal2025,
+    valider_montant_personne_charge_admissible_federal_2025,
+)
 from .tax_living_alone_2025 import (
     PersonneVivantSeule2025,
     valider_personne_vivant_seule_2025,
@@ -2412,6 +2416,7 @@ class ApplicationComptaPrivee(tk.Tk):
         montants_age_retraite_courants = MontantsAgeRetraite2025()
         credits_federaux_age_pension_courants = CreditsFederauxAgePension2025()
         montant_conjoint_federal_courant = MontantConjointFederal2025()
+        personne_charge_admissible_federale_courante = MontantPersonneChargeAdmissibleFederal2025()
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
 
@@ -3435,6 +3440,457 @@ class ApplicationComptaPrivee(tk.Tk):
 
 
 
+
+        def ouvrir_personne_charge_admissible_federale_2025() -> None:
+            nonlocal personne_charge_admissible_federale_courante
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Personne à charge admissible — fédéral 2025 — ComptaPrivée AI"
+            )
+            dialogue.geometry("830x900")
+            dialogue.minsize(760, 760)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            cadre = ttk.Frame(dialogue, padding=18)
+            cadre.pack(fill="both", expand=True)
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Personne à charge admissible — ligne fédérale 30400",
+                font=("Segoe UI", 13, "bold"),
+                wraplength=760,
+            ).grid(
+                row=0,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil simple 2025 : enfant du contribuable de moins de "
+                    "18 ans à la fin de 2025, soutenu par le contribuable et "
+                    "vivant avec lui dans une habitation qu'il maintient. "
+                    "Aucune garde partagée, aucune pension alimentaire, "
+                    "aucune déficience de l'enfant et aucun époux/conjoint "
+                    "pendant toute l'année 2025. Le revenu net de la personne "
+                    "à charge réduit la ligne 30400 dollar pour dollar."
+                ),
+                wraplength=760,
+                foreground="#475569",
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 12),
+            )
+
+            reclamer_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .reclamer_montant
+                )
+            )
+            revenu_contribuable_var = tk.StringVar(
+                value=str(
+                    personne_charge_admissible_federale_courante
+                    .revenu_net_contribuable_ligne_23600
+                )
+            )
+            revenu_personne_charge_var = tk.StringVar(
+                value=str(
+                    personne_charge_admissible_federale_courante
+                    .revenu_net_personne_charge_2025
+                )
+            )
+
+            resident_contribuable_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .contribuable_resident_canada_toute_annee
+                )
+            )
+            sans_conjoint_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .aucun_epoux_conjoint_2025
+                )
+            )
+            enfant_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .personne_charge_est_enfant
+                )
+            )
+            moins_18_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .enfant_moins_18_fin_2025
+                )
+            )
+            aucune_infirmite_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .aucune_infirmite_enfant
+                )
+            )
+            soutien_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .enfant_soutenu_2025
+                )
+            )
+            cohabitation_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .enfant_a_vecu_avec_contribuable
+                )
+            )
+            habitation_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .habitation_maintenue_par_contribuable
+                )
+            )
+            resident_enfant_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .enfant_resident_canada_toute_annee
+                )
+            )
+            sans_garde_partagee_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .aucune_garde_partagee
+                )
+            )
+            sans_pension_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .aucun_paiement_pension_alimentaire
+                )
+            )
+            un_seul_montant_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .un_seul_montant_30400_par_menage
+                )
+            )
+            aucun_autre_reclamant_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .aucun_autre_reclamant_30400
+                )
+            )
+            revenu_confirme_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .revenu_personne_charge_confirme
+                )
+            )
+            validation_var = tk.BooleanVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .valide_par_comptable
+                )
+            )
+            source_var = tk.StringVar(
+                value=(
+                    personne_charge_admissible_federale_courante
+                    .source_personne_charge
+                )
+            )
+
+            ligne = 2
+
+            ttk.Checkbutton(
+                cadre,
+                text="Réclamer le montant — ligne 30400",
+                variable=reclamer_var,
+            ).grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=4,
+            )
+            ligne += 1
+
+            ttk.Label(
+                cadre,
+                text="Revenu net du contribuable — ligne 23600",
+            ).grid(row=ligne, column=0, sticky="w", pady=4)
+            ttk.Entry(
+                cadre,
+                textvariable=revenu_contribuable_var,
+                width=28,
+            ).grid(row=ligne, column=1, sticky="ew", pady=4)
+            ligne += 1
+
+            ttk.Label(
+                cadre,
+                text="Revenu net de la personne à charge — 2025",
+            ).grid(row=ligne, column=0, sticky="w", pady=4)
+            ttk.Entry(
+                cadre,
+                textvariable=revenu_personne_charge_var,
+                width=28,
+            ).grid(row=ligne, column=1, sticky="ew", pady=4)
+            ligne += 1
+
+            validations = (
+                (
+                    "Contribuable résident du Canada toute l'année 2025",
+                    resident_contribuable_var,
+                ),
+                (
+                    "Aucun époux ou conjoint de fait pendant toute l'année 2025",
+                    sans_conjoint_var,
+                ),
+                (
+                    "La personne à charge est l'enfant du contribuable",
+                    enfant_var,
+                ),
+                (
+                    "Enfant de moins de 18 ans à la fin de 2025",
+                    moins_18_var,
+                ),
+                (
+                    "Aucune déficience physique ou mentale de l'enfant",
+                    aucune_infirmite_var,
+                ),
+                (
+                    "Le contribuable a subvenu aux besoins de l'enfant en 2025",
+                    soutien_var,
+                ),
+                (
+                    "L'enfant a vécu avec le contribuable",
+                    cohabitation_var,
+                ),
+                (
+                    "Habitation maintenue par le contribuable",
+                    habitation_var,
+                ),
+                (
+                    "Enfant résident du Canada toute l'année 2025",
+                    resident_enfant_var,
+                ),
+                (
+                    "Aucune garde partagée",
+                    sans_garde_partagee_var,
+                ),
+                (
+                    "Aucun paiement de pension alimentaire",
+                    sans_pension_var,
+                ),
+                (
+                    "Un seul montant ligne 30400 réclamé par le ménage",
+                    un_seul_montant_var,
+                ),
+                (
+                    "Aucun autre contribuable ne réclame la ligne 30400",
+                    aucun_autre_reclamant_var,
+                ),
+                (
+                    "Revenu net de la personne à charge confirmé",
+                    revenu_confirme_var,
+                ),
+                (
+                    "Validation comptable confirmée",
+                    validation_var,
+                ),
+            )
+
+            for libelle, variable in validations:
+                ttk.Checkbutton(
+                    cadre,
+                    text=libelle,
+                    variable=variable,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    columnspan=2,
+                    sticky="w",
+                    pady=2,
+                )
+                ligne += 1
+
+            ttk.Label(
+                cadre,
+                text="Source — état civil, résidence et revenu de l'enfant",
+            ).grid(row=ligne, column=0, sticky="w", pady=(8, 4))
+            ttk.Entry(
+                cadre,
+                textvariable=source_var,
+            ).grid(
+                row=ligne,
+                column=1,
+                sticky="ew",
+                pady=(8, 4),
+            )
+            ligne += 1
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Le crédit fédéral est calculé à 14,5 %. La ligne 34990 "
+                    "reste protégée par le garde-fou du moteur. Les cas de "
+                    "garde partagée, pension alimentaire, déficience/aide "
+                    "naturelle et les profils avec conjoint sont exclus de "
+                    "cette première version."
+                ),
+                wraplength=760,
+                foreground="#92400e",
+            ).grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(10, 12),
+            )
+            ligne += 1
+
+            def remettre_a_zero() -> None:
+                reclamer_var.set(False)
+                revenu_contribuable_var.set("0")
+                revenu_personne_charge_var.set("0")
+                resident_contribuable_var.set(False)
+                sans_conjoint_var.set(False)
+                enfant_var.set(False)
+                moins_18_var.set(False)
+                aucune_infirmite_var.set(False)
+                soutien_var.set(False)
+                cohabitation_var.set(False)
+                habitation_var.set(False)
+                resident_enfant_var.set(False)
+                sans_garde_partagee_var.set(False)
+                sans_pension_var.set(False)
+                un_seul_montant_var.set(False)
+                aucun_autre_reclamant_var.set(False)
+                revenu_confirme_var.set(False)
+                validation_var.set(False)
+                source_var.set("")
+
+            def appliquer() -> None:
+                nonlocal personne_charge_admissible_federale_courante
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    revenu_contribuable = Decimal(
+                        revenu_contribuable_var.get()
+                        .strip()
+                        .replace(" ", "")
+                        .replace(",", ".")
+                        or "0"
+                    )
+                    revenu_personne_charge = Decimal(
+                        revenu_personne_charge_var.get()
+                        .strip()
+                        .replace(" ", "")
+                        .replace(",", ".")
+                        or "0"
+                    )
+
+                    nouveau_profil = (
+                        MontantPersonneChargeAdmissibleFederal2025(
+                            reclamer_montant=reclamer_var.get(),
+                            revenu_net_contribuable_ligne_23600=(
+                                revenu_contribuable
+                            ),
+                            revenu_net_personne_charge_2025=(
+                                revenu_personne_charge
+                            ),
+                            contribuable_resident_canada_toute_annee=(
+                                resident_contribuable_var.get()
+                            ),
+                            aucun_epoux_conjoint_2025=(
+                                sans_conjoint_var.get()
+                            ),
+                            personne_charge_est_enfant=enfant_var.get(),
+                            enfant_moins_18_fin_2025=moins_18_var.get(),
+                            aucune_infirmite_enfant=(
+                                aucune_infirmite_var.get()
+                            ),
+                            enfant_soutenu_2025=soutien_var.get(),
+                            enfant_a_vecu_avec_contribuable=(
+                                cohabitation_var.get()
+                            ),
+                            habitation_maintenue_par_contribuable=(
+                                habitation_var.get()
+                            ),
+                            enfant_resident_canada_toute_annee=(
+                                resident_enfant_var.get()
+                            ),
+                            aucune_garde_partagee=(
+                                sans_garde_partagee_var.get()
+                            ),
+                            aucun_paiement_pension_alimentaire=(
+                                sans_pension_var.get()
+                            ),
+                            un_seul_montant_30400_par_menage=(
+                                un_seul_montant_var.get()
+                            ),
+                            aucun_autre_reclamant_30400=(
+                                aucun_autre_reclamant_var.get()
+                            ),
+                            revenu_personne_charge_confirme=(
+                                revenu_confirme_var.get()
+                            ),
+                            valide_par_comptable=validation_var.get(),
+                            source_personne_charge=source_var.get().strip(),
+                        )
+                    )
+                    valider_montant_personne_charge_admissible_federal_2025(
+                        nouveau_profil
+                    )
+                except (InvalidOperation, ValueError) as erreur:
+                    messagebox.showerror(
+                        "Personne à charge admissible invalide",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                personne_charge_admissible_federale_courante = (
+                    nouveau_profil
+                )
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                dialogue.destroy()
+
+            boutons = ttk.Frame(cadre)
+            boutons.grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="e",
+                pady=(8, 0),
+            )
+
+            ttk.Button(
+                boutons,
+                text="Remettre à zéro",
+                command=remettre_a_zero,
+            ).pack(side="left", padx=(0, 8))
+
+            ttk.Button(
+                boutons,
+                text="Annuler",
+                command=dialogue.destroy,
+            ).pack(side="left", padx=(0, 8))
+
+            ttk.Button(
+                boutons,
+                text="Appliquer",
+                command=appliquer,
+            ).pack(side="left")
 
         def ouvrir_montant_conjoint_federal_2025() -> None:
             nonlocal montant_conjoint_federal_courant
@@ -7585,6 +8041,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal montants_age_retraite_courants
             nonlocal credits_federaux_age_pension_courants
             nonlocal montant_conjoint_federal_courant
+            nonlocal personne_charge_admissible_federale_courante
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -7617,6 +8074,7 @@ class ApplicationComptaPrivee(tk.Tk):
             montants_age_retraite_courants = MontantsAgeRetraite2025()
             credits_federaux_age_pension_courants = CreditsFederauxAgePension2025()
             montant_conjoint_federal_courant = MontantConjointFederal2025()
+            personne_charge_admissible_federale_courante = MontantPersonneChargeAdmissibleFederal2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -7738,6 +8196,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             montants_age_retraite=montants_age_retraite_courants,
                             credits_federaux_age_pension=credits_federaux_age_pension_courants,
                             montant_conjoint_federal=montant_conjoint_federal_courant,
+                            personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                         )
                     )
                 except (ValueError, Exception):
@@ -7778,6 +8237,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     montants_age_retraite=montants_age_retraite_courants,
                     credits_federaux_age_pension=credits_federaux_age_pension_courants,
                     montant_conjoint_federal=montant_conjoint_federal_courant,
+                    personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -7857,6 +8317,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal montants_age_retraite_courants
             nonlocal credits_federaux_age_pension_courants
             nonlocal montant_conjoint_federal_courant
+            nonlocal personne_charge_admissible_federale_courante
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -7927,6 +8388,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             montant_conjoint_federal_courant = (
                 enregistrement.montant_conjoint_federal
+            )
+            personne_charge_admissible_federale_courante = (
+                enregistrement.personne_charge_admissible_federale
             )
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
@@ -8208,6 +8672,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     montants_age_retraite=montants_age_retraite_courants,
                     credits_federaux_age_pension=credits_federaux_age_pension_courants,
                     montant_conjoint_federal=montant_conjoint_federal_courant,
+                    personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation
@@ -8550,6 +9015,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_actions,
             text="Âge / pension fédéral 2025",
             command=ouvrir_age_pension_federal_2025,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        ttk.Button(
+            zone_actions,
+            text="Personne à charge fédérale 2025",
+            command=ouvrir_personne_charge_admissible_federale_2025,
         ).pack(
             side="left",
             padx=(8, 0),
