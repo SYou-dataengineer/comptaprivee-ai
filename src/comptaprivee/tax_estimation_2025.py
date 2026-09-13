@@ -75,6 +75,14 @@ from .tax_engine_input_2025 import (
     BaseFiscaleEmploi2025,
     consolider_base_fiscale_emploi_2025,
 )
+from .tax_federal_spouse_2025 import (
+    MontantConjointFederal2025,
+    appliquer_credit_federal_montant_conjoint_2025,
+    credit_federal_montant_conjoint_2025,
+    integration_sans_credit_compensatoire_autorisee_2025 as integration_montant_conjoint_sans_34990_2025,
+    montant_ligne_30300_2025,
+    valider_montant_conjoint_federal_2025,
+)
 from .tax_federal_age_pension_2025 import (
     CreditsFederauxAgePension2025,
     appliquer_credit_federal_age_pension_2025,
@@ -128,6 +136,7 @@ class EstimationFiscale2025:
     personne_vivant_seule: PersonneVivantSeule2025
     montants_age_retraite: MontantsAgeRetraite2025
     credits_federaux_age_pension: CreditsFederauxAgePension2025
+    montant_conjoint_federal: MontantConjointFederal2025
 
 
 def calculer_estimation_fiscale_2025(
@@ -154,6 +163,9 @@ def calculer_estimation_fiscale_2025(
     ) = None,
     credits_federaux_age_pension: (
         CreditsFederauxAgePension2025 | None
+    ) = None,
+    montant_conjoint_federal: (
+        MontantConjointFederal2025 | None
     ) = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
@@ -379,6 +391,43 @@ def calculer_estimation_fiscale_2025(
             "tranche tant que la ligne 34990 n'est pas intégrée."
         )
 
+    montant_conjoint_federal_effectif = (
+        montant_conjoint_federal
+        if montant_conjoint_federal is not None
+        else MontantConjointFederal2025()
+    )
+    valider_montant_conjoint_federal_2025(
+        montant_conjoint_federal_effectif
+    )
+
+    if (
+        montant_conjoint_federal_effectif.reclamer_montant
+        and (
+            montant_conjoint_federal_effectif
+            .revenu_net_contribuable_ligne_23600
+            != revenu.revenu_net_federal
+        )
+    ):
+        raise ValueError(
+            "Le revenu net du contribuable à la ligne 23600 du "
+            "profil conjoint fédéral doit correspondre au revenu "
+            "net fédéral calculé pour ce dossier."
+        )
+
+    if (
+        montant_conjoint_federal_effectif.reclamer_montant
+        and not integration_montant_conjoint_sans_34990_2025(
+            revenu.revenu_imposable_federal
+        )
+    ):
+        raise ValueError(
+            "Ce dossier peut nécessiter le crédit compensatoire "
+            "fédéral de la ligne 34990. Cette première version "
+            "refuse le montant conjoint automatique au-delà de la "
+            "première tranche tant que la ligne 34990 n'est pas "
+            "intégrée complètement."
+        )
+
     assurance_medicaments_effective = (
         assurance_medicaments
         if assurance_medicaments is not None
@@ -427,6 +476,10 @@ def calculer_estimation_fiscale_2025(
     federal = appliquer_credit_federal_age_pension_2025(
         federal,
         credits_federaux_age_pension_effectifs,
+    )
+    federal = appliquer_credit_federal_montant_conjoint_2025(
+        federal,
+        montant_conjoint_federal_effectif,
     )
     quebec = calculer_impot_quebec_preliminaire_2025(revenu)
     quebec = appliquer_credit_quebec_cotisations_2025(
@@ -509,6 +562,9 @@ def calculer_estimation_fiscale_2025(
         montants_age_retraite=montants_age_retraite_effectifs,
         credits_federaux_age_pension=(
             credits_federaux_age_pension_effectifs
+        ),
+        montant_conjoint_federal=(
+            montant_conjoint_federal_effectif
         ),
     )
 
@@ -744,6 +800,54 @@ def formater_estimation_fiscale_2025(
                 f"{estimation.personne_vivant_seule.source}",
             ]
             if estimation.personne_vivant_seule.reclamer_montant
+            else []
+        ),
+        *(
+            [
+                "",
+                "ÉPOUX / CONJOINT DE FAIT — FÉDÉRAL 2025",
+                (
+                    "Revenu net du contribuable — ligne 23600 : "
+                    f"{formater_montant_estimation(
+                        estimation.montant_conjoint_federal
+                        .revenu_net_contribuable_ligne_23600
+                    )}"
+                ),
+                (
+                    "Revenu net du conjoint : "
+                    f"{formater_montant_estimation(
+                        estimation.montant_conjoint_federal
+                        .revenu_net_conjoint_2025
+                    )}"
+                ),
+                (
+                    "Ligne 30300 : "
+                    f"{formater_montant_estimation(
+                        montant_ligne_30300_2025(
+                            estimation.montant_conjoint_federal
+                        )
+                    )}"
+                ),
+                (
+                    "Crédit fédéral calculé : "
+                    f"{formater_montant_estimation(
+                        credit_federal_montant_conjoint_2025(
+                            estimation.montant_conjoint_federal
+                        )
+                    )}"
+                ),
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                "Même conjoint toute l'année 2025 : oui",
+                "Aucune séparation/réconciliation : oui",
+                "Conjoint résident du Canada toute l'année : oui",
+                "Un seul conjoint réclame le montant : oui",
+                "Validation comptable : confirmée",
+                (
+                    "Source : "
+                    f"{estimation.montant_conjoint_federal.source_conjoint}"
+                ),
+            ]
+            if estimation.montant_conjoint_federal.reclamer_montant
             else []
         ),
         *(

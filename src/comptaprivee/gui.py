@@ -167,6 +167,10 @@ from .tax_federal_age_pension_2025 import (
     CreditsFederauxAgePension2025,
     valider_credits_federaux_age_pension_2025,
 )
+from .tax_federal_spouse_2025 import (
+    MontantConjointFederal2025,
+    valider_montant_conjoint_federal_2025,
+)
 from .tax_living_alone_2025 import (
     PersonneVivantSeule2025,
     valider_personne_vivant_seule_2025,
@@ -2407,6 +2411,7 @@ class ApplicationComptaPrivee(tk.Tk):
         personne_vivant_seule_courante = PersonneVivantSeule2025()
         montants_age_retraite_courants = MontantsAgeRetraite2025()
         credits_federaux_age_pension_courants = CreditsFederauxAgePension2025()
+        montant_conjoint_federal_courant = MontantConjointFederal2025()
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
 
@@ -3429,6 +3434,364 @@ class ApplicationComptaPrivee(tk.Tk):
             ).pack(side="right", padx=(0, 8))
 
 
+
+
+        def ouvrir_montant_conjoint_federal_2025() -> None:
+            nonlocal montant_conjoint_federal_courant
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Époux / conjoint de fait — fédéral 2025 — ComptaPrivée AI"
+            )
+            dialogue.geometry("780x780")
+            dialogue.minsize(700, 680)
+            dialogue.transient(fenetre)
+
+            cadre = ttk.Frame(dialogue, padding=18)
+            cadre.pack(fill="both", expand=True)
+
+            ttk.Label(
+                cadre,
+                text="Montant fédéral pour époux ou conjoint de fait — ligne 30300",
+                font=("Segoe UI", 13, "bold"),
+                wraplength=720,
+            ).grid(
+                row=0,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil simple 2025 seulement : même conjoint toute l'année, "
+                    "aucune séparation/réconciliation, conjoint résident du Canada, "
+                    "aucune pension alimentaire liée à une séparation et aucune "
+                    "déficience du conjoint. Le revenu net du conjoint réduit la "
+                    "ligne 30300 dollar pour dollar. Garde-fou ligne 34990 actif."
+                ),
+                wraplength=720,
+                foreground="#475569",
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 14),
+            )
+
+            reclamer_var = tk.BooleanVar(
+                value=montant_conjoint_federal_courant.reclamer_montant
+            )
+            revenu_contribuable_var = tk.StringVar(
+                value=str(
+                    montant_conjoint_federal_courant
+                    .revenu_net_contribuable_ligne_23600
+                )
+            )
+            revenu_conjoint_var = tk.StringVar(
+                value=str(
+                    montant_conjoint_federal_courant
+                    .revenu_net_conjoint_2025
+                )
+            )
+            resident_contribuable_var = tk.BooleanVar(
+                value=montant_conjoint_federal_courant
+                .contribuable_resident_canada_toute_annee
+            )
+            relation_var = tk.BooleanVar(
+                value=montant_conjoint_federal_courant
+                .relation_conjoint_confirmee
+            )
+            soutien_var = tk.BooleanVar(
+                value=montant_conjoint_federal_courant
+                .conjoint_soutenu_2025
+            )
+            meme_conjoint_var = tk.BooleanVar(
+                value=montant_conjoint_federal_courant
+                .meme_conjoint_toute_annee_2025
+            )
+            aucune_separation_var = tk.BooleanVar(
+                value=montant_conjoint_federal_courant
+                .aucune_separation_2025
+            )
+            conjoint_resident_var = tk.BooleanVar(
+                value=montant_conjoint_federal_courant
+                .conjoint_resident_canada_toute_annee
+            )
+            aucune_pension_var = tk.BooleanVar(
+                value=montant_conjoint_federal_courant
+                .aucun_paiement_pension_alimentaire
+            )
+            aucune_infirmite_var = tk.BooleanVar(
+                value=montant_conjoint_federal_courant
+                .aucune_infirmite_conjoint
+            )
+            seul_reclamant_var = tk.BooleanVar(
+                value=montant_conjoint_federal_courant
+                .un_seul_conjoint_reclame_montant
+            )
+            revenu_confirme_var = tk.BooleanVar(
+                value=montant_conjoint_federal_courant
+                .revenu_conjoint_confirme
+            )
+            validation_var = tk.BooleanVar(
+                value=montant_conjoint_federal_courant
+                .valide_par_comptable
+            )
+            source_var = tk.StringVar(
+                value=montant_conjoint_federal_courant.source_conjoint
+            )
+
+            ligne = 2
+
+            ttk.Checkbutton(
+                cadre,
+                text="Réclamer le montant pour époux/conjoint — ligne 30300",
+                variable=reclamer_var,
+            ).grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=4,
+            )
+            ligne += 1
+
+            ttk.Label(
+                cadre,
+                text="Revenu net du contribuable — ligne 23600",
+            ).grid(row=ligne, column=0, sticky="w", pady=4)
+            ttk.Entry(
+                cadre,
+                textvariable=revenu_contribuable_var,
+                width=28,
+            ).grid(row=ligne, column=1, sticky="ew", pady=4)
+            ligne += 1
+
+            ttk.Label(
+                cadre,
+                text="Revenu net du conjoint — 2025",
+            ).grid(row=ligne, column=0, sticky="w", pady=4)
+            ttk.Entry(
+                cadre,
+                textvariable=revenu_conjoint_var,
+                width=28,
+            ).grid(row=ligne, column=1, sticky="ew", pady=4)
+            ligne += 1
+
+            validations = (
+                (
+                    "Contribuable résident du Canada toute l'année 2025",
+                    resident_contribuable_var,
+                ),
+                (
+                    "Relation d'époux ou conjoint de fait confirmée",
+                    relation_var,
+                ),
+                (
+                    "Le contribuable a subvenu aux besoins du conjoint en 2025",
+                    soutien_var,
+                ),
+                (
+                    "Même conjoint toute l'année 2025",
+                    meme_conjoint_var,
+                ),
+                (
+                    "Aucune séparation ou réconciliation en 2025",
+                    aucune_separation_var,
+                ),
+                (
+                    "Conjoint résident du Canada toute l'année 2025",
+                    conjoint_resident_var,
+                ),
+                (
+                    "Aucun paiement de pension alimentaire lié à une séparation",
+                    aucune_pension_var,
+                ),
+                (
+                    "Aucune déficience physique ou mentale du conjoint",
+                    aucune_infirmite_var,
+                ),
+                (
+                    "Un seul conjoint réclame le montant pour 2025",
+                    seul_reclamant_var,
+                ),
+                (
+                    "Revenu net du conjoint confirmé",
+                    revenu_confirme_var,
+                ),
+                (
+                    "Validation comptable confirmée",
+                    validation_var,
+                ),
+            )
+
+            for libelle, variable in validations:
+                ttk.Checkbutton(
+                    cadre,
+                    text=libelle,
+                    variable=variable,
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    columnspan=2,
+                    sticky="w",
+                    pady=2,
+                )
+                ligne += 1
+
+            ttk.Label(
+                cadre,
+                text="Source — état civil et revenu du conjoint",
+            ).grid(row=ligne, column=0, sticky="w", pady=(8, 4))
+            ttk.Entry(
+                cadre,
+                textvariable=source_var,
+            ).grid(
+                row=ligne,
+                column=1,
+                sticky="ew",
+                pady=(8, 4),
+            )
+            ligne += 1
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Le montant personnel fédéral 2025 applicable au contribuable "
+                    "est réduit par le revenu net du conjoint. Le crédit fédéral "
+                    "est ensuite calculé à 14,5 %. La ligne 34990 demeure protégée "
+                    "par le garde-fou du moteur."
+                ),
+                wraplength=720,
+                foreground="#475569",
+            ).grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(10, 12),
+            )
+            ligne += 1
+
+            def remettre_a_zero() -> None:
+                reclamer_var.set(False)
+                revenu_contribuable_var.set("0")
+                revenu_conjoint_var.set("0")
+                resident_contribuable_var.set(False)
+                relation_var.set(False)
+                soutien_var.set(False)
+                meme_conjoint_var.set(False)
+                aucune_separation_var.set(False)
+                conjoint_resident_var.set(False)
+                aucune_pension_var.set(False)
+                aucune_infirmite_var.set(False)
+                seul_reclamant_var.set(False)
+                revenu_confirme_var.set(False)
+                validation_var.set(False)
+                source_var.set("")
+
+            def appliquer() -> None:
+                nonlocal montant_conjoint_federal_courant
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    revenu_contribuable = Decimal(
+                        revenu_contribuable_var.get()
+                        .strip()
+                        .replace(" ", "")
+                        .replace(",", ".")
+                        or "0"
+                    )
+                    revenu_conjoint = Decimal(
+                        revenu_conjoint_var.get()
+                        .strip()
+                        .replace(" ", "")
+                        .replace(",", ".")
+                        or "0"
+                    )
+
+                    nouveau_profil = MontantConjointFederal2025(
+                        reclamer_montant=reclamer_var.get(),
+                        revenu_net_contribuable_ligne_23600=(
+                            revenu_contribuable
+                        ),
+                        revenu_net_conjoint_2025=revenu_conjoint,
+                        contribuable_resident_canada_toute_annee=(
+                            resident_contribuable_var.get()
+                        ),
+                        relation_conjoint_confirmee=relation_var.get(),
+                        conjoint_soutenu_2025=soutien_var.get(),
+                        meme_conjoint_toute_annee_2025=(
+                            meme_conjoint_var.get()
+                        ),
+                        aucune_separation_2025=(
+                            aucune_separation_var.get()
+                        ),
+                        conjoint_resident_canada_toute_annee=(
+                            conjoint_resident_var.get()
+                        ),
+                        aucun_paiement_pension_alimentaire=(
+                            aucune_pension_var.get()
+                        ),
+                        aucune_infirmite_conjoint=(
+                            aucune_infirmite_var.get()
+                        ),
+                        un_seul_conjoint_reclame_montant=(
+                            seul_reclamant_var.get()
+                        ),
+                        revenu_conjoint_confirme=revenu_confirme_var.get(),
+                        valide_par_comptable=validation_var.get(),
+                        source_conjoint=source_var.get().strip(),
+                    )
+                    valider_montant_conjoint_federal_2025(
+                        nouveau_profil
+                    )
+                except (InvalidOperation, ValueError) as erreur:
+                    messagebox.showerror(
+                        "Montant conjoint invalide",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                montant_conjoint_federal_courant = nouveau_profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                dialogue.destroy()
+
+            cadre.columnconfigure(1, weight=1)
+
+            boutons = ttk.Frame(cadre)
+            boutons.grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="e",
+                pady=(8, 0),
+            )
+
+            ttk.Button(
+                boutons,
+                text="Remettre à zéro",
+                command=remettre_a_zero,
+            ).pack(side="left", padx=(0, 8))
+
+            ttk.Button(
+                boutons,
+                text="Annuler",
+                command=dialogue.destroy,
+            ).pack(side="left", padx=(0, 8))
+
+            ttk.Button(
+                boutons,
+                text="Appliquer",
+                command=appliquer,
+            ).pack(side="left")
 
         def ouvrir_age_pension_federal_2025() -> None:
             nonlocal credits_federaux_age_pension_courants
@@ -7221,6 +7584,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal personne_vivant_seule_courante
             nonlocal montants_age_retraite_courants
             nonlocal credits_federaux_age_pension_courants
+            nonlocal montant_conjoint_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
                 dossier = creer_dossier_fiscal(
@@ -7252,6 +7616,7 @@ class ApplicationComptaPrivee(tk.Tk):
             personne_vivant_seule_courante = PersonneVivantSeule2025()
             montants_age_retraite_courants = MontantsAgeRetraite2025()
             credits_federaux_age_pension_courants = CreditsFederauxAgePension2025()
+            montant_conjoint_federal_courant = MontantConjointFederal2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
@@ -7372,6 +7737,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             personne_vivant_seule=personne_vivant_seule_courante,
                             montants_age_retraite=montants_age_retraite_courants,
                             credits_federaux_age_pension=credits_federaux_age_pension_courants,
+                            montant_conjoint_federal=montant_conjoint_federal_courant,
                         )
                     )
                 except (ValueError, Exception):
@@ -7411,6 +7777,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     personne_vivant_seule=personne_vivant_seule_courante,
                     montants_age_retraite=montants_age_retraite_courants,
                     credits_federaux_age_pension=credits_federaux_age_pension_courants,
+                    montant_conjoint_federal=montant_conjoint_federal_courant,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
             except Exception as erreur:
@@ -7489,6 +7856,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal personne_vivant_seule_courante
             nonlocal montants_age_retraite_courants
             nonlocal credits_federaux_age_pension_courants
+            nonlocal montant_conjoint_federal_courant
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
             classifications_fiscales.clear()
@@ -7556,6 +7924,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             credits_federaux_age_pension_courants = (
                 enregistrement.credits_federaux_age_pension
+            )
+            montant_conjoint_federal_courant = (
+                enregistrement.montant_conjoint_federal
             )
             mettre_a_jour_bouton_ajustements()
             rafraichir_documents()
@@ -7836,6 +8207,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     personne_vivant_seule=personne_vivant_seule_courante,
                     montants_age_retraite=montants_age_retraite_courants,
                     credits_federaux_age_pension=credits_federaux_age_pension_courants,
+                    montant_conjoint_federal=montant_conjoint_federal_courant,
                 )
                 resume = formater_estimation_fiscale_2025(
                     estimation
@@ -8178,6 +8550,15 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_actions,
             text="Âge / pension fédéral 2025",
             command=ouvrir_age_pension_federal_2025,
+        ).pack(
+            side="left",
+            padx=(8, 0),
+        )
+
+        ttk.Button(
+            zone_actions,
+            text="Conjoint fédéral 2025",
+            command=ouvrir_montant_conjoint_federal_2025,
         ).pack(
             side="left",
             padx=(8, 0),

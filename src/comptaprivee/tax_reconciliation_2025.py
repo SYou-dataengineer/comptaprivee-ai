@@ -192,9 +192,17 @@ def calculer_rapprochement_fiscal_2025(
         )
     )
 
-    credit_familial_inclus = (
+    credit_personne_seule_inclus = (
         "Montant Québec pour personne vivant seule inclus à la ligne 361."
         in quebec.limitations
+    )
+    credit_conjoint_federal_inclus = (
+        "Montant fédéral pour époux ou conjoint de fait ligne 30300 inclus."
+        in federal.limitations
+    )
+    credit_familial_inclus = (
+        credit_personne_seule_inclus
+        or credit_conjoint_federal_inclus
     )
     credit_age_retraite_inclus = (
         "Montants Québec en raison de l\'âge ou pour revenus de retraite "
@@ -216,9 +224,21 @@ def calculer_rapprochement_fiscal_2025(
         credits_absents.append("handicap")
 
     if not credits_absents:
-        limitation_credits = (
-            "Crédit familial Québec pour personne vivant seule inclus."
-        )
+        if (
+            credit_conjoint_federal_inclus
+            and credit_personne_seule_inclus
+        ):
+            limitation_credits = (
+                "Crédits familiaux fédéral et Québec inclus."
+            )
+        elif credit_conjoint_federal_inclus:
+            limitation_credits = (
+                "Montant fédéral pour époux ou conjoint de fait inclus."
+            )
+        else:
+            limitation_credits = (
+                "Crédit familial Québec pour personne vivant seule inclus."
+            )
     elif len(credits_absents) == 1:
         limitation_credits = f"Aucun crédit {credits_absents[0]}."
     elif len(credits_absents) == 2:
@@ -256,6 +276,13 @@ def calculer_rapprochement_fiscal_2025(
             "L'abattement Québec est calculé à 16,5 % de l'impôt fédéral de base.",
             "Les retenues T4 et RL-1 sont comparées aux impôts préliminaires.",
             limitation_credits,
+            *(
+                (
+                    "Montant fédéral pour époux ou conjoint de fait ligne 30300 inclus.",
+                )
+                if credit_conjoint_federal_inclus
+                else ()
+            ),
             *(
                 (
                     "Montant fédéral en raison de l'âge ligne 30100 inclus.",

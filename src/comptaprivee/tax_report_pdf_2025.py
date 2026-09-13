@@ -9,6 +9,10 @@ from .tax_estimation_2025 import (
     EstimationFiscale2025,
     formater_montant_estimation,
 )
+from .tax_federal_spouse_2025 import (
+    credit_federal_montant_conjoint_2025,
+    montant_ligne_30300_2025,
+)
 from .tax_federal_age_pension_2025 import (
     credit_federal_age_pension_2025,
     montant_age_federal_2025,
@@ -72,6 +76,9 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     montants_age_retraite = estimation.montants_age_retraite
     credits_federaux_age_pension = (
         estimation.credits_federaux_age_pension
+    )
+    montant_conjoint_federal = (
+        estimation.montant_conjoint_federal
     )
 
     montant = (
@@ -423,6 +430,66 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                         if deficience.aucun_transfert_federal
                         else "non"
                     )
+                ),
+            ]
+        )
+
+    if montant_conjoint_federal.reclamer_montant:
+        montant_30300 = montant_ligne_30300_2025(
+            montant_conjoint_federal
+        )
+        credit_conjoint_federal = (
+            credit_federal_montant_conjoint_2025(
+                montant_conjoint_federal
+            )
+        )
+
+        lignes.extend(
+            [
+                "",
+                "ÉPOUX / CONJOINT DE FAIT - FÉDÉRAL 2025",
+                (
+                    "Revenu net du contribuable - ligne 23600 : "
+                    f"{formater_montant_estimation(
+                        montant_conjoint_federal
+                        .revenu_net_contribuable_ligne_23600
+                    )}"
+                ),
+                (
+                    "Revenu net du conjoint : "
+                    f"{formater_montant_estimation(
+                        montant_conjoint_federal
+                        .revenu_net_conjoint_2025
+                    )}"
+                ),
+                (
+                    "Montant admissible - ligne 30300 : "
+                    f"{formater_montant_estimation(
+                        montant_30300
+                    )}"
+                ),
+                (
+                    "Crédit fédéral - ligne 30300 : "
+                    f"{formater_montant_estimation(
+                        credit_conjoint_federal
+                    )}"
+                ),
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                "Contribuable résident du Canada toute l'année : oui",
+                "Relation époux/conjoint de fait confirmée : oui",
+                "Conjoint soutenu en 2025 : oui",
+                "Même conjoint toute l'année 2025 : oui",
+                "Aucune séparation/réconciliation en 2025 : oui",
+                "Conjoint résident du Canada toute l'année : oui",
+                "Aucune pension alimentaire liée à une séparation : oui",
+                "Aucune déficience du conjoint : oui",
+                "Un seul conjoint réclame le montant : oui",
+                "Revenu net du conjoint confirmé : oui",
+                "Validation comptable : confirmée",
+                f"Source : {montant_conjoint_federal.source_conjoint}",
+                (
+                    "Ligne 34990 : garde-fou actif pour les profils "
+                    "au-delà de la première tranche fédérale."
                 ),
             ]
         )

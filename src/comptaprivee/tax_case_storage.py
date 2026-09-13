@@ -42,6 +42,10 @@ from .tax_federal_age_pension_2025 import (
     CreditsFederauxAgePension2025,
     valider_credits_federaux_age_pension_2025,
 )
+from .tax_federal_spouse_2025 import (
+    MontantConjointFederal2025,
+    valider_montant_conjoint_federal_2025,
+)
 from .tax_living_alone_2025 import (
     PersonneVivantSeule2025,
     valider_personne_vivant_seule_2025,
@@ -99,6 +103,7 @@ class DossierFiscalEnregistre:
     personne_vivant_seule: PersonneVivantSeule2025
     montants_age_retraite: MontantsAgeRetraite2025
     credits_federaux_age_pension: CreditsFederauxAgePension2025
+    montant_conjoint_federal: MontantConjointFederal2025
 
 
 def _nom_securise(valeur: str) -> str:
@@ -1109,6 +1114,141 @@ def _credits_federaux_age_pension_depuis_dict(
     return valider_credits_federaux_age_pension_2025(profil)
 
 
+def _montant_conjoint_federal_vers_dict(
+    profil: MontantConjointFederal2025 | None,
+):
+    if profil is None:
+        profil = MontantConjointFederal2025()
+
+    valider_montant_conjoint_federal_2025(profil)
+
+    return {
+        "reclamer_montant": bool(profil.reclamer_montant),
+        "revenu_net_contribuable_ligne_23600": _decimal_texte(
+            profil.revenu_net_contribuable_ligne_23600
+        ),
+        "revenu_net_conjoint_2025": _decimal_texte(
+            profil.revenu_net_conjoint_2025
+        ),
+        "contribuable_resident_canada_toute_annee": bool(
+            profil.contribuable_resident_canada_toute_annee
+        ),
+        "relation_conjoint_confirmee": bool(
+            profil.relation_conjoint_confirmee
+        ),
+        "conjoint_soutenu_2025": bool(
+            profil.conjoint_soutenu_2025
+        ),
+        "meme_conjoint_toute_annee_2025": bool(
+            profil.meme_conjoint_toute_annee_2025
+        ),
+        "aucune_separation_2025": bool(
+            profil.aucune_separation_2025
+        ),
+        "conjoint_resident_canada_toute_annee": bool(
+            profil.conjoint_resident_canada_toute_annee
+        ),
+        "aucun_paiement_pension_alimentaire": bool(
+            profil.aucun_paiement_pension_alimentaire
+        ),
+        "aucune_infirmite_conjoint": bool(
+            profil.aucune_infirmite_conjoint
+        ),
+        "un_seul_conjoint_reclame_montant": bool(
+            profil.un_seul_conjoint_reclame_montant
+        ),
+        "revenu_conjoint_confirme": bool(
+            profil.revenu_conjoint_confirme
+        ),
+        "valide_par_comptable": bool(
+            profil.valide_par_comptable
+        ),
+        "source_conjoint": profil.source_conjoint,
+    }
+
+
+def _montant_conjoint_federal_depuis_dict(
+    valeur: Any,
+) -> MontantConjointFederal2025:
+    if valeur is None:
+        return MontantConjointFederal2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Le montant fédéral pour conjoint enregistré est invalide."
+        )
+
+    profil = MontantConjointFederal2025(
+        reclamer_montant=bool(
+            valeur.get("reclamer_montant", False)
+        ),
+        revenu_net_contribuable_ligne_23600=_decimal_depuis_json(
+            valeur.get(
+                "revenu_net_contribuable_ligne_23600",
+                "0",
+            ),
+            (
+                "montant_conjoint_federal."
+                "revenu_net_contribuable_ligne_23600"
+            ),
+        ),
+        revenu_net_conjoint_2025=_decimal_depuis_json(
+            valeur.get("revenu_net_conjoint_2025", "0"),
+            "montant_conjoint_federal.revenu_net_conjoint_2025",
+        ),
+        contribuable_resident_canada_toute_annee=bool(
+            valeur.get(
+                "contribuable_resident_canada_toute_annee",
+                False,
+            )
+        ),
+        relation_conjoint_confirmee=bool(
+            valeur.get("relation_conjoint_confirmee", False)
+        ),
+        conjoint_soutenu_2025=bool(
+            valeur.get("conjoint_soutenu_2025", False)
+        ),
+        meme_conjoint_toute_annee_2025=bool(
+            valeur.get("meme_conjoint_toute_annee_2025", False)
+        ),
+        aucune_separation_2025=bool(
+            valeur.get("aucune_separation_2025", False)
+        ),
+        conjoint_resident_canada_toute_annee=bool(
+            valeur.get(
+                "conjoint_resident_canada_toute_annee",
+                False,
+            )
+        ),
+        aucun_paiement_pension_alimentaire=bool(
+            valeur.get(
+                "aucun_paiement_pension_alimentaire",
+                False,
+            )
+        ),
+        aucune_infirmite_conjoint=bool(
+            valeur.get("aucune_infirmite_conjoint", False)
+        ),
+        un_seul_conjoint_reclame_montant=bool(
+            valeur.get(
+                "un_seul_conjoint_reclame_montant",
+                False,
+            )
+        ),
+        revenu_conjoint_confirme=bool(
+            valeur.get("revenu_conjoint_confirme", False)
+        ),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        source_conjoint=str(
+            valeur.get("source_conjoint", "")
+        ),
+    )
+
+    return valider_montant_conjoint_federal_2025(profil)
+
+
 def _montants_age_retraite_vers_dict(
     profil: MontantsAgeRetraite2025 | None,
 ):
@@ -1291,6 +1431,7 @@ def sauvegarder_dossier_fiscal(
     personne_vivant_seule: PersonneVivantSeule2025 | None = None,
     montants_age_retraite: MontantsAgeRetraite2025 | None = None,
     credits_federaux_age_pension: CreditsFederauxAgePension2025 | None = None,
+    montant_conjoint_federal: MontantConjointFederal2025 | None = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
 ) -> Path:
@@ -1356,6 +1497,9 @@ def sauvegarder_dossier_fiscal(
         ),
         "credits_federaux_age_pension": _credits_federaux_age_pension_vers_dict(
             credits_federaux_age_pension
+        ),
+        "montant_conjoint_federal": _montant_conjoint_federal_vers_dict(
+            montant_conjoint_federal
         ),
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
@@ -1494,6 +1638,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     credits_federaux_age_pension = _credits_federaux_age_pension_depuis_dict(
         contenu.get("credits_federaux_age_pension")
     )
+    montant_conjoint_federal = _montant_conjoint_federal_depuis_dict(
+        contenu.get("montant_conjoint_federal")
+    )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
     return DossierFiscalEnregistre(
@@ -1515,6 +1662,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         montants_age_retraite=montants_age_retraite,
         credits_federaux_age_pension=(
             credits_federaux_age_pension
+        ),
+        montant_conjoint_federal=(
+            montant_conjoint_federal
         ),
     )
 

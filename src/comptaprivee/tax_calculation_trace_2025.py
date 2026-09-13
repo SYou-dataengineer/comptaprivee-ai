@@ -14,6 +14,10 @@ from .tax_age_retirement_2025 import (
     montant_revenus_retraite_2025,
     reduction_annexe_b_age_retraite_2025,
 )
+from .tax_federal_spouse_2025 import (
+    credit_federal_montant_conjoint_2025,
+    montant_ligne_30300_2025,
+)
 from .tax_federal_age_pension_2025 import (
     credit_federal_age_pension_2025,
     montant_age_federal_2025,
@@ -121,6 +125,9 @@ def construire_trace_calcul_fiscal_2025(
     credits_federaux_age_pension = (
         estimation.credits_federaux_age_pension
     )
+    montant_conjoint_federal = (
+        estimation.montant_conjoint_federal
+    )
 
     formule_revenu_federal = (
         "Revenu d'emploi - déduction RRQ améliorée"
@@ -161,6 +168,10 @@ def construire_trace_calcul_fiscal_2025(
     ):
         formule_impot_federal += (
             " - crédit âge/pension lignes 30100/31400"
+        )
+    if montant_conjoint_federal.reclamer_montant:
+        formule_impot_federal += (
+            " - crédit conjoint ligne 30300"
         )
 
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
@@ -504,6 +515,48 @@ def construire_trace_calcul_fiscal_2025(
                 ),
                 credit_quebec_frais_scolarite_2025(
                     frais_scolarite
+                ),
+            ),
+        )
+
+    if montant_conjoint_federal.reclamer_montant:
+        montant_ligne_30300 = montant_ligne_30300_2025(
+            montant_conjoint_federal
+        )
+        montant_personnel_contribuable = (
+            montant_ligne_30300
+            + montant_conjoint_federal.revenu_net_conjoint_2025
+        )
+
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt fédéral de base",
+            _ligne(
+                0,
+                "FÉDÉRAL",
+                "Crédit fédéral — époux / conjoint",
+                (
+                    "ARC ligne 30300 — "
+                    + montant_conjoint_federal.source_conjoint
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant personnel fédéral "
+                    + formater_montant_estimation(
+                        montant_personnel_contribuable
+                    )
+                    + " - revenu net du conjoint "
+                    + formater_montant_estimation(
+                        montant_conjoint_federal.revenu_net_conjoint_2025
+                    )
+                    + " = ligne 30300 "
+                    + formater_montant_estimation(
+                        montant_ligne_30300
+                    )
+                    + "; crédit fédéral × 14,5 %"
+                ),
+                credit_federal_montant_conjoint_2025(
+                    montant_conjoint_federal
                 ),
             ),
         )
