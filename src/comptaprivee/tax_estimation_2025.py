@@ -75,6 +75,14 @@ from .tax_engine_input_2025 import (
     BaseFiscaleEmploi2025,
     consolider_base_fiscale_emploi_2025,
 )
+from .tax_federal_caregiver_spouse_dependant_2025 import (
+    TYPE_CONJOINT,
+    TYPE_PERSONNE_CHARGE_ADMISSIBLE,
+    AidantNaturelConjointOuPersonneChargeFederal2025,
+    appliquer_credit_federal_ligne_30425_2025,
+    integration_sans_credit_compensatoire_autorisee_2025 as integration_aidant_30425_sans_34990_2025,
+    valider_aidant_naturel_30425_2025,
+)
 from .tax_federal_caregiver_child_2025 import (
     AidantNaturelEnfantMoins18Federal2025,
     appliquer_credit_federal_aidant_enfant_moins18_2025,
@@ -155,6 +163,7 @@ class EstimationFiscale2025:
     credits_federaux_age_pension: CreditsFederauxAgePension2025
     montant_conjoint_federal: MontantConjointFederal2025
     personne_charge_admissible_federale: MontantPersonneChargeAdmissibleFederal2025
+    aidant_conjoint_personne_charge_federal: AidantNaturelConjointOuPersonneChargeFederal2025
     aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
 
 
@@ -188,6 +197,9 @@ def calculer_estimation_fiscale_2025(
     ) = None,
     personne_charge_admissible_federale: (
         MontantPersonneChargeAdmissibleFederal2025 | None
+    ) = None,
+    aidant_conjoint_personne_charge_federal: (
+        AidantNaturelConjointOuPersonneChargeFederal2025 | None
     ) = None,
     aidant_enfant_federal: (
         AidantNaturelEnfantMoins18Federal2025 | None
@@ -500,6 +512,98 @@ def calculer_estimation_fiscale_2025(
             "intégrée complètement."
         )
 
+    aidant_30425_effectif = (
+        aidant_conjoint_personne_charge_federal
+        if aidant_conjoint_personne_charge_federal is not None
+        else AidantNaturelConjointOuPersonneChargeFederal2025()
+    )
+    valider_aidant_naturel_30425_2025(aidant_30425_effectif)
+
+    if aidant_30425_effectif.reclamer_montant:
+        if not integration_aidant_30425_sans_34990_2025(
+            revenu.revenu_imposable_federal
+        ):
+            raise ValueError(
+                "Cette première version refuse la ligne 30425 automatique "
+                "au-delà de la première tranche tant que la ligne 34990 "
+                "n'est pas intégrée complètement."
+            )
+
+        if aidant_30425_effectif.type_personne == TYPE_CONJOINT:
+            if not montant_conjoint_federal_effectif.reclamer_montant:
+                raise ValueError(
+                    "La ligne 30425 pour conjoint exige que la ligne 30300 "
+                    "soit réclamée."
+                )
+            if (
+                not montant_conjoint_federal_effectif.conjoint_avec_infirmite
+                or not montant_conjoint_federal_effectif
+                .aidant_naturel_base_2687_inclus
+            ):
+                raise ValueError(
+                    "La ligne 30425 pour conjoint exige une infirmité "
+                    "confirmée et le montant de base de 2 687 $ "
+                    "intégré à la ligne 30300."
+                )
+
+            revenu_personne_attendu = (
+                montant_conjoint_federal_effectif.revenu_net_conjoint_2025
+            )
+            montant_source_attendu = montant_ligne_30300_2025(
+                montant_conjoint_federal_effectif
+            )
+        elif (
+            aidant_30425_effectif.type_personne
+            == TYPE_PERSONNE_CHARGE_ADMISSIBLE
+        ):
+            if not personne_charge_admissible_federale_effective.reclamer_montant:
+                raise ValueError(
+                    "La ligne 30425 pour personne à charge exige que "
+                    "la ligne 30400 soit réclamée."
+                )
+            if (
+                not personne_charge_admissible_federale_effective
+                .personne_charge_18_ans_ou_plus
+                or not personne_charge_admissible_federale_effective
+                .personne_charge_avec_infirmite
+                or not personne_charge_admissible_federale_effective
+                .aidant_naturel_base_2687_inclus
+            ):
+                raise ValueError(
+                    "La ligne 30425 pour personne à charge exige 18 ans "
+                    "ou plus, une infirmité confirmée et le montant "
+                    "de base de 2 687 $ à la ligne 30400."
+                )
+
+            revenu_personne_attendu = (
+                personne_charge_admissible_federale_effective
+                .revenu_net_personne_charge_2025
+            )
+            montant_source_attendu = montant_ligne_30400_2025(
+                personne_charge_admissible_federale_effective
+            )
+        else:
+            raise ValueError("Type de personne ligne 30425 non supporté.")
+
+        if (
+            aidant_30425_effectif.revenu_net_personne_ligne_23600
+            != revenu_personne_attendu
+        ):
+            raise ValueError(
+                "Le revenu net de la personne pour la ligne 30425 doit "
+                "correspondre au revenu net validé de la personne."
+            )
+
+        if (
+            aidant_30425_effectif.montant_reclame_ligne_30300_ou_30400
+            != montant_source_attendu
+        ):
+            raise ValueError(
+                "Le montant indiqué pour les lignes 30300/30400 dans "
+                "le profil 30425 doit correspondre exactement au montant "
+                "calculé par l'estimation."
+            )
+
     aidant_enfant_federal_effectif = (
         aidant_enfant_federal
         if aidant_enfant_federal is not None
@@ -590,6 +694,10 @@ def calculer_estimation_fiscale_2025(
     federal = appliquer_credit_federal_personne_charge_admissible_2025(
         federal,
         personne_charge_admissible_federale_effective,
+    )
+    federal = appliquer_credit_federal_ligne_30425_2025(
+        federal,
+        aidant_30425_effectif,
     )
     federal = appliquer_credit_federal_aidant_enfant_moins18_2025(
         federal,
@@ -682,6 +790,9 @@ def calculer_estimation_fiscale_2025(
         ),
         personne_charge_admissible_federale=(
             personne_charge_admissible_federale_effective
+        ),
+        aidant_conjoint_personne_charge_federal=(
+            aidant_30425_effectif
         ),
         aidant_enfant_federal=(
             aidant_enfant_federal_effectif

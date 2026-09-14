@@ -33,6 +33,7 @@ from .tax_rules_2025 import (
 
 
 ZERO = Decimal("0")
+MONTANT_AIDANT_CONJOINT_2025 = Decimal("2687")
 TAUX_CREDIT_FEDERAL_2025 = Decimal("0.145")
 SEUIL_PREMIERE_TRANCHE_FEDERALE_2025 = FEDERAL_BRACKETS_2025[0][0]
 
@@ -54,6 +55,11 @@ class MontantConjointFederal2025:
     conjoint_resident_canada_toute_annee: bool = False
     aucun_paiement_pension_alimentaire: bool = False
     aucune_infirmite_conjoint: bool = False
+    conjoint_avec_infirmite: bool = False
+    dependance_due_uniquement_a_infirmite: bool = False
+    dependance_periode_considerable: bool = False
+    aidant_naturel_base_2687_inclus: bool = False
+    preuve_medicale_ou_t2201_confirmee: bool = False
     un_seul_conjoint_reclame_montant: bool = False
     revenu_conjoint_confirme: bool = False
 
@@ -118,11 +124,6 @@ def valider_montant_conjoint_federal_2025(
             "séparation ne sont pas supportées dans ce profil simple.",
         ),
         (
-            profil.aucune_infirmite_conjoint,
-            "Le conjoint avec déficience doit être traité avec les "
-            "règles du montant canadien pour aidant naturel.",
-        ),
-        (
             profil.un_seul_conjoint_reclame_montant,
             "Un seul époux ou conjoint de fait peut réclamer le "
             "montant pour l'année.",
@@ -142,6 +143,49 @@ def valider_montant_conjoint_federal_2025(
         if not condition:
             raise ValueError(message)
 
+    if profil.conjoint_avec_infirmite:
+        if profil.aucune_infirmite_conjoint:
+            raise ValueError(
+                "Le profil est contradictoire : il ne peut pas confirmer "
+                "à la fois l'absence d'infirmité et une infirmité du conjoint."
+            )
+        if not profil.dependance_due_uniquement_a_infirmite:
+            raise ValueError(
+                "Pour le montant canadien pour aidant naturel, la dépendance "
+                "du conjoint doit être due à l'infirmité."
+            )
+        if not profil.dependance_periode_considerable:
+            raise ValueError(
+                "La dépendance du conjoint doit exister pendant une "
+                "période considérable."
+            )
+        if not profil.aidant_naturel_base_2687_inclus:
+            raise ValueError(
+                "Le montant de base de 2 687 $ pour aidant naturel "
+                "doit être inclus dans le calcul de la ligne 30300."
+            )
+        if not profil.preuve_medicale_ou_t2201_confirmee:
+            raise ValueError(
+                "Une preuve médicale admissible ou un formulaire T2201 "
+                "approuvé doit être confirmé."
+            )
+    else:
+        if not profil.aucune_infirmite_conjoint:
+            raise ValueError(
+                "Le profil doit confirmer l'absence d'infirmité du conjoint "
+                "ou activer le traitement aidant naturel."
+            )
+        if (
+            profil.dependance_due_uniquement_a_infirmite
+            or profil.dependance_periode_considerable
+            or profil.aidant_naturel_base_2687_inclus
+            or profil.preuve_medicale_ou_t2201_confirmee
+        ):
+            raise ValueError(
+                "Les indicateurs d'aidant naturel ne peuvent pas être "
+                "activés lorsque le conjoint est déclaré sans infirmité."
+            )
+
     if not profil.source_conjoint.strip():
         raise ValueError(
             "Une source confirmant la situation et le revenu du conjoint "
@@ -149,6 +193,24 @@ def valider_montant_conjoint_federal_2025(
         )
 
     return profil
+
+
+def montant_base_aidant_conjoint_30300_2025(
+    profil: MontantConjointFederal2025,
+) -> Decimal:
+    """Retourne le 2 687 $ ajouté au calcul 30300 si admissible."""
+    valider_montant_conjoint_federal_2025(profil)
+
+    if not profil.reclamer_montant:
+        return ZERO
+
+    if (
+        profil.conjoint_avec_infirmite
+        and profil.aidant_naturel_base_2687_inclus
+    ):
+        return MONTANT_AIDANT_CONJOINT_2025
+
+    return ZERO
 
 
 def montant_ligne_30300_2025(
@@ -163,9 +225,20 @@ def montant_ligne_30300_2025(
         profil.revenu_net_contribuable_ligne_23600
     )
 
+    montant_aidant = (
+        MONTANT_AIDANT_CONJOINT_2025
+        if (
+            profil.conjoint_avec_infirmite
+            and profil.aidant_naturel_base_2687_inclus
+        )
+        else ZERO
+    )
+
     return max(
         arrondir_cent(
-            montant_personnel - profil.revenu_net_conjoint_2025
+            montant_personnel
+            + montant_aidant
+            - profil.revenu_net_conjoint_2025
         ),
         ZERO,
     )

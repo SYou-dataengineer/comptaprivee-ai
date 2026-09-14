@@ -46,6 +46,10 @@ from .tax_federal_spouse_2025 import (
     MontantConjointFederal2025,
     valider_montant_conjoint_federal_2025,
 )
+from .tax_federal_caregiver_spouse_dependant_2025 import (
+    AidantNaturelConjointOuPersonneChargeFederal2025,
+    valider_aidant_naturel_30425_2025,
+)
 from .tax_federal_caregiver_child_2025 import (
     AidantNaturelEnfantMoins18Federal2025,
     valider_aidant_naturel_enfant_moins18_federal_2025,
@@ -113,6 +117,7 @@ class DossierFiscalEnregistre:
     credits_federaux_age_pension: CreditsFederauxAgePension2025
     montant_conjoint_federal: MontantConjointFederal2025
     personne_charge_admissible_federale: MontantPersonneChargeAdmissibleFederal2025
+    aidant_conjoint_personne_charge_federal: AidantNaturelConjointOuPersonneChargeFederal2025
     aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
 
 
@@ -1164,6 +1169,21 @@ def _montant_conjoint_federal_vers_dict(
         "aucune_infirmite_conjoint": bool(
             profil.aucune_infirmite_conjoint
         ),
+        "conjoint_avec_infirmite": bool(
+            profil.conjoint_avec_infirmite
+        ),
+        "dependance_due_uniquement_a_infirmite": bool(
+            profil.dependance_due_uniquement_a_infirmite
+        ),
+        "dependance_periode_considerable": bool(
+            profil.dependance_periode_considerable
+        ),
+        "aidant_naturel_base_2687_inclus": bool(
+            profil.aidant_naturel_base_2687_inclus
+        ),
+        "preuve_medicale_ou_t2201_confirmee": bool(
+            profil.preuve_medicale_ou_t2201_confirmee
+        ),
         "un_seul_conjoint_reclame_montant": bool(
             profil.un_seul_conjoint_reclame_montant
         ),
@@ -1239,6 +1259,30 @@ def _montant_conjoint_federal_depuis_dict(
         aucune_infirmite_conjoint=bool(
             valeur.get("aucune_infirmite_conjoint", False)
         ),
+        conjoint_avec_infirmite=bool(
+            valeur.get("conjoint_avec_infirmite", False)
+        ),
+        dependance_due_uniquement_a_infirmite=bool(
+            valeur.get(
+                "dependance_due_uniquement_a_infirmite",
+                False,
+            )
+        ),
+        dependance_periode_considerable=bool(
+            valeur.get(
+                "dependance_periode_considerable",
+                False,
+            )
+        ),
+        aidant_naturel_base_2687_inclus=bool(
+            valeur.get("aidant_naturel_base_2687_inclus", False)
+        ),
+        preuve_medicale_ou_t2201_confirmee=bool(
+            valeur.get(
+                "preuve_medicale_ou_t2201_confirmee",
+                False,
+            )
+        ),
         un_seul_conjoint_reclame_montant=bool(
             valeur.get(
                 "un_seul_conjoint_reclame_montant",
@@ -1292,6 +1336,24 @@ def _personne_charge_admissible_federale_vers_dict(
         ),
         "aucune_infirmite_enfant": bool(
             profil.aucune_infirmite_enfant
+        ),
+        "personne_charge_18_ans_ou_plus": bool(
+            profil.personne_charge_18_ans_ou_plus
+        ),
+        "personne_charge_avec_infirmite": bool(
+            profil.personne_charge_avec_infirmite
+        ),
+        "dependance_due_uniquement_a_infirmite": bool(
+            profil.dependance_due_uniquement_a_infirmite
+        ),
+        "dependance_periode_considerable": bool(
+            profil.dependance_periode_considerable
+        ),
+        "aidant_naturel_base_2687_inclus": bool(
+            profil.aidant_naturel_base_2687_inclus
+        ),
+        "preuve_medicale_ou_t2201_confirmee": bool(
+            profil.preuve_medicale_ou_t2201_confirmee
         ),
         "enfant_soutenu_2025": bool(
             profil.enfant_soutenu_2025
@@ -1381,6 +1443,33 @@ def _personne_charge_admissible_federale_depuis_dict(
         aucune_infirmite_enfant=bool(
             valeur.get("aucune_infirmite_enfant", False)
         ),
+        personne_charge_18_ans_ou_plus=bool(
+            valeur.get("personne_charge_18_ans_ou_plus", False)
+        ),
+        personne_charge_avec_infirmite=bool(
+            valeur.get("personne_charge_avec_infirmite", False)
+        ),
+        dependance_due_uniquement_a_infirmite=bool(
+            valeur.get(
+                "dependance_due_uniquement_a_infirmite",
+                False,
+            )
+        ),
+        dependance_periode_considerable=bool(
+            valeur.get(
+                "dependance_periode_considerable",
+                False,
+            )
+        ),
+        aidant_naturel_base_2687_inclus=bool(
+            valeur.get("aidant_naturel_base_2687_inclus", False)
+        ),
+        preuve_medicale_ou_t2201_confirmee=bool(
+            valeur.get(
+                "preuve_medicale_ou_t2201_confirmee",
+                False,
+            )
+        ),
         enfant_soutenu_2025=bool(
             valeur.get("enfant_soutenu_2025", False)
         ),
@@ -1440,6 +1529,143 @@ def _personne_charge_admissible_federale_depuis_dict(
     return valider_montant_personne_charge_admissible_federal_2025(
         profil
     )
+
+
+def _aidant_conjoint_personne_charge_federal_vers_dict(
+    profil: AidantNaturelConjointOuPersonneChargeFederal2025 | None,
+):
+    if profil is None:
+        profil = AidantNaturelConjointOuPersonneChargeFederal2025()
+
+    valider_aidant_naturel_30425_2025(profil)
+
+    return {
+        "reclamer_montant": bool(profil.reclamer_montant),
+        "type_personne": profil.type_personne,
+        "revenu_net_personne_ligne_23600": _decimal_texte(
+            profil.revenu_net_personne_ligne_23600
+        ),
+        "montant_reclame_ligne_30300_ou_30400": _decimal_texte(
+            profil.montant_reclame_ligne_30300_ou_30400
+        ),
+        "personne_soutenue_en_2025": bool(
+            profil.personne_soutenue_en_2025
+        ),
+        "personne_charge_18_ans_ou_plus_si_applicable": bool(
+            profil.personne_charge_18_ans_ou_plus_si_applicable
+        ),
+        "infirmite_physique_ou_mentale": bool(
+            profil.infirmite_physique_ou_mentale
+        ),
+        "dependance_due_uniquement_a_infirmite": bool(
+            profil.dependance_due_uniquement_a_infirmite
+        ),
+        "dependance_periode_considerable": bool(
+            profil.dependance_periode_considerable
+        ),
+        "montant_base_2687_inclus": bool(
+            profil.montant_base_2687_inclus
+        ),
+        "un_seul_reclamant_30425": bool(
+            profil.un_seul_reclamant_30425
+        ),
+        "aucune_reclamation_partagee": bool(
+            profil.aucune_reclamation_partagee
+        ),
+        "preuve_medicale_ou_t2201_confirmee": bool(
+            profil.preuve_medicale_ou_t2201_confirmee
+        ),
+        "valide_par_comptable": bool(
+            profil.valide_par_comptable
+        ),
+        "source_personne": profil.source_personne,
+    }
+
+
+def _aidant_conjoint_personne_charge_federal_depuis_dict(
+    valeur: Any,
+) -> AidantNaturelConjointOuPersonneChargeFederal2025:
+    if valeur is None:
+        return AidantNaturelConjointOuPersonneChargeFederal2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Le montant fédéral pour aidant naturel ligne 30425 "
+            "enregistré est invalide."
+        )
+
+    profil = AidantNaturelConjointOuPersonneChargeFederal2025(
+        reclamer_montant=bool(
+            valeur.get("reclamer_montant", False)
+        ),
+        type_personne=str(
+            valeur.get("type_personne", "")
+        ),
+        revenu_net_personne_ligne_23600=_decimal_depuis_json(
+            valeur.get("revenu_net_personne_ligne_23600", "0"),
+            (
+                "aidant_conjoint_personne_charge_federal."
+                "revenu_net_personne_ligne_23600"
+            ),
+        ),
+        montant_reclame_ligne_30300_ou_30400=_decimal_depuis_json(
+            valeur.get(
+                "montant_reclame_ligne_30300_ou_30400",
+                "0",
+            ),
+            (
+                "aidant_conjoint_personne_charge_federal."
+                "montant_reclame_ligne_30300_ou_30400"
+            ),
+        ),
+        personne_soutenue_en_2025=bool(
+            valeur.get("personne_soutenue_en_2025", False)
+        ),
+        personne_charge_18_ans_ou_plus_si_applicable=bool(
+            valeur.get(
+                "personne_charge_18_ans_ou_plus_si_applicable",
+                False,
+            )
+        ),
+        infirmite_physique_ou_mentale=bool(
+            valeur.get("infirmite_physique_ou_mentale", False)
+        ),
+        dependance_due_uniquement_a_infirmite=bool(
+            valeur.get(
+                "dependance_due_uniquement_a_infirmite",
+                False,
+            )
+        ),
+        dependance_periode_considerable=bool(
+            valeur.get(
+                "dependance_periode_considerable",
+                False,
+            )
+        ),
+        montant_base_2687_inclus=bool(
+            valeur.get("montant_base_2687_inclus", False)
+        ),
+        un_seul_reclamant_30425=bool(
+            valeur.get("un_seul_reclamant_30425", False)
+        ),
+        aucune_reclamation_partagee=bool(
+            valeur.get("aucune_reclamation_partagee", False)
+        ),
+        preuve_medicale_ou_t2201_confirmee=bool(
+            valeur.get(
+                "preuve_medicale_ou_t2201_confirmee",
+                False,
+            )
+        ),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        source_personne=str(
+            valeur.get("source_personne", "")
+        ),
+    )
+
+    return valider_aidant_naturel_30425_2025(profil)
 
 
 def _aidant_enfant_federal_vers_dict(
@@ -1751,6 +1977,9 @@ def sauvegarder_dossier_fiscal(
     personne_charge_admissible_federale: (
         MontantPersonneChargeAdmissibleFederal2025 | None
     ) = None,
+    aidant_conjoint_personne_charge_federal: (
+        AidantNaturelConjointOuPersonneChargeFederal2025 | None
+    ) = None,
     aidant_enfant_federal: (
         AidantNaturelEnfantMoins18Federal2025 | None
     ) = None,
@@ -1826,6 +2055,11 @@ def sauvegarder_dossier_fiscal(
         "personne_charge_admissible_federale": (
             _personne_charge_admissible_federale_vers_dict(
                 personne_charge_admissible_federale
+            )
+        ),
+        "aidant_conjoint_personne_charge_federal": (
+            _aidant_conjoint_personne_charge_federal_vers_dict(
+                aidant_conjoint_personne_charge_federal
             )
         ),
         "aidant_enfant_federal": (
@@ -1978,6 +2212,11 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             contenu.get("personne_charge_admissible_federale")
         )
     )
+    aidant_conjoint_personne_charge_federal = (
+        _aidant_conjoint_personne_charge_federal_depuis_dict(
+            contenu.get("aidant_conjoint_personne_charge_federal")
+        )
+    )
     aidant_enfant_federal = (
         _aidant_enfant_federal_depuis_dict(
             contenu.get("aidant_enfant_federal")
@@ -2010,6 +2249,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         ),
         personne_charge_admissible_federale=(
             personne_charge_admissible_federale
+        ),
+        aidant_conjoint_personne_charge_federal=(
+            aidant_conjoint_personne_charge_federal
         ),
         aidant_enfant_federal=(
             aidant_enfant_federal

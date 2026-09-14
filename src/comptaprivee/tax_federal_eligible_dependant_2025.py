@@ -38,6 +38,7 @@ from .tax_rules_2025 import (
 
 
 ZERO = Decimal("0")
+MONTANT_AIDANT_PERSONNE_CHARGE_2025 = Decimal("2687")
 TAUX_CREDIT_FEDERAL_2025 = Decimal("0.145")
 SEUIL_PREMIERE_TRANCHE_FEDERALE_2025 = FEDERAL_BRACKETS_2025[0][0]
 
@@ -57,6 +58,12 @@ class MontantPersonneChargeAdmissibleFederal2025:
     personne_charge_est_enfant: bool = False
     enfant_moins_18_fin_2025: bool = False
     aucune_infirmite_enfant: bool = False
+    personne_charge_18_ans_ou_plus: bool = False
+    personne_charge_avec_infirmite: bool = False
+    dependance_due_uniquement_a_infirmite: bool = False
+    dependance_periode_considerable: bool = False
+    aidant_naturel_base_2687_inclus: bool = False
+    preuve_medicale_ou_t2201_confirmee: bool = False
     enfant_soutenu_2025: bool = False
     enfant_a_vecu_avec_contribuable: bool = False
     habitation_maintenue_par_contribuable: bool = False
@@ -111,16 +118,6 @@ def valider_montant_personne_charge_admissible_federal_2025(
             profil.personne_charge_est_enfant,
             "Cette première version de la ligne 30400 est limitée à "
             "l'enfant du contribuable.",
-        ),
-        (
-            profil.enfant_moins_18_fin_2025,
-            "L'enfant doit avoir moins de 18 ans à la fin de 2025 dans "
-            "ce profil simple.",
-        ),
-        (
-            profil.aucune_infirmite_enfant,
-            "L'enfant avec déficience doit être traité séparément avec "
-            "les règles du montant canadien pour aidant naturel.",
         ),
         (
             profil.enfant_soutenu_2025,
@@ -178,6 +175,63 @@ def valider_montant_personne_charge_admissible_federal_2025(
         if not condition:
             raise ValueError(message)
 
+    if profil.personne_charge_18_ans_ou_plus:
+        if profil.enfant_moins_18_fin_2025:
+            raise ValueError(
+                "Le profil est contradictoire : moins de 18 ans "
+                "et 18 ans ou plus ne peuvent pas être vrais ensemble."
+            )
+        if (
+            profil.aucune_infirmite_enfant
+            or not profil.personne_charge_avec_infirmite
+        ):
+            raise ValueError(
+                "Une infirmité physique ou mentale doit être confirmée "
+                "pour la personne à charge de 18 ans ou plus."
+            )
+        if not profil.dependance_due_uniquement_a_infirmite:
+            raise ValueError(
+                "La dépendance de la personne à charge doit être "
+                "due à l'infirmité."
+            )
+        if not profil.dependance_periode_considerable:
+            raise ValueError(
+                "La dépendance de la personne à charge doit exister "
+                "pendant une période considérable."
+            )
+        if not profil.aidant_naturel_base_2687_inclus:
+            raise ValueError(
+                "Le montant de base de 2 687 $ pour aidant naturel "
+                "doit être inclus dans le calcul de la ligne 30400."
+            )
+        if not profil.preuve_medicale_ou_t2201_confirmee:
+            raise ValueError(
+                "Une preuve médicale admissible ou un formulaire T2201 "
+                "approuvé doit être confirmé."
+            )
+    else:
+        if not profil.enfant_moins_18_fin_2025:
+            raise ValueError(
+                "L'enfant doit avoir moins de 18 ans à la fin de 2025 "
+                "dans ce profil simple."
+            )
+        if not profil.aucune_infirmite_enfant:
+            raise ValueError(
+                "L'enfant avec déficience doit être traité séparément "
+                "avec les règles du montant canadien pour aidant naturel."
+            )
+        if (
+            profil.personne_charge_avec_infirmite
+            or profil.dependance_due_uniquement_a_infirmite
+            or profil.dependance_periode_considerable
+            or profil.aidant_naturel_base_2687_inclus
+            or profil.preuve_medicale_ou_t2201_confirmee
+        ):
+            raise ValueError(
+                "Les indicateurs d'aidant naturel pour une personne "
+                "de 18 ans ou plus ne peuvent pas être activés ici."
+            )
+
     if not profil.source_personne_charge.strip():
         raise ValueError(
             "Une source confirmant la situation et le revenu de la "
@@ -185,6 +239,24 @@ def valider_montant_personne_charge_admissible_federal_2025(
         )
 
     return profil
+
+
+def montant_base_aidant_personne_charge_30400_2025(
+    profil: MontantPersonneChargeAdmissibleFederal2025,
+) -> Decimal:
+    valider_montant_personne_charge_admissible_federal_2025(profil)
+
+    if not profil.reclamer_montant:
+        return ZERO
+
+    if (
+        profil.personne_charge_18_ans_ou_plus
+        and profil.personne_charge_avec_infirmite
+        and profil.aidant_naturel_base_2687_inclus
+    ):
+        return MONTANT_AIDANT_PERSONNE_CHARGE_2025
+
+    return ZERO
 
 
 def montant_ligne_30400_2025(
@@ -199,9 +271,20 @@ def montant_ligne_30400_2025(
         profil.revenu_net_contribuable_ligne_23600
     )
 
+    montant_aidant = (
+        MONTANT_AIDANT_PERSONNE_CHARGE_2025
+        if (
+            profil.personne_charge_18_ans_ou_plus
+            and profil.personne_charge_avec_infirmite
+            and profil.aidant_naturel_base_2687_inclus
+        )
+        else ZERO
+    )
+
     return max(
         arrondir_cent(
             montant_personnel
+            + montant_aidant
             - profil.revenu_net_personne_charge_2025
         ),
         ZERO,

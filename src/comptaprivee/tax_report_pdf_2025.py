@@ -13,6 +13,10 @@ from .tax_federal_spouse_2025 import (
     credit_federal_montant_conjoint_2025,
     montant_ligne_30300_2025,
 )
+from .tax_federal_caregiver_spouse_dependant_2025 import (
+    credit_federal_ligne_30425_2025,
+    montant_ligne_30425_2025,
+)
 from .tax_federal_caregiver_child_2025 import (
     credit_federal_aidant_enfant_moins18_2025,
     montant_ligne_30500_2025,
@@ -91,6 +95,9 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     )
     personne_charge_admissible_federale = (
         estimation.personne_charge_admissible_federale
+    )
+    aidant_30425_federal = (
+        estimation.aidant_conjoint_personne_charge_federal
     )
     aidant_enfant_federal = (
         estimation.aidant_enfant_federal
@@ -446,6 +453,153 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                         else "non"
                     )
                 ),
+            ]
+        )
+
+
+    if aidant_30425_federal.reclamer_montant:
+        montant_30425 = montant_ligne_30425_2025(
+            aidant_30425_federal
+        )
+        credit_30425 = credit_federal_ligne_30425_2025(
+            aidant_30425_federal
+        )
+        ligne_source_30425 = (
+            "30300"
+            if aidant_30425_federal.type_personne == "conjoint"
+            else "30400"
+        )
+        type_personne_30425 = (
+            "conjoint"
+            if aidant_30425_federal.type_personne == "conjoint"
+            else "personne à charge admissible"
+        )
+
+        lignes.extend(
+            [
+                "",
+                (
+                    "AIDANT NATUREL - CONJOINT / PERSONNE À CHARGE - "
+                    "FÉDÉRAL 2025"
+                ),
+                "Type de personne : " + type_personne_30425,
+                (
+                    "Revenu net de la personne - ligne 23600 : "
+                    + formater_montant_estimation(
+                        aidant_30425_federal
+                        .revenu_net_personne_ligne_23600
+                    )
+                ),
+                (
+                    "Montant source - ligne "
+                    + ligne_source_30425
+                    + " : "
+                    + formater_montant_estimation(
+                        aidant_30425_federal
+                        .montant_reclame_ligne_30300_ou_30400
+                    )
+                ),
+                (
+                    "Montant canadien pour aidant naturel - ligne 30425 : "
+                    + formater_montant_estimation(montant_30425)
+                ),
+                (
+                    "Crédit fédéral - ligne 30425 : "
+                    + formater_montant_estimation(credit_30425)
+                ),
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                (
+                    "Personne soutenue en 2025 : "
+                    + (
+                        "oui"
+                        if aidant_30425_federal.personne_soutenue_en_2025
+                        else "non"
+                    )
+                ),
+                (
+                    "Personne à charge 18 ans ou plus si applicable : "
+                    + (
+                        "oui"
+                        if (
+                            aidant_30425_federal
+                            .personne_charge_18_ans_ou_plus_si_applicable
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Infirmité physique ou mentale : "
+                    + (
+                        "confirmée"
+                        if aidant_30425_federal.infirmite_physique_ou_mentale
+                        else "non confirmée"
+                    )
+                ),
+                (
+                    "Dépendance due uniquement à l'infirmité : "
+                    + (
+                        "oui"
+                        if (
+                            aidant_30425_federal
+                            .dependance_due_uniquement_a_infirmite
+                        )
+                        else "non"
+                    )
+                ),
+                (
+                    "Dépendance pendant une période considérable : "
+                    + (
+                        "oui"
+                        if aidant_30425_federal.dependance_periode_considerable
+                        else "non"
+                    )
+                ),
+                (
+                    "Base aidant naturel de 2 687 $ incluse dans "
+                    "30300/30400 : "
+                    + (
+                        "oui"
+                        if aidant_30425_federal.montant_base_2687_inclus
+                        else "non"
+                    )
+                ),
+                (
+                    "Un seul réclamant ligne 30425 : "
+                    + (
+                        "oui"
+                        if aidant_30425_federal.un_seul_reclamant_30425
+                        else "non"
+                    )
+                ),
+                (
+                    "Aucune réclamation partagée : "
+                    + (
+                        "oui"
+                        if aidant_30425_federal.aucune_reclamation_partagee
+                        else "non"
+                    )
+                ),
+                (
+                    "Preuve médicale admissible ou T2201 approuvé : "
+                    + (
+                        "confirmée"
+                        if (
+                            aidant_30425_federal
+                            .preuve_medicale_ou_t2201_confirmee
+                        )
+                        else "non confirmée"
+                    )
+                ),
+                (
+                    "Validation comptable : "
+                    + (
+                        "confirmée"
+                        if aidant_30425_federal.valide_par_comptable
+                        else "non confirmée"
+                    )
+                ),
+                "Source : " + aidant_30425_federal.source_personne,
+                "Ligne 34990 : garde-fou actif",
             ]
         )
 

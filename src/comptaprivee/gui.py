@@ -169,7 +169,14 @@ from .tax_federal_age_pension_2025 import (
 )
 from .tax_federal_spouse_2025 import (
     MontantConjointFederal2025,
+    montant_ligne_30300_2025,
     valider_montant_conjoint_federal_2025,
+)
+from .tax_federal_caregiver_spouse_dependant_2025 import (
+    TYPE_CONJOINT,
+    TYPE_PERSONNE_CHARGE_ADMISSIBLE,
+    AidantNaturelConjointOuPersonneChargeFederal2025,
+    valider_aidant_naturel_30425_2025,
 )
 from .tax_federal_caregiver_child_2025 import (
     AidantNaturelEnfantMoins18Federal2025,
@@ -177,6 +184,7 @@ from .tax_federal_caregiver_child_2025 import (
 )
 from .tax_federal_eligible_dependant_2025 import (
     MontantPersonneChargeAdmissibleFederal2025,
+    montant_ligne_30400_2025,
     valider_montant_personne_charge_admissible_federal_2025,
 )
 from .tax_living_alone_2025 import (
@@ -2421,6 +2429,7 @@ class ApplicationComptaPrivee(tk.Tk):
         credits_federaux_age_pension_courants = CreditsFederauxAgePension2025()
         montant_conjoint_federal_courant = MontantConjointFederal2025()
         personne_charge_admissible_federale_courante = MontantPersonneChargeAdmissibleFederal2025()
+        aidant_30425_federal_courant = AidantNaturelConjointOuPersonneChargeFederal2025()
         aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
@@ -3446,6 +3455,344 @@ class ApplicationComptaPrivee(tk.Tk):
 
 
 
+
+
+        def ouvrir_aidant_30425_federal_2025() -> None:
+            nonlocal aidant_30425_federal_courant
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Aidant naturel — conjoint / personne à charge — fédéral 2025"
+            )
+            dialogue.geometry("780x720")
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            contenu = ttk.Frame(dialogue, padding=16)
+            contenu.pack(fill="both", expand=True)
+
+            ttk.Label(
+                contenu,
+                text="Montant canadien pour aidant naturel — ligne 30425",
+                font=("Segoe UI", 12, "bold"),
+            ).pack(anchor="w")
+
+            ttk.Label(
+                contenu,
+                text=(
+                    "Profil simple 2025. Le montant source est repris "
+                    "automatiquement de la ligne 30300 (conjoint) ou 30400 "
+                    "(personne à charge admissible). Le moteur recroise "
+                    "également le revenu net de la personne."
+                ),
+                wraplength=720,
+            ).pack(anchor="w", pady=(4, 12))
+
+            reclamer_var = tk.BooleanVar(
+                value=aidant_30425_federal_courant.reclamer_montant
+            )
+            type_var = tk.StringVar(
+                value=(
+                    aidant_30425_federal_courant.type_personne
+                    or TYPE_CONJOINT
+                )
+            )
+            source_var = tk.StringVar(
+                value=aidant_30425_federal_courant.source_personne
+            )
+
+            ttk.Checkbutton(
+                contenu,
+                text="Réclamer la ligne 30425",
+                variable=reclamer_var,
+            ).pack(anchor="w", pady=(0, 8))
+
+            cadre_type = ttk.LabelFrame(
+                contenu,
+                text="Personne visée",
+                padding=10,
+            )
+            cadre_type.pack(fill="x", pady=(0, 10))
+
+            ttk.Radiobutton(
+                cadre_type,
+                text="Conjoint — la ligne 30300 doit déjà être active",
+                variable=type_var,
+                value=TYPE_CONJOINT,
+            ).pack(anchor="w")
+            ttk.Radiobutton(
+                cadre_type,
+                text=(
+                    "Personne à charge admissible 18+ — "
+                    "la ligne 30400 doit déjà être active"
+                ),
+                variable=type_var,
+                value=TYPE_PERSONNE_CHARGE_ADMISSIBLE,
+            ).pack(anchor="w", pady=(4, 0))
+
+            infos_var = tk.StringVar()
+
+            def actualiser_infos(*_args) -> None:
+                try:
+                    if type_var.get() == TYPE_CONJOINT:
+                        revenu = (
+                            montant_conjoint_federal_courant
+                            .revenu_net_conjoint_2025
+                        )
+                        montant_source = montant_ligne_30300_2025(
+                            montant_conjoint_federal_courant
+                        )
+                        ligne = "30300"
+                    else:
+                        revenu = (
+                            personne_charge_admissible_federale_courante
+                            .revenu_net_personne_charge_2025
+                        )
+                        montant_source = montant_ligne_30400_2025(
+                            personne_charge_admissible_federale_courante
+                        )
+                        ligne = "30400"
+
+                    infos_var.set(
+                        "Revenu net de la personne : "
+                        + formater_montant_estimation(revenu)
+                        + " | Montant source ligne "
+                        + ligne
+                        + " : "
+                        + formater_montant_estimation(montant_source)
+                    )
+                except Exception as erreur:
+                    infos_var.set(
+                        "Impossible de lire le profil source : "
+                        + str(erreur)
+                    )
+
+            type_var.trace_add("write", actualiser_infos)
+            actualiser_infos()
+
+            ttk.Label(
+                contenu,
+                textvariable=infos_var,
+                wraplength=720,
+            ).pack(anchor="w", pady=(0, 12))
+
+            confirmations = ttk.LabelFrame(
+                contenu,
+                text="Confirmations obligatoires",
+                padding=10,
+            )
+            confirmations.pack(fill="both", expand=True)
+
+            personne_soutenue_var = tk.BooleanVar(
+                value=aidant_30425_federal_courant.personne_soutenue_en_2025
+            )
+            infirmite_var = tk.BooleanVar(
+                value=aidant_30425_federal_courant.infirmite_physique_ou_mentale
+            )
+            dependance_infirmite_var = tk.BooleanVar(
+                value=(
+                    aidant_30425_federal_courant
+                    .dependance_due_uniquement_a_infirmite
+                )
+            )
+            dependance_periode_var = tk.BooleanVar(
+                value=(
+                    aidant_30425_federal_courant
+                    .dependance_periode_considerable
+                )
+            )
+            un_seul_var = tk.BooleanVar(
+                value=aidant_30425_federal_courant.un_seul_reclamant_30425
+            )
+            aucune_partagee_var = tk.BooleanVar(
+                value=aidant_30425_federal_courant.aucune_reclamation_partagee
+            )
+            preuve_var = tk.BooleanVar(
+                value=(
+                    aidant_30425_federal_courant
+                    .preuve_medicale_ou_t2201_confirmee
+                )
+            )
+            comptable_var = tk.BooleanVar(
+                value=aidant_30425_federal_courant.valide_par_comptable
+            )
+
+            options = (
+                (
+                    "La personne a été soutenue par le contribuable en 2025",
+                    personne_soutenue_var,
+                ),
+                (
+                    "Infirmité physique ou mentale confirmée",
+                    infirmite_var,
+                ),
+                (
+                    "Dépendance due uniquement à l'infirmité",
+                    dependance_infirmite_var,
+                ),
+                (
+                    "Dépendance pendant une période considérable",
+                    dependance_periode_var,
+                ),
+                (
+                    "Un seul réclamant pour la ligne 30425",
+                    un_seul_var,
+                ),
+                (
+                    "Aucune réclamation partagée",
+                    aucune_partagee_var,
+                ),
+                (
+                    "Preuve médicale admissible ou T2201 approuvé confirmé",
+                    preuve_var,
+                ),
+                (
+                    "Validation comptable confirmée",
+                    comptable_var,
+                ),
+            )
+
+            for texte_option, variable in options:
+                ttk.Checkbutton(
+                    confirmations,
+                    text=texte_option,
+                    variable=variable,
+                ).pack(anchor="w", pady=2)
+
+            ttk.Label(
+                contenu,
+                text="Source / pièce justificative",
+            ).pack(anchor="w", pady=(10, 2))
+            ttk.Entry(
+                contenu,
+                textvariable=source_var,
+                width=85,
+            ).pack(fill="x")
+
+            ttk.Label(
+                contenu,
+                text=(
+                    "Garde-fou : cette version conserve la restriction "
+                    "de la ligne 34990. Les cas de partage complexes, "
+                    "les transferts et les autres profils hors périmètre "
+                    "restent refusés."
+                ),
+                wraplength=720,
+            ).pack(anchor="w", pady=(10, 8))
+
+            def appliquer() -> None:
+                nonlocal aidant_30425_federal_courant
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    if not reclamer_var.get():
+                        profil = (
+                            AidantNaturelConjointOuPersonneChargeFederal2025()
+                        )
+                    else:
+                        type_personne = type_var.get()
+
+                        if type_personne == TYPE_CONJOINT:
+                            if not montant_conjoint_federal_courant.reclamer_montant:
+                                raise ValueError(
+                                    "La ligne 30300 doit être active avant "
+                                    "de réclamer la ligne 30425 pour conjoint."
+                                )
+                            revenu_personne = (
+                                montant_conjoint_federal_courant
+                                .revenu_net_conjoint_2025
+                            )
+                            montant_source = montant_ligne_30300_2025(
+                                montant_conjoint_federal_courant
+                            )
+                            base_2687 = (
+                                montant_conjoint_federal_courant
+                                .aidant_naturel_base_2687_inclus
+                            )
+                            personne_18_plus = False
+                        elif (
+                            type_personne
+                            == TYPE_PERSONNE_CHARGE_ADMISSIBLE
+                        ):
+                            if not (
+                                personne_charge_admissible_federale_courante
+                                .reclamer_montant
+                            ):
+                                raise ValueError(
+                                    "La ligne 30400 doit être active avant "
+                                    "de réclamer la ligne 30425 pour une "
+                                    "personne à charge."
+                                )
+                            revenu_personne = (
+                                personne_charge_admissible_federale_courante
+                                .revenu_net_personne_charge_2025
+                            )
+                            montant_source = montant_ligne_30400_2025(
+                                personne_charge_admissible_federale_courante
+                            )
+                            base_2687 = (
+                                personne_charge_admissible_federale_courante
+                                .aidant_naturel_base_2687_inclus
+                            )
+                            personne_18_plus = (
+                                personne_charge_admissible_federale_courante
+                                .personne_charge_18_ans_ou_plus
+                            )
+                        else:
+                            raise ValueError(
+                                "Type de personne ligne 30425 invalide."
+                            )
+
+                        profil = (
+                            AidantNaturelConjointOuPersonneChargeFederal2025(
+                                reclamer_montant=True,
+                                type_personne=type_personne,
+                                revenu_net_personne_ligne_23600=revenu_personne,
+                                montant_reclame_ligne_30300_ou_30400=montant_source,
+                                personne_soutenue_en_2025=personne_soutenue_var.get(),
+                                personne_charge_18_ans_ou_plus_si_applicable=personne_18_plus,
+                                infirmite_physique_ou_mentale=infirmite_var.get(),
+                                dependance_due_uniquement_a_infirmite=dependance_infirmite_var.get(),
+                                dependance_periode_considerable=dependance_periode_var.get(),
+                                montant_base_2687_inclus=base_2687,
+                                un_seul_reclamant_30425=un_seul_var.get(),
+                                aucune_reclamation_partagee=aucune_partagee_var.get(),
+                                preuve_medicale_ou_t2201_confirmee=preuve_var.get(),
+                                valide_par_comptable=comptable_var.get(),
+                                source_personne=source_var.get().strip(),
+                            )
+                        )
+
+                    valider_aidant_naturel_30425_2025(profil)
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Ligne 30425",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                aidant_30425_federal_courant = profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                statut_dossier.set(
+                    "Paramètres fédéraux ligne 30425 mis à jour — recalcul requis"
+                )
+                dialogue.destroy()
+
+            actions = ttk.Frame(contenu)
+            actions.pack(fill="x", pady=(8, 0))
+            ttk.Button(
+                actions,
+                text="Annuler",
+                command=dialogue.destroy,
+            ).pack(side="right")
+            ttk.Button(
+                actions,
+                text="Appliquer",
+                command=appliquer,
+            ).pack(side="right", padx=(0, 8))
 
         def ouvrir_aidant_naturel_enfant_federal_2025() -> None:
             nonlocal aidant_enfant_federal_courant
@@ -8202,6 +8549,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal credits_federaux_age_pension_courants
             nonlocal montant_conjoint_federal_courant
             nonlocal personne_charge_admissible_federale_courante
+            nonlocal aidant_30425_federal_courant
             nonlocal aidant_enfant_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
             try:
@@ -8236,6 +8584,7 @@ class ApplicationComptaPrivee(tk.Tk):
             credits_federaux_age_pension_courants = CreditsFederauxAgePension2025()
             montant_conjoint_federal_courant = MontantConjointFederal2025()
             personne_charge_admissible_federale_courante = MontantPersonneChargeAdmissibleFederal2025()
+            aidant_30425_federal_courant = AidantNaturelConjointOuPersonneChargeFederal2025()
             aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
@@ -8359,6 +8708,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             credits_federaux_age_pension=credits_federaux_age_pension_courants,
                             montant_conjoint_federal=montant_conjoint_federal_courant,
                             personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
+                            aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                             aidant_enfant_federal=aidant_enfant_federal_courant,
                         )
                     )
@@ -8401,6 +8751,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     credits_federaux_age_pension=credits_federaux_age_pension_courants,
                     montant_conjoint_federal=montant_conjoint_federal_courant,
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
+                    aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
                     rapport_pdf=rapport_a_sauvegarder,
                 )
@@ -8482,6 +8833,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal credits_federaux_age_pension_courants
             nonlocal montant_conjoint_federal_courant
             nonlocal personne_charge_admissible_federale_courante
+            nonlocal aidant_30425_federal_courant
             nonlocal aidant_enfant_federal_courant
             dossier = enregistrement.dossier
             documents_importes[:] = list(dossier.documents)
@@ -8556,6 +8908,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             personne_charge_admissible_federale_courante = (
                 enregistrement.personne_charge_admissible_federale
+            )
+            aidant_30425_federal_courant = (
+                enregistrement.aidant_conjoint_personne_charge_federal
             )
             aidant_enfant_federal_courant = enregistrement.aidant_enfant_federal
             mettre_a_jour_bouton_ajustements()
@@ -8839,6 +9194,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     credits_federaux_age_pension=credits_federaux_age_pension_courants,
                     montant_conjoint_federal=montant_conjoint_federal_courant,
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
+                    aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
                 )
                 resume = formater_estimation_fiscale_2025(
@@ -9186,6 +9542,13 @@ class ApplicationComptaPrivee(tk.Tk):
             side="left",
             padx=(8, 0),
         )
+
+
+        ttk.Button(
+            zone_actions,
+            text="Aidant 30425 fédéral 2025",
+            command=ouvrir_aidant_30425_federal_2025,
+        ).pack(side="left", padx=(8, 0))
 
         ttk.Button(
             zone_actions,

@@ -14,6 +14,12 @@ from .tax_age_retirement_2025 import (
     montant_revenus_retraite_2025,
     reduction_annexe_b_age_retraite_2025,
 )
+from .tax_federal_caregiver_spouse_dependant_2025 import (
+    TYPE_CONJOINT,
+    credit_federal_ligne_30425_2025,
+    montant_brut_avant_30300_30400_ligne_30425_2025,
+    montant_ligne_30425_2025,
+)
 from .tax_federal_caregiver_child_2025 import (
     credit_federal_aidant_enfant_moins18_2025,
     montant_ligne_30500_2025,
@@ -140,6 +146,9 @@ def construire_trace_calcul_fiscal_2025(
     personne_charge_admissible_federale = (
         estimation.personne_charge_admissible_federale
     )
+    aidant_30425_federal = (
+        estimation.aidant_conjoint_personne_charge_federal
+    )
     aidant_enfant_federal = (
         estimation.aidant_enfant_federal
     )
@@ -191,6 +200,10 @@ def construire_trace_calcul_fiscal_2025(
     if personne_charge_admissible_federale.reclamer_montant:
         formule_impot_federal += (
             " - crédit personne à charge admissible ligne 30400"
+        )
+    if aidant_30425_federal.reclamer_montant:
+        formule_impot_federal += (
+            " - crédit aidant naturel ligne 30425"
         )
     if aidant_enfant_federal.reclamer_montant:
         formule_impot_federal += (
@@ -589,6 +602,14 @@ def construire_trace_calcul_fiscal_2025(
                 .revenu_net_personne_charge_2025
             )
         )
+        libelle_base_30400 = "Montant personnel fédéral"
+        if (
+            personne_charge_admissible_federale
+            .aidant_naturel_base_2687_inclus
+        ):
+            libelle_base_30400 += (
+                " + base aidant naturel 2 687 $"
+            )
 
         lignes = _inserer_ligne_avant(
             lignes,
@@ -606,7 +627,8 @@ def construire_trace_calcul_fiscal_2025(
                     + " — validation comptable"
                 ),
                 (
-                    "Montant personnel fédéral "
+                    libelle_base_30400
+                    + " "
                     + formater_montant_estimation(
                         montant_personnel_contribuable_30400
                     )
@@ -637,6 +659,11 @@ def construire_trace_calcul_fiscal_2025(
             montant_ligne_30300
             + montant_conjoint_federal.revenu_net_conjoint_2025
         )
+        libelle_base_30300 = "Montant personnel fédéral"
+        if montant_conjoint_federal.aidant_naturel_base_2687_inclus:
+            libelle_base_30300 += (
+                " + base aidant naturel 2 687 $"
+            )
 
         lignes = _inserer_ligne_avant(
             lignes,
@@ -651,7 +678,8 @@ def construire_trace_calcul_fiscal_2025(
                     + " — validation comptable"
                 ),
                 (
-                    "Montant personnel fédéral "
+                    libelle_base_30300
+                    + " "
                     + formater_montant_estimation(
                         montant_personnel_contribuable
                     )
@@ -667,6 +695,65 @@ def construire_trace_calcul_fiscal_2025(
                 ),
                 credit_federal_montant_conjoint_2025(
                     montant_conjoint_federal
+                ),
+            ),
+        )
+
+    if aidant_30425_federal.reclamer_montant:
+        montant_brut_30425 = (
+            montant_brut_avant_30300_30400_ligne_30425_2025(
+                aidant_30425_federal
+            )
+        )
+        montant_30425 = montant_ligne_30425_2025(
+            aidant_30425_federal
+        )
+        type_personne_30425 = (
+            "conjoint — ligne 30300"
+            if aidant_30425_federal.type_personne == TYPE_CONJOINT
+            else "personne à charge admissible — ligne 30400"
+        )
+
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt fédéral de base",
+            _ligne(
+                0,
+                "FÉDÉRAL",
+                (
+                    "Crédit fédéral — aidant naturel "
+                    "conjoint / personne à charge"
+                ),
+                (
+                    "ARC Annexe 5 / ligne 30425 — "
+                    + aidant_30425_federal.source_personne
+                    + " — validation comptable"
+                ),
+                (
+                    "28 798 $ - revenu net "
+                    + formater_montant_estimation(
+                        aidant_30425_federal
+                        .revenu_net_personne_ligne_23600
+                    )
+                    + ", limité à 8 601 $ = "
+                    + formater_montant_estimation(
+                        montant_brut_30425
+                    )
+                    + "; moins montant réclamé pour "
+                    + type_personne_30425
+                    + " "
+                    + formater_montant_estimation(
+                        aidant_30425_federal
+                        .montant_reclame_ligne_30300_ou_30400
+                    )
+                    + " = ligne 30425 "
+                    + formater_montant_estimation(
+                        montant_30425
+                    )
+                    + "; crédit fédéral × 14,5 %"
+                ),
+                credit_federal_ligne_30425_2025(
+                    aidant_30425_federal
                 ),
             ),
         )
