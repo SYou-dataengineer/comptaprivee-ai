@@ -13,6 +13,11 @@ from .tax_federal_spouse_2025 import (
     credit_federal_montant_conjoint_2025,
     montant_ligne_30300_2025,
 )
+from .tax_federal_caregiver_other_dependant_2025 import (
+    credit_federal_ligne_30450_2025,
+    montant_ligne_30450_2025,
+    nombre_personnes_charge_ligne_51120_2025,
+)
 from .tax_federal_caregiver_spouse_dependant_2025 import (
     credit_federal_ligne_30425_2025,
     montant_ligne_30425_2025,
@@ -98,6 +103,9 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     )
     aidant_30425_federal = (
         estimation.aidant_conjoint_personne_charge_federal
+    )
+    aidant_30450_federal = (
+        estimation.aidant_autre_personne_charge_federal
     )
     aidant_enfant_federal = (
         estimation.aidant_enfant_federal
@@ -456,6 +464,81 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
             ]
         )
 
+
+    if aidant_30450_federal.reclamer_montant:
+        montant_30450 = montant_ligne_30450_2025(
+            aidant_30450_federal
+        )
+        credit_30450 = credit_federal_ligne_30450_2025(
+            aidant_30450_federal
+        )
+        nombre_51120 = nombre_personnes_charge_ligne_51120_2025(
+            aidant_30450_federal
+        )
+
+        lignes.extend(
+            [
+                "",
+                (
+                    "AIDANT NATUREL - AUTRE PERSONNE À CHARGE 18+ - "
+                    "FÉDÉRAL 2025"
+                ),
+                (
+                    "Lien avec la personne : "
+                    f"{aidant_30450_federal.lien_personne}"
+                ),
+                (
+                    "Revenu net de la personne - ligne 23600 : "
+                    f"{formater_montant_estimation(
+                        aidant_30450_federal.revenu_net_personne_ligne_23600
+                    )}"
+                ),
+                (
+                    "Nombre de personnes à charge - ligne 51120 : "
+                    f"{nombre_51120}"
+                ),
+                (
+                    "Montant canadien pour aidant naturel - ligne 30450 : "
+                    f"{formater_montant_estimation(montant_30450)}"
+                ),
+                (
+                    "Crédit fédéral calculé - ligne 30450 : "
+                    f"{formater_montant_estimation(credit_30450)}"
+                ),
+                "Base de calcul 2025 : 28 798 $",
+                "Maximum ligne 30450 : 8 601 $",
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                "Personne à charge âgée de 18 ans ou plus : oui",
+                "Personne soutenue par le contribuable en 2025 : oui",
+                "Infirmité physique ou mentale confirmée : oui",
+                "Dépendance due à l'infirmité : oui",
+                "Dépendance pendant une période considérable : oui",
+                (
+                    "Résidence au Canada confirmée lorsque requise : "
+                    "oui"
+                ),
+                (
+                    "Aucun montant ligne 30300/30400 pour cette "
+                    "personne : oui"
+                ),
+                "Aucune pension alimentaire pour cette personne : oui",
+                "Aucun partage de la réclamation 30450 : oui",
+                (
+                    "Preuve médicale admissible ou T2201 approuvé : "
+                    "confirmée"
+                ),
+                "Validation comptable : confirmée",
+                f"Source : {aidant_30450_federal.source_personne}",
+                (
+                    "Ligne 34990 : garde-fou actif pour les profils "
+                    "au-delà de la première tranche fédérale."
+                ),
+                (
+                    "Profil simple : une seule autre personne à charge; "
+                    "les cas complexes ou partagés restent refusés."
+                ),
+            ]
+        )
 
     if aidant_30425_federal.reclamer_montant:
         montant_30425 = montant_ligne_30425_2025(

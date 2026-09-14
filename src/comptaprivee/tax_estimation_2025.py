@@ -75,6 +75,15 @@ from .tax_engine_input_2025 import (
     BaseFiscaleEmploi2025,
     consolider_base_fiscale_emploi_2025,
 )
+from .tax_federal_caregiver_other_dependant_2025 import (
+    AidantNaturelAutrePersonneChargeFederal2025,
+    appliquer_credit_federal_ligne_30450_2025,
+    credit_federal_ligne_30450_2025,
+    integration_30450_sans_credit_compensatoire_autorisee_2025,
+    montant_ligne_30450_2025,
+    nombre_personnes_charge_ligne_51120_2025,
+    valider_aidant_naturel_30450_2025,
+)
 from .tax_federal_caregiver_spouse_dependant_2025 import (
     TYPE_CONJOINT,
     TYPE_PERSONNE_CHARGE_ADMISSIBLE,
@@ -164,6 +173,7 @@ class EstimationFiscale2025:
     montant_conjoint_federal: MontantConjointFederal2025
     personne_charge_admissible_federale: MontantPersonneChargeAdmissibleFederal2025
     aidant_conjoint_personne_charge_federal: AidantNaturelConjointOuPersonneChargeFederal2025
+    aidant_autre_personne_charge_federal: AidantNaturelAutrePersonneChargeFederal2025
     aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
 
 
@@ -200,6 +210,9 @@ def calculer_estimation_fiscale_2025(
     ) = None,
     aidant_conjoint_personne_charge_federal: (
         AidantNaturelConjointOuPersonneChargeFederal2025 | None
+    ) = None,
+    aidant_autre_personne_charge_federal: (
+        AidantNaturelAutrePersonneChargeFederal2025 | None
     ) = None,
     aidant_enfant_federal: (
         AidantNaturelEnfantMoins18Federal2025 | None
@@ -604,6 +617,26 @@ def calculer_estimation_fiscale_2025(
                 "calculé par l'estimation."
             )
 
+    aidant_30450_effectif = (
+        aidant_autre_personne_charge_federal
+        if aidant_autre_personne_charge_federal is not None
+        else AidantNaturelAutrePersonneChargeFederal2025()
+    )
+    valider_aidant_naturel_30450_2025(aidant_30450_effectif)
+
+    if (
+        aidant_30450_effectif.reclamer_montant
+        and not integration_30450_sans_credit_compensatoire_autorisee_2025(
+            revenu.revenu_imposable_federal
+        )
+    ):
+        raise ValueError(
+            "Ce dossier peut nécessiter le crédit compensatoire fédéral "
+            "de la ligne 34990. Cette première version refuse la ligne "
+            "30450 automatique au-delà de la première tranche tant que "
+            "la ligne 34990 n'est pas intégrée complètement."
+        )
+
     aidant_enfant_federal_effectif = (
         aidant_enfant_federal
         if aidant_enfant_federal is not None
@@ -699,6 +732,10 @@ def calculer_estimation_fiscale_2025(
         federal,
         aidant_30425_effectif,
     )
+    federal = appliquer_credit_federal_ligne_30450_2025(
+        federal,
+        aidant_30450_effectif,
+    )
     federal = appliquer_credit_federal_aidant_enfant_moins18_2025(
         federal,
         aidant_enfant_federal_effectif,
@@ -793,6 +830,9 @@ def calculer_estimation_fiscale_2025(
         ),
         aidant_conjoint_personne_charge_federal=(
             aidant_30425_effectif
+        ),
+        aidant_autre_personne_charge_federal=(
+            aidant_30450_effectif
         ),
         aidant_enfant_federal=(
             aidant_enfant_federal_effectif
@@ -1031,6 +1071,51 @@ def formater_estimation_fiscale_2025(
                 f"{estimation.personne_vivant_seule.source}",
             ]
             if estimation.personne_vivant_seule.reclamer_montant
+            else []
+        ),
+        *(
+            [
+                "",
+                "AIDANT NATUREL — AUTRE PERSONNE À CHARGE 18+ — FÉDÉRAL 2025",
+                (
+                    "Nombre de personnes à charge — ligne 51120 : "
+                    f"{nombre_personnes_charge_ligne_51120_2025(estimation.aidant_autre_personne_charge_federal)}"
+                ),
+                (
+                    "Lien familial : "
+                    f"{estimation.aidant_autre_personne_charge_federal.lien_personne}"
+                ),
+                (
+                    "Revenu net de la personne — ligne 23600 : "
+                    f"{formater_montant_estimation(estimation.aidant_autre_personne_charge_federal.revenu_net_personne_ligne_23600)}"
+                ),
+                (
+                    "Montant canadien pour aidant naturel — ligne 30450 : "
+                    f"{formater_montant_estimation(montant_ligne_30450_2025(estimation.aidant_autre_personne_charge_federal))}"
+                ),
+                (
+                    "Crédit fédéral calculé : "
+                    f"{formater_montant_estimation(credit_federal_ligne_30450_2025(estimation.aidant_autre_personne_charge_federal))}"
+                ),
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                "Personne à charge de 18 ans ou plus : oui",
+                "Infirmité physique ou mentale confirmée : oui",
+                "Dépendance due à l'infirmité : oui",
+                "Dépendance pendant une période considérable : oui",
+                "Aucune ligne 30300/30400 pour cette même personne : oui",
+                "Aucune pension alimentaire pour cette personne : oui",
+                "Aucun partage de la réclamation 30450 : oui",
+                "Preuve médicale ou T2201 : confirmée",
+                "Validation comptable : confirmée",
+                (
+                    "Source : "
+                    f"{estimation.aidant_autre_personne_charge_federal.source_personne}"
+                ),
+            ]
+            if (
+                estimation.aidant_autre_personne_charge_federal
+                .reclamer_montant
+            )
             else []
         ),
         *(

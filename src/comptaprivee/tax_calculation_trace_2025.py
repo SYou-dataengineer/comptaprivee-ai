@@ -14,6 +14,11 @@ from .tax_age_retirement_2025 import (
     montant_revenus_retraite_2025,
     reduction_annexe_b_age_retraite_2025,
 )
+from .tax_federal_caregiver_other_dependant_2025 import (
+    credit_federal_ligne_30450_2025,
+    montant_ligne_30450_2025,
+    nombre_personnes_charge_ligne_51120_2025,
+)
 from .tax_federal_caregiver_spouse_dependant_2025 import (
     TYPE_CONJOINT,
     credit_federal_ligne_30425_2025,
@@ -149,6 +154,9 @@ def construire_trace_calcul_fiscal_2025(
     aidant_30425_federal = (
         estimation.aidant_conjoint_personne_charge_federal
     )
+    aidant_30450_federal = (
+        estimation.aidant_autre_personne_charge_federal
+    )
     aidant_enfant_federal = (
         estimation.aidant_enfant_federal
     )
@@ -204,6 +212,10 @@ def construire_trace_calcul_fiscal_2025(
     if aidant_30425_federal.reclamer_montant:
         formule_impot_federal += (
             " - crédit aidant naturel ligne 30425"
+        )
+    if aidant_30450_federal.reclamer_montant:
+        formule_impot_federal += (
+            " - crédit aidant naturel ligne 30450"
         )
     if aidant_enfant_federal.reclamer_montant:
         formule_impot_federal += (
@@ -695,6 +707,47 @@ def construire_trace_calcul_fiscal_2025(
                 ),
                 credit_federal_montant_conjoint_2025(
                     montant_conjoint_federal
+                ),
+            ),
+        )
+
+    if aidant_30450_federal.reclamer_montant:
+        montant_30450 = montant_ligne_30450_2025(
+            aidant_30450_federal
+        )
+        nombre_51120 = nombre_personnes_charge_ligne_51120_2025(
+            aidant_30450_federal
+        )
+
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt fédéral de base",
+            _ligne(
+                0,
+                "FÉDÉRAL",
+                "Crédit fédéral — aidant naturel autre personne à charge",
+                (
+                    "ARC Annexe 5 / ligne 30450 — "
+                    + aidant_30450_federal.source_personne
+                    + " — validation comptable"
+                ),
+                (
+                    "28 798 $ - revenu net ligne 23600 "
+                    + formater_montant_estimation(
+                        aidant_30450_federal
+                        .revenu_net_personne_ligne_23600
+                    )
+                    + ", limité à 8 601 $ = ligne 30450 "
+                    + formater_montant_estimation(montant_30450)
+                    + "; ligne 51120 = "
+                    + str(nombre_51120)
+                    + " personne à charge; crédit fédéral × 14,5 %; "
+                    + "aucune ligne 30300/30400 pour cette même personne; "
+                    + "aucune pension alimentaire; aucun partage; "
+                    + "preuve médicale ou T2201 confirmée"
+                ),
+                credit_federal_ligne_30450_2025(
+                    aidant_30450_federal
                 ),
             ),
         )
