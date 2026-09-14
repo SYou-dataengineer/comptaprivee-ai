@@ -13,6 +13,10 @@ from .tax_federal_spouse_2025 import (
     credit_federal_montant_conjoint_2025,
     montant_ligne_30300_2025,
 )
+from .tax_federal_home_buyers_2025 import (
+    credit_federal_ligne_31270_2025,
+    montant_ligne_31270_2025,
+)
 from .tax_federal_caregiver_other_dependant_2025 import (
     credit_federal_ligne_30450_2025,
     montant_ligne_30450_2025,
@@ -103,6 +107,9 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     )
     aidant_30425_federal = (
         estimation.aidant_conjoint_personne_charge_federal
+    )
+    achat_habitation_federal = (
+        estimation.achat_habitation_federal
     )
     aidant_30450_federal = (
         estimation.aidant_autre_personne_charge_federal
@@ -464,6 +471,66 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
             ]
         )
 
+
+    if achat_habitation_federal.reclamer_montant:
+        montant_31270 = montant_ligne_31270_2025(
+            achat_habitation_federal
+        )
+        credit_31270 = credit_federal_ligne_31270_2025(
+            achat_habitation_federal
+        )
+
+        lignes.extend(
+            [
+                "",
+                "ACHAT D'UNE HABITATION - FÉDÉRAL 2025",
+                (
+                    "Montant réclamé - ligne 31270 : "
+                    f"{formater_montant_estimation(montant_31270)}"
+                ),
+                (
+                    "Crédit fédéral calculé - ligne 31270 : "
+                    f"{formater_montant_estimation(credit_31270)}"
+                ),
+                "Maximum ligne 31270 : 10 000 $",
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                "Acquisition en 2025 : oui",
+                "Habitation admissible : oui",
+                "Habitation située au Canada : oui",
+                (
+                    "Habitation enregistrée au nom du contribuable "
+                    "ou du conjoint : oui"
+                ),
+                "Première habitation : confirmée",
+                (
+                    "Année de l'achat et quatre années précédentes : "
+                    "critère confirmé"
+                ),
+                (
+                    "Intention de résidence principale dans un an : "
+                    "confirmée"
+                ),
+                "Aucun partage du montant ligne 31270 : oui",
+                (
+                    "Exception handicap non utilisée dans ce profil "
+                    "simple : oui"
+                ),
+                "Pièces justificatives conservées : oui",
+                "Validation comptable : confirmée",
+                (
+                    "Source : "
+                    f"{achat_habitation_federal.source_habitation}"
+                ),
+                (
+                    "Ligne 34990 : garde-fou actif pour les profils "
+                    "au-delà de la première tranche fédérale."
+                ),
+                (
+                    "Profil simple : partage et exception handicap "
+                    "non pris en charge dans cette première version."
+                ),
+            ]
+        )
 
     if aidant_30450_federal.reclamer_montant:
         montant_30450 = montant_ligne_30450_2025(

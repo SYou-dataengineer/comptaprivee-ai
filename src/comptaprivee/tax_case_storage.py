@@ -46,6 +46,10 @@ from .tax_federal_spouse_2025 import (
     MontantConjointFederal2025,
     valider_montant_conjoint_federal_2025,
 )
+from .tax_federal_home_buyers_2025 import (
+    MontantAchatHabitationFederal2025,
+    valider_montant_achat_habitation_2025,
+)
 from .tax_federal_caregiver_other_dependant_2025 import (
     AidantNaturelAutrePersonneChargeFederal2025,
     valider_aidant_naturel_30450_2025,
@@ -121,6 +125,7 @@ class DossierFiscalEnregistre:
     credits_federaux_age_pension: CreditsFederauxAgePension2025
     montant_conjoint_federal: MontantConjointFederal2025
     personne_charge_admissible_federale: MontantPersonneChargeAdmissibleFederal2025
+    achat_habitation_federal: MontantAchatHabitationFederal2025
     aidant_autre_personne_charge_federal: AidantNaturelAutrePersonneChargeFederal2025
     aidant_conjoint_personne_charge_federal: AidantNaturelConjointOuPersonneChargeFederal2025
     aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
@@ -1536,6 +1541,133 @@ def _personne_charge_admissible_federale_depuis_dict(
     )
 
 
+def _achat_habitation_federal_vers_dict(
+    profil: MontantAchatHabitationFederal2025 | None,
+):
+    if profil is None:
+        profil = MontantAchatHabitationFederal2025()
+
+    valider_montant_achat_habitation_2025(profil)
+
+    return {
+        "reclamer_montant": bool(profil.reclamer_montant),
+        "montant_reclame": _decimal_texte(
+            profil.montant_reclame
+        ),
+        "acquisition_en_2025": bool(
+            profil.acquisition_en_2025
+        ),
+        "habitation_admissible": bool(
+            profil.habitation_admissible
+        ),
+        "habitation_situee_au_canada": bool(
+            profil.habitation_situee_au_canada
+        ),
+        "habitation_enregistree_nom_contribuable_ou_conjoint": bool(
+            profil.habitation_enregistree_nom_contribuable_ou_conjoint
+        ),
+        "premier_acheteur_confirme": bool(
+            profil.premier_acheteur_confirme
+        ),
+        "aucune_habitation_possedee_habitee_annee_achat_ou_4_precedentes": bool(
+            profil
+            .aucune_habitation_possedee_habitee_annee_achat_ou_4_precedentes
+        ),
+        "intention_residence_principale_dans_un_an": bool(
+            profil.intention_residence_principale_dans_un_an
+        ),
+        "aucun_partage_du_montant": bool(
+            profil.aucun_partage_du_montant
+        ),
+        "aucune_exception_handicap_utilisee": bool(
+            profil.aucune_exception_handicap_utilisee
+        ),
+        "pieces_justificatives_conservees": bool(
+            profil.pieces_justificatives_conservees
+        ),
+        "valide_par_comptable": bool(
+            profil.valide_par_comptable
+        ),
+        "source_habitation": profil.source_habitation,
+    }
+
+
+def _achat_habitation_federal_depuis_dict(
+    valeur: Any,
+) -> MontantAchatHabitationFederal2025:
+    if valeur is None:
+        return MontantAchatHabitationFederal2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Le montant fédéral pour l'achat d'une habitation "
+            "ligne 31270 enregistré est invalide."
+        )
+
+    profil = MontantAchatHabitationFederal2025(
+        reclamer_montant=bool(
+            valeur.get("reclamer_montant", False)
+        ),
+        montant_reclame=_decimal_depuis_json(
+            valeur.get("montant_reclame", "0"),
+            "achat_habitation_federal.montant_reclame",
+        ),
+        acquisition_en_2025=bool(
+            valeur.get("acquisition_en_2025", False)
+        ),
+        habitation_admissible=bool(
+            valeur.get("habitation_admissible", False)
+        ),
+        habitation_situee_au_canada=bool(
+            valeur.get("habitation_situee_au_canada", False)
+        ),
+        habitation_enregistree_nom_contribuable_ou_conjoint=bool(
+            valeur.get(
+                "habitation_enregistree_nom_contribuable_ou_conjoint",
+                False,
+            )
+        ),
+        premier_acheteur_confirme=bool(
+            valeur.get("premier_acheteur_confirme", False)
+        ),
+        aucune_habitation_possedee_habitee_annee_achat_ou_4_precedentes=bool(
+            valeur.get(
+                "aucune_habitation_possedee_habitee_annee_achat_ou_4_precedentes",
+                False,
+            )
+        ),
+        intention_residence_principale_dans_un_an=bool(
+            valeur.get(
+                "intention_residence_principale_dans_un_an",
+                False,
+            )
+        ),
+        aucun_partage_du_montant=bool(
+            valeur.get("aucun_partage_du_montant", False)
+        ),
+        aucune_exception_handicap_utilisee=bool(
+            valeur.get(
+                "aucune_exception_handicap_utilisee",
+                False,
+            )
+        ),
+        pieces_justificatives_conservees=bool(
+            valeur.get(
+                "pieces_justificatives_conservees",
+                False,
+            )
+        ),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        source_habitation=str(
+            valeur.get("source_habitation", "")
+        ),
+    )
+
+    return valider_montant_achat_habitation_2025(profil)
+
+
 def _aidant_autre_personne_charge_federal_vers_dict(
     profil: AidantNaturelAutrePersonneChargeFederal2025 | None,
 ):
@@ -2121,6 +2253,9 @@ def sauvegarder_dossier_fiscal(
     personne_charge_admissible_federale: (
         MontantPersonneChargeAdmissibleFederal2025 | None
     ) = None,
+    achat_habitation_federal: (
+        MontantAchatHabitationFederal2025 | None
+    ) = None,
     aidant_autre_personne_charge_federal: (
         AidantNaturelAutrePersonneChargeFederal2025 | None
     ) = None,
@@ -2202,6 +2337,11 @@ def sauvegarder_dossier_fiscal(
         "personne_charge_admissible_federale": (
             _personne_charge_admissible_federale_vers_dict(
                 personne_charge_admissible_federale
+            )
+        ),
+        "achat_habitation_federal": (
+            _achat_habitation_federal_vers_dict(
+                achat_habitation_federal
             )
         ),
         "aidant_autre_personne_charge_federal": (
@@ -2364,6 +2504,11 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             contenu.get("personne_charge_admissible_federale")
         )
     )
+    achat_habitation_federal = (
+        _achat_habitation_federal_depuis_dict(
+            contenu.get("achat_habitation_federal")
+        )
+    )
     aidant_autre_personne_charge_federal = (
         _aidant_autre_personne_charge_federal_depuis_dict(
             contenu.get("aidant_autre_personne_charge_federal")
@@ -2406,6 +2551,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         ),
         personne_charge_admissible_federale=(
             personne_charge_admissible_federale
+        ),
+        achat_habitation_federal=(
+            achat_habitation_federal
         ),
         aidant_autre_personne_charge_federal=(
             aidant_autre_personne_charge_federal

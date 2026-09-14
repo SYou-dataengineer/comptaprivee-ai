@@ -75,6 +75,14 @@ from .tax_engine_input_2025 import (
     BaseFiscaleEmploi2025,
     consolider_base_fiscale_emploi_2025,
 )
+from .tax_federal_home_buyers_2025 import (
+    MontantAchatHabitationFederal2025,
+    appliquer_credit_federal_ligne_31270_2025,
+    credit_federal_ligne_31270_2025,
+    integration_31270_sans_credit_compensatoire_autorisee_2025,
+    montant_ligne_31270_2025,
+    valider_montant_achat_habitation_2025,
+)
 from .tax_federal_caregiver_other_dependant_2025 import (
     AidantNaturelAutrePersonneChargeFederal2025,
     appliquer_credit_federal_ligne_30450_2025,
@@ -173,6 +181,7 @@ class EstimationFiscale2025:
     montant_conjoint_federal: MontantConjointFederal2025
     personne_charge_admissible_federale: MontantPersonneChargeAdmissibleFederal2025
     aidant_conjoint_personne_charge_federal: AidantNaturelConjointOuPersonneChargeFederal2025
+    achat_habitation_federal: MontantAchatHabitationFederal2025
     aidant_autre_personne_charge_federal: AidantNaturelAutrePersonneChargeFederal2025
     aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
 
@@ -210,6 +219,9 @@ def calculer_estimation_fiscale_2025(
     ) = None,
     aidant_conjoint_personne_charge_federal: (
         AidantNaturelConjointOuPersonneChargeFederal2025 | None
+    ) = None,
+    achat_habitation_federal: (
+        MontantAchatHabitationFederal2025 | None
     ) = None,
     aidant_autre_personne_charge_federal: (
         AidantNaturelAutrePersonneChargeFederal2025 | None
@@ -617,6 +629,29 @@ def calculer_estimation_fiscale_2025(
                 "calculé par l'estimation."
             )
 
+    achat_habitation_federal_effectif = (
+        achat_habitation_federal
+        if achat_habitation_federal is not None
+        else MontantAchatHabitationFederal2025()
+    )
+    valider_montant_achat_habitation_2025(
+        achat_habitation_federal_effectif
+    )
+
+    if (
+        achat_habitation_federal_effectif.reclamer_montant
+        and not integration_31270_sans_credit_compensatoire_autorisee_2025(
+            revenu.revenu_imposable_federal
+        )
+    ):
+        raise ValueError(
+            "Ce dossier peut nécessiter le crédit compensatoire "
+            "fédéral de la ligne 34990. Cette première version "
+            "refuse la ligne 31270 automatique au-delà de la "
+            "première tranche tant que la ligne 34990 n'est pas "
+            "intégrée complètement."
+        )
+
     aidant_30450_effectif = (
         aidant_autre_personne_charge_federal
         if aidant_autre_personne_charge_federal is not None
@@ -732,6 +767,10 @@ def calculer_estimation_fiscale_2025(
         federal,
         aidant_30425_effectif,
     )
+    federal = appliquer_credit_federal_ligne_31270_2025(
+        federal,
+        achat_habitation_federal_effectif,
+    )
     federal = appliquer_credit_federal_ligne_30450_2025(
         federal,
         aidant_30450_effectif,
@@ -830,6 +869,9 @@ def calculer_estimation_fiscale_2025(
         ),
         aidant_conjoint_personne_charge_federal=(
             aidant_30425_effectif
+        ),
+        achat_habitation_federal=(
+            achat_habitation_federal_effectif
         ),
         aidant_autre_personne_charge_federal=(
             aidant_30450_effectif
@@ -1071,6 +1113,46 @@ def formater_estimation_fiscale_2025(
                 f"{estimation.personne_vivant_seule.source}",
             ]
             if estimation.personne_vivant_seule.reclamer_montant
+            else []
+        ),
+        *(
+            [
+                "",
+                "ACHAT D'UNE HABITATION — FÉDÉRAL 2025",
+                (
+                    "Montant réclamé — ligne 31270 : "
+                    f"{formater_montant_estimation(
+                        montant_ligne_31270_2025(
+                            estimation.achat_habitation_federal
+                        )
+                    )}"
+                ),
+                (
+                    "Crédit fédéral calculé : "
+                    f"{formater_montant_estimation(
+                        credit_federal_ligne_31270_2025(
+                            estimation.achat_habitation_federal
+                        )
+                    )}"
+                ),
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                "Maximum ligne 31270 : 10 000 $",
+                "Acquisition en 2025 : oui",
+                "Habitation admissible située au Canada : oui",
+                "Habitation enregistrée au nom du contribuable ou du conjoint : oui",
+                "Première habitation : confirmée",
+                "Aucune habitation possédée et habitée pendant l'année de l'achat ou les quatre années précédentes : oui",
+                "Intention de résidence principale dans un an : oui",
+                "Aucun partage du montant 31270 : oui",
+                "Exception handicap non utilisée dans ce profil simple : oui",
+                "Pièces justificatives conservées : oui",
+                "Validation comptable : confirmée",
+                (
+                    "Source : "
+                    f"{estimation.achat_habitation_federal.source_habitation}"
+                ),
+            ]
+            if estimation.achat_habitation_federal.reclamer_montant
             else []
         ),
         *(

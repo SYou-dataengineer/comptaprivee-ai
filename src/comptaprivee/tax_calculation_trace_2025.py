@@ -14,6 +14,10 @@ from .tax_age_retirement_2025 import (
     montant_revenus_retraite_2025,
     reduction_annexe_b_age_retraite_2025,
 )
+from .tax_federal_home_buyers_2025 import (
+    credit_federal_ligne_31270_2025,
+    montant_ligne_31270_2025,
+)
 from .tax_federal_caregiver_other_dependant_2025 import (
     credit_federal_ligne_30450_2025,
     montant_ligne_30450_2025,
@@ -154,6 +158,9 @@ def construire_trace_calcul_fiscal_2025(
     aidant_30425_federal = (
         estimation.aidant_conjoint_personne_charge_federal
     )
+    achat_habitation_federal = (
+        estimation.achat_habitation_federal
+    )
     aidant_30450_federal = (
         estimation.aidant_autre_personne_charge_federal
     )
@@ -212,6 +219,10 @@ def construire_trace_calcul_fiscal_2025(
     if aidant_30425_federal.reclamer_montant:
         formule_impot_federal += (
             " - crédit aidant naturel ligne 30425"
+        )
+    if achat_habitation_federal.reclamer_montant:
+        formule_impot_federal += (
+            " - crédit achat habitation ligne 31270"
         )
     if aidant_30450_federal.reclamer_montant:
         formule_impot_federal += (
@@ -707,6 +718,40 @@ def construire_trace_calcul_fiscal_2025(
                 ),
                 credit_federal_montant_conjoint_2025(
                     montant_conjoint_federal
+                ),
+            ),
+        )
+
+    if achat_habitation_federal.reclamer_montant:
+        montant_31270 = montant_ligne_31270_2025(
+            achat_habitation_federal
+        )
+
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt fédéral de base",
+            _ligne(
+                0,
+                "FÉDÉRAL",
+                "Crédit fédéral — achat d'une habitation",
+                (
+                    "ARC ligne 31270 — "
+                    + achat_habitation_federal.source_habitation
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant admissible réclamé "
+                    + formater_montant_estimation(montant_31270)
+                    + " (maximum 10 000 $) × 14,5 %; "
+                    + "Première habitation confirmée; "
+                    + "aucune habitation possédée et habitée pendant "
+                    + "l'année de l'achat ou les quatre années précédentes; "
+                    + "intention de résidence principale dans un an; "
+                    + "aucun partage; exception handicap non utilisée; "
+                    + "pièces justificatives conservées"
+                ),
+                credit_federal_ligne_31270_2025(
+                    achat_habitation_federal
                 ),
             ),
         )

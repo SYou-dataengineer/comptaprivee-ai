@@ -172,6 +172,10 @@ from .tax_federal_spouse_2025 import (
     montant_ligne_30300_2025,
     valider_montant_conjoint_federal_2025,
 )
+from .tax_federal_home_buyers_2025 import (
+    MontantAchatHabitationFederal2025,
+    valider_montant_achat_habitation_2025,
+)
 from .tax_federal_caregiver_other_dependant_2025 import (
     LIENS_AUTORISES,
     AidantNaturelAutrePersonneChargeFederal2025,
@@ -2435,6 +2439,7 @@ class ApplicationComptaPrivee(tk.Tk):
         montant_conjoint_federal_courant = MontantConjointFederal2025()
         personne_charge_admissible_federale_courante = MontantPersonneChargeAdmissibleFederal2025()
         aidant_30425_federal_courant = AidantNaturelConjointOuPersonneChargeFederal2025()
+        achat_habitation_federal_courant = MontantAchatHabitationFederal2025()
         aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
         aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
         def mettre_a_jour_bouton_ajustements() -> None:
@@ -3463,6 +3468,365 @@ class ApplicationComptaPrivee(tk.Tk):
 
 
 
+
+
+        def ouvrir_achat_habitation_federal_2025() -> None:
+            nonlocal achat_habitation_federal_courant
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Achat d'une habitation — fédéral 2025 — ComptaPrivée AI"
+            )
+            dialogue.geometry("850x820")
+            dialogue.minsize(780, 700)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            zone = ttk.Frame(dialogue)
+            zone.pack(fill="both", expand=True)
+
+            canvas = tk.Canvas(
+                zone,
+                highlightthickness=0,
+                borderwidth=0,
+            )
+            barre = ttk.Scrollbar(
+                zone,
+                orient="vertical",
+                command=canvas.yview,
+            )
+            canvas.configure(yscrollcommand=barre.set)
+            barre.pack(side="right", fill="y")
+            canvas.pack(side="left", fill="both", expand=True)
+
+            cadre = ttk.Frame(canvas, padding=16)
+            fenetre_canvas = canvas.create_window(
+                (0, 0),
+                window=cadre,
+                anchor="nw",
+            )
+            cadre.columnconfigure(1, weight=1)
+
+            def ajuster_defilement(_event=None) -> None:
+                canvas.configure(scrollregion=canvas.bbox("all"))
+
+            def ajuster_largeur(event) -> None:
+                canvas.itemconfigure(
+                    fenetre_canvas,
+                    width=event.width,
+                )
+
+            cadre.bind("<Configure>", ajuster_defilement)
+            canvas.bind("<Configure>", ajuster_largeur)
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Montant pour l'achat d'une habitation — "
+                    "ligne fédérale 31270"
+                ),
+                font=("Segoe UI", 14, "bold"),
+            ).grid(
+                row=0,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil simple 2025 : maximum 10 000 $, "
+                    "crédit fédéral 14,5 %. Le garde-fou ligne 34990 "
+                    "reste actif au-delà de la première tranche."
+                ),
+                foreground="#475569",
+                wraplength=760,
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 12),
+            )
+
+            reclamer_var = tk.BooleanVar(
+                value=achat_habitation_federal_courant.reclamer_montant
+            )
+            montant_var = tk.StringVar(
+                value=str(
+                    achat_habitation_federal_courant.montant_reclame
+                )
+            )
+            source_var = tk.StringVar(
+                value=achat_habitation_federal_courant.source_habitation
+            )
+
+            champs_bool = (
+                (
+                    "Acquisition de l'habitation en 2025",
+                    "acquisition_en_2025",
+                ),
+                (
+                    "Habitation admissible",
+                    "habitation_admissible",
+                ),
+                (
+                    "Habitation située au Canada",
+                    "habitation_situee_au_canada",
+                ),
+                (
+                    "Habitation enregistrée au nom du contribuable "
+                    "ou de son époux/conjoint",
+                    "habitation_enregistree_nom_contribuable_ou_conjoint",
+                ),
+                (
+                    "Première habitation — admissibilité confirmée",
+                    "premier_acheteur_confirme",
+                ),
+                (
+                    "Aucune habitation possédée et habitée pendant "
+                    "l'année de l'achat ou les quatre années précédentes",
+                    "aucune_habitation_possedee_habitee_annee_achat_ou_4_precedentes",
+                ),
+                (
+                    "Intention d'occuper l'habitation comme résidence "
+                    "principale dans un an",
+                    "intention_residence_principale_dans_un_an",
+                ),
+                (
+                    "Aucun partage du montant ligne 31270",
+                    "aucun_partage_du_montant",
+                ),
+                (
+                    "Exception handicap non utilisée dans ce profil simple",
+                    "aucune_exception_handicap_utilisee",
+                ),
+                (
+                    "Pièces justificatives de l'acquisition conservées",
+                    "pieces_justificatives_conservees",
+                ),
+                (
+                    "Validation comptable confirmée",
+                    "valide_par_comptable",
+                ),
+            )
+
+            variables = {
+                champ: tk.BooleanVar(
+                    value=getattr(
+                        achat_habitation_federal_courant,
+                        champ,
+                    )
+                )
+                for _texte, champ in champs_bool
+            }
+
+            ttk.Checkbutton(
+                cadre,
+                text="Réclamer le montant — ligne 31270",
+                variable=reclamer_var,
+            ).grid(
+                row=2,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=3,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Montant réclamé — maximum 10 000 $ :",
+            ).grid(
+                row=3,
+                column=0,
+                sticky="w",
+                pady=4,
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=montant_var,
+                width=28,
+            ).grid(
+                row=3,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=4,
+            )
+
+            ligne = 4
+            for texte, champ in champs_bool:
+                ttk.Checkbutton(
+                    cadre,
+                    text=texte,
+                    variable=variables[champ],
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    columnspan=2,
+                    sticky="w",
+                    pady=3,
+                )
+                ligne += 1
+
+            ttk.Label(
+                cadre,
+                text="Source — acte d'acquisition / registre / occupation :",
+            ).grid(
+                row=ligne,
+                column=0,
+                sticky="w",
+                pady=(8, 4),
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=source_var,
+            ).grid(
+                row=ligne,
+                column=1,
+                sticky="ew",
+                padx=(12, 0),
+                pady=(8, 4),
+            )
+            ligne += 1
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Cette première version refuse le partage du montant "
+                    "et l'exception liée au crédit d'impôt pour personnes "
+                    "handicapées. Les dossiers hors profil doivent être "
+                    "traités séparément."
+                ),
+                foreground="#92400e",
+                wraplength=760,
+            ).grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(10, 8),
+            )
+            ligne += 1
+
+            def remettre_a_zero() -> None:
+                reclamer_var.set(False)
+                montant_var.set("0")
+                source_var.set("")
+                for variable in variables.values():
+                    variable.set(False)
+
+            def appliquer() -> None:
+                nonlocal achat_habitation_federal_courant
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    texte_montant = (
+                        montant_var.get()
+                        .strip()
+                        .replace("\u00a0", "")
+                        .replace(" ", "")
+                        .replace(",", ".")
+                        .replace("$", "")
+                    )
+                    montant = Decimal(texte_montant or "0")
+                    if not montant.is_finite():
+                        raise ValueError(
+                            "Le montant ligne 31270 doit être fini."
+                        )
+
+                    profil = MontantAchatHabitationFederal2025(
+                        reclamer_montant=reclamer_var.get(),
+                        montant_reclame=montant,
+                        acquisition_en_2025=variables[
+                            "acquisition_en_2025"
+                        ].get(),
+                        habitation_admissible=variables[
+                            "habitation_admissible"
+                        ].get(),
+                        habitation_situee_au_canada=variables[
+                            "habitation_situee_au_canada"
+                        ].get(),
+                        habitation_enregistree_nom_contribuable_ou_conjoint=(
+                            variables[
+                                "habitation_enregistree_nom_contribuable_ou_conjoint"
+                            ].get()
+                        ),
+                        premier_acheteur_confirme=variables[
+                            "premier_acheteur_confirme"
+                        ].get(),
+                        aucune_habitation_possedee_habitee_annee_achat_ou_4_precedentes=(
+                            variables[
+                                "aucune_habitation_possedee_habitee_annee_achat_ou_4_precedentes"
+                            ].get()
+                        ),
+                        intention_residence_principale_dans_un_an=(
+                            variables[
+                                "intention_residence_principale_dans_un_an"
+                            ].get()
+                        ),
+                        aucun_partage_du_montant=variables[
+                            "aucun_partage_du_montant"
+                        ].get(),
+                        aucune_exception_handicap_utilisee=variables[
+                            "aucune_exception_handicap_utilisee"
+                        ].get(),
+                        pieces_justificatives_conservees=variables[
+                            "pieces_justificatives_conservees"
+                        ].get(),
+                        valide_par_comptable=variables[
+                            "valide_par_comptable"
+                        ].get(),
+                        source_habitation=source_var.get().strip(),
+                    )
+                    profil = valider_montant_achat_habitation_2025(
+                        profil
+                    )
+                except (InvalidOperation, ValueError) as erreur:
+                    messagebox.showerror(
+                        "Achat d'une habitation — ligne 31270",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                achat_habitation_federal_courant = profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                self.statut.set(
+                    "Montant achat habitation ligne 31270 mis à jour"
+                )
+                dialogue.destroy()
+
+            actions = ttk.Frame(cadre)
+            actions.grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="e",
+                pady=(12, 0),
+            )
+
+            ttk.Button(
+                actions,
+                text="Remettre à zéro",
+                command=remettre_a_zero,
+            ).pack(side="left", padx=(0, 8))
+
+            ttk.Button(
+                actions,
+                text="Annuler",
+                command=dialogue.destroy,
+            ).pack(side="left", padx=(0, 8))
+
+            ttk.Button(
+                actions,
+                text="Appliquer",
+                command=appliquer,
+            ).pack(side="left")
 
         def ouvrir_aidant_30450_federal_2025() -> None:
             nonlocal aidant_30450_federal_courant
@@ -8988,6 +9352,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal montant_conjoint_federal_courant
             nonlocal personne_charge_admissible_federale_courante
             nonlocal aidant_30425_federal_courant
+            nonlocal achat_habitation_federal_courant
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -9024,6 +9389,7 @@ class ApplicationComptaPrivee(tk.Tk):
             montant_conjoint_federal_courant = MontantConjointFederal2025()
             personne_charge_admissible_federale_courante = MontantPersonneChargeAdmissibleFederal2025()
             aidant_30425_federal_courant = AidantNaturelConjointOuPersonneChargeFederal2025()
+            achat_habitation_federal_courant = MontantAchatHabitationFederal2025()
             aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
             aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
             derniere_estimation = None
@@ -9148,6 +9514,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             credits_federaux_age_pension=credits_federaux_age_pension_courants,
                             montant_conjoint_federal=montant_conjoint_federal_courant,
                             personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
+                            achat_habitation_federal=achat_habitation_federal_courant,
                             aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                             aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                             aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -9192,6 +9559,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     credits_federaux_age_pension=credits_federaux_age_pension_courants,
                     montant_conjoint_federal=montant_conjoint_federal_courant,
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
+                    achat_habitation_federal=achat_habitation_federal_courant,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -9276,6 +9644,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal montant_conjoint_federal_courant
             nonlocal personne_charge_admissible_federale_courante
             nonlocal aidant_30425_federal_courant
+            nonlocal achat_habitation_federal_courant
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
             dossier = enregistrement.dossier
@@ -9351,6 +9720,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             personne_charge_admissible_federale_courante = (
                 enregistrement.personne_charge_admissible_federale
+            )
+            achat_habitation_federal_courant = (
+                enregistrement.achat_habitation_federal
             )
             aidant_30450_federal_courant = (
                 enregistrement.aidant_autre_personne_charge_federal
@@ -9640,6 +10012,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     credits_federaux_age_pension=credits_federaux_age_pension_courants,
                     montant_conjoint_federal=montant_conjoint_federal_courant,
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
+                    achat_habitation_federal=achat_habitation_federal_courant,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -9990,6 +10363,12 @@ class ApplicationComptaPrivee(tk.Tk):
             padx=(8, 0),
         )
 
+
+        ttk.Button(
+            zone_actions,
+            text="Achat habitation 31270",
+            command=ouvrir_achat_habitation_federal_2025,
+        ).pack(side="left", padx=(8, 0))
 
         ttk.Button(
             zone_actions,
