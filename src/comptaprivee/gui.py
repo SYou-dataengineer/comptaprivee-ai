@@ -11,6 +11,7 @@ from tkinter.scrolledtext import ScrolledText
 
 from .gui_layout import (
     FormulaireDefilant,
+    EcranResponsive,
     dimensionner_fenetre,
     dimensions_fenetre,
     organiser_boutons,
@@ -251,8 +252,7 @@ class ApplicationComptaPrivee(tk.Tk):
         super().__init__()
 
         self.title("ComptaPrivée AI")
-        self.geometry("1100x780")
-        self.minsize(900, 680)
+        dimensionner_fenetre(self, 1100, 780)
 
         self.chemin_document: Path | None = None
         self.chemins_lot: list[Path] = []
@@ -314,14 +314,8 @@ class ApplicationComptaPrivee(tk.Tk):
             padding=(12, 8),
         )
 
-        conteneur = ttk.Frame(
-            self,
-            padding=20,
-        )
-        conteneur.pack(
-            fill="both",
-            expand=True,
-        )
+        ecran = EcranResponsive(self)
+        conteneur = ecran.corps
 
         entete = ttk.Frame(conteneur)
         entete.pack(fill="x")
@@ -487,7 +481,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
         zone_principale = ttk.Panedwindow(
             conteneur,
-            orient="horizontal",
+            orient="vertical",
         )
         zone_principale.pack(
             fill="both",
@@ -588,7 +582,7 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         self.bouton_valider = ttk.Button(
-            panneau_champs,
+            ecran.actions,
             text="Valider les données",
             command=self.valider_formulaire,
             state="disabled",
@@ -603,7 +597,7 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         self.bouton_enregistrer = ttk.Button(
-            panneau_champs,
+            ecran.actions,
             text="Enregistrer dans l'historique",
             command=self.enregistrer_dans_historique,
             state="disabled",
@@ -618,7 +612,7 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         self.bouton_exporter = ttk.Button(
-            panneau_champs,
+            ecran.actions,
             text="Exporter le document en CSV",
             command=self.exporter,
             state="disabled",
@@ -659,6 +653,8 @@ class ApplicationComptaPrivee(tk.Tk):
             fill="x",
             pady=(15, 0),
         )
+
+        ecran.finaliser()
 
     @staticmethod
     def types_fichiers() -> list[tuple[str, str]]:
@@ -1233,12 +1229,11 @@ class ApplicationComptaPrivee(tk.Tk):
         """Affiche le journal d'audit local."""
         fenetre = tk.Toplevel(self)
         fenetre.title("Journal d'audit — ComptaPrivée AI")
-        fenetre.geometry("1250x650")
-        fenetre.minsize(1000, 550)
+        dimensionner_fenetre(fenetre, 1250, 650)
         fenetre.transient(self)
 
-        conteneur = ttk.Frame(fenetre, padding=18)
-        conteneur.pack(fill="both", expand=True)
+        ecran = EcranResponsive(fenetre)
+        conteneur = ecran.corps
 
         ttk.Label(
             conteneur,
@@ -1691,8 +1686,7 @@ class ApplicationComptaPrivee(tk.Tk):
             afficher_details_audit,
         )
 
-        zone_boutons = ttk.Frame(conteneur)
-        zone_boutons.pack(fill="x", pady=(10, 0))
+        zone_boutons = ecran.actions
 
         ttk.Button(
             zone_boutons,
@@ -1812,16 +1806,17 @@ class ApplicationComptaPrivee(tk.Tk):
         charger()
         champ_recherche.focus_set()
 
+        ecran.finaliser()
+
     def ouvrir_a_verifier(self) -> None:
         """Affiche les factures qui nécessitent une vérification humaine."""
         fenetre = tk.Toplevel(self)
         fenetre.title("À vérifier — ComptaPrivée AI")
-        fenetre.geometry("1050x620")
-        fenetre.minsize(850, 500)
+        dimensionner_fenetre(fenetre, 1050, 620)
         fenetre.transient(self)
 
-        conteneur = ttk.Frame(fenetre, padding=18)
-        conteneur.pack(fill="both", expand=True)
+        ecran = EcranResponsive(fenetre)
+        conteneur = ecran.corps
 
         ttk.Label(
             conteneur,
@@ -1845,8 +1840,10 @@ class ApplicationComptaPrivee(tk.Tk):
             "raisons",
         )
 
+        panneau_liste = ttk.Frame(conteneur)
+        panneau_liste.pack(fill="both", expand=True)
         tableau = ttk.Treeview(
-            conteneur,
+            panneau_liste,
             columns=colonnes,
             show="headings",
         )
@@ -1881,7 +1878,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         barre = ttk.Scrollbar(
-            conteneur,
+            panneau_liste,
             orient="vertical",
             command=tableau.yview,
         )
@@ -2146,8 +2143,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             details.configure(state="disabled")
 
-        zone_boutons = ttk.Frame(panneau_droit)
-        zone_boutons.pack(fill="x")
+        zone_boutons = ecran.actions
 
         ttk.Button(
             zone_boutons,
@@ -2180,6 +2176,8 @@ class ApplicationComptaPrivee(tk.Tk):
         ).pack(side="right")
 
         actualiser()
+
+        ecran.finaliser()
 
 
     def ouvrir_agent_fiscal(self) -> None:
@@ -9090,18 +9088,11 @@ class ApplicationComptaPrivee(tk.Tk):
             fenetre_donnees.title(
                 "Validation fiscale — ComptaPrivée AI"
             )
-            fenetre_donnees.geometry("1120x590")
-            fenetre_donnees.minsize(900, 470)
+            dimensionner_fenetre(fenetre_donnees, 1120, 590)
             fenetre_donnees.transient(fenetre)
 
-            conteneur_donnees = ttk.Frame(
-                fenetre_donnees,
-                padding=14,
-            )
-            conteneur_donnees.pack(
-                fill="both",
-                expand=True,
-            )
+            ecran = EcranResponsive(fenetre_donnees)
+            conteneur_donnees = ecran.corps
 
             ttk.Label(
                 conteneur_donnees,
@@ -9404,13 +9395,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     parent=fenetre_donnees,
                 )
 
-            zone_actions_validation = ttk.Frame(
-                conteneur_donnees
-            )
-            zone_actions_validation.pack(
-                fill="x",
-                pady=(10, 0),
-            )
+            zone_actions_validation = ecran.actions
 
             ttk.Button(
                 zone_actions_validation,
@@ -9443,6 +9428,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ).pack(side="right")
 
             mettre_a_jour_resume()
+            ecran.finaliser()
 
         def extraire_cases_documents_fiscaux() -> None:
             if not documents_importes:
@@ -9942,18 +9928,11 @@ class ApplicationComptaPrivee(tk.Tk):
             fenetre_dossiers.title(
                 "Dossiers fiscaux enregistrés — ComptaPrivée AI"
             )
-            fenetre_dossiers.geometry("1080x600")
-            fenetre_dossiers.minsize(860, 480)
+            dimensionner_fenetre(fenetre_dossiers, 1080, 600)
             fenetre_dossiers.transient(fenetre)
 
-            conteneur_dossiers = ttk.Frame(
-                fenetre_dossiers,
-                padding=16,
-            )
-            conteneur_dossiers.pack(
-                fill="both",
-                expand=True,
-            )
+            ecran = EcranResponsive(fenetre_dossiers)
+            conteneur_dossiers = ecran.corps
 
             conteneur_dossiers.columnconfigure(0, weight=1)
             conteneur_dossiers.rowconfigure(3, weight=1)
@@ -10032,15 +10011,7 @@ class ApplicationComptaPrivee(tk.Tk):
                         parent=fenetre_dossiers,
                     )
 
-            zone_actions_dossiers = ttk.Frame(
-                conteneur_dossiers
-            )
-            zone_actions_dossiers.grid(
-                row=2,
-                column=0,
-                sticky="ew",
-                pady=(0, 10),
-            )
+            zone_actions_dossiers = ecran.actions
 
             ttk.Button(
                 zone_actions_dossiers,
@@ -10172,6 +10143,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 tableau.selection_set(premier)
                 tableau.focus(premier)
 
+            ecran.finaliser()
+
         def calculer_estimation_depuis_interface() -> None:
             nonlocal derniere_estimation
             dossier_valide = self.dossier_fiscal_valide_courant
@@ -10286,15 +10259,11 @@ class ApplicationComptaPrivee(tk.Tk):
                 fenetre_trace.title(
                     "Détail du calcul fiscal 2025 — ComptaPrivée AI"
                 )
-                fenetre_trace.geometry("980x720")
-                fenetre_trace.minsize(800, 560)
+                dimensionner_fenetre(fenetre_trace, 980, 720)
                 fenetre_trace.transient(fenetre_resultat)
 
-                cadre_trace = ttk.Frame(
-                    fenetre_trace,
-                    padding=18,
-                )
-                cadre_trace.pack(fill="both", expand=True)
+                ecran = EcranResponsive(fenetre_trace)
+                cadre_trace = ecran.corps
 
                 ttk.Label(
                     cadre_trace,
@@ -10321,27 +10290,22 @@ class ApplicationComptaPrivee(tk.Tk):
                 zone_trace.configure(state="disabled")
 
                 ttk.Button(
-                    cadre_trace,
+                    ecran.actions,
                     text="Fermer",
                     command=fenetre_trace.destroy,
                 ).pack(anchor="e", pady=(10, 0))
+
+                ecran.finaliser()
 
             fenetre_resultat = tk.Toplevel(fenetre)
             fenetre_resultat.title(
                 "Estimation fiscale 2025 — ComptaPrivée AI"
             )
-            fenetre_resultat.geometry("940x700")
-            fenetre_resultat.minsize(780, 560)
+            dimensionner_fenetre(fenetre_resultat, 940, 700)
             fenetre_resultat.transient(fenetre)
 
-            conteneur_resultat = ttk.Frame(
-                fenetre_resultat,
-                padding=18,
-            )
-            conteneur_resultat.pack(
-                fill="both",
-                expand=True,
-            )
+            ecran = EcranResponsive(fenetre_resultat)
+            conteneur_resultat = ecran.corps
 
             ttk.Label(
                 conteneur_resultat,
@@ -10379,13 +10343,7 @@ class ApplicationComptaPrivee(tk.Tk):
             zone_resultat.insert("1.0", resume)
             zone_resultat.configure(state="disabled")
 
-            zone_actions_resultat = ttk.Frame(
-                conteneur_resultat
-            )
-            zone_actions_resultat.pack(
-                fill="x",
-                pady=(12, 0),
-            )
+            zone_actions_resultat = ecran.actions
 
             ttk.Label(
                 zone_actions_resultat,
@@ -10429,6 +10387,8 @@ class ApplicationComptaPrivee(tk.Tk):
                     "— validation comptable obligatoire"
                 )
             )
+
+            ecran.finaliser()
 
         zone_actions = ttk.Frame(conteneur)
         zone_actions.pack(fill="x", pady=(10, 0))
@@ -10658,12 +10618,11 @@ class ApplicationComptaPrivee(tk.Tk):
         """Affiche les fichiers PDF/CSV présents dans data/exports."""
         fenetre = tk.Toplevel(self)
         fenetre.title("Historique des exports — ComptaPrivée AI")
-        fenetre.geometry("1180x620")
-        fenetre.minsize(980, 500)
+        dimensionner_fenetre(fenetre, 1180, 620)
         fenetre.transient(self)
 
-        conteneur = ttk.Frame(fenetre, padding=18)
-        conteneur.pack(fill="both", expand=True)
+        ecran = EcranResponsive(fenetre)
+        conteneur = ecran.corps
 
         ttk.Label(
             conteneur,
@@ -11258,8 +11217,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 parent=fenetre,
             )
 
-        actions = ttk.Frame(conteneur)
-        actions.pack(fill="x", pady=(14, 0))
+        actions = ecran.actions
 
         ttk.Button(
             actions,
@@ -11351,6 +11309,8 @@ class ApplicationComptaPrivee(tk.Tk):
         actualiser()
         champ_recherche.focus_set()
 
+        ecran.finaliser()
+
     def ouvrir_parametres(self) -> None:
         """Ouvre les paramètres locaux de l'application."""
         parametres = lire_parametres()
@@ -11358,19 +11318,12 @@ class ApplicationComptaPrivee(tk.Tk):
 
         fenetre = tk.Toplevel(self)
         fenetre.title("Paramètres — ComptaPrivée AI")
-        fenetre.geometry("720x560")
-        fenetre.minsize(650, 520)
+        dimensionner_fenetre(fenetre, 720, 560)
         fenetre.transient(self)
         fenetre.grab_set()
 
-        conteneur = ttk.Frame(
-            fenetre,
-            padding=20,
-        )
-        conteneur.pack(
-            fill="both",
-            expand=True,
-        )
+        ecran = EcranResponsive(fenetre)
+        conteneur = ecran.corps
 
         ttk.Label(
             conteneur,
@@ -11847,11 +11800,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
             fenetre.destroy()
 
-        barre_actions = ttk.Frame(conteneur)
-        barre_actions.pack(
-            fill="x",
-            pady=(18, 0),
-        )
+        barre_actions = ecran.actions
 
         ttk.Button(
             barre_actions,
@@ -11870,6 +11819,8 @@ class ApplicationComptaPrivee(tk.Tk):
             padx=(0, 8),
         )
 
+        ecran.finaliser()
+
     def configurer_societe_comptable(self) -> None:
         """Configure le profil local du cabinet comptable."""
         profil = lire_profil_societe()
@@ -11878,19 +11829,12 @@ class ApplicationComptaPrivee(tk.Tk):
         fenetre.title(
             "Profil de la société — ComptaPrivée AI"
         )
-        fenetre.geometry("680x720")
-        fenetre.minsize(620, 680)
+        dimensionner_fenetre(fenetre, 680, 720)
         fenetre.transient(self)
         fenetre.grab_set()
 
-        cadre = ttk.Frame(
-            fenetre,
-            padding=20,
-        )
-        cadre.pack(
-            fill="both",
-            expand=True,
-        )
+        ecran = EcranResponsive(fenetre)
+        cadre = ecran.corps
 
         ttk.Label(
             cadre,
@@ -12129,14 +12073,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
             fenetre.destroy()
 
-        boutons = ttk.Frame(cadre)
-        boutons.grid(
-            row=len(champs) + 2,
-            column=0,
-            columnspan=2,
-            sticky="e",
-            pady=(20, 0),
-        )
+        boutons = ecran.actions
 
         ttk.Button(
             boutons,
@@ -12155,6 +12092,8 @@ class ApplicationComptaPrivee(tk.Tk):
             padx=(0, 8),
         )
 
+        ecran.finaliser()
+
     def ouvrir_tableau_bord(self) -> None:
         """Ouvre un tableau de bord comptable local avec filtres."""
         try:
@@ -12168,17 +12107,10 @@ class ApplicationComptaPrivee(tk.Tk):
 
         fenetre = tk.Toplevel(self)
         fenetre.title("Tableau de bord — ComptaPrivée AI")
-        fenetre.geometry("1050x720")
-        fenetre.minsize(860, 600)
+        dimensionner_fenetre(fenetre, 1050, 720)
 
-        conteneur = ttk.Frame(
-            fenetre,
-            padding=20,
-        )
-        conteneur.pack(
-            fill="both",
-            expand=True,
-        )
+        ecran = EcranResponsive(fenetre)
+        conteneur = ecran.corps
 
         ttk.Label(
             conteneur,
@@ -12604,17 +12536,10 @@ class ApplicationComptaPrivee(tk.Tk):
             graphique.title(
                 "Graphique fournisseurs — ComptaPrivée AI"
             )
-            graphique.geometry("900x560")
-            graphique.minsize(700, 450)
+            dimensionner_fenetre(graphique, 900, 560)
 
-            cadre = ttk.Frame(
-                graphique,
-                padding=20,
-            )
-            cadre.pack(
-                fill="both",
-                expand=True,
-            )
+            ecran = EcranResponsive(graphique)
+            cadre = ecran.corps
 
             ttk.Label(
                 cadre,
@@ -12741,7 +12666,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
             ttk.Button(
-                cadre,
+                ecran.actions,
                 text="Fermer",
                 command=graphique.destroy,
             ).pack(
@@ -12753,6 +12678,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 50,
                 dessiner,
             )
+
+            ecran.finaliser()
 
         def afficher_resume_comptable() -> None:
             try:
@@ -12777,17 +12704,10 @@ class ApplicationComptaPrivee(tk.Tk):
             resume_fenetre.title(
                 "Résumé comptable — ComptaPrivée AI"
             )
-            resume_fenetre.geometry("760x600")
-            resume_fenetre.minsize(650, 520)
+            dimensionner_fenetre(resume_fenetre, 760, 600)
 
-            cadre = ttk.Frame(
-                resume_fenetre,
-                padding=20,
-            )
-            cadre.pack(
-                fill="both",
-                expand=True,
-            )
+            ecran = EcranResponsive(resume_fenetre)
+            cadre = ecran.corps
 
             ttk.Label(
                 cadre,
@@ -12927,11 +12847,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     parent=resume_fenetre,
                 )
 
-            boutons = ttk.Frame(cadre)
-            boutons.pack(
-                fill="x",
-                pady=(15, 0),
-            )
+            boutons = ecran.actions
 
             ttk.Button(
                 boutons,
@@ -12949,6 +12865,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 side="right",
                 padx=(0, 8),
             )
+
+            ecran.finaliser()
 
         def afficher_anomalies() -> None:
             try:
@@ -12969,17 +12887,10 @@ class ApplicationComptaPrivee(tk.Tk):
             controle.title(
                 "Contrôle des anomalies — ComptaPrivée AI"
             )
-            controle.geometry("980x580")
-            controle.minsize(780, 460)
+            dimensionner_fenetre(controle, 980, 580)
 
-            cadre = ttk.Frame(
-                controle,
-                padding=20,
-            )
-            cadre.pack(
-                fill="both",
-                expand=True,
-            )
+            ecran = EcranResponsive(controle)
+            cadre = ecran.corps
 
             ttk.Label(
                 cadre,
@@ -13089,13 +13000,15 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
 
             ttk.Button(
-                cadre,
+                ecran.actions,
                 text="Fermer",
                 command=controle.destroy,
             ).pack(
                 anchor="e",
                 pady=(12, 0),
             )
+
+            ecran.finaliser()
 
         def afficher_taxes_mensuelles() -> None:
             try:
@@ -13124,17 +13037,10 @@ class ApplicationComptaPrivee(tk.Tk):
             graphique.title(
                 "TPS et TVQ mensuelles — ComptaPrivée AI"
             )
-            graphique.geometry("940x580")
-            graphique.minsize(740, 460)
+            dimensionner_fenetre(graphique, 940, 580)
 
-            cadre = ttk.Frame(
-                graphique,
-                padding=20,
-            )
-            cadre.pack(
-                fill="both",
-                expand=True,
-            )
+            ecran = EcranResponsive(graphique)
+            cadre = ecran.corps
 
             ttk.Label(
                 cadre,
@@ -13349,7 +13255,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
             ttk.Button(
-                cadre,
+                ecran.actions,
                 text="Fermer",
                 command=graphique.destroy,
             ).pack(
@@ -13361,6 +13267,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 50,
                 dessiner_taxes,
             )
+
+            ecran.finaliser()
 
         def afficher_evolution_mensuelle() -> None:
             try:
@@ -13389,17 +13297,10 @@ class ApplicationComptaPrivee(tk.Tk):
             graphique.title(
                 "Évolution mensuelle — ComptaPrivée AI"
             )
-            graphique.geometry("920x560")
-            graphique.minsize(720, 450)
+            dimensionner_fenetre(graphique, 920, 560)
 
-            cadre = ttk.Frame(
-                graphique,
-                padding=20,
-            )
-            cadre.pack(
-                fill="both",
-                expand=True,
-            )
+            ecran = EcranResponsive(graphique)
+            cadre = ecran.corps
 
             ttk.Label(
                 cadre,
@@ -13587,7 +13488,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
             ttk.Button(
-                cadre,
+                ecran.actions,
                 text="Fermer",
                 command=graphique.destroy,
             ).pack(
@@ -13599,6 +13500,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 50,
                 dessiner_mensuel,
             )
+
+            ecran.finaliser()
 
         ttk.Button(
             zone_filtres,
@@ -13626,11 +13529,7 @@ class ApplicationComptaPrivee(tk.Tk):
             padx=(8, 0),
         )
 
-        zone_bas = ttk.Frame(conteneur)
-        zone_bas.pack(
-            fill="x",
-            pady=(15, 0),
-        )
+        zone_bas = ecran.actions
 
         ttk.Button(
             zone_bas,
@@ -13693,6 +13592,8 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         actualiser_tableau_bord()
+
+        ecran.finaliser()
 
     def ouvrir_dossier_exports(self) -> None:
         """Ouvre le dossier local contenant les exports CSV et PDF."""
@@ -14552,24 +14453,12 @@ class ApplicationComptaPrivee(tk.Tk):
             f"Facture {numero} — ComptaPrivée AI"
         )
 
-        fenetre_detail.geometry(
-            "620x560"
-        )
+        dimensionner_fenetre(fenetre_detail, 620, 560)
 
-        fenetre_detail.minsize(
-            520,
-            480,
-        )
 
-        conteneur = ttk.Frame(
-            fenetre_detail,
-            padding=20,
-        )
+        ecran = EcranResponsive(fenetre_detail)
+        conteneur = ecran.corps
 
-        conteneur.pack(
-            fill="both",
-            expand=True,
-        )
 
         ttk.Label(
             conteneur,
@@ -14687,7 +14576,7 @@ class ApplicationComptaPrivee(tk.Tk):
         )
 
         ttk.Button(
-            conteneur,
+            ecran.actions,
             text="Fermer",
             command=fenetre_detail.destroy,
         ).pack(
@@ -14695,15 +14584,16 @@ class ApplicationComptaPrivee(tk.Tk):
             pady=(15, 0),
         )
 
+        ecran.finaliser()
+
     def ouvrir_corbeille(self) -> None:
         """Ouvre la corbeille locale des factures."""
         fenetre = tk.Toplevel(self)
         fenetre.title("Corbeille — ComptaPrivée AI")
-        fenetre.geometry("1150x600")
-        fenetre.minsize(900, 450)
+        dimensionner_fenetre(fenetre, 1150, 600)
 
-        conteneur = ttk.Frame(fenetre, padding=15)
-        conteneur.pack(fill="both", expand=True)
+        ecran = EcranResponsive(fenetre)
+        conteneur = ecran.corps
 
         ttk.Label(
             conteneur,
@@ -14908,8 +14798,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     parent=fenetre,
                 )
 
-        zone_bas = ttk.Frame(conteneur)
-        zone_bas.pack(fill="x", pady=(12, 0))
+        zone_bas = ecran.actions
         ttk.Label(zone_bas, textvariable=texte_resume).pack(side="left")
         ttk.Button(zone_bas, text="Actualiser", command=charger_corbeille).pack(side="right")
         ttk.Button(zone_bas, text="Fermer", command=fenetre.destroy).pack(side="right", padx=(0, 10))
@@ -14920,6 +14809,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         charger_corbeille()
 
+        ecran.finaliser()
+
     def ouvrir_historique(self) -> None:
         """Ouvre la fenêtre de consultation de l'historique."""
         fenetre = tk.Toplevel(self)
@@ -14928,24 +14819,12 @@ class ApplicationComptaPrivee(tk.Tk):
             "Historique des factures — ComptaPrivée AI"
         )
 
-        fenetre.geometry(
-            "1150x600"
-        )
+        dimensionner_fenetre(fenetre, 1150, 600)
 
-        fenetre.minsize(
-            900,
-            450,
-        )
 
-        conteneur = ttk.Frame(
-            fenetre,
-            padding=15,
-        )
+        ecran = EcranResponsive(fenetre)
+        conteneur = ecran.corps
 
-        conteneur.pack(
-            fill="both",
-            expand=True,
-        )
 
         ttk.Label(
             conteneur,
@@ -15532,14 +15411,8 @@ class ApplicationComptaPrivee(tk.Tk):
             double_clic,
         )
 
-        zone_bas = ttk.Frame(
-            conteneur
-        )
+        zone_bas = ecran.actions
 
-        zone_bas.pack(
-            fill="x",
-            pady=(12, 0),
-        )
 
         ttk.Label(
             zone_bas,
@@ -15612,6 +15485,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         charger_factures()
         champ_recherche.focus_set()
+
+        ecran.finaliser()
 
     def exporter(self) -> None:
         """Valide et exporte une facture dans un CSV."""

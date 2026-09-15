@@ -31,7 +31,7 @@ Les règles de calcul et les formats de sauvegarde ne sont pas modifiés.
 - GitHub Actions utilise Xvfb pour exécuter les tests Tkinter sous Linux.
 - Captures et journaux restent dans `tmp/`, exclu de Git.
 
-## Audit du reste de l'interface et travaux ouverts
+## Audit initial du reste de l'interface (avant le Bloc 2)
 
 La révision complète de l'application n'est pas terminée. La lecture de `gui.py`
 a également relevé des tailles et minima fixes dans les écrans suivants :
@@ -49,6 +49,44 @@ a également relevé des tailles et minima fixes dans les écrans suivants :
 Ces écrans ont été examinés dans le code, mais ne sont pas déclarés validés
 visuellement par ce bloc. La validation réelle des DPI Windows, des thèmes,
 du contraste et des configurations multi-écrans reste manuelle.
+
+## Bloc 2 : écrans de consultation et paramètres
+
+Reprise des modifications locales existantes, sans recommencer le Bloc 1.
+Les écrans de l'audit ci-dessus utilisent désormais `EcranResponsive` :
+corps défilable, actions fixes, filtres réorganisés, panneaux empilés,
+tables avec défilement horizontal/vertical et largeur minimale des en-têtes.
+Les graphiques disposent aussi d'un défilement horizontal. Les textes et
+listes conservent leur propre défilement à la molette.
+
+### Validation du 15 septembre 2026
+
+- Suite complète Windows : `python -m pytest -q`, **1 577 tests réussis**,
+  aucun échec ni test ignoré, 8 avertissements de dépréciation (42,49 s).
+- **38 nouveaux cas** dans `tests/test_gui_block2.py` : 27 combinaisons
+  de neuf écrans et trois facteurs Tk, cinq sous-fenêtres du tableau de bord,
+  parcours dossier/validation/résultat/trace, détail de facture, persistance
+  des paramètres et du profil, rejet de couleur invalide, restauration de facture.
+- Géométries testées : 600 × 400 et 1 000 × 700; contrôles des dimensions
+  des actions, du défilement et des exceptions de callbacks Tkinter.
+- Captures Windows à 600 × 450 inspectées : accueil, paramètres (trois onglets),
+  profil, historiques, corbeille, audit, éléments à vérifier, tableau de bord,
+  ses cinq sous-fenêtres, détail de facture, dossiers enregistrés, validation,
+  résultat et trace. Vérification complémentaire du bas des écrans défilables.
+- Données de démonstration isolées; captures et journaux dans `tmp/`, exclus de Git.
+- L'ancien journal signalait une erreur d'initialisation Tcl dans un test de focus;
+  elle ne s'est pas reproduite dans la suite complète. Le lancement dans le bac
+  à sable a échoué sur les accès Tcl/Tk et temporaires; la suite verte a été
+  exécutée hors de ce bac à sable, sans désactiver de test.
+
+### Limites et suite
+
+Les facteurs Tk ne remplacent pas une vérification des réglages DPI Windows
+100 %, 150 % et 200 %, des changements d'écran, des thèmes et du contraste.
+Ces vérifications manuelles restent ouvertes. Les avertissements de dépréciation
+des dépendances et de `document_converter.py` restent également présents.
+Le moteur fiscal 2025 et ses règles de calcul ne sont pas modifiés dans ce bloc.
+Aucune poursuite du design ni de la suite du moteur fiscal avant accord utilisateur.
 
 ## Procédure à conserver pour les prochains blocs
 
