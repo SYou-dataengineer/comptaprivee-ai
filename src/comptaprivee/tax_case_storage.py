@@ -89,6 +89,9 @@ from .tax_field_validation import (
     STATUT_VALIDE,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_rpp_2025 import (
+    CotisationsRpa2025, valider_cotisations_rpa_2025, verifier_rpa_dossier_2025,
+)
 
 SCHEMA_VERSION = 1
 
@@ -134,6 +137,7 @@ class DossierFiscalEnregistre:
     aidant_autre_personne_charge_federal: AidantNaturelAutrePersonneChargeFederal2025
     aidant_conjoint_personne_charge_federal: AidantNaturelConjointOuPersonneChargeFederal2025
     aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
+    cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
 
 
 def _nom_securise(valeur: str) -> str:
@@ -2361,6 +2365,18 @@ def _montants_age_retraite_depuis_dict(
     return valider_montants_age_retraite_2025(profil)
 
 
+def _rpa_depuis_dict(valeur):
+    if not isinstance(valeur, dict):
+        raise ValueError("Cotisations RPA enregistrées invalides.")
+    champs = CotisationsRpa2025.__dataclass_fields__
+    if set(valeur) != set(champs):
+        raise ValueError("Champs RPA enregistrés incomplets ou inconnus.")
+    valeurs = dict(valeur)
+    for nom in ("montant_federal", "montant_quebec"):
+        valeurs[nom] = _decimal_depuis_json(valeurs[nom], "cotisations_rpa." + nom)
+    return valider_cotisations_rpa_2025(CotisationsRpa2025(**valeurs))
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
@@ -2399,7 +2415,18 @@ def sauvegarder_dossier_fiscal(
     ) = None,
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
+    cotisations_rpa: CotisationsRpa2025 | None = None,
 ) -> Path:
+    rpa = cotisations_rpa if cotisations_rpa is not None else (
+        estimation.cotisations_rpa if estimation is not None else CotisationsRpa2025()
+    )
+    valider_cotisations_rpa_2025(rpa)
+    if estimation is not None and rpa != estimation.cotisations_rpa:
+        raise ValueError("Le profil RPA ne correspond pas à l'estimation à sauvegarder.")
+    # Un dossier peut être sauvegardé avant le paramétrage RPA; le calcul
+    # impose ensuite la cohérence avec les cases validées.
+    if rpa.montant_federal:
+        verifier_rpa_dossier_2025(dossier, rpa)
     if destination is None:
         DOSSIERS_FISCAUX_DIR.mkdir(parents=True, exist_ok=True)
         chemin = DOSSIERS_FISCAUX_DIR / nom_fichier_dossier_fiscal(dossier)
@@ -2411,6 +2438,10 @@ def sauvegarder_dossier_fiscal(
 
     contenu = {
         "schema_version": SCHEMA_VERSION,
+        "cotisations_rpa": {
+            nom: _decimal_texte(valeur) if isinstance(valeur, Decimal) else valeur
+            for nom, valeur in vars(rpa).items()
+        },
         "sauvegarde_le": datetime.now().astimezone().isoformat(timespec="seconds"),
         "client": dossier.client,
         "annee_fiscale": dossier.annee_fiscale,
@@ -2668,7 +2699,11 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
     manquants = tuple(x for x in documents if not x.exists())
+    rpa = _rpa_depuis_dict(contenu["cotisations_rpa"]) if "cotisations_rpa" in contenu else CotisationsRpa2025()
+    if rpa.montant_federal:
+        verifier_rpa_dossier_2025(dossier, rpa)
     return DossierFiscalEnregistre(
+        cotisations_rpa=rpa,
         chemin=chemin,
         dossier=dossier,
         sauvegarde_le=sauvegarde_le,

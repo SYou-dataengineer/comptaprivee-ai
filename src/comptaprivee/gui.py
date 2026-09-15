@@ -183,6 +183,10 @@ from .tax_federal_home_accessibility_2025 import (
     DepensesAccessibiliteDomiciliaireFederal2025,
     valider_depenses_accessibilite_domiciliaire_2025,
 )
+from .tax_rpp_2025 import (
+    CotisationsRpa2025, montant_rpa_depuis_champ,
+    valider_cotisations_rpa_2025, verifier_rpa_dossier_2025,
+)
 from .tax_federal_home_buyers_2025 import (
     MontantAchatHabitationFederal2025,
     valider_montant_achat_habitation_2025,
@@ -2452,6 +2456,8 @@ class ApplicationComptaPrivee(tk.Tk):
         aidant_30425_federal_courant = AidantNaturelConjointOuPersonneChargeFederal2025()
         accessibilite_domiciliaire_federale_courante = DepensesAccessibiliteDomiciliaireFederal2025()
         achat_habitation_federal_courant = MontantAchatHabitationFederal2025()
+        cotisations_rpa_courantes = CotisationsRpa2025()
+        rapport_rpa_a_reexporter = False
         aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
         aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
         def mettre_a_jour_bouton_ajustements() -> None:
@@ -2816,6 +2822,79 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            organiser_boutons(formulaire.actions)
+
+        def ouvrir_cotisations_rpa_2025() -> None:
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Cotisations RPA 2025 — ComptaPrivée AI")
+            dimensionner_fenetre(dialogue, 800, 650)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(1, weight=1)
+            ttk.Label(cadre, text="Cotisations RPA — services courants 2025",
+                      font=("Segoe UI", 16, "bold")).grid(row=0, column=0, columnspan=2, sticky="w", pady=8)
+            ttk.Label(cadre, text=(
+                "Déduction fédérale 20700 et Québec 205. Saisissez les cotisations personnelles "
+                "admissibles pour les services courants de 2025, à partir du T4 case 20, "
+                "du RL-1 case D ou des reçus vérifiés. Ne cumulez pas les deux feuillets. "
+                "Les rachats de services passés, reports, transferts, conventions de retraite "
+                "et régimes étrangers nécessitent un traitement distinct."
+            ), wraplength=680).grid(row=1, column=0, columnspan=2, sticky="w", pady=8)
+            champs = {}
+            for row, (nom, libelle) in enumerate((
+                ("montant_federal", "Cotisations fédérales (20700)"),
+                ("montant_quebec", "Cotisations Québec (205)"),
+                ("source_federale", "Source fédérale / reçu"),
+                ("source_quebec", "Source Québec / reçu"),
+            ), 2):
+                valeur = getattr(cotisations_rpa_courantes, nom)
+                champs[nom] = tk.StringVar(value=str(valeur) if valeur else "")
+                ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w", padx=4, pady=6)
+                ttk.Entry(cadre, textvariable=champs[nom]).grid(row=row, column=1, sticky="ew", padx=4, pady=6)
+            courant = tk.BooleanVar(value=cotisations_rpa_courantes.services_courants_uniquement)
+            valide = tk.BooleanVar(value=cotisations_rpa_courantes.valide_par_comptable)
+            tk.Checkbutton(cadre, text="Je confirme : RPA canadien, services courants de 2025 uniquement, sans les cas exclus ci-dessus.",
+                           variable=courant, wraplength=680, justify="left").grid(row=6, column=0, columnspan=2, sticky="w", pady=8)
+            tk.Checkbutton(cadre, text="Montants et pièces justificatives validés par le comptable.",
+                           variable=valide, wraplength=680, justify="left").grid(row=7, column=0, columnspan=2, sticky="w", pady=8)
+            ttk.Label(cadre, text="Références : ARC ligne 20700; Revenu Québec ligne 205 — année 2025.",
+                      wraplength=680).grid(row=8, column=0, columnspan=2, sticky="w", pady=8)
+
+            def effacer_rpa():
+                for variable in champs.values():
+                    variable.set("")
+                courant.set(False)
+                valide.set(False)
+
+            def appliquer_rpa():
+                nonlocal cotisations_rpa_courantes, derniere_estimation, dernier_rapport_pdf
+                nonlocal rapport_rpa_a_reexporter
+                try:
+                    profil = valider_cotisations_rpa_2025(CotisationsRpa2025(
+                        montant_federal=montant_rpa_depuis_champ(champs["montant_federal"].get()),
+                        montant_quebec=montant_rpa_depuis_champ(champs["montant_quebec"].get()),
+                        source_federale=champs["source_federale"].get().strip(),
+                        source_quebec=champs["source_quebec"].get().strip(),
+                        services_courants_uniquement=courant.get(),
+                        valide_par_comptable=valide.get(),
+                    ))
+                    if self.dossier_fiscal_valide_courant is not None:
+                        verifier_rpa_dossier_2025(self.dossier_fiscal_valide_courant, profil)
+                except ValueError as erreur:
+                    messagebox.showerror("Cotisations RPA invalides", str(erreur), parent=dialogue)
+                    return
+                cotisations_rpa_courantes = profil
+                rapport_rpa_a_reexporter = True
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                self.statut.set("Cotisations RPA 2025 mises à jour; recalculez l'estimation.")
+                dialogue.destroy()
+
+            ttk.Button(formulaire.actions, text="Effacer", command=effacer_rpa).pack(side="left")
+            ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right")
+            ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer_rpa).pack(side="right")
             organiser_boutons(formulaire.actions)
 
         def ouvrir_frais_scolarite_2025() -> None:
@@ -9510,6 +9589,7 @@ class ApplicationComptaPrivee(tk.Tk):
             afficher_donnees_fiscales_extraites()
 
         def initialiser_dossier_fiscal() -> None:
+            nonlocal rapport_rpa_a_reexporter
             nonlocal ajustement_reer_courant
             nonlocal cotisations_syndicales_courantes
             nonlocal dons_bienfaisance_courants
@@ -9526,6 +9606,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal aidant_30425_federal_courant
             nonlocal accessibilite_domiciliaire_federale_courante
             nonlocal achat_habitation_federal_courant
+            nonlocal cotisations_rpa_courantes
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -9564,6 +9645,8 @@ class ApplicationComptaPrivee(tk.Tk):
             aidant_30425_federal_courant = AidantNaturelConjointOuPersonneChargeFederal2025()
             accessibilite_domiciliaire_federale_courante = DepensesAccessibiliteDomiciliaireFederal2025()
             achat_habitation_federal_courant = MontantAchatHabitationFederal2025()
+            cotisations_rpa_courantes = CotisationsRpa2025()
+            rapport_rpa_a_reexporter = True
             aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
             aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
             derniere_estimation = None
@@ -9690,6 +9773,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                             accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                             achat_habitation_federal=achat_habitation_federal_courant,
+                            cotisations_rpa=cotisations_rpa_courantes,
                             aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                             aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                             aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -9705,6 +9789,7 @@ class ApplicationComptaPrivee(tk.Tk):
             if (
                 rapport_a_sauvegarder is None
                 and estimation_a_sauvegarder is not None
+                and not rapport_rpa_a_reexporter
             ):
                 rapport_candidat = (
                     Path("data/exports")
@@ -9736,6 +9821,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                     accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                     achat_habitation_federal=achat_habitation_federal_courant,
+                    cotisations_rpa=cotisations_rpa_courantes,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -9805,6 +9891,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
+            nonlocal rapport_rpa_a_reexporter
             nonlocal derniere_estimation, dernier_rapport_pdf
             nonlocal ajustement_reer_courant
             nonlocal cotisations_syndicales_courantes
@@ -9822,6 +9909,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal aidant_30425_federal_courant
             nonlocal accessibilite_domiciliaire_federale_courante
             nonlocal achat_habitation_federal_courant
+            nonlocal cotisations_rpa_courantes
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
             dossier = enregistrement.dossier
@@ -9861,6 +9949,7 @@ class ApplicationComptaPrivee(tk.Tk):
             province_fiscale.set(dossier.province)
             derniere_estimation = None
             dernier_rapport_pdf = enregistrement.rapport_pdf
+            rapport_rpa_a_reexporter = dernier_rapport_pdf is None
             ajustement_reer_courant = enregistrement.ajustement_reer
             cotisations_syndicales_courantes = (
                 enregistrement.cotisations_syndicales
@@ -9904,6 +9993,7 @@ class ApplicationComptaPrivee(tk.Tk):
             achat_habitation_federal_courant = (
                 enregistrement.achat_habitation_federal
             )
+            cotisations_rpa_courantes = enregistrement.cotisations_rpa
             aidant_30450_federal_courant = (
                 enregistrement.aidant_autre_personne_charge_federal
             )
@@ -10181,6 +10271,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                     accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                     achat_habitation_federal=achat_habitation_federal_courant,
+                    cotisations_rpa=cotisations_rpa_courantes,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -10209,6 +10300,10 @@ class ApplicationComptaPrivee(tk.Tk):
 
             def exporter_rapport_pdf() -> None:
                 nonlocal dernier_rapport_pdf
+                nonlocal rapport_rpa_a_reexporter
+                if estimation is not derniere_estimation:
+                    messagebox.showerror("Estimation périmée", "Recalculez l'estimation avant d'exporter le rapport.", parent=fenetre_resultat)
+                    return
                 dossier_exports = Path("data/exports")
                 dossier_exports.mkdir(parents=True, exist_ok=True)
                 destination = filedialog.asksaveasfilename(
@@ -10227,6 +10322,7 @@ class ApplicationComptaPrivee(tk.Tk):
                         destination,
                     )
                     dernier_rapport_pdf = chemin
+                    rapport_rpa_a_reexporter = False
                 except Exception as erreur:
                     messagebox.showerror(
                         "Export PDF impossible",
@@ -10569,6 +10665,9 @@ class ApplicationComptaPrivee(tk.Tk):
             side="left",
             padx=(8, 0),
         )
+
+        ttk.Button(zone_actions, text="Cotisations RPA 2025",
+                   command=ouvrir_cotisations_rpa_2025).pack(side="left", padx=4)
 
         bouton_ajustements_fiscaux = ttk.Button(
             zone_actions,

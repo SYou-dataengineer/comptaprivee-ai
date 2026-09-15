@@ -182,6 +182,11 @@ def construire_trace_calcul_fiscal_2025(
         "Revenu Québec - déduction travailleur - déduction RRQ"
     )
 
+    if estimation.cotisations_rpa.montant_federal:
+        formule_revenu_federal += " - déduction RPA ligne 20700"
+    if estimation.cotisations_rpa.montant_quebec:
+        formule_revenu_quebec += " - déduction RPA ligne 205"
+
     if ajustement_reer.deduction_reer > Decimal("0"):
         formule_revenu_federal += " - déduction REER validée"
         formule_revenu_quebec += " - déduction REER validée"
@@ -396,6 +401,18 @@ def construire_trace_calcul_fiscal_2025(
             final.retenues_totales,
         ),
     )
+
+    for cible, section, libelle, source, montant in (
+        ("Revenu imposable fédéral", "REVENU FÉDÉRAL", "Déduction RPA ligne 20700",
+         estimation.cotisations_rpa.source_federale, estimation.cotisations_rpa.montant_federal),
+        ("Revenu imposable Québec", "REVENU QUÉBEC", "Déduction RPA ligne 205",
+         estimation.cotisations_rpa.source_quebec, estimation.cotisations_rpa.montant_quebec),
+    ):
+        if montant:
+            lignes = _inserer_ligne_avant(lignes, cible, _ligne(
+                0, section, libelle, source,
+                "Cotisations RPA pour services courants validées; ARC 20700 / RQ 205", montant,
+            ))
 
     if ajustement_reer.deduction_reer > Decimal("0"):
         lignes = _inserer_ligne_avant(

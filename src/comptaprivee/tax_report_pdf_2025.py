@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import textwrap
 import fitz
+from .tax_rpp_2025 import lignes_resume_rpa_2025
 
 from .tax_estimation_2025 import (
     EstimationFiscale2025,
@@ -164,6 +165,8 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
             f"{formater_montant_estimation(r.revenu_imposable_quebec)}"
         ),
     ]
+
+    lignes.extend(lignes_resume_rpa_2025(estimation.cotisations_rpa))
 
     if (
         medical.montant_admissible_federal > 0

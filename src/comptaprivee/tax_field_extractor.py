@@ -25,6 +25,9 @@ class DonneeFiscaleExtraite:
 
 
 REGLES_T4 = (
+    ("20", "Cotisations à un RPA", (r"\bcase\s*20\b", r"\bbox\s*20\b")),
+    ("74", "RPA services avant 1990 (cotisant)", (r"\b(?:case|box|code)\s*74\b",)),
+    ("75", "RPA services avant 1990 (non cotisant)", (r"\b(?:case|box|code)\s*75\b",)),
     ("14", "Revenu d'emploi", (r"\bcase\s*14\b", r"\bbox\s*14\b")),
     ("16", "Cotisations RPC", (r"\bcase\s*16\b", r"\bbox\s*16\b")),
     ("17", "Cotisations RRQ", (r"\bcase\s*17\b", r"\bbox\s*17\b")),
@@ -66,6 +69,10 @@ REGLES_T4 = (
 )
 
 REGLES_RL1 = (
+    ("D", "Cotisations à un RPA", (r"\bcase\s*d\b(?!\s*[-–]\s*\d)",)),
+    ("D-1", "Convention de retraite (hors profil RPA courant)", (r"\b(?:case|code)\s*d\s*[-–]\s*1\b",)),
+    ("D-2", "RPA services avant 1990 (cotisant)", (r"\b(?:case|code)\s*d\s*[-–]\s*2\b",)),
+    ("D-3", "RPA services avant 1990 (non cotisant)", (r"\b(?:case|code)\s*d\s*[-–]\s*3\b",)),
     (
         "B.A",
         "Cotisation RRQ (base + première supplémentaire)",
@@ -164,7 +171,7 @@ def formater_montant_fiscal(valeur: Decimal) -> str:
 
 def _prochaine_case_position(texte: str) -> int | None:
     resultat = re.search(
-        r"\b(?:case|box)\s*"
+        r"\b(?:case|box|code)\s*"
         r"(?:\d{1,2}[a-z]?|[a-z](?:\s*\.\s*[ab])?)\b",
         texte,
         flags=re.IGNORECASE,
@@ -177,6 +184,7 @@ def _prochaine_case_position(texte: str) -> int | None:
 def _chercher_montant_apres(
     texte: str,
     marqueurs: tuple[str, ...],
+    conserver_signe: bool = False,
 ) -> tuple[Decimal, str] | None:
     for marqueur in marqueurs:
         resultat = re.search(
@@ -198,6 +206,11 @@ def _chercher_montant_apres(
             continue
 
         valeur_brute = montant.group(1)
+        if conserver_signe:
+            avant = extrait[:montant.start()].rstrip()
+            apres = extrait[montant.end():].lstrip()
+            if avant.endswith(("-", "−")) or (avant.endswith("(") and apres.startswith(")")):
+                valeur_brute = "-" + valeur_brute
         return convertir_montant_fiscal(valeur_brute), valeur_brute
 
     return None
@@ -229,6 +242,10 @@ def extraire_cases_fiscales(
         resultat = _chercher_montant_apres(
             texte,
             marqueurs,
+            conserver_signe=(
+                (type_final == "T4" and case in {"20", "74", "75"})
+                or (type_final == "RL-1" and case in {"D", "D-1", "D-2", "D-3"})
+            ),
         )
         if resultat is None:
             continue

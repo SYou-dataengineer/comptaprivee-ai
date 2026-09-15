@@ -165,6 +165,10 @@ from .tax_union_dues_2025 import (
     credit_quebec_cotisations_2025,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_rpp_2025 import (
+    CotisationsRpa2025, appliquer_cotisations_rpa_2025,
+    verifier_rpa_dossier_2025, lignes_resume_rpa_2025,
+)
 
 
 @dataclass(frozen=True)
@@ -193,6 +197,7 @@ class EstimationFiscale2025:
     achat_habitation_federal: MontantAchatHabitationFederal2025
     aidant_autre_personne_charge_federal: AidantNaturelAutrePersonneChargeFederal2025
     aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
+    cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
 
 
 def calculer_estimation_fiscale_2025(
@@ -241,6 +246,7 @@ def calculer_estimation_fiscale_2025(
     aidant_enfant_federal: (
         AidantNaturelEnfantMoins18Federal2025 | None
     ) = None,
+    cotisations_rpa: CotisationsRpa2025 | None = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
     if dossier.annee_fiscale != 2025:
@@ -317,6 +323,10 @@ def calculer_estimation_fiscale_2025(
             cotisations_excedentaires_presentes
         ),
     )
+
+    rpa_effectives = cotisations_rpa if cotisations_rpa is not None else CotisationsRpa2025()
+    verifier_rpa_dossier_2025(dossier, rpa_effectives)
+    revenu = appliquer_cotisations_rpa_2025(revenu, rpa_effectives)
 
     ajustement_reer_effectif = (
         ajustement_reer
@@ -879,6 +889,7 @@ def calculer_estimation_fiscale_2025(
     )
 
     return EstimationFiscale2025(
+        cotisations_rpa=rpa_effectives,
         dossier=dossier,
         base=base,
         revenu=revenu,
@@ -955,6 +966,7 @@ def formater_estimation_fiscale_2025(
         f"Revenu d'emploi Québec : {formater_montant_estimation(base.revenu_emploi_quebec)}",
         f"Revenu net Québec : {formater_montant_estimation(revenu.revenu_net_quebec)}",
         f"Revenu imposable Québec : {formater_montant_estimation(revenu.revenu_imposable_quebec)}",
+        *lignes_resume_rpa_2025(estimation.cotisations_rpa),
         *(
             [
                 "",
