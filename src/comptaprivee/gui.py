@@ -9,6 +9,12 @@ from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 
+from .gui_layout import (
+    FormulaireDefilant,
+    dimensionner_fenetre,
+    dimensions_fenetre,
+    organiser_boutons,
+)
 from .anomalies import detecter_anomalies
 from .audit_log import (
     exporter_evenements_audit_csv,
@@ -2180,12 +2186,15 @@ class ApplicationComptaPrivee(tk.Tk):
         """Ouvre le premier espace local de l'Agent fiscal."""
         fenetre = tk.Toplevel(self)
         fenetre.title("Agent fiscal — ComptaPrivée AI")
-        fenetre.geometry("1100x690")
-        fenetre.minsize(920, 590)
+        largeur, hauteur = dimensions_fenetre(
+            1100, 690, fenetre.winfo_screenwidth(), fenetre.winfo_screenheight()
+        )
+        fenetre.geometry(f"{largeur}x{hauteur}")
+        fenetre.minsize(min(720, largeur), min(400, hauteur))
         fenetre.transient(self)
 
-        conteneur = ttk.Frame(fenetre, padding=18)
-        conteneur.pack(fill="both", expand=True)
+        formulaire_fiscal = FormulaireDefilant(fenetre)
+        conteneur = formulaire_fiscal.corps
 
         ttk.Label(
             conteneur,
@@ -2506,13 +2515,17 @@ class ApplicationComptaPrivee(tk.Tk):
 
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Frais médicaux 2025 — ComptaPrivée AI")
-            dialogue.geometry("780x650")
-            dialogue.minsize(720, 600)
+            largeur, hauteur = dimensions_fenetre(
+                780, 650, dialogue.winfo_screenwidth(), dialogue.winfo_screenheight()
+            )
+            dialogue.geometry(f"{largeur}x{hauteur}")
+            dialogue.minsize(min(480, largeur), min(320, hauteur))
+            dialogue.resizable(True, True)
             dialogue.transient(fenetre)
             dialogue.grab_set()
 
-            cadre = ttk.Frame(dialogue, padding=16)
-            cadre.pack(fill="both", expand=True)
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
             cadre.columnconfigure(1, weight=1)
 
             ttk.Label(
@@ -2683,8 +2696,11 @@ class ApplicationComptaPrivee(tk.Tk):
                 confirmations,
                 start=6,
             ):
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    anchor="w",
+                    justify="left",
+                    wraplength=680,
                     text=libelle,
                     variable=variable,
                 ).grid(
@@ -2782,14 +2798,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 dialogue.destroy()
 
-            actions = ttk.Frame(cadre)
-            actions.grid(
-                row=13,
-                column=0,
-                columnspan=2,
-                sticky="ew",
-                pady=(16, 0),
-            )
+            actions = formulaire.actions
 
             ttk.Button(
                 actions,
@@ -2809,6 +2818,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            organiser_boutons(formulaire.actions)
+
         def ouvrir_frais_scolarite_2025() -> None:
             nonlocal frais_scolarite_courants
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -2817,13 +2828,12 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Frais de scolarité 2025 — ComptaPrivée AI"
             )
-            dialogue.geometry("820x760")
-            dialogue.minsize(760, 680)
+            dimensionner_fenetre(dialogue, 820, 760)
             dialogue.transient(fenetre)
             dialogue.grab_set()
 
-            cadre = ttk.Frame(dialogue, padding=16)
-            cadre.pack(fill="both", expand=True)
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
             cadre.columnconfigure(1, weight=1)
 
             ttk.Label(
@@ -3004,8 +3014,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 confirmations,
                 start=6,
             ):
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=libelle,
                     variable=variable,
                 ).grid(
@@ -3108,14 +3119,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 dialogue.destroy()
 
-            actions = ttk.Frame(cadre)
-            actions.grid(
-                row=17,
-                column=0,
-                columnspan=2,
-                sticky="ew",
-                pady=(16, 0),
-            )
+            actions = formulaire.actions
 
             ttk.Button(
                 actions,
@@ -3135,6 +3139,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            organiser_boutons(formulaire.actions)
+
         def ouvrir_credit_deficience_2025() -> None:
             nonlocal credit_deficience_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -3143,13 +3149,12 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Handicap / déficience 2025 — ComptaPrivée AI"
             )
-            dialogue.geometry("820x720")
-            dialogue.minsize(760, 640)
+            dimensionner_fenetre(dialogue, 820, 720)
             dialogue.transient(fenetre)
             dialogue.grab_set()
 
-            cadre = ttk.Frame(dialogue, padding=16)
-            cadre.pack(fill="both", expand=True)
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
             cadre.columnconfigure(1, weight=1)
 
             ttk.Label(
@@ -3234,8 +3239,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 value=credit_deficience_courant.aucun_transfert_federal
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text=(
                     "Réclamer le montant fédéral — ligne 31600 "
                     "(10 138 $)"
@@ -3270,8 +3276,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=5,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text=(
                     "Réclamer le montant Québec — ligne 376 "
                     "(4 123 $)"
@@ -3345,8 +3352,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 confirmations,
                 start=6,
             ):
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=libelle,
                     variable=variable,
                 ).grid(
@@ -3441,14 +3449,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 dialogue.destroy()
 
-            actions = ttk.Frame(cadre)
-            actions.grid(
-                row=15,
-                column=0,
-                columnspan=2,
-                sticky="ew",
-                pady=(16, 0),
-            )
+            actions = formulaire.actions
 
             ttk.Button(
                 actions,
@@ -3468,6 +3469,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            organiser_boutons(formulaire.actions)
+
 
 
 
@@ -3485,12 +3488,12 @@ class ApplicationComptaPrivee(tk.Tk):
                 "Accessibilité domiciliaire — fédéral 2025 — "
                 "ComptaPrivée AI"
             )
+            dimensionner_fenetre(dialogue)
             dialogue.transient(fenetre)
             dialogue.grab_set()
-            dialogue.resizable(True, True)
 
-            cadre = ttk.Frame(dialogue, padding=16)
-            cadre.pack(fill="both", expand=True)
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
 
             ttk.Label(
                 cadre,
@@ -3543,8 +3546,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Réclamer la ligne fédérale 31285",
                 variable=reclamer_var,
             ).grid(
@@ -3640,8 +3644,9 @@ class ApplicationComptaPrivee(tk.Tk):
 
             ligne = 4
             for texte, champ in champs_bool:
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=texte,
                     variable=variables[champ],
                 ).grid(
@@ -3784,14 +3789,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 dialogue.destroy()
 
-            zone_boutons = ttk.Frame(cadre)
-            zone_boutons.grid(
-                row=ligne,
-                column=0,
-                columnspan=2,
-                sticky="e",
-                pady=(8, 0),
-            )
+            zone_boutons = formulaire.actions
 
             ttk.Button(
                 zone_boutons,
@@ -3811,6 +3809,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="left")
 
+            organiser_boutons(formulaire.actions)
+
 
         def ouvrir_achat_habitation_federal_2025() -> None:
             nonlocal achat_habitation_federal_courant
@@ -3820,47 +3820,13 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Achat d'une habitation — fédéral 2025 — ComptaPrivée AI"
             )
-            dialogue.geometry("850x820")
-            dialogue.minsize(780, 700)
+            dimensionner_fenetre(dialogue, 850, 820)
             dialogue.transient(fenetre)
             dialogue.grab_set()
 
-            zone = ttk.Frame(dialogue)
-            zone.pack(fill="both", expand=True)
-
-            canvas = tk.Canvas(
-                zone,
-                highlightthickness=0,
-                borderwidth=0,
-            )
-            barre = ttk.Scrollbar(
-                zone,
-                orient="vertical",
-                command=canvas.yview,
-            )
-            canvas.configure(yscrollcommand=barre.set)
-            barre.pack(side="right", fill="y")
-            canvas.pack(side="left", fill="both", expand=True)
-
-            cadre = ttk.Frame(canvas, padding=16)
-            fenetre_canvas = canvas.create_window(
-                (0, 0),
-                window=cadre,
-                anchor="nw",
-            )
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
             cadre.columnconfigure(1, weight=1)
-
-            def ajuster_defilement(_event=None) -> None:
-                canvas.configure(scrollregion=canvas.bbox("all"))
-
-            def ajuster_largeur(event) -> None:
-                canvas.itemconfigure(
-                    fenetre_canvas,
-                    width=event.width,
-                )
-
-            cadre.bind("<Configure>", ajuster_defilement)
-            canvas.bind("<Configure>", ajuster_largeur)
 
             ttk.Label(
                 cadre,
@@ -3966,8 +3932,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 for _texte, champ in champs_bool
             }
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Réclamer le montant — ligne 31270",
                 variable=reclamer_var,
             ).grid(
@@ -4001,8 +3968,9 @@ class ApplicationComptaPrivee(tk.Tk):
 
             ligne = 4
             for texte, champ in champs_bool:
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=texte,
                     variable=variables[champ],
                 ).grid(
@@ -4143,14 +4111,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 dialogue.destroy()
 
-            actions = ttk.Frame(cadre)
-            actions.grid(
-                row=ligne,
-                column=0,
-                columnspan=2,
-                sticky="e",
-                pady=(12, 0),
-            )
+            actions = formulaire.actions
 
             ttk.Button(
                 actions,
@@ -4170,6 +4131,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="left")
 
+            organiser_boutons(formulaire.actions)
+
         def ouvrir_aidant_30450_federal_2025() -> None:
             nonlocal aidant_30450_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -4178,49 +4141,13 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Aidant naturel — autre personne à charge — fédéral 2025"
             )
-            dialogue.geometry("820x820")
-            dialogue.minsize(760, 700)
+            dimensionner_fenetre(dialogue, 820, 820)
             dialogue.transient(fenetre)
             dialogue.grab_set()
 
-            zone = ttk.Frame(dialogue)
-            zone.pack(fill="both", expand=True)
-
-            canvas = tk.Canvas(
-                zone,
-                highlightthickness=0,
-                borderwidth=0,
-            )
-            barre = ttk.Scrollbar(
-                zone,
-                orient="vertical",
-                command=canvas.yview,
-            )
-            canvas.configure(yscrollcommand=barre.set)
-            barre.pack(side="right", fill="y")
-            canvas.pack(side="left", fill="both", expand=True)
-
-            cadre = ttk.Frame(canvas, padding=16)
-            fenetre_canvas = canvas.create_window(
-                (0, 0),
-                window=cadre,
-                anchor="nw",
-            )
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
             cadre.columnconfigure(1, weight=1)
-
-            def ajuster_defilement(_event=None) -> None:
-                canvas.configure(
-                    scrollregion=canvas.bbox("all")
-                )
-
-            def ajuster_largeur(event) -> None:
-                canvas.itemconfigure(
-                    fenetre_canvas,
-                    width=event.width,
-                )
-
-            cadre.bind("<Configure>", ajuster_defilement)
-            canvas.bind("<Configure>", ajuster_largeur)
 
             ttk.Label(
                 cadre,
@@ -4275,8 +4202,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 value=aidant_30450_federal_courant.source_personne
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Réclamer la ligne 30450",
                 variable=reclamer_var,
             ).grid(
@@ -4446,8 +4374,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 confirmations,
                 start=6,
             ):
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=texte_option,
                     variable=variable,
                 ).grid(
@@ -4571,14 +4500,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 dialogue.destroy()
 
-            actions = ttk.Frame(cadre)
-            actions.grid(
-                row=18,
-                column=0,
-                columnspan=2,
-                sticky="ew",
-                pady=(14, 0),
-            )
+            actions = formulaire.actions
 
             ttk.Button(
                 actions,
@@ -4598,6 +4520,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            organiser_boutons(formulaire.actions)
+
 
         def ouvrir_aidant_30425_federal_2025() -> None:
             nonlocal aidant_30425_federal_courant
@@ -4608,12 +4532,12 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Aidant naturel — conjoint / personne à charge — fédéral 2025"
             )
-            dialogue.geometry("780x720")
+            dimensionner_fenetre(dialogue, 780, 720)
             dialogue.transient(fenetre)
             dialogue.grab_set()
 
-            contenu = ttk.Frame(dialogue, padding=16)
-            contenu.pack(fill="both", expand=True)
+            formulaire = FormulaireDefilant(dialogue)
+            contenu = formulaire.corps
 
             ttk.Label(
                 contenu,
@@ -4645,8 +4569,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 value=aidant_30425_federal_courant.source_personne
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 contenu,
+                wraplength=680, anchor="w", justify="left",
                 text="Réclamer la ligne 30425",
                 variable=reclamer_var,
             ).pack(anchor="w", pady=(0, 8))
@@ -4797,8 +4722,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
             for texte_option, variable in options:
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     confirmations,
+                    wraplength=680, anchor="w", justify="left",
                     text=texte_option,
                     variable=variable,
                 ).pack(anchor="w", pady=2)
@@ -4925,8 +4851,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 dialogue.destroy()
 
-            actions = ttk.Frame(contenu)
-            actions.pack(fill="x", pady=(8, 0))
+            actions = formulaire.actions
             ttk.Button(
                 actions,
                 text="Annuler",
@@ -4938,6 +4863,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            organiser_boutons(formulaire.actions)
+
         def ouvrir_aidant_naturel_enfant_federal_2025() -> None:
             nonlocal aidant_enfant_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -4946,12 +4873,12 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Aidant naturel — enfant < 18 ans — fédéral 2025"
             )
-            dialogue.geometry("760x720")
+            dimensionner_fenetre(dialogue, 760, 720)
             dialogue.transient(fenetre)
             dialogue.grab_set()
 
-            cadre = ttk.Frame(dialogue, padding=16)
-            cadre.pack(fill="both", expand=True)
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
 
             ttk.Label(
                 cadre,
@@ -4965,8 +4892,9 @@ class ApplicationComptaPrivee(tk.Tk):
             reclamer_var = tk.BooleanVar(
                 value=aidant_enfant_federal_courant.reclamer_montant
             )
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Réclamer les lignes 30499 / 30500",
                 variable=reclamer_var,
             ).pack(anchor="w", pady=(0, 8))
@@ -5019,8 +4947,9 @@ class ApplicationComptaPrivee(tk.Tk):
                     value=getattr(aidant_enfant_federal_courant, champ)
                 )
                 variables[champ] = variable
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=texte,
                     variable=variable,
                 ).pack(anchor="w", pady=2)
@@ -5077,8 +5006,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 dernier_rapport_pdf = None
                 dialogue.destroy()
 
-            zone = ttk.Frame(cadre)
-            zone.pack(fill="x", pady=(12, 0))
+            zone = formulaire.actions
 
             ttk.Button(
                 zone,
@@ -5091,6 +5019,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            organiser_boutons(formulaire.actions)
+
 
         def ouvrir_personne_charge_admissible_federale_2025() -> None:
             nonlocal personne_charge_admissible_federale_courante
@@ -5100,13 +5030,12 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Personne à charge admissible — fédéral 2025 — ComptaPrivée AI"
             )
-            dialogue.geometry("830x900")
-            dialogue.minsize(760, 760)
+            dimensionner_fenetre(dialogue, 830, 900)
             dialogue.transient(fenetre)
             dialogue.grab_set()
 
-            cadre = ttk.Frame(dialogue, padding=18)
-            cadre.pack(fill="both", expand=True)
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
             cadre.columnconfigure(1, weight=1)
 
             ttk.Label(
@@ -5261,8 +5190,9 @@ class ApplicationComptaPrivee(tk.Tk):
 
             ligne = 2
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Réclamer le montant — ligne 30400",
                 variable=reclamer_var,
             ).grid(
@@ -5360,8 +5290,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
             for libelle, variable in validations:
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=libelle,
                     variable=variable,
                 ).grid(
@@ -5516,14 +5447,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 dernier_rapport_pdf = None
                 dialogue.destroy()
 
-            boutons = ttk.Frame(cadre)
-            boutons.grid(
-                row=ligne,
-                column=0,
-                columnspan=2,
-                sticky="e",
-                pady=(8, 0),
-            )
+            boutons = formulaire.actions
 
             ttk.Button(
                 boutons,
@@ -5543,6 +5467,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="left")
 
+            organiser_boutons(formulaire.actions)
+
         def ouvrir_montant_conjoint_federal_2025() -> None:
             nonlocal montant_conjoint_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -5551,12 +5477,11 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Époux / conjoint de fait — fédéral 2025 — ComptaPrivée AI"
             )
-            dialogue.geometry("780x780")
-            dialogue.minsize(700, 680)
+            dimensionner_fenetre(dialogue, 780, 780)
             dialogue.transient(fenetre)
 
-            cadre = ttk.Frame(dialogue, padding=18)
-            cadre.pack(fill="both", expand=True)
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
 
             ttk.Label(
                 cadre,
@@ -5655,8 +5580,9 @@ class ApplicationComptaPrivee(tk.Tk):
 
             ligne = 2
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Réclamer le montant pour époux/conjoint — ligne 30300",
                 variable=reclamer_var,
             ).grid(
@@ -5738,8 +5664,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
             for libelle, variable in validations:
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=libelle,
                     variable=variable,
                 ).grid(
@@ -5873,14 +5800,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
             cadre.columnconfigure(1, weight=1)
 
-            boutons = ttk.Frame(cadre)
-            boutons.grid(
-                row=ligne,
-                column=0,
-                columnspan=2,
-                sticky="e",
-                pady=(8, 0),
-            )
+            boutons = formulaire.actions
 
             ttk.Button(
                 boutons,
@@ -5900,6 +5820,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="left")
 
+            organiser_boutons(formulaire.actions)
+
         def ouvrir_age_pension_federal_2025() -> None:
             nonlocal credits_federaux_age_pension_courants
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -5908,12 +5830,12 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Âge / pension — fédéral 2025 — ComptaPrivée AI"
             )
+            dimensionner_fenetre(dialogue)
             dialogue.transient(fenetre)
             dialogue.grab_set()
-            dialogue.resizable(False, False)
 
-            cadre = ttk.Frame(dialogue, padding=16)
-            cadre.pack(fill="both", expand=True)
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
 
             ttk.Label(
                 cadre,
@@ -6040,8 +5962,9 @@ class ApplicationComptaPrivee(tk.Tk):
 
             ligne = 4
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Réclamer le montant en raison de l'âge — ligne 30100",
                 variable=reclamer_age_var,
             ).grid(
@@ -6053,8 +5976,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             ligne += 1
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="65 ans ou plus au 31 décembre 2025",
                 variable=age_65_var,
             ).grid(
@@ -6122,8 +6046,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             ligne += 1
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text=(
                     "Réclamer le montant pour revenu de pension — "
                     "ligne 31400"
@@ -6160,8 +6085,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             ligne += 1
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Admissibilité du revenu de pension confirmée",
                 variable=pension_confirmee_var,
             ).grid(
@@ -6231,8 +6157,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
             for texte, variable in confirmations:
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=texte,
                     variable=variable,
                 ).grid(
@@ -6319,14 +6246,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 dernier_rapport_pdf = None
                 dialogue.destroy()
 
-            boutons = ttk.Frame(cadre)
-            boutons.grid(
-                row=ligne,
-                column=0,
-                columnspan=2,
-                sticky="ew",
-                pady=(14, 0),
-            )
+            boutons = formulaire.actions
 
             ttk.Button(
                 boutons,
@@ -6346,6 +6266,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            organiser_boutons(formulaire.actions)
+
 
         def ouvrir_age_retraite_2025() -> None:
             nonlocal montants_age_retraite_courants
@@ -6355,49 +6277,13 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Âge / revenus de retraite Québec 2025 — ComptaPrivée AI"
             )
-            dialogue.geometry("940x860")
-            dialogue.minsize(860, 720)
+            dimensionner_fenetre(dialogue, 940, 860)
             dialogue.transient(fenetre)
             dialogue.grab_set()
 
-            zone = ttk.Frame(dialogue)
-            zone.pack(fill="both", expand=True)
-
-            canvas = tk.Canvas(
-                zone,
-                highlightthickness=0,
-                borderwidth=0,
-            )
-            barre = ttk.Scrollbar(
-                zone,
-                orient="vertical",
-                command=canvas.yview,
-            )
-            canvas.configure(yscrollcommand=barre.set)
-            barre.pack(side="right", fill="y")
-            canvas.pack(side="left", fill="both", expand=True)
-
-            cadre = ttk.Frame(canvas, padding=18)
-            fenetre_canvas = canvas.create_window(
-                (0, 0),
-                window=cadre,
-                anchor="nw",
-            )
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
             cadre.columnconfigure(1, weight=1)
-
-            def ajuster_defilement(_event=None) -> None:
-                canvas.configure(
-                    scrollregion=canvas.bbox("all")
-                )
-
-            def ajuster_largeur(event) -> None:
-                canvas.itemconfigure(
-                    fenetre_canvas,
-                    width=event.width,
-                )
-
-            cadre.bind("<Configure>", ajuster_defilement)
-            canvas.bind("<Configure>", ajuster_largeur)
 
             ttk.Label(
                 cadre,
@@ -6546,8 +6432,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 value=montants_age_retraite_courants.source_retraite
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Réclamer le montant en raison de l'âge",
                 variable=reclamer_age_var,
             ).grid(
@@ -6558,8 +6445,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=3,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Né avant le 1er janvier 1961",
                 variable=naissance_var,
             ).grid(
@@ -6597,8 +6485,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=10,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Réclamer le montant pour revenus de retraite",
                 variable=reclamer_retraite_var,
             ).grid(
@@ -6716,8 +6605,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 confirmations,
                 start=17,
             ):
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=libelle,
                     variable=variable,
                 ).grid(
@@ -6888,14 +6778,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 dialogue.destroy()
 
-            actions = ttk.Frame(cadre)
-            actions.grid(
-                row=23,
-                column=0,
-                columnspan=2,
-                sticky="ew",
-                pady=(16, 0),
-            )
+            actions = formulaire.actions
 
             ttk.Button(
                 actions,
@@ -6915,6 +6798,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            organiser_boutons(formulaire.actions)
+
         def ouvrir_personne_vivant_seule_2025() -> None:
             nonlocal personne_vivant_seule_courante
             nonlocal montants_age_retraite_courants
@@ -6924,13 +6809,12 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Personne vivant seule / famille monoparentale 2025"
             )
-            dialogue.geometry("930x850")
-            dialogue.minsize(850, 740)
+            dimensionner_fenetre(dialogue, 930, 850)
             dialogue.transient(fenetre)
             dialogue.grab_set()
 
-            cadre = ttk.Frame(dialogue, padding=16)
-            cadre.pack(fill="both", expand=True)
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
             cadre.columnconfigure(1, weight=1)
 
             ttk.Label(
@@ -7045,8 +6929,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 value=personne_vivant_seule_courante.source
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Réclamer le montant pour personne vivant seule",
                 variable=reclamer_var,
             ).grid(
@@ -7105,8 +6990,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 confirmations,
                 start=4,
             ):
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=libelle,
                     variable=variable,
                 ).grid(
@@ -7128,8 +7014,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=(12, 10),
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Réclamer le montant additionnel pour famille monoparentale",
                 variable=additionnel_var,
             ).grid(
@@ -7140,8 +7027,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=3,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Enfant majeur aux études admissible confirmé",
                 variable=enfant_etudes_var,
             ).grid(
@@ -7152,8 +7040,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=2,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Aucun droit à l'Allocation famille pour décembre 2025",
                 variable=sans_allocation_dec_var,
             ).grid(
@@ -7196,8 +7085,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=(12, 10),
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Aucun montant pour âge ou revenus de retraite combiné",
                 variable=sans_age_retraite_var,
             ).grid(
@@ -7208,8 +7098,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=2,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Documents justificatifs confirmés",
                 variable=documents_var,
             ).grid(
@@ -7220,8 +7111,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=2,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Situation validée par le comptable",
                 variable=validation_var,
             ).grid(
@@ -7403,14 +7295,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 dialogue.destroy()
 
-            actions = ttk.Frame(cadre)
-            actions.grid(
-                row=20,
-                column=0,
-                columnspan=2,
-                sticky="ew",
-                pady=(16, 0),
-            )
+            actions = formulaire.actions
 
             ttk.Button(
                 actions,
@@ -7430,6 +7315,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            organiser_boutons(formulaire.actions)
+
         def ouvrir_cotisations_excedentaires_2025() -> None:
             nonlocal cotisations_excedentaires_courantes
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -7438,13 +7325,12 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Cotisations excédentaires RRQ / AE / RQAP 2025"
             )
-            dialogue.geometry("930x850")
-            dialogue.minsize(850, 740)
+            dimensionner_fenetre(dialogue, 930, 850)
             dialogue.transient(fenetre)
             dialogue.grab_set()
 
-            cadre = ttk.Frame(dialogue, padding=16)
-            cadre.pack(fill="both", expand=True)
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
             cadre.columnconfigure(1, weight=1)
 
             ttk.Label(
@@ -7666,8 +7552,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 confirmations,
                 start=10,
             ):
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=libelle,
                     variable=variable,
                 ).grid(
@@ -7822,14 +7709,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 dialogue.destroy()
 
-            actions = ttk.Frame(cadre)
-            actions.grid(
-                row=20,
-                column=0,
-                columnspan=2,
-                sticky="ew",
-                pady=(16, 0),
-            )
+            actions = formulaire.actions
 
             ttk.Button(
                 actions,
@@ -7849,6 +7729,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            organiser_boutons(formulaire.actions)
+
         def ouvrir_assurance_medicaments_2025() -> None:
             nonlocal assurance_medicaments_courante
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -7857,13 +7739,12 @@ class ApplicationComptaPrivee(tk.Tk):
             dialogue.title(
                 "Assurance médicaments Québec 2025 — ComptaPrivée AI"
             )
-            dialogue.geometry("860x760")
-            dialogue.minsize(800, 680)
+            dimensionner_fenetre(dialogue, 860, 760)
             dialogue.transient(fenetre)
             dialogue.grab_set()
 
-            cadre = ttk.Frame(dialogue, padding=16)
-            cadre.pack(fill="both", expand=True)
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
             cadre.columnconfigure(1, weight=1)
 
             ttk.Label(
@@ -8091,8 +7972,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 confirmations,
                 start=7,
             ):
-                ttk.Checkbutton(
+                tk.Checkbutton(
                     cadre,
+                    wraplength=680, anchor="w", justify="left",
                     text=libelle,
                     variable=variable,
                 ).grid(
@@ -8228,14 +8110,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 dialogue.destroy()
 
-            actions = ttk.Frame(cadre)
-            actions.grid(
-                row=14,
-                column=0,
-                columnspan=2,
-                sticky="ew",
-                pady=(16, 0),
-            )
+            actions = formulaire.actions
 
             ttk.Button(
                 actions,
@@ -8255,6 +8130,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            organiser_boutons(formulaire.actions)
+
         def ouvrir_ajustements_fiscaux_2025() -> None:
             nonlocal ajustement_reer_courant
             nonlocal cotisations_syndicales_courantes
@@ -8265,49 +8142,12 @@ class ApplicationComptaPrivee(tk.Tk):
             fenetre_ajustements.title(
                 "Ajustements fiscaux 2025 — ComptaPrivée AI"
             )
-            fenetre_ajustements.geometry("900x790")
-            fenetre_ajustements.minsize(820, 680)
+            dimensionner_fenetre(fenetre_ajustements, 900, 790)
             fenetre_ajustements.transient(fenetre)
 
-            zone = ttk.Frame(fenetre_ajustements)
-            zone.pack(fill="both", expand=True)
-
-            canvas = tk.Canvas(
-                zone,
-                highlightthickness=0,
-                borderwidth=0,
-            )
-            barre = ttk.Scrollbar(
-                zone,
-                orient="vertical",
-                command=canvas.yview,
-            )
-            canvas.configure(yscrollcommand=barre.set)
-
-            barre.pack(side="right", fill="y")
-            canvas.pack(side="left", fill="both", expand=True)
-
-            cadre = ttk.Frame(canvas, padding=18)
-            fenetre_canvas = canvas.create_window(
-                (0, 0),
-                window=cadre,
-                anchor="nw",
-            )
+            formulaire = FormulaireDefilant(fenetre_ajustements)
+            cadre = formulaire.corps
             cadre.columnconfigure(1, weight=1)
-
-            def ajuster_defilement(_event=None) -> None:
-                canvas.configure(
-                    scrollregion=canvas.bbox("all")
-                )
-
-            def ajuster_largeur(event) -> None:
-                canvas.itemconfigure(
-                    fenetre_canvas,
-                    width=event.width,
-                )
-
-            cadre.bind("<Configure>", ajuster_defilement)
-            canvas.bind("<Configure>", ajuster_largeur)
 
             ttk.Label(
                 cadre,
@@ -8406,8 +8246,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=5,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text=(
                     "Je confirme que le montant REER et le plafond "
                     "ont été vérifiés par le comptable."
@@ -8545,8 +8386,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=5,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text=(
                     "Je confirme que les sources ont été vérifiées "
                     "et dédoublonnées."
@@ -8560,8 +8402,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=3,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text=(
                     "Je confirme les cotisations admissibles "
                     "validées par le comptable."
@@ -8731,8 +8574,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=5,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Je confirme que le donataire reconnu a été vérifié.",
                 variable=donataire_var,
             ).grid(
@@ -8743,8 +8587,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=3,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Il s'agit uniquement de dons monétaires faits en 2025.",
                 variable=monetaire_2025_var,
             ).grid(
@@ -8755,8 +8600,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=3,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Aucun don reporté d'une année antérieure n'est inclus.",
                 variable=aucun_report_var,
             ).grid(
@@ -8767,8 +8613,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=3,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Le montant inclut un ou des dons de janvier/février 2025.",
                 variable=jan_fev_var,
             ).grid(
@@ -8779,8 +8626,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=3,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text=(
                     "Ces dons de janvier/février 2025 ont déjà été "
                     "réclamés dans la déclaration 2024."
@@ -8794,8 +8642,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=3,
             )
 
-            ttk.Checkbutton(
+            tk.Checkbutton(
                 cadre,
+                wraplength=680, anchor="w", justify="left",
                 text="Je confirme les dons admissibles validés par le comptable.",
                 variable=don_validation_var,
             ).grid(
@@ -8991,14 +8840,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 fenetre_ajustements.destroy()
 
-            zone_actions = ttk.Frame(cadre)
-            zone_actions.grid(
-                row=29,
-                column=0,
-                columnspan=2,
-                sticky="ew",
-                pady=(8, 12),
-            )
+            zone_actions = formulaire.actions
 
             ttk.Button(
                 zone_actions,
@@ -9017,6 +8859,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 text="Fermer",
                 command=fenetre_ajustements.destroy,
             ).pack(side="right", padx=(0, 8))
+
+            organiser_boutons(formulaire.actions)
 
         def rafraichir_documents() -> None:
             for item in tableau_documents.get_children():
@@ -10805,6 +10649,7 @@ class ApplicationComptaPrivee(tk.Tk):
             command=fenetre.destroy,
         ).pack(side="right")
 
+        organiser_boutons(zone_actions)
         mettre_a_jour_bouton_ajustements()
         mettre_a_jour_etat_dossier_valide()
         champ_client.focus_set()

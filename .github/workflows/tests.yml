@@ -29,7 +29,7 @@ jobs:
       - name: Installer Tesseract OCR
         run: |
           sudo apt-get update
-          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra python3-tk xvfb
 
       - name: Installer les dépendances Python
         run: |
@@ -40,4 +40,4 @@ jobs:
         run: tesseract --list-langs
 
       - name: Exécuter les tests
-        run: python -m pytest tests -v
+        run: xvfb-run -a python -m pytest -v
