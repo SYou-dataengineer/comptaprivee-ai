@@ -14,6 +14,10 @@ from .tax_age_retirement_2025 import (
     montant_revenus_retraite_2025,
     reduction_annexe_b_age_retraite_2025,
 )
+from .tax_federal_home_accessibility_2025 import (
+    credit_federal_ligne_31285_2025,
+    montant_ligne_31285_2025,
+)
 from .tax_federal_home_buyers_2025 import (
     credit_federal_ligne_31270_2025,
     montant_ligne_31270_2025,
@@ -158,6 +162,9 @@ def construire_trace_calcul_fiscal_2025(
     aidant_30425_federal = (
         estimation.aidant_conjoint_personne_charge_federal
     )
+    accessibilite_domiciliaire_federale = (
+        estimation.accessibilite_domiciliaire_federale
+    )
     achat_habitation_federal = (
         estimation.achat_habitation_federal
     )
@@ -219,6 +226,10 @@ def construire_trace_calcul_fiscal_2025(
     if aidant_30425_federal.reclamer_montant:
         formule_impot_federal += (
             " - crédit aidant naturel ligne 30425"
+        )
+    if accessibilite_domiciliaire_federale.reclamer_montant:
+        formule_impot_federal += (
+            " - crédit accessibilité domiciliaire ligne 31285"
         )
     if achat_habitation_federal.reclamer_montant:
         formule_impot_federal += (
@@ -718,6 +729,46 @@ def construire_trace_calcul_fiscal_2025(
                 ),
                 credit_federal_montant_conjoint_2025(
                     montant_conjoint_federal
+                ),
+            ),
+        )
+
+    if accessibilite_domiciliaire_federale.reclamer_montant:
+        montant_31285 = montant_ligne_31285_2025(
+            accessibilite_domiciliaire_federale
+        )
+
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt fédéral de base",
+            _ligne(
+                0,
+                "FÉDÉRAL",
+                "Crédit fédéral — accessibilité domiciliaire",
+                (
+                    "ARC ligne 31285 — "
+                    + accessibilite_domiciliaire_federale.source_renovation
+                    + " — validation comptable"
+                ),
+                (
+                    "Dépenses admissibles "
+                    + formater_montant_estimation(
+                        montant_31285
+                    )
+                    + " (maximum 20 000 $) × 14,5 %; "
+                    + "particulier déterminé 65 ans ou plus / CIPH; "
+                    + "demande pour soi-même; "
+                    + "logement situé au Canada et appartenant au contribuable; "
+                    + "rénovation durable et intégrante; "
+                    + "accessibilité / mobilité / réduction du risque; "
+                    + "travaux et biens 2025 uniquement; "
+                    + "aucun partage; aucune part entreprise/location; "
+                    + "règles fournisseurs liés confirmées; "
+                    + "dépenses non admissibles exclues; "
+                    + "pièces justificatives conservées"
+                ),
+                credit_federal_ligne_31285_2025(
+                    accessibilite_domiciliaire_federale
                 ),
             ),
         )

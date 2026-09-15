@@ -172,6 +172,10 @@ from .tax_federal_spouse_2025 import (
     montant_ligne_30300_2025,
     valider_montant_conjoint_federal_2025,
 )
+from .tax_federal_home_accessibility_2025 import (
+    DepensesAccessibiliteDomiciliaireFederal2025,
+    valider_depenses_accessibilite_domiciliaire_2025,
+)
 from .tax_federal_home_buyers_2025 import (
     MontantAchatHabitationFederal2025,
     valider_montant_achat_habitation_2025,
@@ -2439,6 +2443,7 @@ class ApplicationComptaPrivee(tk.Tk):
         montant_conjoint_federal_courant = MontantConjointFederal2025()
         personne_charge_admissible_federale_courante = MontantPersonneChargeAdmissibleFederal2025()
         aidant_30425_federal_courant = AidantNaturelConjointOuPersonneChargeFederal2025()
+        accessibilite_domiciliaire_federale_courante = DepensesAccessibiliteDomiciliaireFederal2025()
         achat_habitation_federal_courant = MontantAchatHabitationFederal2025()
         aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
         aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
@@ -3468,6 +3473,343 @@ class ApplicationComptaPrivee(tk.Tk):
 
 
 
+
+
+
+        def ouvrir_accessibilite_domiciliaire_federale_2025() -> None:
+            nonlocal accessibilite_domiciliaire_federale_courante
+            nonlocal derniere_estimation, dernier_rapport_pdf
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Accessibilité domiciliaire — fédéral 2025 — "
+                "ComptaPrivée AI"
+            )
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            dialogue.resizable(True, True)
+
+            cadre = ttk.Frame(dialogue, padding=16)
+            cadre.pack(fill="both", expand=True)
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Ligne fédérale 31285 — dépenses pour "
+                    "l'accessibilité domiciliaire"
+                ),
+                font=("Segoe UI", 12, "bold"),
+            ).grid(
+                row=0,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 6),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil simple : demande par le contribuable pour "
+                    "lui-même. Maximum de dépenses admissibles : "
+                    "20 000 $. Crédit fédéral 2025 : 14,5 %."
+                ),
+                wraplength=720,
+                justify="left",
+            ).grid(
+                row=1,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 12),
+            )
+
+            reclamer_var = tk.BooleanVar(
+                value=(
+                    accessibilite_domiciliaire_federale_courante
+                    .reclamer_montant
+                )
+            )
+            depenses_var = tk.StringVar(
+                value=str(
+                    accessibilite_domiciliaire_federale_courante
+                    .depenses_admissibles
+                )
+            )
+            source_var = tk.StringVar(
+                value=(
+                    accessibilite_domiciliaire_federale_courante
+                    .source_renovation
+                )
+            )
+
+            ttk.Checkbutton(
+                cadre,
+                text="Réclamer la ligne fédérale 31285",
+                variable=reclamer_var,
+            ).grid(
+                row=2,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text="Dépenses admissibles — maximum 20 000 $",
+            ).grid(row=3, column=0, sticky="w", pady=3)
+            ttk.Entry(
+                cadre,
+                textvariable=depenses_var,
+                width=28,
+            ).grid(row=3, column=1, sticky="ew", pady=3)
+
+            champs_bool = (
+                (
+                    "Demande faite par le contribuable pour lui-même",
+                    "demande_pour_soi_meme",
+                ),
+                (
+                    "65 ans ou plus à la fin de 2025",
+                    "age_65_plus_fin_annee",
+                ),
+                (
+                    "Admissible au CIPH en 2025",
+                    "admissible_ciph",
+                ),
+                (
+                    "Logement situé au Canada",
+                    "logement_situe_au_canada",
+                ),
+                (
+                    "Logement appartenant au contribuable",
+                    "logement_propriete_du_contribuable",
+                ),
+                (
+                    "Logement normalement habité par le contribuable",
+                    "logement_normalement_habite_par_contribuable",
+                ),
+                (
+                    "Rénovation durable et intégrante",
+                    "renovation_durable_et_integrante",
+                ),
+                (
+                    "Accessibilité / mobilité / réduction du risque",
+                    "accessibilite_ou_reduction_risque_confirmee",
+                ),
+                (
+                    "Travaux et biens de 2025 uniquement",
+                    "travaux_et_biens_2025_uniquement",
+                ),
+                (
+                    "Aucune part entreprise/location",
+                    "aucune_part_entreprise_ou_location",
+                ),
+                (
+                    "Aucun partage de la demande",
+                    "aucun_partage_de_la_demande",
+                ),
+                (
+                    "Fournisseurs liés : règles confirmées",
+                    "fournisseurs_lies_admissibles_confirme",
+                ),
+                (
+                    "Dépenses non admissibles exclues",
+                    "depenses_non_admissibles_exclues",
+                ),
+                (
+                    "Pièces justificatives conservées",
+                    "pieces_justificatives_conservees",
+                ),
+                (
+                    "Validation comptable confirmée",
+                    "valide_par_comptable",
+                ),
+            )
+
+            variables = {
+                champ: tk.BooleanVar(
+                    value=getattr(
+                        accessibilite_domiciliaire_federale_courante,
+                        champ,
+                    )
+                )
+                for _texte, champ in champs_bool
+            }
+
+            ligne = 4
+            for texte, champ in champs_bool:
+                ttk.Checkbutton(
+                    cadre,
+                    text=texte,
+                    variable=variables[champ],
+                ).grid(
+                    row=ligne,
+                    column=0,
+                    columnspan=2,
+                    sticky="w",
+                    pady=2,
+                )
+                ligne += 1
+
+            ttk.Label(
+                cadre,
+                text="Source / factures / reçus / preuve de propriété",
+            ).grid(
+                row=ligne,
+                column=0,
+                sticky="w",
+                pady=(8, 3),
+            )
+            ttk.Entry(
+                cadre,
+                textvariable=source_var,
+                width=58,
+            ).grid(
+                row=ligne,
+                column=1,
+                sticky="ew",
+                pady=(8, 3),
+            )
+            ligne += 1
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Garde-fou : cette première version refuse "
+                    "l'automatisation au-delà de la première tranche "
+                    "fédérale si la ligne 34990 est requise."
+                ),
+                wraplength=720,
+                justify="left",
+            ).grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="w",
+                pady=(8, 10),
+            )
+            ligne += 1
+
+            cadre.columnconfigure(1, weight=1)
+
+            def effacer() -> None:
+                reclamer_var.set(False)
+                depenses_var.set("0")
+                source_var.set("")
+                for variable in variables.values():
+                    variable.set(False)
+
+            def appliquer() -> None:
+                nonlocal accessibilite_domiciliaire_federale_courante
+                nonlocal derniere_estimation, dernier_rapport_pdf
+
+                try:
+                    texte_depenses = depenses_var.get().strip() or "0"
+                    depenses = Decimal(
+                        texte_depenses.replace(" ", "").replace(",", ".")
+                    )
+
+                    profil = DepensesAccessibiliteDomiciliaireFederal2025(
+                        reclamer_montant=reclamer_var.get(),
+                        depenses_admissibles=depenses,
+                        demande_pour_soi_meme=variables[
+                            "demande_pour_soi_meme"
+                        ].get(),
+                        age_65_plus_fin_annee=variables[
+                            "age_65_plus_fin_annee"
+                        ].get(),
+                        admissible_ciph=variables[
+                            "admissible_ciph"
+                        ].get(),
+                        logement_situe_au_canada=variables[
+                            "logement_situe_au_canada"
+                        ].get(),
+                        logement_propriete_du_contribuable=variables[
+                            "logement_propriete_du_contribuable"
+                        ].get(),
+                        logement_normalement_habite_par_contribuable=(
+                            variables[
+                                "logement_normalement_habite_par_contribuable"
+                            ].get()
+                        ),
+                        renovation_durable_et_integrante=variables[
+                            "renovation_durable_et_integrante"
+                        ].get(),
+                        accessibilite_ou_reduction_risque_confirmee=(
+                            variables[
+                                "accessibilite_ou_reduction_risque_confirmee"
+                            ].get()
+                        ),
+                        travaux_et_biens_2025_uniquement=variables[
+                            "travaux_et_biens_2025_uniquement"
+                        ].get(),
+                        aucune_part_entreprise_ou_location=variables[
+                            "aucune_part_entreprise_ou_location"
+                        ].get(),
+                        aucun_partage_de_la_demande=variables[
+                            "aucun_partage_de_la_demande"
+                        ].get(),
+                        fournisseurs_lies_admissibles_confirme=variables[
+                            "fournisseurs_lies_admissibles_confirme"
+                        ].get(),
+                        depenses_non_admissibles_exclues=variables[
+                            "depenses_non_admissibles_exclues"
+                        ].get(),
+                        pieces_justificatives_conservees=variables[
+                            "pieces_justificatives_conservees"
+                        ].get(),
+                        valide_par_comptable=variables[
+                            "valide_par_comptable"
+                        ].get(),
+                        source_renovation=source_var.get().strip(),
+                    )
+                    valider_depenses_accessibilite_domiciliaire_2025(
+                        profil
+                    )
+                except (InvalidOperation, ValueError) as erreur:
+                    messagebox.showerror(
+                        "Accessibilité domiciliaire 2025",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                accessibilite_domiciliaire_federale_courante = profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                self.statut.set(
+                    "Dépenses accessibilité ligne 31285 mises à jour"
+                )
+                dialogue.destroy()
+
+            zone_boutons = ttk.Frame(cadre)
+            zone_boutons.grid(
+                row=ligne,
+                column=0,
+                columnspan=2,
+                sticky="e",
+                pady=(8, 0),
+            )
+
+            ttk.Button(
+                zone_boutons,
+                text="Effacer",
+                command=effacer,
+            ).pack(side="left", padx=(0, 8))
+
+            ttk.Button(
+                zone_boutons,
+                text="Annuler",
+                command=dialogue.destroy,
+            ).pack(side="left", padx=(0, 8))
+
+            ttk.Button(
+                zone_boutons,
+                text="Appliquer",
+                command=appliquer,
+            ).pack(side="left")
 
 
         def ouvrir_achat_habitation_federal_2025() -> None:
@@ -9352,6 +9694,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal montant_conjoint_federal_courant
             nonlocal personne_charge_admissible_federale_courante
             nonlocal aidant_30425_federal_courant
+            nonlocal accessibilite_domiciliaire_federale_courante
             nonlocal achat_habitation_federal_courant
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
@@ -9389,6 +9732,7 @@ class ApplicationComptaPrivee(tk.Tk):
             montant_conjoint_federal_courant = MontantConjointFederal2025()
             personne_charge_admissible_federale_courante = MontantPersonneChargeAdmissibleFederal2025()
             aidant_30425_federal_courant = AidantNaturelConjointOuPersonneChargeFederal2025()
+            accessibilite_domiciliaire_federale_courante = DepensesAccessibiliteDomiciliaireFederal2025()
             achat_habitation_federal_courant = MontantAchatHabitationFederal2025()
             aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
             aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
@@ -9514,6 +9858,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             credits_federaux_age_pension=credits_federaux_age_pension_courants,
                             montant_conjoint_federal=montant_conjoint_federal_courant,
                             personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
+                            accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                             achat_habitation_federal=achat_habitation_federal_courant,
                             aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                             aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
@@ -9559,6 +9904,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     credits_federaux_age_pension=credits_federaux_age_pension_courants,
                     montant_conjoint_federal=montant_conjoint_federal_courant,
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
+                    accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                     achat_habitation_federal=achat_habitation_federal_courant,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
@@ -9644,6 +9990,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal montant_conjoint_federal_courant
             nonlocal personne_charge_admissible_federale_courante
             nonlocal aidant_30425_federal_courant
+            nonlocal accessibilite_domiciliaire_federale_courante
             nonlocal achat_habitation_federal_courant
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
@@ -9720,6 +10067,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             personne_charge_admissible_federale_courante = (
                 enregistrement.personne_charge_admissible_federale
+            )
+            accessibilite_domiciliaire_federale_courante = (
+                enregistrement.accessibilite_domiciliaire_federale
             )
             achat_habitation_federal_courant = (
                 enregistrement.achat_habitation_federal
@@ -10012,6 +10362,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     credits_federaux_age_pension=credits_federaux_age_pension_courants,
                     montant_conjoint_federal=montant_conjoint_federal_courant,
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
+                    accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                     achat_habitation_federal=achat_habitation_federal_courant,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
@@ -10363,6 +10714,12 @@ class ApplicationComptaPrivee(tk.Tk):
             padx=(8, 0),
         )
 
+
+        ttk.Button(
+            zone_actions,
+            text="Accessibilité domicile 31285",
+            command=ouvrir_accessibilite_domiciliaire_federale_2025,
+        ).pack(side="left", padx=(8, 0))
 
         ttk.Button(
             zone_actions,

@@ -46,6 +46,10 @@ from .tax_federal_spouse_2025 import (
     MontantConjointFederal2025,
     valider_montant_conjoint_federal_2025,
 )
+from .tax_federal_home_accessibility_2025 import (
+    DepensesAccessibiliteDomiciliaireFederal2025,
+    valider_depenses_accessibilite_domiciliaire_2025,
+)
 from .tax_federal_home_buyers_2025 import (
     MontantAchatHabitationFederal2025,
     valider_montant_achat_habitation_2025,
@@ -125,6 +129,7 @@ class DossierFiscalEnregistre:
     credits_federaux_age_pension: CreditsFederauxAgePension2025
     montant_conjoint_federal: MontantConjointFederal2025
     personne_charge_admissible_federale: MontantPersonneChargeAdmissibleFederal2025
+    accessibilite_domiciliaire_federale: DepensesAccessibiliteDomiciliaireFederal2025
     achat_habitation_federal: MontantAchatHabitationFederal2025
     aidant_autre_personne_charge_federal: AidantNaturelAutrePersonneChargeFederal2025
     aidant_conjoint_personne_charge_federal: AidantNaturelConjointOuPersonneChargeFederal2025
@@ -1541,6 +1546,130 @@ def _personne_charge_admissible_federale_depuis_dict(
     )
 
 
+
+def _accessibilite_domiciliaire_federale_vers_dict(
+    profil: DepensesAccessibiliteDomiciliaireFederal2025 | None,
+):
+    if profil is None:
+        profil = DepensesAccessibiliteDomiciliaireFederal2025()
+
+    valider_depenses_accessibilite_domiciliaire_2025(profil)
+
+    return {
+        "reclamer_montant": bool(profil.reclamer_montant),
+        "depenses_admissibles": _decimal_texte(profil.depenses_admissibles),
+        "demande_pour_soi_meme": bool(profil.demande_pour_soi_meme),
+        "age_65_plus_fin_annee": bool(profil.age_65_plus_fin_annee),
+        "admissible_ciph": bool(profil.admissible_ciph),
+        "logement_situe_au_canada": bool(profil.logement_situe_au_canada),
+        "logement_propriete_du_contribuable": bool(
+            profil.logement_propriete_du_contribuable
+        ),
+        "logement_normalement_habite_par_contribuable": bool(
+            profil.logement_normalement_habite_par_contribuable
+        ),
+        "renovation_durable_et_integrante": bool(
+            profil.renovation_durable_et_integrante
+        ),
+        "accessibilite_ou_reduction_risque_confirmee": bool(
+            profil.accessibilite_ou_reduction_risque_confirmee
+        ),
+        "travaux_et_biens_2025_uniquement": bool(
+            profil.travaux_et_biens_2025_uniquement
+        ),
+        "aucune_part_entreprise_ou_location": bool(
+            profil.aucune_part_entreprise_ou_location
+        ),
+        "aucun_partage_de_la_demande": bool(
+            profil.aucun_partage_de_la_demande
+        ),
+        "fournisseurs_lies_admissibles_confirme": bool(
+            profil.fournisseurs_lies_admissibles_confirme
+        ),
+        "depenses_non_admissibles_exclues": bool(
+            profil.depenses_non_admissibles_exclues
+        ),
+        "pieces_justificatives_conservees": bool(
+            profil.pieces_justificatives_conservees
+        ),
+        "valide_par_comptable": bool(profil.valide_par_comptable),
+        "source_renovation": profil.source_renovation,
+    }
+
+
+def _accessibilite_domiciliaire_federale_depuis_dict(
+    valeur: Any,
+) -> DepensesAccessibiliteDomiciliaireFederal2025:
+    if valeur is None:
+        return DepensesAccessibiliteDomiciliaireFederal2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Les dépenses fédérales pour l'accessibilité domiciliaire "
+            "ligne 31285 enregistrées sont invalides."
+        )
+
+    profil = DepensesAccessibiliteDomiciliaireFederal2025(
+        reclamer_montant=bool(valeur.get("reclamer_montant", False)),
+        depenses_admissibles=_decimal_depuis_json(
+            valeur.get("depenses_admissibles", "0"),
+            "accessibilite_domiciliaire_federale.depenses_admissibles",
+        ),
+        demande_pour_soi_meme=bool(
+            valeur.get("demande_pour_soi_meme", False)
+        ),
+        age_65_plus_fin_annee=bool(
+            valeur.get("age_65_plus_fin_annee", False)
+        ),
+        admissible_ciph=bool(valeur.get("admissible_ciph", False)),
+        logement_situe_au_canada=bool(
+            valeur.get("logement_situe_au_canada", False)
+        ),
+        logement_propriete_du_contribuable=bool(
+            valeur.get("logement_propriete_du_contribuable", False)
+        ),
+        logement_normalement_habite_par_contribuable=bool(
+            valeur.get(
+                "logement_normalement_habite_par_contribuable",
+                False,
+            )
+        ),
+        renovation_durable_et_integrante=bool(
+            valeur.get("renovation_durable_et_integrante", False)
+        ),
+        accessibilite_ou_reduction_risque_confirmee=bool(
+            valeur.get(
+                "accessibilite_ou_reduction_risque_confirmee",
+                False,
+            )
+        ),
+        travaux_et_biens_2025_uniquement=bool(
+            valeur.get("travaux_et_biens_2025_uniquement", False)
+        ),
+        aucune_part_entreprise_ou_location=bool(
+            valeur.get("aucune_part_entreprise_ou_location", False)
+        ),
+        aucun_partage_de_la_demande=bool(
+            valeur.get("aucun_partage_de_la_demande", False)
+        ),
+        fournisseurs_lies_admissibles_confirme=bool(
+            valeur.get("fournisseurs_lies_admissibles_confirme", False)
+        ),
+        depenses_non_admissibles_exclues=bool(
+            valeur.get("depenses_non_admissibles_exclues", False)
+        ),
+        pieces_justificatives_conservees=bool(
+            valeur.get("pieces_justificatives_conservees", False)
+        ),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        source_renovation=str(valeur.get("source_renovation", "")),
+    )
+
+    return valider_depenses_accessibilite_domiciliaire_2025(profil)
+
+
 def _achat_habitation_federal_vers_dict(
     profil: MontantAchatHabitationFederal2025 | None,
 ):
@@ -2253,6 +2382,9 @@ def sauvegarder_dossier_fiscal(
     personne_charge_admissible_federale: (
         MontantPersonneChargeAdmissibleFederal2025 | None
     ) = None,
+    accessibilite_domiciliaire_federale: (
+        DepensesAccessibiliteDomiciliaireFederal2025 | None
+    ) = None,
     achat_habitation_federal: (
         MontantAchatHabitationFederal2025 | None
     ) = None,
@@ -2337,6 +2469,11 @@ def sauvegarder_dossier_fiscal(
         "personne_charge_admissible_federale": (
             _personne_charge_admissible_federale_vers_dict(
                 personne_charge_admissible_federale
+            )
+        ),
+        "accessibilite_domiciliaire_federale": (
+            _accessibilite_domiciliaire_federale_vers_dict(
+                accessibilite_domiciliaire_federale
             )
         ),
         "achat_habitation_federal": (
@@ -2504,6 +2641,11 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             contenu.get("personne_charge_admissible_federale")
         )
     )
+    accessibilite_domiciliaire_federale = (
+        _accessibilite_domiciliaire_federale_depuis_dict(
+            contenu.get("accessibilite_domiciliaire_federale")
+        )
+    )
     achat_habitation_federal = (
         _achat_habitation_federal_depuis_dict(
             contenu.get("achat_habitation_federal")
@@ -2551,6 +2693,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         ),
         personne_charge_admissible_federale=(
             personne_charge_admissible_federale
+        ),
+        accessibilite_domiciliaire_federale=(
+            accessibilite_domiciliaire_federale
         ),
         achat_habitation_federal=(
             achat_habitation_federal

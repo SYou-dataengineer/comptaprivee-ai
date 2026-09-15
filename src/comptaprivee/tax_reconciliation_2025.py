@@ -209,6 +209,10 @@ def calculer_rapprochement_fiscal_2025(
         "Montant canadien pour aidant naturel ligne 30425 inclus."
         in federal.limitations
     )
+    credit_accessibilite_domiciliaire_federal_inclus = (
+        "Dépenses pour l'accessibilité domiciliaire ligne 31285 incluses."
+        in federal.limitations
+    )
     credit_achat_habitation_federal_inclus = (
         "Montant pour l'achat d'une habitation ligne 31270 inclus."
         in federal.limitations
@@ -333,6 +337,13 @@ def calculer_rapprochement_fiscal_2025(
                     "Montant canadien pour aidant naturel ligne 30425 inclus.",
                 )
                 if credit_aidant_30425_federal_inclus
+                else ()
+            ),
+            *(
+                (
+                    "Dépenses pour l'accessibilité domiciliaire ligne 31285 incluses.",
+                )
+                if credit_accessibilite_domiciliaire_federal_inclus
                 else ()
             ),
             *(

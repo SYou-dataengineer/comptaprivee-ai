@@ -13,6 +13,10 @@ from .tax_federal_spouse_2025 import (
     credit_federal_montant_conjoint_2025,
     montant_ligne_30300_2025,
 )
+from .tax_federal_home_accessibility_2025 import (
+    credit_federal_ligne_31285_2025,
+    montant_ligne_31285_2025,
+)
 from .tax_federal_home_buyers_2025 import (
     credit_federal_ligne_31270_2025,
     montant_ligne_31270_2025,
@@ -107,6 +111,9 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     )
     aidant_30425_federal = (
         estimation.aidant_conjoint_personne_charge_federal
+    )
+    accessibilite_domiciliaire_federale = (
+        estimation.accessibilite_domiciliaire_federale
     )
     achat_habitation_federal = (
         estimation.achat_habitation_federal
@@ -471,6 +478,81 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
             ]
         )
 
+
+    if accessibilite_domiciliaire_federale.reclamer_montant:
+        montant_31285 = montant_ligne_31285_2025(
+            accessibilite_domiciliaire_federale
+        )
+        credit_31285 = credit_federal_ligne_31285_2025(
+            accessibilite_domiciliaire_federale
+        )
+
+        lignes.extend(
+            [
+                "",
+                "ACCESSIBILITÉ DOMICILIAIRE - FÉDÉRAL 2025",
+                (
+                    "Dépenses admissibles - ligne 31285 : "
+                    f"{formater_montant_estimation(montant_31285)}"
+                ),
+                (
+                    "Crédit fédéral calculé - ligne 31285 : "
+                    f"{formater_montant_estimation(credit_31285)}"
+                ),
+                "Maximum ligne 31285 : 20 000 $",
+                "Taux du crédit fédéral 2025 : 14,5 %",
+                "Demande pour soi-même : oui",
+                (
+                    "65 ans ou plus à la fin de 2025 : "
+                    + (
+                        "oui"
+                        if accessibilite_domiciliaire_federale
+                        .age_65_plus_fin_annee
+                        else "non"
+                    )
+                ),
+                (
+                    "Admissible au CIPH en 2025 : "
+                    + (
+                        "oui"
+                        if accessibilite_domiciliaire_federale
+                        .admissible_ciph
+                        else "non"
+                    )
+                ),
+                "Logement situé au Canada : oui",
+                "Logement appartenant au contribuable : oui",
+                (
+                    "Logement normalement habité par le contribuable : "
+                    "oui"
+                ),
+                "Rénovation durable et intégrante : oui",
+                (
+                    "Accessibilité / mobilité / réduction du risque : "
+                    "confirmée"
+                ),
+                "Travaux et biens de 2025 uniquement : oui",
+                "Aucune part entreprise/location : oui",
+                "Aucun partage de la demande ligne 31285 : oui",
+                "Fournisseurs liés : règles confirmées",
+                "Dépenses non admissibles exclues : oui",
+                "Pièces justificatives conservées : oui",
+                "Validation comptable : confirmée",
+                (
+                    "Source : "
+                    f"{accessibilite_domiciliaire_federale.source_renovation}"
+                ),
+                (
+                    "Ligne 34990 : garde-fou actif pour les profils "
+                    "au-delà de la première tranche fédérale."
+                ),
+                (
+                    "Profil simple : demande pour soi-même; partage et "
+                    "ventilation entreprise/location non pris en charge "
+                    "dans cette première version."
+                ),
+            ]
+        )
 
     if achat_habitation_federal.reclamer_montant:
         montant_31270 = montant_ligne_31270_2025(
