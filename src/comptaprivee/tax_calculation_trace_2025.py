@@ -183,6 +183,7 @@ def construire_trace_calcul_fiscal_2025(
     )
 
     rqap = estimation.prestations_rqap
+    rrq_rpc = estimation.prestations_rrq_rpc
     ae = estimation.prestations_ae
     if rqap.present:
         formule_revenu_federal += " + RQAP 11900 - remboursement 23200"
@@ -204,6 +205,10 @@ def construire_trace_calcul_fiscal_2025(
     if ae.present:
         formule_revenu_federal += " + AE 11900 - remboursement 23200 - récupération 23500"
         formule_revenu_quebec += " + AE 111 - remboursement 246 - récupération 250"
+
+    if rrq_rpc.present:
+        formule_revenu_federal += " + RRQ/RPC 11400 (T4A(P) 20)"
+        formule_revenu_quebec += " + RRQ/RPC 119 (RL-2 C ou T4A(P) 20)"
 
     formule_impot_federal = (
         "Impôt fédéral brut - crédits non remboursables de base"
@@ -294,6 +299,8 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_total += " + FSS Québec 446"
     if ae.present:
         formule_impot_total += " + récupération AE 42200 (sans abattement) + FSS Québec 446"
+    if rrq_rpc.present:
+        formule_impot_total += " + FSS RRQ/RPC 446 (sans abattement)"
     if assurance_medicaments.type_couverture.strip():
         formule_impot_total += (
             " + cotisation assurance médicaments ligne 447"
@@ -411,6 +418,7 @@ def construire_trace_calcul_fiscal_2025(
             16, "RAPPROCHEMENT", "Retenues totales",
             ("T4 22 + T4E 22 + RL-1 E + RL-6 G (T4E 23 non additionné)" if rqap.present
              else "T4 22 + RL-1 E + T4E 22 et 23 — valeurs validées" if ae.present
+             else "T4 22 + RL-1 E + T4A(P) 22 + RL-2 J (si reçu)" if rrq_rpc.present
              else "T4 case 22 + RL-1 case E — valeurs validées"),
             "Retenue fédérale + retenue Québec",
             final.retenues_totales,
@@ -1236,6 +1244,17 @@ def construire_trace_calcul_fiscal_2025(
             ("Revenu imposable Québec", "REVENU QUÉBEC", "Récupération AE 250", "Québec 250 point 3", "Report de la ligne fédérale 23500", ae.recuperation),
             ("Impôt total préliminaire", "FÉDÉRAL", "Récupération AE 42200", "Tableau T4E 2025", "Ajout de 23500 au montant à payer, sans abattement Québec", ae.recuperation),
             ("Impôt total préliminaire", "QUÉBEC", "FSS AE ligne 446", "Annexe F 2025", "Assiette = AE - remboursement 246 - récupération 250; barème FSS", ae.cotisation_fss),
+        ):
+            lignes = _inserer_ligne_avant(lignes, cible, _ligne(0, section, libelle, source, formule, montant))
+
+    if rrq_rpc.present:
+        for cible, section, libelle, source, formule, montant in (
+            ("Déduction RRQ améliorée", "REVENU FÉDÉRAL", "RRQ/RPC 11400", "T4A(P) 20", "Total; sous-cases 14 à 19 non additionnées", rrq_rpc.prestations),
+            ("Déduction RRQ améliorée", "INFORMATION", "Invalidité RRQ/RPC 11410", "T4A(P) 16", "Déjà incluse dans 11400", rrq_rpc.invalidite),
+            ("Déduction travailleur Québec", "REVENU QUÉBEC", "RRQ/RPC 119", "RL-2 C" if rrq_rpc.releve_2_present else "T4A(P) 20, sans RL-2", "Même prestation, sans double compte", rrq_rpc.prestations),
+            ("Impôt total préliminaire", "QUÉBEC", "FSS RRQ/RPC 446", "Annexe F 2025", "Assiette RRQ/RPC; RPA/REER non déduits; sans abattement", rrq_rpc.cotisation_fss),
+            ("Retenues totales", "RETENUES", "Retenue RRQ/RPC 43700", "T4A(P) 22", "Ajout aux retenues salariales", rrq_rpc.retenue_federale),
+            ("Retenues totales", "RETENUES", "Retenue RRQ/RPC 451", "RL-2 J", "Ajout une fois si RL-2 reçu", rrq_rpc.retenue_quebec),
         ):
             lignes = _inserer_ligne_avant(lignes, cible, _ligne(0, section, libelle, source, formule, montant))
 

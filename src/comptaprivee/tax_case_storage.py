@@ -89,6 +89,7 @@ from .tax_field_validation import (
     STATUT_VALIDE,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_cpp_qpp_benefits_2025 import consolider_prestations_rrq_rpc_2025, valider_confirmation_rrq_rpc
 from .tax_employment_insurance_2025 import consolider_prestations_ae_2025, valider_confirmation_ae
 from .tax_parental_benefits_2025 import consolider_prestations_rqap_2025, valider_confirmation_rqap
 
@@ -143,6 +144,7 @@ class DossierFiscalEnregistre:
     cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
     rqap_confirme: bool = False
     ae_confirme: bool = False
+    rrq_rpc_confirme: bool = False
 
 
 def _nom_securise(valeur: str) -> str:
@@ -2423,7 +2425,16 @@ def sauvegarder_dossier_fiscal(
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool | None = None,
     ae_confirme: bool | None = None,
+    rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    confirme_rrq_rpc = rrq_rpc_confirme if rrq_rpc_confirme is not None else (estimation.rrq_rpc_confirme if estimation else False)
+    valider_confirmation_rrq_rpc(confirme_rrq_rpc)
+    if estimation is not None and confirme_rrq_rpc != estimation.rrq_rpc_confirme:
+        raise ValueError("La confirmation RRQ/RPC diffère de l'estimation.")
+    if confirme_rrq_rpc:
+        consolider_prestations_rrq_rpc_2025(dossier, True)
+        if rqap_confirme or ae_confirme or (estimation and (estimation.rqap_confirme or estimation.ae_confirme)):
+            raise ValueError("RRQ/RPC avec AE/RQAP : hors périmètre.")
     confirme = rqap_confirme if rqap_confirme is not None else (estimation.rqap_confirme if estimation else False)
     valider_confirmation_rqap(confirme)
     confirme_ae = ae_confirme if ae_confirme is not None else (estimation.ae_confirme if estimation else False)
@@ -2461,6 +2472,7 @@ def sauvegarder_dossier_fiscal(
         "schema_version": SCHEMA_VERSION,
         "rqap_confirme": confirme,
         "ae_confirme": confirme_ae,
+        "rrq_rpc_confirme": confirme_rrq_rpc,
         "cotisations_rpa": {
             nom: _decimal_texte(valeur) if isinstance(valeur, Decimal) else valeur
             for nom, valeur in vars(rpa).items()
@@ -2617,7 +2629,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             raise ValueError("Une donnée fiscale enregistrée est incomplète.") from erreur
         if statut not in STATUTS_VALIDATION_AUTORISES:
             raise ValueError("Statut de validation fiscale enregistré invalide.")
-        if type_document not in {"T4", "RL-1", "T4E", "RL-6"}:
+        if type_document not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2"}:
             raise ValueError("Type de document fiscal enregistré non pris en charge.")
         ve = _decimal_depuis_json(brut.get("valeur_extraite"), f"valeur_extraite[{index}]")
         vv = _decimal_depuis_json(brut.get("valeur_validee"), f"valeur_validee[{index}]")
@@ -2733,7 +2745,13 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         raise ValueError("AE et RQAP simultanés : hors périmètre.")
     if confirme_ae:
         consolider_prestations_ae_2025(dossier, True)
+    confirme_rrq_rpc = valider_confirmation_rrq_rpc(contenu.get("rrq_rpc_confirme", False))
+    if confirme_rrq_rpc:
+        if confirme or confirme_ae:
+            raise ValueError("RRQ/RPC avec AE/RQAP : hors périmètre.")
+        consolider_prestations_rrq_rpc_2025(dossier, True)
     return DossierFiscalEnregistre(
+        rrq_rpc_confirme=confirme_rrq_rpc,
         ae_confirme=confirme_ae,
         rqap_confirme=confirme,
         cotisations_rpa=rpa,

@@ -1,6 +1,6 @@
 """Classification locale des premiers documents fiscaux pris en charge.
 
-Reconnaissance T4, RL-1, T4E et RL-6.
+Reconnaissance T4, RL-1, T4E, RL-6, T4A(P) et RL-2.
 Aucune donnée n'est transmise à un service externe.
 """
 
@@ -96,7 +96,7 @@ def classifier_document_fiscal(
     chemin: str | Path,
     texte: str = "",
 ) -> ClassificationDocumentFiscal:
-    """Classe localement les feuillets salariaux et de prestations RQAP."""
+    """Classe localement les feuillets salariaux et de prestations pris en charge."""
     chemin = Path(chemin)
     nom = _normaliser(chemin.stem)
     contenu = _normaliser(texte)
@@ -104,7 +104,7 @@ def classifier_document_fiscal(
     # Ces feuillets partagent des cases et des libellés avec le T4/RL-1.
     # Leur identifiant explicite évite d'interpréter des prestations comme un salaire.
     nouveaux = []
-    for type_doc, motif in (("T4E", r"(?<![a-z0-9])t4e(?![a-z0-9])"), ("RL-6", r"(?<![a-z0-9])(?:rl[ _-]?6|releve[ _-]*6)(?![a-z0-9])")):
+    for type_doc, motif in (("T4A(P)", r"(?<![a-z0-9])t4a[ _-]*\(?p\)?(?![a-z0-9])"), ("RL-2", r"(?<![a-z0-9])(?:rl[ _-]?2|releve[ _-]*2)(?![a-z0-9])"), ("T4E", r"(?<![a-z0-9])t4e(?![a-z0-9])"), ("RL-6", r"(?<![a-z0-9])(?:rl[ _-]?6|releve[ _-]*6)(?![a-z0-9])")):
         if re.search(motif, nom) or re.search(motif, contenu):
             nouveaux.append(type_doc)
     if nouveaux:

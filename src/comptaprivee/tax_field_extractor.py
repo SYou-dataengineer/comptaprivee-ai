@@ -1,6 +1,6 @@
 """Extraction locale et traçable des premières cases fiscales.
 
-Extraction de champs T4, RL-1, T4E et RL-6 avec validation humaine.
+Extraction T4, RL-1, T4E, RL-6, T4A(P) et RL-2 avec validation humaine.
 Aucun calcul d'impôt et aucune transmission gouvernementale.
 """
 
@@ -138,6 +138,19 @@ REGLES_RL6 = tuple(
     for case, libelle in (("A", "Prestations RQAP"), ("D", "Remboursement de prestations"), ("G", "Impôt Québec retenu"))
 )
 
+REGLES_T4AP = tuple(
+    (c, libelle, (rf"\b(?:case|box)\s*{c}\b",))
+    for c, libelle in (("14", "Rente de retraite"), ("15", "Rente de survivant"),
+        ("16", "Rente d'invalidité"), ("17", "Rente d'enfant"), ("18", "Prestation de décès (exclue)"),
+        ("19", "Prestation après-retraite"), ("20", "Total RRQ/RPC imposable"),
+        ("21", "Mois d'invalidité"), ("22", "Impôt fédéral retenu"), ("23", "Mois de retraite"))
+)
+REGLES_RL2 = tuple(
+    (c, {"C": "Prestations RRQ/RPC (provenance à confirmer)", "J": "Impôt Québec retenu"}.get(c, "Autre montant RL-2 hors périmètre"),
+     (rf"\b(?:case|box|code)\s*{c}\b(?![-–]\d+\b(?![.,]))",))
+    for c in ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "C-1", "C-2", "C-3", "C-4", "C-5", "C-6", "C-7", "C-8", "C-9", "C-10")
+)
+
 MONTANT_RE = re.compile(
     r"(?<![\w.])("
     r"(?:\d{1,3}(?:[ \u00a0]\d{3})+(?:[,.]\d{2})?)"
@@ -248,6 +261,10 @@ def extraire_cases_fiscales(
     elif type_normalise in {"RL-1", "RL1"}:
         regles = REGLES_RL1
         type_final = "RL-1"
+    elif type_normalise in {"T4A(P)", "T4AP"}:
+        regles, type_final = REGLES_T4AP, "T4A(P)"
+    elif type_normalise in {"RL-2", "RL2"}:
+        regles, type_final = REGLES_RL2, "RL-2"
     elif type_normalise == "T4E":
         regles, type_final = REGLES_T4E, "T4E"
     elif type_normalise in {"RL-6", "RL6"}:
@@ -265,17 +282,17 @@ def extraire_cases_fiscales(
             texte,
             marqueurs,
             conserver_signe=(
-                type_final in {"T4E", "RL-6"}
+                type_final in {"T4E", "RL-6", "T4A(P)", "RL-2"}
                 or
                 (type_final == "T4" and case in {"20", "74", "75"})
                 or (type_final == "RL-1" and case in {"D", "D-1", "D-2", "D-3"})
             ),
         )
-        if type_final == "T4E" and case == "7":
-            # Le taux est un pourcentage, souvent entier, précédé d'un libellé.
+        if (type_final == "T4E" and case == "7") or (type_final == "T4A(P)" and case in {"21", "23"}):
+            # Taux AE ou nombre de mois RRQ/RPC, souvent entier et précédé d'un libellé.
             # Ne jamais récupérer un montant appartenant à la case suivante.
             resultat = None
-            marqueur = re.search(r"\b(?:case|box)\s*7\b", texte, re.IGNORECASE)
+            marqueur = re.search(rf"\b(?:case|box)\s*{case}\b", texte, re.IGNORECASE)
             if marqueur:
                 extrait = texte[marqueur.end():marqueur.end() + 220]
                 limite = _prochaine_case_position(extrait)

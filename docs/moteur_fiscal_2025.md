@@ -325,7 +325,7 @@ fictif et scripts de vérification restent dans `tmp/`, exclus du commit.
 Limites restantes : extraction OCR avec marqueurs explicites case/box,
 revue humaine des omissions et du bénéficiaire, profils exclus ci-dessus,
 DPI Windows réels, thèmes et multi-écrans. Aucun crédit de retraite n'est
-activé. Le Bloc 2C reste en attente d'un accord utilisateur explicite.
+activé. À la clôture du Bloc 2B, le Bloc 2C attendait l'accord utilisateur.
 
 Validation finale locale : **1 791 tests réussis**, aucun échec ni test ignoré,
 8 avertissements de dépréciation, en 49,06 s (`python -m pytest -q`, Python
@@ -334,3 +334,87 @@ d'accès aux dossiers temporaires et à Tk; les tests ciblés puis la suite
 complète ont réussi avec les accès Windows nécessaires, sans désactivation
 ni modification des tests. Les avertissements PyMuPDF/SWIG et openpyxl ainsi
 que l'intermittence Tcl déjà documentée restent à surveiller.
+
+## Bloc 2C — Prestations RRQ/RPC 2025
+
+### Sources officielles vérifiées le 16 septembre 2026
+
+- [ARC, T4A(P)](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/tax-slips/understand-your-tax-slips/t4-slips/t4a-p-statement-canada-pension-plan-benefits.html) : 14 retraite, 15 survivant, 16 invalidité, 17 enfant, 18 décès et 19 après-retraite sont comprises dans le total 20. La case 22 est la retenue fédérale (43700); 21 et 23 sont des nombres de mois, pas des revenus.
+- [ARC, 11400 et 11410, année 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-11400-cpp-qpp-benefits.html) : total 20 à 11400; invalidité 16 à 11410 sans nouvel ajout. La rente d'enfant se déclare chez l'enfant, même si le parent reçoit le paiement. Une prestation de décès suit un traitement distinct; les arrérages peuvent nécessiter un calcul fiscal sur les années antérieures. L'invalidité peut affecter les droits REER, que ce module ne recalcule pas.
+- [Revenu Québec, 119](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/96-a-164-revenu-total/ligne-119/) : retenir RL-2 C ou le T4A(P) si aucun RL-2 n'a été reçu; même attribution à l'enfant. Une rente mensuelle de survivant n'est pas une prestation forfaitaire de décès.
+- [Guide RL-2](https://www.revenuquebec.ca/fr/services-en-ligne/formulaires-et-publications/rl-2-g/guide-du-releve-2-revenus-de-retraite-et-rentes/) et [Québec 451](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/451-a-480-remboursement-ou-solde-a-payer/ligne-451/) : la case C peut aussi désigner d'autres régimes; la provenance RRQ/RPC doit être confirmée. La retenue Québec provient de J.
+- [Annexe F 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf) : dans ce profil sans autres revenus ni remboursements, l'assiette correspond aux prestations RRQ/RPC. Le salaire est soustrait, pas les déductions RPA/REER. Barème du Bloc 2A : exemption 18 130 $, palier 63 060 $, plafonds 150 $ et 1 000 $. [Ligne 446](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/400-a-447-impot-et-cotisations/ligne-446/) : les paiements rétroactifs exigent potentiellement un traitement FSS distinct, exclu ici.
+- [ARC 31400](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-31400-pension-income-amount.html) et [Québec 361](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/350-a-398-1-credits-dimpot-non-remboursables/ligne-361/) : RRQ/RPC non admissible au montant pour revenus de pension/retraite. Les crédits d'âge restent distincts, soumis aux validations et limites existantes.
+- [Cotisations du salarié au RRQ](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/payer-ou-etre-rembourse/paiement-des-cotisations/cotisations-du-salarie/cotisation-du-salarie-au-regime-de-rentes-du-quebec/) : invalidité, âge et choix de cesser de cotiser peuvent modifier les cotisations. Le bloc ne calcule pas ces proratisations ou élections.
+
+### Périmètre implémenté
+
+Un T4A(P) obligatoire, au plus un RL-2 distinct et concordant, même bénéficiaire,
+résident Canada/Québec toute l'année. Retraite, survivant et après-retraite
+ordinaires, avec ou sans le profil salarial existant. Invalidité et rente
+d'enfant prises en charge sans salaire; le dossier est celui du bénéficiaire,
+donc de l'enfant pour la case 17. Aucun T4/RL-1 fictif n'est créé sans emploi;
+cotisations, déductions salariales et montant canadien pour emploi sont nuls.
+
+La confirmation `rrq_rpc_confirme` couvre les feuillets complets, leur année,
+leur bénéficiaire, la provenance du RL-2 et l'absence des situations exclues.
+Les cases facultatives non extraites sont nulles seulement après cette revue.
+Les sous-cases peuvent ne pas détailler tout le total; leur somme ne peut
+jamais le dépasser. Total 20 obligatoire; C obligatoire et égal à 20 si RL-2
+présent. Les retenues 22/J sont indépendantes, chacune ajoutée une fois.
+Moins de 13 mois entiers pour 21/23; montants finis, non négatifs, au cent près,
+au plus 999 999 999,99 $. Sources absentes, doublons, statuts non validés et
+feuillets multiples sont refusés.
+
+Refus explicites : case 18 positive, autres cases monétaires RL-2 hors C/J,
+codes complémentaires non nuls, AE/RQAP/PSV ou autres feuillets combinés,
+invalidité ou enfant avec salaire, sous-types mixtes avec rente d'enfant,
+incohérences entre feuillets et confirmation manquante. Rétroactivité,
+remboursements, décès du déclarant, exonérations, partage de rente et autres
+profils complexes sont exclus par la confirmation obligatoire : le moteur
+ne prétend pas les détecter à partir des seuls montants extraits. Les contrôles
+humains restent essentiels, notamment pour une case 20 sans sous-cases.
+
+Les prestations augmentent les revenus avant RPA/REER et les crédits.
+Le FSS est ajouté au rapprochement Québec, sans abattement fédéral ni
+déduction du revenu net. Aucun crédit de pension 31400/361 n'est activé.
+La réception d'une rente d'invalidité ne vaut pas admissibilité automatique
+au crédit pour handicap. Les plafonds REER, primes RAMQ et autres crédits
+restent gérés par leurs profils existants, avec leurs confirmations requises.
+Les refus existants liés à 34990 et aux hauts revenus sont conservés.
+
+### Parcours applicatif et résultats de référence
+
+Classification distincte T4A(P)/RL-2, extraction avec marqueurs case/box,
+validation comptable, formulaire défilant, calcul, sauvegarde/rechargement,
+résumé, trace et PDF sont intégrés. La préparation refuse un feuillet reconnu
+sans cases. Une nouvelle extraction retire la confirmation; un changement
+de profil invalide l'estimation et son PDF. L'ancien JSON sans confirmation
+reste chargeable et exige la revue avant calcul RRQ/RPC.
+
+Cas salarié fictif : salaire 52 000 $, prestations 20 000 $, retenues
+RRQ/RPC 1 800 $ fédéral et 2 200 $ Québec. Revenus totaux 72 000 $, nets
+fédéral 71 515 $ et Québec 70 095 $; FSS 18,70 $; impôt total 14 879,56 $;
+retenues 17 700 $; remboursement 2 820,44 $. Avec RPA 3 000 $, REER 5 000 $
+et cotisations syndicales 600 $, nets 62 915 $ / 62 095 $, FSS inchangé.
+
+Cas invalidité sans salaire ni RL-2 reçu : 20 000 $ à 11400 et 119, dont
+20 000 $ à 11410 sans ajout; retenue fédérale 1 800 $, FSS 18,70 $;
+impôt total 687,44 $ et remboursement 1 112,56 $, sans crédit handicap.
+
+91 nouveaux cas ciblés passent : 80 de règles/extraction/intégration/stockage/
+trace/PDF et 11 GUI. Inspection visuelle à 600 × 400 et 1 000 × 700, haut et bas
+du formulaire; actions testées à trois facteurs Tk. Deux rapports fictifs
+de deux pages sont rendus avec PyMuPDF et inspectés. Les captures et PDF de
+vérification restent dans `tmp/`, exclus de Git. Limites d'OCR, DPI réels,
+thèmes, multi-écrans et avertissements existants maintenues.
+
+Validation finale locale : **1 882 tests réussis**, aucun échec ni test ignoré,
+8 avertissements de dépréciation, en 51,97 s (`python -m pytest -q`, Python
+de `.venv`). Aucun test existant n'a été retiré ou désactivé. Une correction
+d'extraction conserve le signe des montants RL-2 négatifs pour permettre leur
+refus par la validation, avec trois cas de régression. Deux dossiers temporaires
+créés dans le bac à sable ont dû être nettoyés après un refus d'accès pendant
+la collecte globale; la commande complète finale passe sans exclusion.
+
+Le Bloc 2D n'est pas commencé; il nécessite un nouvel accord utilisateur.
