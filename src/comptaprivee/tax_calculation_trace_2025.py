@@ -184,6 +184,7 @@ def construire_trace_calcul_fiscal_2025(
 
     rqap = estimation.prestations_rqap
     rrq_rpc = estimation.prestations_rrq_rpc
+    psv = estimation.prestations_psv
     ae = estimation.prestations_ae
     if rqap.present:
         formule_revenu_federal += " + RQAP 11900 - remboursement 23200"
@@ -209,6 +210,10 @@ def construire_trace_calcul_fiscal_2025(
     if rrq_rpc.present:
         formule_revenu_federal += " + RRQ/RPC 11400 (T4A(P) 20)"
         formule_revenu_quebec += " + RRQ/RPC 119 (RL-2 C ou T4A(P) 20)"
+
+    if psv.present:
+        formule_revenu_federal += " + PSV 11300 + suppléments 14600 - récupération 23500 - déduction 25000"
+        formule_revenu_quebec += " + PSV 114 + suppléments 148 - récupération 250 - déduction 295"
 
     formule_impot_federal = (
         "Impôt fédéral brut - crédits non remboursables de base"
@@ -299,6 +304,8 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_total += " + FSS Québec 446"
     if ae.present:
         formule_impot_total += " + récupération AE 42200 (sans abattement) + FSS Québec 446"
+    if psv.present:
+        formule_impot_total += " + récupération PSV 42200 (sans abattement); FSS PSV nul"
     if rrq_rpc.present:
         formule_impot_total += " + FSS RRQ/RPC 446 (sans abattement)"
     if assurance_medicaments.type_couverture.strip():
@@ -419,6 +426,7 @@ def construire_trace_calcul_fiscal_2025(
             ("T4 22 + T4E 22 + RL-1 E + RL-6 G (T4E 23 non additionné)" if rqap.present
              else "T4 22 + RL-1 E + T4E 22 et 23 — valeurs validées" if ae.present
              else "T4 22 + RL-1 E + T4A(P) 22 + RL-2 J (si reçu)" if rrq_rpc.present
+             else "T4 22 + RL-1 E + T4A(OAS) 22/23" if psv.present
              else "T4 case 22 + RL-1 case E — valeurs validées"),
             "Retenue fédérale + retenue Québec",
             final.retenues_totales,
@@ -1255,6 +1263,26 @@ def construire_trace_calcul_fiscal_2025(
             ("Impôt total préliminaire", "QUÉBEC", "FSS RRQ/RPC 446", "Annexe F 2025", "Assiette RRQ/RPC; RPA/REER non déduits; sans abattement", rrq_rpc.cotisation_fss),
             ("Retenues totales", "RETENUES", "Retenue RRQ/RPC 43700", "T4A(P) 22", "Ajout aux retenues salariales", rrq_rpc.retenue_federale),
             ("Retenues totales", "RETENUES", "Retenue RRQ/RPC 451", "RL-2 J", "Ajout une fois si RL-2 reçu", rrq_rpc.retenue_quebec),
+        ):
+            lignes = _inserer_ligne_avant(lignes, cible, _ligne(0, section, libelle, source, formule, montant))
+
+    if psv.present:
+        for cible, section, libelle, source, formule, montant in (
+            ("Déduction RRQ améliorée", "REVENU FÉDÉRAL", "PSV 11300", "T4A(OAS) 18", "Pension imposable; case 19 non additionnée", psv.pension),
+            ("Déduction RRQ améliorée", "REVENU FÉDÉRAL", "Suppléments 14600", "T4A(OAS) 21", "Inclus dans le revenu net", psv.supplements),
+            ("Revenu imposable fédéral", "REVENU FÉDÉRAL", "Revenu avant récupération PSV 23400", "Revenus et déductions validés", "Après RPA/REER/cotisations; sans ajustement PUGE/REEI/AE", psv.revenu_avant_recuperation),
+            ("Revenu imposable fédéral", "REVENU FÉDÉRAL", "Récupération PSV 23500", "Feuille fédérale 2025", "min(11300 + 14600, 15 % × max(0, 23400 - 93454))", psv.recuperation),
+            ("Revenu imposable fédéral", "REVENU FÉDÉRAL", "Revenu net fédéral 23600", "Après récupération", "23400 - 23500; suppléments encore inclus", revenu.revenu_net_federal),
+            ("Revenu imposable fédéral", "REVENU FÉDÉRAL", "Suppléments déductibles 25000", "ARC 25000", "max(0,14600 - max(0,23500 - 11300))", psv.deduction_supplements),
+            ("Déduction travailleur Québec", "REVENU QUÉBEC", "PSV 114", "T4A(OAS) 18", "Même pension qu'au fédéral", psv.pension),
+            ("Déduction travailleur Québec", "REVENU QUÉBEC", "Suppléments 148", "T4A(OAS) 21", "Code 07 à 149", psv.supplements),
+            ("Revenu imposable Québec", "REVENU QUÉBEC", "Récupération PSV 250 point 3", "Québec 250", "Report de 23500", psv.recuperation),
+            ("Revenu imposable Québec", "REVENU QUÉBEC", "Revenu net Québec 275", "Après récupération", "Suppléments encore inclus avant 295", revenu.revenu_net_quebec),
+            ("Revenu imposable Québec", "REVENU QUÉBEC", "Suppléments déductibles 295", "Québec 295", "148 - suppléments récupérés dans 23500", psv.deduction_supplements),
+            ("Impôt total préliminaire", "FÉDÉRAL", "Récupération PSV 42200", "Feuille fédérale 2025", "Ajout de 23500 sans abattement Québec", psv.recuperation),
+            ("Impôt total préliminaire", "QUÉBEC", "FSS PSV 446", "Annexe F 2025, lignes 22 et 29", "PSV et suppléments exclus de l'assiette", Decimal("0")),
+            ("Retenues totales", "RETENUES", "Retenue PSV 43700", "T4A(OAS) 22", "Inclut la récupération retenue à la source; ajout une fois", psv.retenue_federale),
+            ("Retenues totales", "RETENUES", "Retenue PSV 451", "T4A(OAS) 23", "Ajout une fois", psv.retenue_quebec),
         ):
             lignes = _inserer_ligne_avant(lignes, cible, _ligne(0, section, libelle, source, formule, montant))
 

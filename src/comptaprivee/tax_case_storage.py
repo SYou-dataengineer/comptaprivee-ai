@@ -89,6 +89,7 @@ from .tax_field_validation import (
     STATUT_VALIDE,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_old_age_security_2025 import consolider_prestations_psv_2025, valider_confirmation_psv
 from .tax_cpp_qpp_benefits_2025 import consolider_prestations_rrq_rpc_2025, valider_confirmation_rrq_rpc
 from .tax_employment_insurance_2025 import consolider_prestations_ae_2025, valider_confirmation_ae
 from .tax_parental_benefits_2025 import consolider_prestations_rqap_2025, valider_confirmation_rqap
@@ -144,6 +145,7 @@ class DossierFiscalEnregistre:
     cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
     rqap_confirme: bool = False
     ae_confirme: bool = False
+    psv_confirme: bool = False
     rrq_rpc_confirme: bool = False
 
 
@@ -2425,8 +2427,17 @@ def sauvegarder_dossier_fiscal(
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool | None = None,
     ae_confirme: bool | None = None,
+    psv_confirme: bool | None = None,
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    confirme_psv = psv_confirme if psv_confirme is not None else (estimation.psv_confirme if estimation else False)
+    valider_confirmation_psv(confirme_psv)
+    if estimation is not None and confirme_psv != estimation.psv_confirme:
+        raise ValueError("La confirmation PSV diffère de l'estimation.")
+    if confirme_psv:
+        if rqap_confirme or ae_confirme or rrq_rpc_confirme or (estimation and (estimation.rqap_confirme or estimation.ae_confirme or estimation.rrq_rpc_confirme)):
+            raise ValueError("PSV avec AE/RQAP/RRQ : hors périmètre.")
+        consolider_prestations_psv_2025(dossier, True)
     confirme_rrq_rpc = rrq_rpc_confirme if rrq_rpc_confirme is not None else (estimation.rrq_rpc_confirme if estimation else False)
     valider_confirmation_rrq_rpc(confirme_rrq_rpc)
     if estimation is not None and confirme_rrq_rpc != estimation.rrq_rpc_confirme:
@@ -2472,6 +2483,7 @@ def sauvegarder_dossier_fiscal(
         "schema_version": SCHEMA_VERSION,
         "rqap_confirme": confirme,
         "ae_confirme": confirme_ae,
+        "psv_confirme": confirme_psv,
         "rrq_rpc_confirme": confirme_rrq_rpc,
         "cotisations_rpa": {
             nom: _decimal_texte(valeur) if isinstance(valeur, Decimal) else valeur
@@ -2629,7 +2641,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             raise ValueError("Une donnée fiscale enregistrée est incomplète.") from erreur
         if statut not in STATUTS_VALIDATION_AUTORISES:
             raise ValueError("Statut de validation fiscale enregistré invalide.")
-        if type_document not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2"}:
+        if type_document not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)"}:
             raise ValueError("Type de document fiscal enregistré non pris en charge.")
         ve = _decimal_depuis_json(brut.get("valeur_extraite"), f"valeur_extraite[{index}]")
         vv = _decimal_depuis_json(brut.get("valeur_validee"), f"valeur_validee[{index}]")
@@ -2750,7 +2762,13 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         if confirme or confirme_ae:
             raise ValueError("RRQ/RPC avec AE/RQAP : hors périmètre.")
         consolider_prestations_rrq_rpc_2025(dossier, True)
+    confirme_psv = valider_confirmation_psv(contenu.get("psv_confirme", False))
+    if confirme_psv:
+        if confirme or confirme_ae or confirme_rrq_rpc:
+            raise ValueError("PSV avec AE/RQAP/RRQ : hors périmètre.")
+        consolider_prestations_psv_2025(dossier, True)
     return DossierFiscalEnregistre(
+        psv_confirme=confirme_psv,
         rrq_rpc_confirme=confirme_rrq_rpc,
         ae_confirme=confirme_ae,
         rqap_confirme=confirme,

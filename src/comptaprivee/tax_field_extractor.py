@@ -138,6 +138,8 @@ REGLES_RL6 = tuple(
     for case, libelle in (("A", "Prestations RQAP"), ("D", "Remboursement de prestations"), ("G", "Impôt Québec retenu"))
 )
 
+REGLES_T4AOAS = tuple((c, label, (rf"\b(?:case|box)\s*{c}\b",)) for c, label in (("18", "PSV imposable"), ("19", "PSV brute (information)"), ("20", "Trop-payé récupéré (exclu)"), ("21", "Suppléments nets"), ("22", "Impôt fédéral retenu"), ("23", "Impôt Québec retenu")))
+
 REGLES_T4AP = tuple(
     (c, libelle, (rf"\b(?:case|box)\s*{c}\b",))
     for c, libelle in (("14", "Rente de retraite"), ("15", "Rente de survivant"),
@@ -261,6 +263,8 @@ def extraire_cases_fiscales(
     elif type_normalise in {"RL-1", "RL1"}:
         regles = REGLES_RL1
         type_final = "RL-1"
+    elif type_normalise in {"T4A(OAS)", "T4AOAS"}:
+        regles, type_final = REGLES_T4AOAS, "T4A(OAS)"
     elif type_normalise in {"T4A(P)", "T4AP"}:
         regles, type_final = REGLES_T4AP, "T4A(P)"
     elif type_normalise in {"RL-2", "RL2"}:
@@ -282,7 +286,7 @@ def extraire_cases_fiscales(
             texte,
             marqueurs,
             conserver_signe=(
-                type_final in {"T4E", "RL-6", "T4A(P)", "RL-2"}
+                type_final in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)"}
                 or
                 (type_final == "T4" and case in {"20", "74", "75"})
                 or (type_final == "RL-1" and case in {"D", "D-1", "D-2", "D-3"})

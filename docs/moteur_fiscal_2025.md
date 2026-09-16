@@ -417,4 +417,119 @@ refus par la validation, avec trois cas de régression. Deux dossiers temporaire
 créés dans le bac à sable ont dû être nettoyés après un refus d'accès pendant
 la collecte globale; la commande complète finale passe sans exclusion.
 
-Le Bloc 2D n'est pas commencé; il nécessite un nouvel accord utilisateur.
+Le Bloc 2C a été validé; le Bloc 2D ci-dessous a ensuite été autorisé.
+
+## Bloc 2D — PSV et suppléments 2025
+
+### Sources officielles vérifiées le 16 septembre 2026
+
+Les références ci-dessous visent la déclaration **2025**, indépendamment de
+la période ultérieure pendant laquelle la récupération est retenue à la source.
+
+- [ARC — T4A(OAS), cases 18 à 23](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/tax-slips/understand-your-tax-slips/t4-slips/t4a-oas-statement-old-security.html) : 18 pension imposable, 19 brute informative, 20 trop-payé récupéré, 21 suppléments nets (SRG, allocation, allocation au survivant), 22 retenue fédérale, 23 retenue Québec.
+- [ARC — pension 11300](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-11300-old-security-pension-oas.html) et [feuille fédérale 2025, page 2, 23500](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-d1/5000-d1-25e.pdf) : seuil 93 454 $, taux 15 %, plafond pension **plus suppléments**, ajustements particuliers et report 42200.
+- [ARC — déduction 25000](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-25000-other-payments-deduction.html) : la récupération dépassant la pension et le remboursement AE réduit la déduction des suppléments déclarés à 14600.
+- Revenu Québec : [114 — PSV](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/96-a-164-revenu-total/ligne-114/), [148 — suppléments](https://www.revenuquebec.ca/en/citizens/income-tax-return/completing-your-income-tax-return/how-to-complete-your-income-tax-return/line-by-line-help/96-to-164-total-income/line-148/), [295 — déduction des suppléments](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/276-a-298-2-revenu-imposable/ligne-295/), [250 point 3 — report de 23500](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/201-a-260-revenu-net/ligne-250/point-3/), [451 — retenues](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/451-a-480-remboursement-ou-solde-a-payer/ligne-451/).
+- [Revenu Québec — annexe F 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf) : lignes 22 et 29 retirent respectivement la PSV 114 et les suppléments 148 de l'assiette FSS. Les salaires sont également exclus : FSS nul dans le profil PSV pris en charge.
+
+### Calcul et correspondances
+
+| T4A(OAS) / calcul | Fédéral | Québec |
+| --- | --- | --- |
+| Case 18 | Pension 11300 | Pension 114 |
+| Case 19 | Information, jamais additionnée à 18 | Même règle |
+| Case 20 non nulle | Refus explicite du remboursement complexe | Refus explicite |
+| Case 21 | Suppléments 14600, inclus dans le revenu net | Suppléments 148, code 07 à 149 |
+| Suppléments non récupérés | Déduction du revenu imposable 25000 | Déduction du revenu imposable 295 |
+| Récupération calculée | Déduction du revenu net 23500; ajout à payer 42200 | Déduction 250 point 3 |
+| Case 22 | Retenue 43700, y compris récupération retenue à la source | Aucun deuxième report |
+| Case 23 | Aucun ajout à 43700 pour ce résident Québec | Retenue 451 |
+
+Après inclusion de 18 et 21 dans les revenus totaux, les déductions ordinaires
+RPA, REER et cotisations syndicales sont appliquées. Dans le profil simple,
+le revenu fédéral obtenu est 23400, sans ajustements AE/PUGE/REEI.
+La récupération est `min(18 + 21, 15 % × max(0, 23400 - 93454))`, arrondie au
+cent. Elle diminue les revenus nets et imposables fédéral et Québec, puis
+s'ajoute au rapprochement fédéral **après** l'abattement Québec. La retenue
+22 n'est ni un revenu négatif ni la récupération annuelle calculée.
+
+La part des suppléments récupérés est `max(0, récupération - pension)`.
+La déduction 25000/295 est `max(0, suppléments - suppléments récupérés)`.
+Elle réduit uniquement les revenus imposables : le revenu net utilisé pour
+les crédits conserve les suppléments, après la récupération. Aucun crédit
+pour revenu de pension 31400/361 n'est créé par la PSV. Les crédits d'âge
+restent soumis à leur profil validé et au revenu net calculé.
+
+### Périmètre, confirmation et refus
+
+Un seul T4A(OAS), avec ou sans le profil salarial T4/RL-1 ordinaire, pour un
+bénéficiaire résident Canada/Québec toute l'année. Aucun feuillet salarial
+fictif sans emploi. PSV seule, PSV avec suppléments et suppléments seuls
+sont admis; dans ce dernier cas, la case 18 doit être validée à zéro.
+La case 18 est obligatoire; 19, 20, 21, 22 et 23 sont facultatives après
+revue du feuillet complet. Si 19 est présente, elle doit égaler 18 puisque
+le remboursement 20 est exclu. Chaque montant doit être fini, non négatif,
+au cent près, et au plus 999 999 999,99 $. Doublons, plusieurs T4A(OAS),
+sources absentes et statuts non validés sont refusés.
+
+La confirmation `psv_confirme` est un booléen strict et couvre bénéficiaire,
+année, résidence, complétude et absence des cas exclus. Refus explicites :
+case 20 non nulle, autres cases non nulles, montants négatifs (y compris 21),
+combinaison avec AE/RQAP/RRQ-RPC ou autres revenus non intégrés, confirmations
+concurrentes, crédit de pension demandé et RAMQ publique avec suppléments.
+Le guide ARC prévoit zéro à 14600 pour un 21 négatif; ce remboursement
+reste volontairement exclu plutôt que normalisé silencieusement ici.
+
+Paiements rétroactifs, décès du déclarant, non-résidence, exonérations,
+remboursements, fractionnement, ajustements PUGE/REEI et cotisations RRQ
+salariales particulières sont hors périmètre. L'allocation ordinaire au
+survivant en case 21 n'est pas une déclaration de personne décédée.
+Les situations non identifiables par les cases exigent la revue humaine;
+la confirmation ne prétend pas les détecter automatiquement. Les exemptions
+RAMQ liées aux suppléments ne sont pas calculées; un profil RAMQ vide reste
+une estimation préliminaire sans prime, selon le fonctionnement existant.
+Les limites existantes sur 34990 et les hauts revenus sont conservées.
+
+### Parcours et vérification
+
+Classification T4A(OAS) distincte de T4A(P); extraction signée des six cases,
+validation comptable, confirmation défilante, calcul, sauvegarde/rechargement,
+résumé, trace et PDF intégrés. Un feuillet reconnu sans case ne peut pas être
+omis à la préparation. Toute nouvelle extraction retire la confirmation;
+une nouvelle confirmation invalide le résultat et le PDF précédents. Les
+anciens JSON sans ce champ se chargent avec confirmation fausse.
+
+Exemple salarié fictif : salaire 52 000 $, PSV 10 000 $, suppléments 2 000 $.
+Revenus totaux 64 000 $; nets fédéral 63 515 $ / Québec 62 095 $;
+imposables 61 515 $ / 60 095 $. Récupération et FSS nuls. Retenues PSV
+1 500 $ / 500 $, ajoutées une fois aux retenues salariales.
+Avec RPA 3 000 $, REER 5 000 $ et cotisations syndicales 600 $, nets
+54 915 $ / 54 095 $, imposables 52 915 $ / 52 095 $.
+
+Exemple sans emploi : pension 10 000 $, suppléments 12 000 $, revenus nets
+22 000 $ dans les deux juridictions et revenus imposables 10 000 $.
+Exemple de feuille de récupération : 23400 = 100 000 $, pension 10 000 $,
+suppléments 2 000 $ donne récupération 981,90 $ et déduction 2 000 $.
+Avec 23400 = 166 787,33 $, récupération 11 000 $, dont suppléments 1 000 $,
+et déduction 25000/295 réduite à 1 000 $. Ces exemples de feuille vérifient
+les formules séparément des limites de hauts revenus du moteur global.
+
+Le Bloc 2E n'est pas commencé et attend l'accord utilisateur.
+
+Vérification visuelle locale : formulaire inspecté à 600 × 400 et
+1 000 × 700, en haut et en bas; actions également testées à trois facteurs
+Tk (96/72, 144/72, 192/72). Deux PDF fictifs de deux pages, salarié et sans
+emploi, ont été rendus avec PyMuPDF et inspectés intégralement. Aucune coupe
+ou superposition relevée. Les captures et rapports restent dans `tmp/`,
+exclus du commit. Les limites d'OCR, de DPI réels, de thèmes et de
+multi-écrans restent celles de l'application.
+
+Validation finale : **1 963 tests réussis**, aucun échec ni test ignoré,
+8 avertissements de dépréciation existants, en 60,39 s avec
+`python -m pytest -q` (Python de `.venv`). Les 81 nouveaux cas comprennent
+71 cas de règles/extraction/intégration/stockage/trace/PDF et 10 cas GUI.
+Aucun test existant n'a été retiré ou désactivé. Le cas salaire 90 000 $ et
+PSV 8 000 $ confirme 23400 = 96 926 $, récupération 520,80 $, revenu net
+fédéral 96 405,20 $ et Québec 94 985,20 $; une déduction REER de 5 000 $
+annule cette récupération. L'attente de ce test a été corrigée pour utiliser
+la déduction RRQ supplémentaire 2025 de 1 074 $ (678 $ + 396 $).

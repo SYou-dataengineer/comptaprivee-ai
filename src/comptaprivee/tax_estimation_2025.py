@@ -165,6 +165,7 @@ from .tax_union_dues_2025 import (
     credit_quebec_cotisations_2025,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_old_age_security_2025 import (PrestationsPsv2025, valider_confirmation_psv, consolider_prestations_psv_2025, appliquer_revenu_psv_2025, appliquer_recuperation_psv_2025, lignes_resume_psv_2025)
 from .tax_cpp_qpp_benefits_2025 import (
     PrestationsRrqRpc2025, consolider_prestations_rrq_rpc_2025, valider_confirmation_rrq_rpc,
     appliquer_prestations_rrq_rpc_2025, lignes_resume_rrq_rpc_2025,
@@ -217,6 +218,8 @@ class EstimationFiscale2025:
     prestations_rqap: PrestationsRqap2025 = PrestationsRqap2025()
     ae_confirme: bool = False
     prestations_ae: PrestationsAe2025 = PrestationsAe2025()
+    psv_confirme: bool = False
+    prestations_psv: PrestationsPsv2025 = PrestationsPsv2025()
     rrq_rpc_confirme: bool = False
     prestations_rrq_rpc: PrestationsRrqRpc2025 = PrestationsRrqRpc2025()
 
@@ -270,6 +273,7 @@ def calculer_estimation_fiscale_2025(
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool = False,
     ae_confirme: bool = False,
+    psv_confirme: bool = False,
     rrq_rpc_confirme: bool = False,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
@@ -279,6 +283,13 @@ def calculer_estimation_fiscale_2025(
             "uniquement pour l'année 2025."
         )
 
+    valider_confirmation_psv(psv_confirme)
+    parcours_psv = psv_confirme or any(d.type_document == "T4A(OAS)" for d in dossier.donnees_validees)
+    prestations_psv = PrestationsPsv2025()
+    if parcours_psv:
+        if rqap_confirme or ae_confirme or rrq_rpc_confirme:
+            raise ValueError("PSV avec AE/RQAP/RRQ : profil combiné hors périmètre.")
+        prestations_psv = consolider_prestations_psv_2025(dossier, psv_confirme)
     valider_confirmation_rrq_rpc(rrq_rpc_confirme)
     parcours_rrq_rpc = rrq_rpc_confirme or any(d.type_document in {"T4A(P)", "RL-2"} for d in dossier.donnees_validees)
     prestations_rrq_rpc = PrestationsRrqRpc2025()
@@ -286,7 +297,7 @@ def calculer_estimation_fiscale_2025(
         if ae_confirme or rqap_confirme:
             raise ValueError("RRQ/RPC avec AE/RQAP : profil combiné hors périmètre.")
         prestations_rrq_rpc = consolider_prestations_rrq_rpc_2025(dossier, rrq_rpc_confirme)
-    sans_emploi = parcours_rrq_rpc and not any(d.type_document in {"T4", "RL-1"} for d in dossier.donnees_validees)
+    sans_emploi = (parcours_psv or parcours_rrq_rpc) and not any(d.type_document in {"T4", "RL-1"} for d in dossier.donnees_validees)
     base = base_sans_emploi_rrq_rpc_2025(dossier) if sans_emploi else consolider_base_fiscale_emploi_2025(dossier)
 
     cotisations_excedentaires_effectives = (
@@ -368,7 +379,9 @@ def calculer_estimation_fiscale_2025(
     )
     prestations_ae = PrestationsAe2025()
     prestations_rqap = PrestationsRqap2025()
-    if parcours_rrq_rpc:
+    if parcours_psv:
+        revenu = appliquer_revenu_psv_2025(revenu, prestations_psv)
+    elif parcours_rrq_rpc:
         revenu = appliquer_prestations_rrq_rpc_2025(revenu, prestations_rrq_rpc)
     elif parcours_ae:
         prestations_ae = consolider_prestations_ae_2025(dossier, ae_confirme)
@@ -403,6 +416,7 @@ def calculer_estimation_fiscale_2025(
     )
 
     revenu, prestations_ae = appliquer_recuperation_ae_2025(revenu, prestations_ae)
+    revenu, prestations_psv = appliquer_recuperation_psv_2025(revenu, prestations_psv)
 
     dons_effectifs = (
         dons_bienfaisance
@@ -457,6 +471,8 @@ def calculer_estimation_fiscale_2025(
         montants_age_retraite_effectifs
     )
 
+    if prestations_psv.present and montants_age_retraite_effectifs.reclamer_revenus_retraite:
+        raise ValueError("La PSV ne donne pas droit au montant pour revenus de retraite (361).")
     if prestations_rrq_rpc.present and montants_age_retraite_effectifs.reclamer_revenus_retraite:
         raise ValueError("Les prestations RRQ/RPC ne donnent pas droit au montant pour revenus de retraite (361).")
 
@@ -814,6 +830,8 @@ def calculer_estimation_fiscale_2025(
         if assurance_medicaments is not None
         else AssuranceMedicamentsQuebec2025()
     )
+    if prestations_psv.supplements and assurance_medicaments_effective.type_couverture.strip().lower() == "public":
+        raise ValueError("Suppléments PSV avec RAMQ publique : exemptions particulières hors périmètre.")
     valider_assurance_medicaments_2025(
         assurance_medicaments_effective
     )
@@ -929,6 +947,7 @@ def calculer_estimation_fiscale_2025(
         quebec,
         prestations_rqap=prestations_rqap,
         prestations_ae=prestations_ae,
+        prestations_psv=prestations_psv,
         prestations_rrq_rpc=prestations_rrq_rpc,
         cotisation_assurance_medicaments=(
             cotisation_assurance_medicaments_2025(
@@ -951,10 +970,12 @@ def calculer_estimation_fiscale_2025(
 
     return EstimationFiscale2025(
         ae_confirme=ae_confirme,
+        psv_confirme=psv_confirme,
         rrq_rpc_confirme=rrq_rpc_confirme,
         rqap_confirme=rqap_confirme,
         prestations_rqap=prestations_rqap,
         prestations_ae=prestations_ae,
+        prestations_psv=prestations_psv,
         prestations_rrq_rpc=prestations_rrq_rpc,
         cotisations_rpa=rpa_effectives,
         dossier=dossier,
@@ -1036,9 +1057,10 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_rpa_2025(estimation.cotisations_rpa),
         *lignes_resume_rqap_2025(estimation.prestations_rqap),
         *lignes_resume_ae_2025(estimation.prestations_ae),
+        *lignes_resume_psv_2025(estimation.prestations_psv),
         *lignes_resume_rrq_rpc_2025(estimation.prestations_rrq_rpc),
         *([f"Revenu total fédéral : {formater_montant_estimation(revenu.revenu_total_federal)}",
-           f"Revenu total Québec : {formater_montant_estimation(revenu.revenu_total_quebec)}"] if estimation.prestations_rqap.present or estimation.prestations_ae.present or estimation.prestations_rrq_rpc.present else []),
+           f"Revenu total Québec : {formater_montant_estimation(revenu.revenu_total_quebec)}"] if estimation.prestations_rqap.present or estimation.prestations_ae.present or estimation.prestations_rrq_rpc.present or estimation.prestations_psv.present else []),
         *(
             [
                 "",
@@ -1648,8 +1670,8 @@ def formater_estimation_fiscale_2025(
         "",
         "RAPPROCHEMENT",
         f"Impôt total préliminaire : {formater_montant_estimation(final.impot_total_preliminaire)}",
-        ("Retenue fédérale T4 + T4E : " if estimation.prestations_rqap.present or estimation.prestations_ae.present else ("Retenue fédérale T4 + T4A(P) : " if estimation.base.nombre_t4 else "Retenue fédérale T4A(P) : ") if estimation.prestations_rrq_rpc.present else "Retenue fédérale T4 : ") + formater_montant_estimation(final.retenue_federale),
-        ("Retenue Québec RL-1 + RL-6 : " if estimation.prestations_rqap.present else "Retenue Québec RL-1 + T4E : " if estimation.prestations_ae.present else ("Retenue Québec " + ("RL-1 + " if estimation.base.nombre_rl1 else "") + ("RL-2 : " if estimation.prestations_rrq_rpc.releve_2_present else "(aucun RL-2 reçu) : ")) if estimation.prestations_rrq_rpc.present else "Retenue Québec RL-1 : ") + formater_montant_estimation(final.retenue_quebec),
+        ("Retenue fédérale T4 + T4E : " if estimation.prestations_rqap.present or estimation.prestations_ae.present else ("Retenue fédérale T4 + T4A(P) : " if estimation.base.nombre_t4 else "Retenue fédérale T4A(P) : ") if estimation.prestations_rrq_rpc.present else ("Retenue fédérale " + ("T4 + " if estimation.base.nombre_t4 else "") + "T4A(OAS) : ") if estimation.prestations_psv.present else "Retenue fédérale T4 : ") + formater_montant_estimation(final.retenue_federale),
+        ("Retenue Québec RL-1 + RL-6 : " if estimation.prestations_rqap.present else "Retenue Québec RL-1 + T4E : " if estimation.prestations_ae.present else ("Retenue Québec " + ("RL-1 + " if estimation.base.nombre_rl1 else "") + ("RL-2 : " if estimation.prestations_rrq_rpc.releve_2_present else "(aucun RL-2 reçu) : ")) if estimation.prestations_rrq_rpc.present else ("Retenue Québec " + ("RL-1 + " if estimation.base.nombre_rl1 else "") + "T4A(OAS) : ") if estimation.prestations_psv.present else "Retenue Québec RL-1 : ") + formater_montant_estimation(final.retenue_quebec),
         f"Retenues totales : {formater_montant_estimation(final.retenues_totales)}",
         "",
         f"RÉSULTAT : {final.resultat}",
