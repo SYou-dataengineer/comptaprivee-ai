@@ -89,6 +89,7 @@ from .tax_field_validation import (
     STATUT_VALIDE,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_employment_insurance_2025 import consolider_prestations_ae_2025, valider_confirmation_ae
 from .tax_parental_benefits_2025 import consolider_prestations_rqap_2025, valider_confirmation_rqap
 
 from .tax_rpp_2025 import (
@@ -141,6 +142,7 @@ class DossierFiscalEnregistre:
     aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
     cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
     rqap_confirme: bool = False
+    ae_confirme: bool = False
 
 
 def _nom_securise(valeur: str) -> str:
@@ -2420,9 +2422,18 @@ def sauvegarder_dossier_fiscal(
     destination: Path | str | None = None,
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool | None = None,
+    ae_confirme: bool | None = None,
 ) -> Path:
     confirme = rqap_confirme if rqap_confirme is not None else (estimation.rqap_confirme if estimation else False)
     valider_confirmation_rqap(confirme)
+    confirme_ae = ae_confirme if ae_confirme is not None else (estimation.ae_confirme if estimation else False)
+    valider_confirmation_ae(confirme_ae)
+    if confirme and confirme_ae:
+        raise ValueError("AE et RQAP simultanés : hors périmètre.")
+    if estimation is not None and confirme_ae != estimation.ae_confirme:
+        raise ValueError("La confirmation AE diffère de l'estimation.")
+    if confirme_ae:
+        consolider_prestations_ae_2025(dossier, True)
     if estimation is not None and (confirme != estimation.rqap_confirme or dossier != estimation.dossier):
         raise ValueError("Le dossier ou la confirmation RQAP diffère de l'estimation.")
     if confirme:
@@ -2449,6 +2460,7 @@ def sauvegarder_dossier_fiscal(
     contenu = {
         "schema_version": SCHEMA_VERSION,
         "rqap_confirme": confirme,
+        "ae_confirme": confirme_ae,
         "cotisations_rpa": {
             nom: _decimal_texte(valeur) if isinstance(valeur, Decimal) else valeur
             for nom, valeur in vars(rpa).items()
@@ -2716,7 +2728,13 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     confirme = valider_confirmation_rqap(contenu.get("rqap_confirme", False))
     if confirme:
         consolider_prestations_rqap_2025(dossier, confirme)
+    confirme_ae = valider_confirmation_ae(contenu.get("ae_confirme", False))
+    if confirme_ae and confirme:
+        raise ValueError("AE et RQAP simultanés : hors périmètre.")
+    if confirme_ae:
+        consolider_prestations_ae_2025(dossier, True)
     return DossierFiscalEnregistre(
+        ae_confirme=confirme_ae,
         rqap_confirme=confirme,
         cotisations_rpa=rpa,
         chemin=chemin,

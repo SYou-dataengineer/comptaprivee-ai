@@ -183,6 +183,7 @@ from .tax_federal_home_accessibility_2025 import (
     DepensesAccessibiliteDomiciliaireFederal2025,
     valider_depenses_accessibilite_domiciliaire_2025,
 )
+from .tax_employment_insurance_2025 import consolider_prestations_ae_2025, lignes_resume_ae_2025
 from .tax_parental_benefits_2025 import consolider_prestations_rqap_2025, lignes_resume_rqap_2025
 
 from .tax_rpp_2025 import (
@@ -2460,6 +2461,7 @@ class ApplicationComptaPrivee(tk.Tk):
         achat_habitation_federal_courant = MontantAchatHabitationFederal2025()
         cotisations_rpa_courantes = CotisationsRpa2025()
         rqap_confirme_courant = False
+        ae_confirme_courant = False
         rapport_fiscal_a_reexporter = False
         aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
         aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
@@ -2828,11 +2830,65 @@ class ApplicationComptaPrivee(tk.Tk):
             organiser_boutons(formulaire.actions)
 
         def invalider_profil_rqap() -> None:
-            nonlocal rqap_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+            nonlocal rqap_confirme_courant, ae_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
             rqap_confirme_courant = False
+            ae_confirme_courant = False
             derniere_estimation = None
             dernier_rapport_pdf = None
             rapport_fiscal_a_reexporter = True
+
+        def ouvrir_prestations_ae_2025() -> None:
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Assurance-emploi 2025 — ComptaPrivée AI")
+            dimensionner_fenetre(dialogue, 800, 650)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(0, weight=1)
+            textes = [
+                "Assurance-emploi 2025",
+                "Importez un T4E, validez ses cases puis préparez le dossier. Les montants proviennent du feuillet; corrigez-les dans la validation des cases. Le profil salarié T4/RL-1 reste requis.",
+                "Prestations régulières et spéciales d'AE uniquement. Les cases 7 (taux 0 ou 30 %) et 14 sont obligatoires. Vérifiez les cases 15, 37, 22, 23 et 30, y compris celles non extraites; les cases facultatives absentes sont traitées comme nulles.",
+                "La récupération utilise le revenu après RPA, REER et autres déductions. Elle réduit les revenus nets fédéral/Québec, mais s'ajoute au montant fédéral à payer. Le FSS est calculé après les remboursements.",
+            ]
+            dossier_apercu = self.dossier_fiscal_valide_courant
+            try:
+                if dossier_apercu is None:
+                    raise ValueError("Préparez d'abord un dossier fiscal validé.")
+                apercu = consolider_prestations_ae_2025(dossier_apercu, True)
+                textes.extend(lignes_resume_ae_2025(apercu, calcul_effectue=False)[1:10])
+            except ValueError as erreur:
+                textes.append(str(erreur))
+            for row, texte in enumerate(textes):
+                ttk.Label(cadre, text=texte, wraplength=520, justify="left").grid(row=row, column=0, sticky="w", pady=7)
+            confirme = tk.BooleanVar(value=ae_confirme_courant)
+            tk.Checkbutton(cadre, variable=confirme, wraplength=520, justify="left", text=(
+                "Je confirme la revue comptable du T4E 2025 complet, du taux de la case 7 et de ses exemptions : même bénéficiaire, résidence Canada/Québec toute l'année; AE ordinaire uniquement. Les cases facultatives absentes sont nulles. Tout remboursement concerne des prestations de 2025 déjà incluses, sans double déduction. Aucun RQAP, PSV, REEI/PUGE, revenu non pris en charge, aide aux études, exonération, paiement rétroactif ou remboursement d'années antérieures."
+            )).grid(row=len(textes), column=0, sticky="w", pady=12)
+            ttk.Label(cadre, text="Sources : tableau T4E 2025; ARC 11900/11905, 23200, 23500/42200, 43700; Québec 111, 246, 250, 451 et annexe F (446).",
+                      wraplength=520).grid(row=len(textes)+1, column=0, sticky="w", pady=8)
+
+            def appliquer_ae():
+                nonlocal ae_confirme_courant, rqap_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                try:
+                    if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
+                        raise ValueError("Le dossier a changé; préparez-le puis rouvrez ce formulaire.")
+                    consolider_prestations_ae_2025(dossier_apercu, confirme.get())
+                except ValueError as erreur:
+                    messagebox.showerror("Assurance-emploi invalide", str(erreur), parent=dialogue)
+                    return
+                ae_confirme_courant = confirme.get()
+                rqap_confirme_courant = False
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Profil AE 2025 validé; recalculez l'estimation.")
+                dialogue.destroy()
+
+            ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right")
+            ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer_ae).pack(side="right")
+            organiser_boutons(formulaire.actions)
 
         def ouvrir_prestations_rqap_2025() -> None:
             dialogue = tk.Toplevel(fenetre)
@@ -2867,7 +2923,7 @@ class ApplicationComptaPrivee(tk.Tk):
                       wraplength=520).grid(row=len(textes)+1, column=0, sticky="w", pady=8)
 
             def appliquer_rqap():
-                nonlocal rqap_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal rqap_confirme_courant, ae_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez ce formulaire.")
@@ -2876,6 +2932,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     messagebox.showerror("Prestations RQAP invalides", str(erreur), parent=dialogue)
                     return
                 rqap_confirme_courant = confirme.get()
+                ae_confirme_courant = False
                 derniere_estimation = None
                 dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
@@ -9677,7 +9734,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal aidant_30425_federal_courant
             nonlocal accessibilite_domiciliaire_federale_courante
             nonlocal achat_habitation_federal_courant
-            nonlocal cotisations_rpa_courantes, rqap_confirme_courant
+            nonlocal cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -9719,6 +9776,7 @@ class ApplicationComptaPrivee(tk.Tk):
             achat_habitation_federal_courant = MontantAchatHabitationFederal2025()
             cotisations_rpa_courantes = CotisationsRpa2025()
             rqap_confirme_courant = False
+            ae_confirme_courant = False
             rapport_fiscal_a_reexporter = True
             aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
             aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
@@ -9856,7 +9914,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                             accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                             achat_habitation_federal=achat_habitation_federal_courant,
-                            cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant,
+                            cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant,
                             aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                             aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                             aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -9904,7 +9962,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                     accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                     achat_habitation_federal=achat_habitation_federal_courant,
-                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant,
+                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -9992,7 +10050,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal aidant_30425_federal_courant
             nonlocal accessibilite_domiciliaire_federale_courante
             nonlocal achat_habitation_federal_courant
-            nonlocal cotisations_rpa_courantes, rqap_confirme_courant
+            nonlocal cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
             dossier = enregistrement.dossier
@@ -10078,6 +10136,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             cotisations_rpa_courantes = enregistrement.cotisations_rpa
             rqap_confirme_courant = enregistrement.rqap_confirme
+            ae_confirme_courant = enregistrement.ae_confirme
             aidant_30450_federal_courant = (
                 enregistrement.aidant_autre_personne_charge_federal
             )
@@ -10355,7 +10414,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                     accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                     achat_habitation_federal=achat_habitation_federal_courant,
-                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant,
+                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -10752,6 +10811,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(zone_actions, text="Prestations RQAP 2025",
                    command=ouvrir_prestations_rqap_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Assurance-emploi 2025",
+                   command=ouvrir_prestations_ae_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Cotisations RPA 2025",
                    command=ouvrir_cotisations_rpa_2025).pack(side="left", padx=4)
 

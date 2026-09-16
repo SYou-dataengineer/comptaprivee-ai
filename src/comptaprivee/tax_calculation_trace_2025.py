@@ -183,6 +183,7 @@ def construire_trace_calcul_fiscal_2025(
     )
 
     rqap = estimation.prestations_rqap
+    ae = estimation.prestations_ae
     if rqap.present:
         formule_revenu_federal += " + RQAP 11900 - remboursement 23200"
         formule_revenu_quebec += " + RQAP 110 - remboursement 246"
@@ -200,6 +201,9 @@ def construire_trace_calcul_fiscal_2025(
         formule_revenu_federal += (
             " - cotisations syndicales/professionnelles validées"
         )
+    if ae.present:
+        formule_revenu_federal += " + AE 11900 - remboursement 23200 - récupération 23500"
+        formule_revenu_quebec += " + AE 111 - remboursement 246 - récupération 250"
 
     formule_impot_federal = (
         "Impôt fédéral brut - crédits non remboursables de base"
@@ -288,6 +292,8 @@ def construire_trace_calcul_fiscal_2025(
     )
     if rqap.present:
         formule_impot_total += " + FSS Québec 446"
+    if ae.present:
+        formule_impot_total += " + récupération AE 42200 (sans abattement) + FSS Québec 446"
     if assurance_medicaments.type_couverture.strip():
         formule_impot_total += (
             " + cotisation assurance médicaments ligne 447"
@@ -404,6 +410,7 @@ def construire_trace_calcul_fiscal_2025(
         _ligne(
             16, "RAPPROCHEMENT", "Retenues totales",
             ("T4 22 + T4E 22 + RL-1 E + RL-6 G (T4E 23 non additionné)" if rqap.present
+             else "T4 22 + RL-1 E + T4E 22 et 23 — valeurs validées" if ae.present
              else "T4 case 22 + RL-1 case E — valeurs validées"),
             "Retenue fédérale + retenue Québec",
             final.retenues_totales,
@@ -1216,6 +1223,21 @@ def construire_trace_calcul_fiscal_2025(
                 lignes + nouvelles_lignes
             )
         )
+
+    if ae.present:
+        for cible, section, libelle, source, formule, montant in (
+            ("Déduction RRQ améliorée", "REVENU FÉDÉRAL", "AE ligne 11900", "T4E 14", "Prestations totales, sans exonération", ae.prestations),
+            ("Déduction RRQ améliorée", "INFORMATION", "AE ligne 11905", "T4E 37", "Maternité/parentales déjà incluses dans 11900", ae.maternite_parentales),
+            ("Revenu imposable fédéral", "REVENU FÉDÉRAL", "Remboursement AE 23200", "T4E 30", "Trop-payé remboursé, distinct de la récupération", ae.remboursement),
+            ("Revenu imposable fédéral", "REVENU FÉDÉRAL", "Revenu avant récupération 23400", "Revenus et déductions validés", "Revenu net avant la ligne 23500; aucun ajustement PUGE/REEI", ae.revenu_avant_recuperation),
+            ("Revenu imposable fédéral", "REVENU FÉDÉRAL", "Récupération AE 23500", "T4E tableau 2025, cases 7/15/30", "Si taux 30 % : 30 % × min(max(0,15-30), max(0,23400-82125)); sinon 0", ae.recuperation),
+            ("Déduction travailleur Québec", "REVENU QUÉBEC", "AE ligne 111", "T4E 14", "Prestations totales", ae.prestations),
+            ("Revenu imposable Québec", "REVENU QUÉBEC", "Remboursement AE 246", "T4E 30", "Trop-payé de 2025 remboursé", ae.remboursement),
+            ("Revenu imposable Québec", "REVENU QUÉBEC", "Récupération AE 250", "Québec 250 point 3", "Report de la ligne fédérale 23500", ae.recuperation),
+            ("Impôt total préliminaire", "FÉDÉRAL", "Récupération AE 42200", "Tableau T4E 2025", "Ajout de 23500 au montant à payer, sans abattement Québec", ae.recuperation),
+            ("Impôt total préliminaire", "QUÉBEC", "FSS AE ligne 446", "Annexe F 2025", "Assiette = AE - remboursement 246 - récupération 250; barème FSS", ae.cotisation_fss),
+        ):
+            lignes = _inserer_ligne_avant(lignes, cible, _ligne(0, section, libelle, source, formule, montant))
 
     prochain_ordre = len(lignes) + 1
 

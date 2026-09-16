@@ -18,6 +18,7 @@ autonomes, plusieurs employeurs et autres situations particulières.
 from dataclasses import dataclass
 from decimal import Decimal
 
+from .tax_employment_insurance_2025 import PrestationsAe2025
 from .tax_parental_benefits_2025 import PrestationsRqap2025
 from .tax_engine_input_2025 import BaseFiscaleEmploi2025
 from .tax_federal_2025 import ImpotFederalPreliminaire2025
@@ -99,6 +100,7 @@ def calculer_rapprochement_fiscal_2025(
     remboursement_rqap_excedentaire: Decimal = ZERO,
     cotisations_excedentaires_verifiees: bool = False,
     prestations_rqap: PrestationsRqap2025 = PrestationsRqap2025(),
+    prestations_ae: PrestationsAe2025 = PrestationsAe2025(),
 ) -> RapprochementFiscal2025:
     """Calcule une estimation de base du remboursement ou du solde."""
     _verifier_coherence(base, federal, quebec)
@@ -145,12 +147,14 @@ def calculer_rapprochement_fiscal_2025(
         + quebec.impot_quebec_preliminaire
         + cotisation_assurance_medicaments
         + prestations_rqap.cotisation_fss
+        + prestations_ae.cotisation_fss + prestations_ae.recuperation
     )
 
     retenues_totales = arrondir_cent(
         base.impot_federal_retenu
         + base.impot_quebec_retenu
         + prestations_rqap.retenue_federale + prestations_rqap.retenue_quebec
+        + prestations_ae.retenue_federale + prestations_ae.retenue_quebec
     )
 
     difference = arrondir_cent(
@@ -310,8 +314,8 @@ def calculer_rapprochement_fiscal_2025(
         impot_federal_apres_abattement=federal_apres_abattement,
         impot_quebec_preliminaire=quebec.impot_quebec_preliminaire,
         impot_total_preliminaire=impot_total,
-        retenue_federale=base.impot_federal_retenu + prestations_rqap.retenue_federale,
-        retenue_quebec=base.impot_quebec_retenu + prestations_rqap.retenue_quebec,
+        retenue_federale=base.impot_federal_retenu + prestations_rqap.retenue_federale + prestations_ae.retenue_federale,
+        retenue_quebec=base.impot_quebec_retenu + prestations_rqap.retenue_quebec + prestations_ae.retenue_quebec,
         retenues_totales=retenues_totales,
         remboursement_estime=remboursement,
         solde_estime=solde,
@@ -319,9 +323,11 @@ def calculer_rapprochement_fiscal_2025(
         statut="ESTIMATION DE BASE — validation comptable obligatoire",
         limitations=(
             ("Le calcul couvre le profil emploi Québec avec RQAP ordinaire 2025." if prestations_rqap.present
+             else "Le calcul couvre le profil emploi Québec et AE ordinaire 2025." if prestations_ae.present
              else "Le calcul couvre uniquement le profil emploi Québec simple 2025."),
             "L'abattement Québec est calculé à 16,5 % de l'impôt fédéral de base.",
             ("Retenues T4/RL-1 et T4E/RL-6 incluses; FSS ligne 446 calculé." if prestations_rqap.present
+             else "AE : retenues T4E incluses; récupération 42200 et FSS 446 ajoutés sans abattement." if prestations_ae.present
              else "Les retenues T4 et RL-1 sont comparées aux impôts préliminaires."),
             limitation_credits,
             *(
@@ -396,6 +402,7 @@ def calculer_rapprochement_fiscal_2025(
                 if cotisation_assurance_medicaments > ZERO
                 else (
                     ("Aucune prime d'assurance médicaments; FSS RQAP inclus." if prestations_rqap.cotisation_fss
+                     else "Aucune prime d'assurance médicaments; FSS AE inclus." if prestations_ae.cotisation_fss
                      else "Aucune prime d'assurance médicaments ni contribution Québec additionnelle."),
                 )
             ),

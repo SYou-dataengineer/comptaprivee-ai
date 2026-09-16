@@ -230,7 +230,7 @@ retenues totales 17 700 $; FSS 8,70 $. Avec RPA 3 000 $, REER 5 000 $ et
 cotisations syndicales fédérales 600 $, revenus nets 61 915 $ et 61 095 $;
 le FSS demeure 8,70 $.
 
-Les blocs 2B à 2H restent à développer après accord utilisateur. Aucun crédit
+Au terme du bloc 2A, les blocs 2B à 2H restaient à développer après accord utilisateur. Aucun crédit
 de retraite précédemment bloqué n'est activé par ce bloc RQAP.
 
 Validation finale locale : **1 726 tests réussis**, aucun échec ni test ignoré,
@@ -251,3 +251,86 @@ et inspectées. Résultat du cas de référence : impôt total 14 508,39 $,
 remboursement estimé 3 191,61 $. Captures et journaux restent dans `tmp/`,
 exclus du commit. Les limites OCR, profils multiples, années antérieures,
 DPI Windows réels et avertissements de dépréciation restent documentées.
+
+## Bloc 2B — Assurance-emploi 2025
+
+### Périmètre et exclusions
+
+Le profil couvre un unique T4E validé, en complément du profil salarié Québec
+T4/RL-1 existant, pour le même bénéficiaire résidant au Canada et au Québec
+toute l'année 2025. La confirmation comptable du feuillet complet est obligatoire.
+Les cases 7 (taux de 0 % ou 30 %) et 14 sont requises. Les cases facultatives
+15, 22, 23, 26, 27, 30 et 37 absentes sont nulles seulement après cette revue.
+La case 37 est comprise dans la case 14 et ne crée aucun revenu supplémentaire.
+
+Les montants doivent être finis, non négatifs, au cent près et inférieurs à
+un milliard de dollars. Sources non jointes, statuts non validés, cases en
+double et T4E multiples sont refusés. Les cases 15 + 37 ne peuvent dépasser
+14; le remboursement 30 ne peut dépasser 14. Si 26 ou 27 est présente,
+leur somme doit égaler 30, sans additionner ces sous-cases une seconde fois.
+
+Sont exclus : combinaison AE/RQAP (dont RL-6 ou T4E 36), retraite et PSV,
+ajustements PUGE/REEI, aide aux études, exonérations, paiements rétroactifs,
+remboursements de prestations d'années antérieures et autres revenus hors
+profil. Toute case non autorisée non nulle bloque le calcul, notamment
+17, 18, 20, 21, 24 et 33. La ligne 25600 de la cartographie d'audit n'est donc
+pas implémentée par ce bloc. Le taux du feuillet et ses exemptions sont
+contrôlés par le comptable, pas reconstitués à partir d'un historique d'AE.
+
+### Calcul et sources
+
+Les références ARC T4E, 11900/11905 et 23500 citées dans l'audit ci-dessus
+ainsi que l'annexe F 2025 ont été revérifiées le 16 septembre 2026.
+Le brut 14 alimente 11900 et Québec 111; 37 renseigne 11905. Le remboursement
+30 est déduit à 23200/246 avant les déductions RPA, REER et syndicales.
+Après ces déductions, le revenu fédéral avant récupération représente 23400
+dans ce périmètre sans ajustements PUGE/REEI ni PSV.
+
+Pour un taux de 30 %, la récupération est arrondie au cent :
+`30 % × min(max(0, case 15 − case 30), max(0, ligne 23400 − 82 125))`.
+Elle est nulle pour un taux de 0 %. Elle réduit le revenu net et imposable
+à 23500 et Québec 250 point 3, avant les crédits, et s'ajoute au montant
+fédéral à payer à 42200 sans abattement Québec. Les retenues 22 et 23
+s'ajoutent respectivement à 43700 et Québec 451.
+
+L'assiette FSS est `case 14 − case 30 − récupération`, conformément aux
+déductions 246 et 250 point 3 de l'annexe F. Le barème documenté au bloc 2A
+s'applique; les déductions RPA/REER ne diminuent pas cette assiette.
+Ce calcul reste limité aux revenus du présent profil.
+
+### Intégration et vérification
+
+Reconnaissance, extraction, validation, confirmation GUI, estimation, trace,
+JSON et PDF utilisent le même profil AE. Une nouvelle extraction retire les
+confirmations; une modification du profil invalide l'estimation et son export.
+La confirmation persiste au rechargement. Un ancien JSON sans `ae_confirme`
+reste chargeable mais exige une confirmation avant calcul avec T4E AE.
+Un T4E reconnu sans cases ne peut être silencieusement omis à la préparation.
+
+Cas fictif : salaire 52 000 $, T4E 14 = 40 000 $, 15 = 30 000 $, 37 = 5 000 $,
+30 = 1 000 $, taux 30 %, retenues 22 = 2 500 $ et 23 = 3 000 $.
+Revenu avant récupération : 90 515 $; récupération : 2 517 $; revenus nets
+fédéral 87 998 $ et Québec 86 578 $; FSS 150 $; impôt total 23 481,10 $;
+retenues 19 200 $; solde estimé 4 281,10 $. Avec RPA 3 000 $, REER 5 000 $
+et cotisations syndicales 600 $, le revenu avant récupération est 81 915 $
+et la récupération nulle. Le profil RQAP conserve son remboursement de 3 191,61 $.
+
+Les 142 tests ciblés AE/RQAP passent, dont 65 nouveaux cas AE (58 tests de
+règles et d'intégration et 7 cas GUI). Le formulaire a été inspecté à
+600 × 400 et 1 000 × 700 en haut et en bas; les actions sont aussi testées
+à trois facteurs Tk. Les deux pages PDF ont été rendues avec PyMuPDF et
+inspectées : aucun texte tronqué ni chevauchement constaté. Captures, PDF
+fictif et scripts de vérification restent dans `tmp/`, exclus du commit.
+
+Limites restantes : extraction OCR avec marqueurs explicites case/box,
+revue humaine des omissions et du bénéficiaire, profils exclus ci-dessus,
+DPI Windows réels, thèmes et multi-écrans. Aucun crédit de retraite n'est
+activé. Le Bloc 2C reste en attente d'un accord utilisateur explicite.
+
+Validation finale locale : **1 791 tests réussis**, aucun échec ni test ignoré,
+8 avertissements de dépréciation, en 49,06 s (`python -m pytest -q`, Python
+de `.venv`). Les premiers essais dans le bac à sable ont rencontré des refus
+d'accès aux dossiers temporaires et à Tk; les tests ciblés puis la suite
+complète ont réussi avec les accès Windows nécessaires, sans désactivation
+ni modification des tests. Les avertissements PyMuPDF/SWIG et openpyxl ainsi
+que l'intermittence Tcl déjà documentée restent à surveiller.

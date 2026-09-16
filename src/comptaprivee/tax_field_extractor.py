@@ -272,9 +272,19 @@ def extraire_cases_fiscales(
             ),
         )
         if type_final == "T4E" and case == "7":
-            taux = re.search(r"\b(?:case|box)\s*7\b\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?", texte, re.IGNORECASE)
-            if taux:
-                resultat = (Decimal(taux.group(1).replace(",", ".")), taux.group(1))
+            # Le taux est un pourcentage, souvent entier, précédé d'un libellé.
+            # Ne jamais récupérer un montant appartenant à la case suivante.
+            resultat = None
+            marqueur = re.search(r"\b(?:case|box)\s*7\b", texte, re.IGNORECASE)
+            if marqueur:
+                extrait = texte[marqueur.end():marqueur.end() + 220]
+                limite = _prochaine_case_position(extrait)
+                if limite is not None:
+                    extrait = extrait[:limite]
+                taux = re.search(r"(?<![\w.,])([-−]?\d+(?:[.,]\d+)?)(?![\w.,])\s*%?", extrait)
+                if taux:
+                    brut = taux.group(1).replace("−", "-")
+                    resultat = (Decimal(brut.replace(",", ".")), brut)
         if resultat is None:
             continue
 
