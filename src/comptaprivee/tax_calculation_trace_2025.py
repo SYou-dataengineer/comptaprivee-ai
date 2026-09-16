@@ -182,6 +182,11 @@ def construire_trace_calcul_fiscal_2025(
         "Revenu Québec - déduction travailleur - déduction RRQ"
     )
 
+    rqap = estimation.prestations_rqap
+    if rqap.present:
+        formule_revenu_federal += " + RQAP 11900 - remboursement 23200"
+        formule_revenu_quebec += " + RQAP 110 - remboursement 246"
+
     if estimation.cotisations_rpa.montant_federal:
         formule_revenu_federal += " - déduction RPA ligne 20700"
     if estimation.cotisations_rpa.montant_quebec:
@@ -281,6 +286,8 @@ def construire_trace_calcul_fiscal_2025(
     formule_impot_total = (
         "Impôt fédéral après abattement + impôt Québec"
     )
+    if rqap.present:
+        formule_impot_total += " + FSS Québec 446"
     if assurance_medicaments.type_couverture.strip():
         formule_impot_total += (
             " + cotisation assurance médicaments ligne 447"
@@ -396,11 +403,23 @@ def construire_trace_calcul_fiscal_2025(
         ),
         _ligne(
             16, "RAPPROCHEMENT", "Retenues totales",
-            "T4 case 22 + RL-1 case E — valeurs validées",
+            ("T4 22 + T4E 22 + RL-1 E + RL-6 G (T4E 23 non additionné)" if rqap.present
+             else "T4 case 22 + RL-1 case E — valeurs validées"),
             "Retenue fédérale + retenue Québec",
             final.retenues_totales,
         ),
     )
+
+    if rqap.present:
+        for cible, section, libelle, source, formule, montant in (
+            ("Déduction RRQ améliorée", "REVENU FÉDÉRAL", "RQAP ligne 11900", "T4E 14 = 36", "Prestations brutes", rqap.prestations),
+            ("Déduction RRQ améliorée", "INFORMATION", "RQAP ligne 11905", "T4E 36", "Déjà inclus dans 11900; ne pas additionner", rqap.prestations),
+            ("Revenu imposable fédéral", "REVENU FÉDÉRAL", "Remboursement ligne 23200", "T4E 30", "Remboursement des prestations de 2025", rqap.remboursement),
+            ("Déduction travailleur Québec", "REVENU QUÉBEC", "RQAP ligne 110", "RL-6 A", "Prestations brutes", rqap.prestations),
+            ("Revenu imposable Québec", "REVENU QUÉBEC", "Remboursement ligne 246", "RL-6 D", "Remboursement des prestations de 2025", rqap.remboursement),
+            ("Impôt total préliminaire", "QUÉBEC", "FSS ligne 446", "Annexe F 2025", "Assiette = RQAP - remboursement; seuils 18 130 / 63 060; plafonds 150 / 1 000", rqap.cotisation_fss),
+        ):
+            lignes = _inserer_ligne_avant(lignes, cible, _ligne(0, section, libelle, source, formule, montant))
 
     for cible, section, libelle, source, montant in (
         ("Revenu imposable fédéral", "REVENU FÉDÉRAL", "Déduction RPA ligne 20700",

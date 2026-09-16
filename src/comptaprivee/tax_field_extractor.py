@@ -1,6 +1,6 @@
 """Extraction locale et traçable des premières cases fiscales.
 
-Phase 1 : extraction de champs T4 et RL-1 seulement.
+Extraction de champs T4, RL-1, T4E et RL-6 avec validation humaine.
 Aucun calcul d'impôt et aucune transmission gouvernementale.
 """
 
@@ -120,6 +120,24 @@ REGLES_RL1 = (
     ),
 )
 
+REGLES_T4E = tuple(
+    (case, libelle, (rf"\b(?:case|box)\s*{case}\b",))
+    for case, libelle in (
+        ("7", "Taux de remboursement"), ("14", "Prestations totales"),
+        ("15", "Prestations régulières et autres"), ("17", "Soutien à l'emploi"),
+        ("18", "Prestations exonérées"), ("20", "Aide imposable aux études"),
+        ("21", "Aide non imposable aux études"), ("22", "Impôt fédéral retenu"),
+        ("23", "Impôt Québec retenu"), ("24", "Impôt des non-résidents"),
+        ("26", "Trop-payé récupéré"), ("27", "Annulation d'impôt retenu"),
+        ("30", "Remboursement total"), ("33", "Prestations fonds consolidé"),
+        ("36", "Prestations RQAP"), ("37", "AE maternité et parentales"),
+    )
+)
+REGLES_RL6 = tuple(
+    (case, libelle, (rf"\bcase\s*{case}\b",))
+    for case, libelle in (("A", "Prestations RQAP"), ("D", "Remboursement de prestations"), ("G", "Impôt Québec retenu"))
+)
+
 MONTANT_RE = re.compile(
     r"(?<![\w.])("
     r"(?:\d{1,3}(?:[ \u00a0]\d{3})+(?:[,.]\d{2})?)"
@@ -230,6 +248,10 @@ def extraire_cases_fiscales(
     elif type_normalise in {"RL-1", "RL1"}:
         regles = REGLES_RL1
         type_final = "RL-1"
+    elif type_normalise == "T4E":
+        regles, type_final = REGLES_T4E, "T4E"
+    elif type_normalise in {"RL-6", "RL6"}:
+        regles, type_final = REGLES_RL6, "RL-6"
     else:
         raise ValueError(
             "Type fiscal non pris en charge pour l'extraction."
@@ -243,10 +265,16 @@ def extraire_cases_fiscales(
             texte,
             marqueurs,
             conserver_signe=(
+                type_final in {"T4E", "RL-6"}
+                or
                 (type_final == "T4" and case in {"20", "74", "75"})
                 or (type_final == "RL-1" and case in {"D", "D-1", "D-2", "D-3"})
             ),
         )
+        if type_final == "T4E" and case == "7":
+            taux = re.search(r"\b(?:case|box)\s*7\b\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?", texte, re.IGNORECASE)
+            if taux:
+                resultat = (Decimal(taux.group(1).replace(",", ".")), taux.group(1))
         if resultat is None:
             continue
 

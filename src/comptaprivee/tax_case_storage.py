@@ -89,6 +89,8 @@ from .tax_field_validation import (
     STATUT_VALIDE,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_parental_benefits_2025 import consolider_prestations_rqap_2025, valider_confirmation_rqap
+
 from .tax_rpp_2025 import (
     CotisationsRpa2025, valider_cotisations_rpa_2025, verifier_rpa_dossier_2025,
 )
@@ -138,6 +140,7 @@ class DossierFiscalEnregistre:
     aidant_conjoint_personne_charge_federal: AidantNaturelConjointOuPersonneChargeFederal2025
     aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
     cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
+    rqap_confirme: bool = False
 
 
 def _nom_securise(valeur: str) -> str:
@@ -2416,7 +2419,14 @@ def sauvegarder_dossier_fiscal(
     rapport_pdf: Path | str | None = None,
     destination: Path | str | None = None,
     cotisations_rpa: CotisationsRpa2025 | None = None,
+    rqap_confirme: bool | None = None,
 ) -> Path:
+    confirme = rqap_confirme if rqap_confirme is not None else (estimation.rqap_confirme if estimation else False)
+    valider_confirmation_rqap(confirme)
+    if estimation is not None and (confirme != estimation.rqap_confirme or dossier != estimation.dossier):
+        raise ValueError("Le dossier ou la confirmation RQAP diffère de l'estimation.")
+    if confirme:
+        consolider_prestations_rqap_2025(dossier, confirme)
     rpa = cotisations_rpa if cotisations_rpa is not None else (
         estimation.cotisations_rpa if estimation is not None else CotisationsRpa2025()
     )
@@ -2438,6 +2448,7 @@ def sauvegarder_dossier_fiscal(
 
     contenu = {
         "schema_version": SCHEMA_VERSION,
+        "rqap_confirme": confirme,
         "cotisations_rpa": {
             nom: _decimal_texte(valeur) if isinstance(valeur, Decimal) else valeur
             for nom, valeur in vars(rpa).items()
@@ -2594,7 +2605,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             raise ValueError("Une donnée fiscale enregistrée est incomplète.") from erreur
         if statut not in STATUTS_VALIDATION_AUTORISES:
             raise ValueError("Statut de validation fiscale enregistré invalide.")
-        if type_document not in {"T4", "RL-1"}:
+        if type_document not in {"T4", "RL-1", "T4E", "RL-6"}:
             raise ValueError("Type de document fiscal enregistré non pris en charge.")
         ve = _decimal_depuis_json(brut.get("valeur_extraite"), f"valeur_extraite[{index}]")
         vv = _decimal_depuis_json(brut.get("valeur_validee"), f"valeur_validee[{index}]")
@@ -2702,7 +2713,11 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     rpa = _rpa_depuis_dict(contenu["cotisations_rpa"]) if "cotisations_rpa" in contenu else CotisationsRpa2025()
     if rpa.montant_federal:
         verifier_rpa_dossier_2025(dossier, rpa)
+    confirme = valider_confirmation_rqap(contenu.get("rqap_confirme", False))
+    if confirme:
+        consolider_prestations_rqap_2025(dossier, confirme)
     return DossierFiscalEnregistre(
+        rqap_confirme=confirme,
         cotisations_rpa=rpa,
         chemin=chemin,
         dossier=dossier,

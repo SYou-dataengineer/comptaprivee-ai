@@ -124,3 +124,130 @@ Windows, déjà observée au Bloc 2, n'est pas déclarée corrigée : le lanceme
 complet final a réussi sans contournement, retrait ou désactivation de tests.
 La surveillance de l'environnement Tcl et les avertissements de dépréciation
 restent ouverts; ils ne justifient aucune modification des règles fiscales.
+
+## Priorité 2 — audit des revenus de remplacement et de retraite
+
+Audit du 15 septembre 2026, à partir du bloc RPA validé (`e746059`).
+La priorité 2 est une famille de blocs, pas un unique ajout de revenu.
+Avant ce travail, seul le salaire alimente réellement les revenus totaux;
+les crédits d'âge existent, mais cela ne permet pas de déclarer une pension.
+Les règles RPA et les règles fiscales précédemment validées sont conservées.
+
+### Cartographie des lignes et dépendances
+
+| Bloc | Feuillets / données à intégrer | Fédéral | Québec | Dépendances et limites à traiter ensemble |
+| --- | --- | --- | --- | --- |
+| **2A — présent bloc : RQAP ordinaire** | T4E 14/36, 22/23, 30; RL-6 A/D/G | 11900; 11905 comme sous-ensemble informatif; 23200; retenues 43700 | 110; 246; retenues 451; FSS 446 | Appariement sans double compte, revenu net des crédits, annexe F; remboursements de prestations de 2025 seulement |
+| 2B — assurance-emploi | T4E 7, 14, 15, 17, 18, 20, 21, 22, 23, 26, 27, 30, 33, 37 | 11900; sous-ensemble 11905 pour maternité/parentales; 23200; 23500 et 42200 si récupération; 25600 pour l'aide non imposable | 111; 246 pour trop-payé remboursé; 250 point 3 pour récupération fédérale; 451; FSS 446 | Séparer AE du RQAP; calcul de récupération après les déductions; seuil AE 2025 de 82 125 $, taux et exemptions du feuillet; exonérations et paiements rétroactifs distincts |
+| 2C — RRQ/RPC | T4A(P) 20, sous-cases de prestations dont invalidité 16; RL-2 C; retenues correspondantes | 11400; 11410 informatif si invalidité; 43700 | 119; 451; FSS 446 | Retraite, survivant, enfant et invalidité; attribution au bénéficiaire; paiements rétroactifs; ne pas confondre avec les cotisations RRQ sur salaire |
+| 2D — PSV et suppléments | T4A(OAS) 18, 19, 20, 21, 22, 23 selon leur fonction | 11300; 14600; 25000; récupération 23500/42200; retenues 43700 | 114; 148; 295; 250 point 3; 451 | Seuil PSV 2025 de 93 454 $, revenu de récupération ajusté et plafond; distinguer récupération et impôt retenu; interaction AE; prestations non admissibles au crédit de pension |
+| 2E — pensions, FERR et rentes | T4A 016, 024, 133, 194; T4RIF 16/22; T3 31; T5 19; RL-2 A/B et codes complémentaires | 11500 ou 13000/12100 selon la nature, l'âge et le décès du conjoint; 31400 pour la portion admissible | 122 ou autre ligne selon nature; 361 selon admissibilité; FSS 446 | Âge au 31 décembre, type de régime, admissibilité distincte au crédit; revenus étrangers et décès à traiter séparément; le FSS exige une assiette complète |
+| 2F — retraits REER et sommes forfaitaires | T4RSP 16/18/20/22/26/28/34; T4A 018/106; T4 66/67; RL-2 B et codes | 12900 ou 13000; certaines sommes négatives à 23200; retenues | 122 ou 154 selon nature; retenues 451 | Attribution au conjoint, remboursement de primes, décès, transferts et RAP/REEP; un retrait ordinaire n'est pas automatiquement un revenu admissible au crédit de pension |
+| 2G — fractionnement de pension | T1032, annexe Q et données des deux conjoints | Revenu reçu 11600, déduction du cédant 21000; répartition des retenues | Revenu reçu 123, déduction 245; répartition des retenues | Deux déclarations cohérentes, conditions d'âge/admissibilité propres aux deux juridictions; influence des crédits, PSV, RAMQ et FSS |
+| 2H — autres prestations de remplacement | T5007, RL-5 et renseignements CNESST/SAAQ; T4A pour certaines autres prestations | 14400/14500, déduction 25000 selon nature | 147/148, déduction 295; redressement 358 et annexe E selon indemnité | Inclusion au revenu net malgré une déduction au revenu imposable, attribution conjugale de certaines aides, indemnités et remboursements; ne pas traiter comme un revenu salarial |
+
+Les lignes 11905 et 11410 sont des renseignements compris dans une autre
+ligne de revenu : elles ne s'ajoutent jamais une seconde fois au revenu total.
+Les remboursements volontaires de trop-payés (23200/246) sont distincts des
+récupérations calculées sur la déclaration (23500/42200 et Québec 250 point 3).
+La ligne Québec 123 concerne le fractionnement, pas les retraits REER ordinaires.
+
+Les revenus nouveaux doivent précéder RPA, REER et cotisations syndicales
+dans le calcul du revenu net. Les crédits médicaux, d'âge et familiaux ainsi
+que la RAMQ doivent ensuite utiliser les nouvelles bases; les profils saisis
+manuellement avec un ancien revenu net doivent être revalidés. Le salaire
+demeure la base des cotisations salariales et du crédit canadien pour emploi.
+L'ACT, la prime au travail, les frais de garde et les autres prestations liées
+au revenu restent dans les priorités ultérieures : leur assiette de revenu
+gagné devra distinguer salaire, RQAP, AE et pension selon chaque dispositif.
+
+### Références officielles de l'audit
+
+- [ARC — guide fédéral 2025, tableau des revenus de retraite](https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-years/general-income-tax-benefit-package/5000-g.html#h-18) : feuillets, cases, âge, décès et lignes fédérales.
+- [ARC — T4E et ses cases](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/tax-slips/understand-your-tax-slips/t4-slips/t4e-statement-employment-insurance-other-benefits.html).
+- [ARC — ligne 11900](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-11900-employment-insurance-other-benefits.html) et [ligne 11905](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-11900-employment-insurance-other-benefits/line-11905-employment-insurance-maternity-and-parental-benefits-and-provincial-parental-insurance-plan-maternity-and-paternity-benefits.html).
+- [ARC — remboursement de prestations, ligne 23500](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-23500-social-benefits-repayment.html) et [PSV 2025](https://www.canada.ca/en/services/benefits/publicpensions/old-age-security/repayment.html).
+- [Revenu Québec — déclaration et annexes 2025](https://www.revenuquebec.ca/fr/services-en-ligne/formulaires-et-publications/details-courant/tp-1/), [RL-6](https://www.revenuquebec.ca/documents/fr/formulaires/rl/RL-6%282022-10%29.pdf), [ligne 110](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/96-a-164-revenu-total/ligne-110/) et [ligne 111](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/96-a-164-revenu-total/ligne-111/).
+- Revenu Québec : [PSV 114](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/96-a-164-revenu-total/ligne-114/), [RRQ/RPC 119](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/96-a-164-revenu-total/ligne-119/), [pensions et REER 122](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/96-a-164-revenu-total/ligne-122/), [fractionnement 123](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/96-a-164-revenu-total/ligne-123/).
+- Revenu Québec : [indemnités et suppléments 148](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/96-a-164-revenu-total/ligne-148/), [déductions 295](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/276-a-298-2-revenu-imposable/ligne-295/), [remboursements 246](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/201-a-260-revenu-net/ligne-246/) et [récupération 250 point 3](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/201-a-260-revenu-net/ligne-250/point-3/).
+
+## Bloc fiscal 2A — RQAP ordinaire et FSS 2025
+
+### Règles intégrées et périmètre
+
+- Un T4E et un RL-6 distincts, du même bénéficiaire et pour 2025, en complément
+  du profil salarié existant (un T4 et un RL-1). Résidence Canada/Québec toute
+  l'année, sans exonération, rétroactivité ou autre prestation T4E.
+- Les trois cases T4E 14, T4E 36 et RL-6 A sont obligatoires et doivent être
+  égales. Les retenues T4E 23/RL-6 G et remboursements T4E 30/RL-6 D doivent
+  concorder exactement. Aucun cumul de deux feuillets pour une même somme.
+- Remboursement limité aux prestations de 2025 déjà incluses, sans dépasser
+  leur montant. Les remboursements d'années antérieures restent exclus :
+  les lignes 246 et 462 point 8 prévoient des traitements particuliers.
+- Les cases facultatives non extraites ne valent zéro qu'après confirmation
+  comptable de la revue des feuillets complets. Les doublons, montants
+  non finis, négatifs ou avec fractions de cent et les sources incohérentes
+  sont refusés. Les cases T4E de prestations hors profil positives bloquent.
+- L'extraction reconnaît les marqueurs explicites « case »/« box »; elle ne
+  prétend pas lire toutes les dispositions de tableaux OCR. Le contrôle
+  humain couvre le nom du bénéficiaire, l'année, les feuillets remplacés et
+  les cases omises. Aucun montant supplémentaire n'est saisi dans le
+  formulaire de confirmation : la correction reste dans la validation des cases.
+- Revenu total augmenté du brut; déductions 23200/246 appliquées avant les
+  déductions et crédits existants. Les retenues RQAP s'ajoutent aux retenues
+  salariales; la base d'emploi et les cotisations salariales restent intactes.
+
+### Dépendance FSS traitée dans ce bloc
+
+L'[annexe F 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf)
+exclut le salaire mais ne soustrait pas les prestations RQAP. Dans le présent
+périmètre, son assiette est donc le RQAP brut moins le remboursement admissible
+de la ligne 246. RPA et REER ne figurent pas dans les déductions de cette annexe.
+
+- Assiette ≤ 18 130 $ : zéro.
+- Jusqu'à 63 060 $ : 1 % de l'excédent sur 18 130 $, plafonné à 150 $.
+- Au-delà de 63 060 $ : 150 $ + 1 % de l'excédent sur 63 060 $, plafonné à 1 000 $.
+
+La cotisation est arrondie au cent et ajoutée au rapprochement Québec,
+sans abattement fédéral et sans réduction du revenu net. Il s'agit d'une
+extension pour ce profil; ce calcul ne prétend pas couvrir une annexe F
+contenant des revenus de placement, pensions ou autres déductions.
+
+### Chaîne applicative et validation
+
+La reconnaissance distingue T4E/RL-6 du salaire. La GUI présente les montants
+consolidés et la confirmation du périmètre. Toute nouvelle extraction ou
+modification des données retire cette confirmation et invalide le résultat
+et le PDF. La confirmation et les cases sont sauvegardées en JSON; un ancien
+dossier sans confirmation demeure chargeable mais exige une validation RQAP
+avant calcul s'il contient ces feuillets. La trace, le résumé et le PDF
+identifient les lignes, l'absence de double compte et la cotisation FSS.
+
+Cas fictif de référence : salaire 52 000 $, prestations 20 000 $, remboursement
+de prestations de 2025 de 1 000 $, retenues RQAP fédérales 1 800 $ et Québec
+2 200 $. Revenus totaux 72 000 $, nets fédéral 70 515 $ et Québec 69 095 $;
+retenues totales 17 700 $; FSS 8,70 $. Avec RPA 3 000 $, REER 5 000 $ et
+cotisations syndicales fédérales 600 $, revenus nets 61 915 $ et 61 095 $;
+le FSS demeure 8,70 $.
+
+Les blocs 2B à 2H restent à développer après accord utilisateur. Aucun crédit
+de retraite précédemment bloqué n'est activé par ce bloc RQAP.
+
+Validation finale locale : **1 726 tests réussis**, aucun échec ni test ignoré,
+8 avertissements de dépréciation, en 53,04 s (`python -m pytest -q`).
+Les **77 nouveaux cas** comprennent 68 tests de calcul, extraction, validation,
+persistance, trace/PDF et interactions avec les crédits, ainsi que 9 parcours
+ou combinaisons GUI. Les tests ciblés passent également (77/77).
+
+Le parcours de reconnaissance compte séparément T4E et RL-6 parmi les feuillets
+reconnus. La préparation bloque un T4E/RL-6 reconnu sans cases, un feuillet
+identifié par son nom mais illisible, ainsi qu'un document ajouté sans étape
+de reconnaissance. Ces contrôles évitent une estimation fondée sur le seul
+salaire après omission des prestations.
+
+Le formulaire a été inspecté à 600 × 400 et 1 000 × 700; les actions sont
+testées à trois facteurs Tk. Les deux pages du PDF fictif ont été rendues
+et inspectées. Résultat du cas de référence : impôt total 14 508,39 $,
+remboursement estimé 3 191,61 $. Captures et journaux restent dans `tmp/`,
+exclus du commit. Les limites OCR, profils multiples, années antérieures,
+DPI Windows réels et avertissements de dépréciation restent documentées.

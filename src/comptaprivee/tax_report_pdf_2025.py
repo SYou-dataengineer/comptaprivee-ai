@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import textwrap
 import fitz
+from .tax_parental_benefits_2025 import lignes_resume_rqap_2025
 from .tax_rpp_2025 import lignes_resume_rpa_2025
 
 from .tax_estimation_2025 import (
@@ -167,6 +168,12 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     ]
 
     lignes.extend(lignes_resume_rpa_2025(estimation.cotisations_rpa))
+    lignes.extend(lignes_resume_rqap_2025(estimation.prestations_rqap))
+    if estimation.prestations_rqap.present:
+        lignes.extend([
+            f"Revenu total fédéral : {formater_montant_estimation(r.revenu_total_federal)}",
+            f"Revenu total Québec : {formater_montant_estimation(r.revenu_total_quebec)}",
+        ])
 
     if (
         medical.montant_admissible_federal > 0
@@ -1820,11 +1827,11 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                 )}"
             ),
             (
-                "Retenue fédérale T4 : "
+                ("Retenue fédérale T4 + T4E : " if estimation.prestations_rqap.present else "Retenue fédérale T4 : ") +
                 f"{formater_montant_estimation(x.retenue_federale)}"
             ),
             (
-                "Retenue Québec RL-1 : "
+                ("Retenue Québec RL-1 + RL-6 : " if estimation.prestations_rqap.present else "Retenue Québec RL-1 : ") +
                 f"{formater_montant_estimation(x.retenue_quebec)}"
             ),
             (

@@ -165,6 +165,11 @@ from .tax_union_dues_2025 import (
     credit_quebec_cotisations_2025,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_parental_benefits_2025 import (
+    PrestationsRqap2025, consolider_prestations_rqap_2025,
+    appliquer_prestations_rqap_2025, lignes_resume_rqap_2025,
+)
+
 from .tax_rpp_2025 import (
     CotisationsRpa2025, appliquer_cotisations_rpa_2025,
     verifier_rpa_dossier_2025, lignes_resume_rpa_2025,
@@ -198,6 +203,8 @@ class EstimationFiscale2025:
     aidant_autre_personne_charge_federal: AidantNaturelAutrePersonneChargeFederal2025
     aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
     cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
+    rqap_confirme: bool = False
+    prestations_rqap: PrestationsRqap2025 = PrestationsRqap2025()
 
 
 def calculer_estimation_fiscale_2025(
@@ -247,6 +254,7 @@ def calculer_estimation_fiscale_2025(
         AidantNaturelEnfantMoins18Federal2025 | None
     ) = None,
     cotisations_rpa: CotisationsRpa2025 | None = None,
+    rqap_confirme: bool = False,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
     if dossier.annee_fiscale != 2025:
@@ -323,6 +331,9 @@ def calculer_estimation_fiscale_2025(
             cotisations_excedentaires_presentes
         ),
     )
+
+    prestations_rqap = consolider_prestations_rqap_2025(dossier, rqap_confirme)
+    revenu = appliquer_prestations_rqap_2025(revenu, prestations_rqap)
 
     rpa_effectives = cotisations_rpa if cotisations_rpa is not None else CotisationsRpa2025()
     verifier_rpa_dossier_2025(dossier, rpa_effectives)
@@ -869,6 +880,7 @@ def calculer_estimation_fiscale_2025(
         base,
         federal,
         quebec,
+        prestations_rqap=prestations_rqap,
         cotisation_assurance_medicaments=(
             cotisation_assurance_medicaments_2025(
                 assurance_medicaments_effective
@@ -889,6 +901,8 @@ def calculer_estimation_fiscale_2025(
     )
 
     return EstimationFiscale2025(
+        rqap_confirme=rqap_confirme,
+        prestations_rqap=prestations_rqap,
         cotisations_rpa=rpa_effectives,
         dossier=dossier,
         base=base,
@@ -967,6 +981,9 @@ def formater_estimation_fiscale_2025(
         f"Revenu net Québec : {formater_montant_estimation(revenu.revenu_net_quebec)}",
         f"Revenu imposable Québec : {formater_montant_estimation(revenu.revenu_imposable_quebec)}",
         *lignes_resume_rpa_2025(estimation.cotisations_rpa),
+        *lignes_resume_rqap_2025(estimation.prestations_rqap),
+        *([f"Revenu total fédéral : {formater_montant_estimation(revenu.revenu_total_federal)}",
+           f"Revenu total Québec : {formater_montant_estimation(revenu.revenu_total_quebec)}"] if estimation.prestations_rqap.present else []),
         *(
             [
                 "",
@@ -1576,8 +1593,8 @@ def formater_estimation_fiscale_2025(
         "",
         "RAPPROCHEMENT",
         f"Impôt total préliminaire : {formater_montant_estimation(final.impot_total_preliminaire)}",
-        f"Retenue fédérale T4 : {formater_montant_estimation(final.retenue_federale)}",
-        f"Retenue Québec RL-1 : {formater_montant_estimation(final.retenue_quebec)}",
+        ("Retenue fédérale T4 + T4E : " if estimation.prestations_rqap.present else "Retenue fédérale T4 : ") + formater_montant_estimation(final.retenue_federale),
+        ("Retenue Québec RL-1 + RL-6 : " if estimation.prestations_rqap.present else "Retenue Québec RL-1 : ") + formater_montant_estimation(final.retenue_quebec),
         f"Retenues totales : {formater_montant_estimation(final.retenues_totales)}",
         "",
         f"RÉSULTAT : {final.resultat}",

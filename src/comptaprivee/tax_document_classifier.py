@@ -1,6 +1,6 @@
 """Classification locale des premiers documents fiscaux pris en charge.
 
-Phase 1 : reconnaissance T4 et RL-1 uniquement.
+Reconnaissance T4, RL-1, T4E et RL-6.
 Aucune donnée n'est transmise à un service externe.
 """
 
@@ -96,10 +96,22 @@ def classifier_document_fiscal(
     chemin: str | Path,
     texte: str = "",
 ) -> ClassificationDocumentFiscal:
-    """Classe localement un document comme T4, RL-1 ou non reconnu."""
+    """Classe localement les feuillets salariaux et de prestations RQAP."""
     chemin = Path(chemin)
     nom = _normaliser(chemin.stem)
     contenu = _normaliser(texte)
+
+    # Ces feuillets partagent des cases et des libellés avec le T4/RL-1.
+    # Leur identifiant explicite évite d'interpréter des prestations comme un salaire.
+    nouveaux = []
+    for type_doc, motif in (("T4E", r"(?<![a-z0-9])t4e(?![a-z0-9])"), ("RL-6", r"(?<![a-z0-9])(?:rl[ _-]?6|releve[ _-]*6)(?![a-z0-9])")):
+        if re.search(motif, nom) or re.search(motif, contenu):
+            nouveaux.append(type_doc)
+    if nouveaux:
+        anciens_explicites = re.search(r"\bt4\b|\b(?:rl[ _-]?1|releve\s*1)\b", nom + " " + contenu)
+        if len(nouveaux) > 1 or anciens_explicites:
+            return ClassificationDocumentFiscal(TYPE_A_VERIFIER, 90, ("Plusieurs identifiants de feuillets; séparer les documents.",))
+        return ClassificationDocumentFiscal(nouveaux[0], 90, ("Identifiant explicite " + nouveaux[0],))
 
     score_t4, motifs_t4 = _score_t4(nom, contenu)
     score_rl1, motifs_rl1 = _score_rl1(nom, contenu)
