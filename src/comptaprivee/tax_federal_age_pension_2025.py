@@ -47,7 +47,7 @@ def valider_credits_federaux_age_pension_2025(profil):
         return profil
     if not profil.resident_canada_toute_annee:
         raise ValueError("Cette première version exige une résidence au Canada pendant toute l'année 2025.")
-    if not profil.age_65_plus_31_decembre_2025:
+    if profil.reclamer_montant_age and not profil.age_65_plus_31_decembre_2025:
         raise ValueError("Cette première version exige que le contribuable ait 65 ans ou plus au 31 décembre 2025.")
     if not profil.aucune_regle_deces:
         raise ValueError("Les règles spéciales applicables à une personne décédée ne sont pas supportées.")

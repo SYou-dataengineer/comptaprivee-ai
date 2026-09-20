@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import json
@@ -89,6 +89,7 @@ from .tax_field_validation import (
     STATUT_VALIDE,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_pension_income_2025 import ProfilPensions2025, valider_profil_pensions_2025, consolider_pensions_2025
 from .tax_old_age_security_2025 import consolider_prestations_psv_2025, valider_confirmation_psv
 from .tax_cpp_qpp_benefits_2025 import consolider_prestations_rrq_rpc_2025, valider_confirmation_rrq_rpc
 from .tax_employment_insurance_2025 import consolider_prestations_ae_2025, valider_confirmation_ae
@@ -145,6 +146,7 @@ class DossierFiscalEnregistre:
     cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
     rqap_confirme: bool = False
     ae_confirme: bool = False
+    profil_pensions: ProfilPensions2025 = ProfilPensions2025()
     psv_confirme: bool = False
     rrq_rpc_confirme: bool = False
 
@@ -2427,9 +2429,18 @@ def sauvegarder_dossier_fiscal(
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool | None = None,
     ae_confirme: bool | None = None,
+    profil_pensions: ProfilPensions2025 | None = None,
     psv_confirme: bool | None = None,
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    pensions_effectif = profil_pensions if profil_pensions is not None else (estimation.profil_pensions if estimation else ProfilPensions2025())
+    valider_profil_pensions_2025(pensions_effectif)
+    if estimation and pensions_effectif != estimation.profil_pensions:
+        raise ValueError("Le profil pensions diffère de l'estimation.")
+    if pensions_effectif.confirme:
+        if any((psv_confirme, rqap_confirme, ae_confirme, rrq_rpc_confirme)) or (estimation and any((estimation.psv_confirme, estimation.ae_confirme, estimation.rqap_confirme, estimation.rrq_rpc_confirme))):
+            raise ValueError("Pensions avec d'autres prestations hors périmètre.")
+        consolider_pensions_2025(dossier, pensions_effectif)
     confirme_psv = psv_confirme if psv_confirme is not None else (estimation.psv_confirme if estimation else False)
     valider_confirmation_psv(confirme_psv)
     if estimation is not None and confirme_psv != estimation.psv_confirme:
@@ -2483,6 +2494,7 @@ def sauvegarder_dossier_fiscal(
         "schema_version": SCHEMA_VERSION,
         "rqap_confirme": confirme,
         "ae_confirme": confirme_ae,
+        "profil_pensions": asdict(pensions_effectif),
         "psv_confirme": confirme_psv,
         "rrq_rpc_confirme": confirme_rrq_rpc,
         "cotisations_rpa": {
@@ -2641,7 +2653,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             raise ValueError("Une donnée fiscale enregistrée est incomplète.") from erreur
         if statut not in STATUTS_VALIDATION_AUTORISES:
             raise ValueError("Statut de validation fiscale enregistré invalide.")
-        if type_document not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)"}:
+        if type_document not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16"}:
             raise ValueError("Type de document fiscal enregistré non pris en charge.")
         ve = _decimal_depuis_json(brut.get("valeur_extraite"), f"valeur_extraite[{index}]")
         vv = _decimal_depuis_json(brut.get("valeur_validee"), f"valeur_validee[{index}]")
@@ -2767,7 +2779,17 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         if confirme or confirme_ae or confirme_rrq_rpc:
             raise ValueError("PSV avec AE/RQAP/RRQ : hors périmètre.")
         consolider_prestations_psv_2025(dossier, True)
+    try:
+        pensions_profil = ProfilPensions2025(**contenu.get("profil_pensions", {}))
+    except (TypeError, ValueError) as erreur:
+        raise ValueError("Profil pensions enregistré invalide.") from erreur
+    valider_profil_pensions_2025(pensions_profil)
+    if pensions_profil.confirme:
+        if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc)):
+            raise ValueError("Pensions avec d'autres prestations hors périmètre.")
+        consolider_pensions_2025(dossier, pensions_profil)
     return DossierFiscalEnregistre(
+        profil_pensions=pensions_profil,
         psv_confirme=confirme_psv,
         rrq_rpc_confirme=confirme_rrq_rpc,
         ae_confirme=confirme_ae,

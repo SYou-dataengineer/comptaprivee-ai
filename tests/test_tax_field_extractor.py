@@ -145,9 +145,9 @@ def test_extraction_conserve_source_et_validation() -> None:
 def test_type_non_pris_en_charge_est_refuse() -> None:
     with pytest.raises(ValueError):
         extraire_cases_fiscales(
-            "T5",
-            "Case 13 100,00",
-            "T5.pdf",
+            "T4RSP",
+            "Case 16 100,00",
+            "T4RSP.pdf",
         )
 
 

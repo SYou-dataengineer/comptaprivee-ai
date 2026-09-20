@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import textwrap
 import fitz
+from .tax_pension_income_2025 import lignes_resume_pensions_2025
 from .tax_old_age_security_2025 import lignes_resume_psv_2025
 from .tax_cpp_qpp_benefits_2025 import lignes_resume_rrq_rpc_2025
 from .tax_employment_insurance_2025 import lignes_resume_ae_2025
@@ -175,7 +176,8 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_resume_ae_2025(estimation.prestations_ae))
     lignes.extend(lignes_resume_rrq_rpc_2025(estimation.prestations_rrq_rpc))
     lignes.extend(lignes_resume_psv_2025(estimation.prestations_psv))
-    if estimation.prestations_rqap.present or estimation.prestations_ae.present or estimation.prestations_rrq_rpc.present or estimation.prestations_psv.present:
+    lignes.extend(lignes_resume_pensions_2025(estimation.pensions, estimation.profil_pensions))
+    if estimation.prestations_rqap.present or estimation.prestations_ae.present or estimation.prestations_rrq_rpc.present or estimation.prestations_psv.present or estimation.pensions.present:
         lignes.extend([
             f"Revenu total fédéral : {formater_montant_estimation(r.revenu_total_federal)}",
             f"Revenu total Québec : {formater_montant_estimation(r.revenu_total_quebec)}",
@@ -1833,11 +1835,11 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                 )}"
             ),
             (
-                ("Retenue fédérale T4 + T4E : " if estimation.prestations_rqap.present or estimation.prestations_ae.present else ("Retenue fédérale T4 + T4A(P) : " if estimation.base.nombre_t4 else "Retenue fédérale T4A(P) : ") if estimation.prestations_rrq_rpc.present else ("Retenue fédérale " + ("T4 + " if estimation.base.nombre_t4 else "") + "T4A(OAS) : ") if estimation.prestations_psv.present else "Retenue fédérale T4 : ") +
+                ("Retenue fédérale T4 + T4E : " if estimation.prestations_rqap.present or estimation.prestations_ae.present else ("Retenue fédérale T4 + T4A(P) : " if estimation.base.nombre_t4 else "Retenue fédérale T4A(P) : ") if estimation.prestations_rrq_rpc.present else ("Retenue fédérale " + ("T4 + " if estimation.base.nombre_t4 else "") + "T4A(OAS) : ") if estimation.prestations_psv.present else "Retenues fédérales emploi et pensions : " if estimation.pensions.present else "Retenue fédérale T4 : ") +
                 f"{formater_montant_estimation(x.retenue_federale)}"
             ),
             (
-                ("Retenue Québec RL-1 + RL-6 : " if estimation.prestations_rqap.present else "Retenue Québec RL-1 + T4E : " if estimation.prestations_ae.present else ("Retenue Québec " + ("RL-1 + " if estimation.base.nombre_rl1 else "") + ("RL-2 : " if estimation.prestations_rrq_rpc.releve_2_present else "(aucun RL-2 reçu) : ")) if estimation.prestations_rrq_rpc.present else ("Retenue Québec " + ("RL-1 + " if estimation.base.nombre_rl1 else "") + "T4A(OAS) : ") if estimation.prestations_psv.present else "Retenue Québec RL-1 : ") +
+                ("Retenue Québec RL-1 + RL-6 : " if estimation.prestations_rqap.present else "Retenue Québec RL-1 + T4E : " if estimation.prestations_ae.present else ("Retenue Québec " + ("RL-1 + " if estimation.base.nombre_rl1 else "") + ("RL-2 : " if estimation.prestations_rrq_rpc.releve_2_present else "(aucun RL-2 reçu) : ")) if estimation.prestations_rrq_rpc.present else ("Retenue Québec " + ("RL-1 + " if estimation.base.nombre_rl1 else "") + "T4A(OAS) : ") if estimation.prestations_psv.present else "Retenues Québec emploi et pensions : " if estimation.pensions.present else "Retenue Québec RL-1 : ") +
                 f"{formater_montant_estimation(x.retenue_quebec)}"
             ),
             (

@@ -514,7 +514,7 @@ Avec 23400 = 166 787,33 $, récupération 11 000 $, dont suppléments 1 000 $,
 et déduction 25000/295 réduite à 1 000 $. Ces exemples de feuille vérifient
 les formules séparément des limites de hauts revenus du moteur global.
 
-Le Bloc 2E n'est pas commencé et attend l'accord utilisateur.
+Le Bloc 2E a ensuite été autorisé; voir ci-dessous.
 
 Vérification visuelle locale : formulaire inspecté à 600 × 400 et
 1 000 × 700, en haut et en bas; actions également testées à trois facteurs
@@ -533,3 +533,68 @@ PSV 8 000 $ confirme 23400 = 96 926 $, récupération 520,80 $, revenu net
 fédéral 96 405,20 $ et Québec 94 985,20 $; une déduction REER de 5 000 $
 annule cette récupération. L'attente de ce test a été corrigée pour utiliser
 la déduction RRQ supplémentaire 2025 de 1 074 $ (678 $ + 396 $).
+
+## Bloc 2E — pensions, FERR et rentes 2025
+
+Parcours intégré : classification, extraction signée, validation des cases,
+formulaire défilant, confirmation, estimation, trace, PDF et stockage JSON.
+Une seule nature domestique et une paire de feuillets par personne sans
+conjoint au 31 décembre, résidente Canada/Québec toute l'année, avec ou sans
+le profil salarial ordinaire déjà pris en charge.
+
+| Nature confirmée | Feuillets appariés | Fédéral avant 65 ans | Fédéral dès 65 ans |
+| --- | --- | --- | --- |
+| RPA viagère | T4A 016 / RL-2 A | 11500, admissible 31400 | 11500, admissible 31400 |
+| Rente ordinaire | T4A 024 / RL-2 B | 13000, sans 31400 | 11500, admissible 31400 |
+| Variable non viagère | T4A 133 / RL-2 A | 13000, sans 31400 | 11500, admissible 31400 |
+| Variable viagère RPA | T4A 133 / RL-2 A | 11500, admissible 31400 | 11500, admissible 31400 |
+| RPAC | T4A 194 / RL-2 B | 13000, sans 31400 | 11500, admissible 31400 |
+| FERR | T4RIF 16 / RL-2 B | 13000, sans 31400 | 11500, admissible 31400 |
+| Pension RPA de fiducie | T3 31 / RL-16 D | 11500, admissible 31400 | 11500, admissible 31400 |
+| Rente T5 ordinaire | T5 19 / RL-2 B | 12100, sans 31400 | 11500, admissible 31400 |
+
+Le revenu est ajouté une seule fois. La contrepartie Québec alimente 122 et
+l'admissibilité 361, indépendamment des règles fédérales. Les profils de
+crédit vides sont alimentés depuis les feuillets; les profils personnalisés
+restent soumis aux contrôles de cohérence. Les crédits d'âge ne sont pas
+réclamés automatiquement. T3 26 doit égaler 31; T4RIF 24 et RL-2 B-1 sont
+des informations sur l'excédent déjà inclus, jamais des revenus additionnels.
+Les retenues T4A 022/T4RIF 28 et RL-2 J sont ajoutées une fois. Le FSS 446
+utilise la pension brute, sans déduction RPA/REER et sans abattement fédéral.
+
+### Confirmation et persistance
+
+Nature, âge entier de 18 à 120 ans, source de l'âge et confirmation explicite
+sont requis. Modifier la nature, l'âge, sa source ou les indicateurs décès/
+revenu étranger décoche immédiatement la confirmation. Une extraction ou
+une nouvelle préparation invalide le profil; une confirmation appliquée
+invalide le calcul et le PDF antérieurs. Le formulaire refuse un dossier
+changé depuis son ouverture. Les anciens JSON sans profil pensions se
+chargent sans confirmation. Les valeurs JSON mal typées, les confirmations
+concurrentes, les sources absentes, les doublons et les feuillets non appariés
+sont refusés. Un feuillet reconnu sans case ne peut pas être omis du dossier.
+
+### Vérification et limites
+
+151 tests ciblés couvrent règles, âge, extraction, refus, retenues, FSS,
+crédits, stockage, résumé, trace, PDF et parcours GUI. Actions testées à
+trois facteurs Tk (96/72, 144/72 et 192/72). Inspection visuelle du formulaire
+à 600 × 400 et 1 000 × 700, en haut et en bas; quatre PDF fictifs RPA/FERR/T5/T3,
+soit 11 pages rendues avec PyMuPDF et inspectées intégralement, sans coupe
+ni superposition. Les captures et rapports restent dans `tmp/`, hors commit.
+
+Limites : une seule paire et une seule nature; aucune combinaison avec PSV,
+RRQ/RPC, AE ou RQAP. Décès, revenus étrangers, rétroactivité, fractionnement,
+transferts, remboursements, régimes au profit du conjoint, exonérations et
+autres revenus hors profil sont exclus. La confirmation humaine reste
+nécessaire pour les situations non identifiables par les cases. Les garde-fous
+existants (notamment 34990, hauts revenus et RAMQ), ainsi que les limites OCR,
+thèmes, DPI réels et multi-écrans, restent applicables.
+
+Le Bloc 2F n'est pas commencé et attend l'accord utilisateur.
+
+Validation finale locale : **2 114 tests réussis**, aucun échec ni test ignoré,
+8 avertissements de dépréciation existants, en 61,59 s avec
+`python -m pytest -q` (Python de `.venv`, chemins Tcl/Tk explicites).
+Le test de refus d'un type non pris en charge utilise désormais T4RSP,
+puisque T5 est intégré au Bloc 2E. Aucun test retiré ou désactivé.

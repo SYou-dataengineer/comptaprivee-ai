@@ -184,6 +184,7 @@ def construire_trace_calcul_fiscal_2025(
 
     rqap = estimation.prestations_rqap
     rrq_rpc = estimation.prestations_rrq_rpc
+    pensions = estimation.pensions
     psv = estimation.prestations_psv
     ae = estimation.prestations_ae
     if rqap.present:
@@ -214,6 +215,10 @@ def construire_trace_calcul_fiscal_2025(
     if psv.present:
         formule_revenu_federal += " + PSV 11300 + suppléments 14600 - récupération 23500 - déduction 25000"
         formule_revenu_quebec += " + PSV 114 + suppléments 148 - récupération 250 - déduction 295"
+
+    if pensions.present:
+        formule_revenu_federal += " + pensions 11500 / 13000 / 12100 selon âge et nature"
+        formule_revenu_quebec += " + pensions 122, sans double compte des feuillets"
 
     formule_impot_federal = (
         "Impôt fédéral brut - crédits non remboursables de base"
@@ -304,6 +309,8 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_total += " + FSS Québec 446"
     if ae.present:
         formule_impot_total += " + récupération AE 42200 (sans abattement) + FSS Québec 446"
+    if pensions.present:
+        formule_impot_total += " + FSS pensions 446 (sans abattement)"
     if psv.present:
         formule_impot_total += " + récupération PSV 42200 (sans abattement); FSS PSV nul"
     if rrq_rpc.present:
@@ -427,6 +434,7 @@ def construire_trace_calcul_fiscal_2025(
              else "T4 22 + RL-1 E + T4E 22 et 23 — valeurs validées" if ae.present
              else "T4 22 + RL-1 E + T4A(P) 22 + RL-2 J (si reçu)" if rrq_rpc.present
              else "T4 22 + RL-1 E + T4A(OAS) 22/23" if psv.present
+             else "Retenues salariales + T4A 022 ou T4RIF 28 + RL-2 J" if pensions.present
              else "T4 case 22 + RL-1 case E — valeurs validées"),
             "Retenue fédérale + retenue Québec",
             final.retenues_totales,
@@ -1285,6 +1293,20 @@ def construire_trace_calcul_fiscal_2025(
             ("Retenues totales", "RETENUES", "Retenue PSV 451", "T4A(OAS) 23", "Ajout une fois", psv.retenue_quebec),
         ):
             lignes = _inserer_ligne_avant(lignes, cible, _ligne(0, section, libelle, source, formule, montant))
+
+    if pensions.present:
+        for cible, section, libelle, formule, montant in (
+            ("Déduction RRQ améliorée", "REVENU FÉDÉRAL", "Pensions 11500", "Selon nature et âge au 31 décembre; sans décès", pensions.ligne_11500),
+            ("Déduction RRQ améliorée", "REVENU FÉDÉRAL", "Pensions 13000", "FERR/rentes/RPAC non admissibles à 11500", pensions.ligne_13000),
+            ("Déduction RRQ améliorée", "REVENU FÉDÉRAL", "Rente T5 12100", "Rente ordinaire avant 65 ans, sans décès", pensions.ligne_12100),
+            ("Déduction travailleur Québec", "REVENU QUÉBEC", "Pensions 122", "RL-2 A/B ou RL-16 D, sans double compte", pensions.ligne_122),
+            ("Impôt total préliminaire", "INFORMATION", "Revenu admissible pension 31400", "Portion admissible avant plafond 2 000 $; crédit calculé séparément", pensions.admissible_federal),
+            ("Impôt total préliminaire", "INFORMATION", "Revenu admissible retraite 361", "Portion admissible avant coefficient, plafond et réduction annexe B", pensions.admissible_quebec),
+            ("Impôt total préliminaire", "QUÉBEC", "FSS pensions 446", "Assiette pension brute; RPA/REER non déduits; sans abattement", pensions.cotisation_fss),
+            ("Retenues totales", "RETENUES", "Retenue pensions 43700", "T4A 022 ou T4RIF 28, ajout une fois", pensions.retenue_federale),
+            ("Retenues totales", "RETENUES", "Retenue pensions 451", "RL-2 J, ajout une fois", pensions.retenue_quebec),
+        ):
+            lignes = _inserer_ligne_avant(lignes, cible, _ligne(0, section, libelle, pensions.source, formule, montant))
 
     prochain_ordre = len(lignes) + 1
 

@@ -282,7 +282,6 @@ def test_recuperation_psv_avec_salaire_90000_et_pension_8000():
         _validee(sources[t],t,c,v) for (t,c),v in cases.items()))
     e=calcul(d)
     # RRQ supplémentaire : (71 300 - 3 500) × 1 % + 396 = 1 074 $.
-    # RRQ supplémentaire : (71 300 - 3 500) × 1 % + 396 = 1 074 $.
     assert e.prestations_psv.revenu_avant_recuperation==96926
     assert e.prestations_psv.recuperation==Decimal('520.80')
     assert e.revenu.revenu_net_federal==Decimal('96405.20')

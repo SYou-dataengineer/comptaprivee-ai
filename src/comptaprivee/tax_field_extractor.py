@@ -138,6 +138,17 @@ REGLES_RL6 = tuple(
     for case, libelle in (("A", "Prestations RQAP"), ("D", "Remboursement de prestations"), ("G", "Impôt Québec retenu"))
 )
 
+REGLES_PENSIONS = {
+    t: tuple((c, label, (rf"\b(?:case|box|code)\s*{('0?' + c[1:]) if t == 'T4A' and c.startswith('0') else c}\b",)) for c, label in cases)
+    for t, cases in {
+        'T4A': [(c, {'016':'Pension RPA', '022':'Impôt fédéral retenu', '024':'Rente', '133':'Rente ou prestation variable (nature à confirmer)', '194':'RPAC'}.get(c,'Autre case T4A à vérifier')) for c in ('016','018','022','024','028','048','105','106','109','115','119','127','133','135','194')],
+        'T4RIF': [(c, 'FERR : '+{'16':'paiement', '22':'autre revenu ou déduction (exclu)', '24':'excédent déjà inclus', '28':'impôt fédéral retenu'}.get(c,'cas particulier exclu')) for c in ('16','18','20','22','24','28','35','36','37')],
+        'T3': [(str(c), 'Pension admissible' if c==31 else 'Autre case T3 à vérifier') for c in range(21,53)],
+        'T5': [(str(c), 'Rente' if c==19 else 'Autre case T5 à vérifier') for c in range(10,31)],
+        'RL-16': [(c, 'Pension admissible' if c=='D' else 'Autre case RL-16 hors périmètre') for c in 'ABCDEFGHIJKLMNOPQRST'],
+    }.items()
+}
+
 REGLES_T4AOAS = tuple((c, label, (rf"\b(?:case|box)\s*{c}\b",)) for c, label in (("18", "PSV imposable"), ("19", "PSV brute (information)"), ("20", "Trop-payé récupéré (exclu)"), ("21", "Suppléments nets"), ("22", "Impôt fédéral retenu"), ("23", "Impôt Québec retenu")))
 
 REGLES_T4AP = tuple(
@@ -148,9 +159,9 @@ REGLES_T4AP = tuple(
         ("21", "Mois d'invalidité"), ("22", "Impôt fédéral retenu"), ("23", "Mois de retraite"))
 )
 REGLES_RL2 = tuple(
-    (c, {"C": "Prestations RRQ/RPC (provenance à confirmer)", "J": "Impôt Québec retenu"}.get(c, "Autre montant RL-2 hors périmètre"),
+    (c, {"A": "Pension RPA (provenance à confirmer)", "B": "FERR ou rente (provenance à confirmer)", "C": "Prestations RRQ/RPC (provenance à confirmer)", "J": "Impôt Québec retenu"}.get(c, "Autre montant RL-2 hors périmètre"),
      (rf"\b(?:case|box|code)\s*{c}\b(?![-–]\d+\b(?![.,]))",))
-    for c in ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "C-1", "C-2", "C-3", "C-4", "C-5", "C-6", "C-7", "C-8", "C-9", "C-10")
+    for c in ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "C-1", "C-2", "C-3", "C-4", "C-5", "C-6", "C-7", "C-8", "C-9", "C-10", "A-1", "B-1", "B-2", "B-3", "B-4", "B-5", "B-6", "B-7", "B-8", "B-9", "B-10")
 )
 
 MONTANT_RE = re.compile(
@@ -205,7 +216,7 @@ def formater_montant_fiscal(valeur: Decimal) -> str:
 def _prochaine_case_position(texte: str) -> int | None:
     resultat = re.search(
         r"\b(?:case|box|code)\s*"
-        r"(?:\d{1,2}[a-z]?|[a-z](?:\s*\.\s*[ab])?)\b",
+        r"(?:\d{1,3}[a-z]?|[a-z](?:\s*\.\s*[ab])?)\b",
         texte,
         flags=re.IGNORECASE,
     )
@@ -263,6 +274,8 @@ def extraire_cases_fiscales(
     elif type_normalise in {"RL-1", "RL1"}:
         regles = REGLES_RL1
         type_final = "RL-1"
+    elif type_normalise in REGLES_PENSIONS:
+        regles, type_final = REGLES_PENSIONS[type_normalise], type_normalise
     elif type_normalise in {"T4A(OAS)", "T4AOAS"}:
         regles, type_final = REGLES_T4AOAS, "T4A(OAS)"
     elif type_normalise in {"T4A(P)", "T4AP"}:
@@ -286,7 +299,7 @@ def extraire_cases_fiscales(
             texte,
             marqueurs,
             conserver_signe=(
-                type_final in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)"}
+                type_final in REGLES_PENSIONS or type_final in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)"}
                 or
                 (type_final == "T4" and case in {"20", "74", "75"})
                 or (type_final == "RL-1" and case in {"D", "D-1", "D-2", "D-3"})

@@ -183,6 +183,7 @@ from .tax_federal_home_accessibility_2025 import (
     DepensesAccessibiliteDomiciliaireFederal2025,
     valider_depenses_accessibilite_domiciliaire_2025,
 )
+from .tax_pension_income_2025 import ProfilPensions2025, NATURES_PENSIONS, consolider_pensions_2025, lignes_resume_pensions_2025
 from .tax_old_age_security_2025 import consolider_prestations_psv_2025, lignes_resume_psv_2025
 from .tax_cpp_qpp_benefits_2025 import consolider_prestations_rrq_rpc_2025, lignes_resume_rrq_rpc_2025
 from .tax_employment_insurance_2025 import consolider_prestations_ae_2025, lignes_resume_ae_2025
@@ -2466,6 +2467,7 @@ class ApplicationComptaPrivee(tk.Tk):
         ae_confirme_courant = False
         rrq_rpc_confirme_courant = False
         psv_confirme_courant = False
+        pensions_profil_courant = ProfilPensions2025()
         rapport_fiscal_a_reexporter = False
         aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
         aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
@@ -2834,14 +2836,74 @@ class ApplicationComptaPrivee(tk.Tk):
             organiser_boutons(formulaire.actions)
 
         def invalider_profil_rqap() -> None:
-            nonlocal rqap_confirme_courant, ae_confirme_courant, psv_confirme_courant, rrq_rpc_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+            nonlocal rqap_confirme_courant, ae_confirme_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
             rqap_confirme_courant = False
             ae_confirme_courant = False
             rrq_rpc_confirme_courant = False
             psv_confirme_courant = False
+            pensions_profil_courant = ProfilPensions2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             rapport_fiscal_a_reexporter = True
+
+        def ouvrir_pensions_2025() -> None:
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Pensions, FERR et rentes 2025 — ComptaPrivée AI")
+            dimensionner_fenetre(dialogue, 800, 650)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(0, weight=1)
+            textes = [
+                "Pensions, FERR et rentes 2025",
+                "Validez les cases du feuillet fédéral et du RL-2 apparié (RL-16 D pour T3 31), puis préparez le dossier. Une seule nature par dossier, avec ou sans emploi.",
+                "RPA : T4A 016 viagère; RENTE : T4A 024 ordinaire; VARIABLE : T4A 133 non viagère; VIAGERE_VARIABLE : T4A 133 viagère RPA; RPAC : T4A 194; FERR : T4RIF 16; T3_RPA : T3 31; T5_RENTE : T5 19 ordinaire.",
+                "Le crédit fédéral dépend de la nature et de l'âge au 31 décembre. Le Québec a ses propres règles. Les crédits de pension sont calculés à partir des feuillets si aucun profil de crédit personnalisé n'est saisi; les crédits d'âge restent distincts. FSS sur la pension brute.",
+            ]
+            for row, texte in enumerate(textes):
+                ttk.Label(cadre, text=texte, wraplength=520, justify="left").grid(row=row, column=0, sticky="w", pady=7)
+            nature = tk.StringVar(value=pensions_profil_courant.nature)
+            age = tk.StringVar(value=str(pensions_profil_courant.age_31_decembre or ''))
+            source = tk.StringVar(value=pensions_profil_courant.source_age)
+            confirme = tk.BooleanVar(value=pensions_profil_courant.confirme)
+            deces = tk.BooleanVar(value=pensions_profil_courant.deces_conjoint)
+            etranger = tk.BooleanVar(value=pensions_profil_courant.revenu_etranger)
+            ttk.Label(cadre,text="Nature validée du revenu").grid(row=4,column=0,sticky="w")
+            ttk.Combobox(cadre,name="nature_pensions",textvariable=nature,values=tuple(NATURES_PENSIONS),state="readonly").grid(row=5,column=0,sticky="ew",pady=5)
+            ttk.Label(cadre,text="Âge au 31 décembre 2025 (18 à 120)").grid(row=6,column=0,sticky="w")
+            ttk.Entry(cadre,name="age_pensions",textvariable=age).grid(row=7,column=0,sticky="ew",pady=5)
+            ttk.Label(cadre,text="Source de validation de l'âge").grid(row=8,column=0,sticky="w")
+            ttk.Entry(cadre,name="source_pensions",textvariable=source).grid(row=9,column=0,sticky="ew",pady=5)
+            tk.Checkbutton(cadre,text="Revenu reçu en raison du décès du conjoint (hors périmètre)",variable=deces,wraplength=520,justify="left").grid(row=10,column=0,sticky="w",pady=5)
+            tk.Checkbutton(cadre,text="Revenu étranger (hors périmètre)",variable=etranger,wraplength=520,justify="left").grid(row=11,column=0,sticky="w",pady=5)
+            tk.Checkbutton(cadre,name="confirmation_pensions",variable=confirme,wraplength=520,justify="left",text=(
+                "Je confirme les feuillets complets 2025, leur nature, le bénéficiaire et leur appariement. Résidence Canada/Québec toute l'année; aucun conjoint au 31 décembre. Cases facultatives absentes nulles. Sans décès du déclarant ou du conjoint, revenu étranger, rétroactivité, transfert, remboursement, fractionnement, régime au profit du conjoint, exonération, autres prestations ou revenus hors profil. Avec salaire : cotisations RRQ ordinaires sans exemption ni proratisation. Rente T5 ordinaire uniquement, sans revenu accumulé d'assurance vie."
+            )).grid(row=12,column=0,sticky="w",pady=12)
+            ttk.Label(cadre,text="Sources : ARC 11500/13000/12100/31400; Québec 122/361, annexe F et retenues 43700/451. Les montants admissibles restent soumis aux plafonds et aux limites existantes du moteur.",wraplength=520).grid(row=13,column=0,sticky="w",pady=8)
+            # Une confirmation porte sur les valeurs effectivement relues.
+            for variable in (nature, age, source, deces, etranger):
+                variable.trace_add("write", lambda *_: confirme.set(False))
+            dossier_apercu = self.dossier_fiscal_valide_courant
+            def appliquer():
+                nonlocal pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                try:
+                    if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
+                        raise ValueError("Préparez le dossier puis rouvrez ce formulaire si le dossier a changé.")
+                    profil = ProfilPensions2025(nature.get(),int(age.get()),source.get().strip(),confirme.get(),deces.get(),etranger.get())
+                    consolider_pensions_2025(dossier_apercu,profil)
+                except (ValueError, TypeError) as erreur:
+                    messagebox.showerror("Pensions invalides",str(erreur),parent=dialogue)
+                    return
+                pensions_profil_courant = profil
+                rqap_confirme_courant = ae_confirme_courant = rrq_rpc_confirme_courant = psv_confirme_courant = False
+                derniere_estimation = dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Profil pensions 2025 validé; recalculez l'estimation.")
+                dialogue.destroy()
+            ttk.Button(formulaire.actions,text="Fermer",command=dialogue.destroy).pack(side="right")
+            ttk.Button(formulaire.actions,text="Valider et appliquer",command=appliquer).pack(side="right")
+            organiser_boutons(formulaire.actions)
 
         def ouvrir_prestations_psv_2025() -> None:
             dialogue = tk.Toplevel(fenetre)
@@ -2876,7 +2938,7 @@ class ApplicationComptaPrivee(tk.Tk):
                       wraplength=520).grid(row=len(textes)+1, column=0, sticky="w", pady=8)
 
             def appliquer_psv():
-                nonlocal psv_confirme_courant, rrq_rpc_confirme_courant, rqap_confirme_courant, ae_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, rqap_confirme_courant, ae_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez ce formulaire.")
@@ -2885,6 +2947,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     messagebox.showerror("PSV et suppléments invalide", str(erreur), parent=dialogue)
                     return
                 psv_confirme_courant = confirme.get()
+                pensions_profil_courant = ProfilPensions2025()
                 rrq_rpc_confirme_courant = False
                 rqap_confirme_courant = False
                 ae_confirme_courant = False
@@ -2931,7 +2994,7 @@ class ApplicationComptaPrivee(tk.Tk):
                       wraplength=520).grid(row=len(textes)+1, column=0, sticky="w", pady=8)
 
             def appliquer_rrq_rpc():
-                nonlocal psv_confirme_courant, rrq_rpc_confirme_courant, rqap_confirme_courant, ae_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, rqap_confirme_courant, ae_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez ce formulaire.")
@@ -2941,6 +3004,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     return
                 rrq_rpc_confirme_courant = confirme.get()
                 psv_confirme_courant = False
+                pensions_profil_courant = ProfilPensions2025()
                 rqap_confirme_courant = False
                 ae_confirme_courant = False
                 derniere_estimation = None
@@ -2986,7 +3050,7 @@ class ApplicationComptaPrivee(tk.Tk):
                       wraplength=520).grid(row=len(textes)+1, column=0, sticky="w", pady=8)
 
             def appliquer_ae():
-                nonlocal ae_confirme_courant, rqap_confirme_courant, psv_confirme_courant, rrq_rpc_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal ae_confirme_courant, rqap_confirme_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez ce formulaire.")
@@ -2998,6 +3062,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 rqap_confirme_courant = False
                 rrq_rpc_confirme_courant = False
                 psv_confirme_courant = False
+                pensions_profil_courant = ProfilPensions2025()
                 derniere_estimation = None
                 dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
@@ -3041,7 +3106,7 @@ class ApplicationComptaPrivee(tk.Tk):
                       wraplength=520).grid(row=len(textes)+1, column=0, sticky="w", pady=8)
 
             def appliquer_rqap():
-                nonlocal rqap_confirme_courant, ae_confirme_courant, psv_confirme_courant, rrq_rpc_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal rqap_confirme_courant, ae_confirme_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez ce formulaire.")
@@ -3053,6 +3118,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 ae_confirme_courant = False
                 rrq_rpc_confirme_courant = False
                 psv_confirme_courant = False
+                pensions_profil_courant = ProfilPensions2025()
                 derniere_estimation = None
                 dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
@@ -6541,7 +6607,7 @@ class ApplicationComptaPrivee(tk.Tk):
                         nouveau_profil
                     )
 
-                    if nouveau_profil.reclamer_montant_pension:
+                    if nouveau_profil.reclamer_montant_pension and not pensions_profil_courant.confirme:
                         raise ValueError(
                             "La ligne 31400 est préparée mais son "
                             "calcul automatique reste bloqué tant que "
@@ -9330,7 +9396,8 @@ class ApplicationComptaPrivee(tk.Tk):
             rl2 = sum(r.type_document == "RL-2" for r in classifications_fiscales.values())
             rl6 = sum(r.type_document == "RL-6" for r in classifications_fiscales.values())
             oas = sum(r.type_document == "T4A(OAS)" for r in classifications_fiscales.values())
-            autres = len(classifications_fiscales) - oas - t4 - rl1 - t4e - rl6 - t4ap - rl2
+            pensions_types = {t: sum(r.type_document == t for r in classifications_fiscales.values()) for t in ("T4A", "T4RIF", "T3", "T5", "RL-16")}
+            autres = len(classifications_fiscales) - sum(pensions_types.values()) - oas - t4 - rl1 - t4e - rl6 - t4ap - rl2
 
             message = (
                 "Reconnaissance locale terminée.\n\n"
@@ -9341,6 +9408,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 f"T4A(P) : {t4ap}\n"
                 f"RL-2 : {rl2}\n"
                 f"T4A(OAS) : {oas}\n"
+                + "".join(f"{t} : {n}\n" for t, n in pensions_types.items()) +
                 f"À vérifier / non reconnus : {autres}\n\n"
                 "Aucune donnée n'a quitté l'ordinateur."
             )
@@ -9776,7 +9844,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     "Extraction fiscale",
                     (
                         "Reconnaissez d'abord les documents "
-                        "T4 / RL-1 / T4E / RL-6 / T4A(P) / RL-2 / T4A(OAS)."
+                        "T4 / RL-1 et feuillets de prestations / pensions."
                     ),
                     parent=fenetre,
                 )
@@ -9796,7 +9864,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 if (
                     classification is None
                     or classification.type_document
-                    not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)"}
+                    not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16"}
                 ):
                     continue
 
@@ -9860,7 +9928,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal aidant_30425_federal_courant
             nonlocal accessibilite_domiciliaire_federale_courante
             nonlocal achat_habitation_federal_courant
-            nonlocal cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant, psv_confirme_courant, rrq_rpc_confirme_courant
+            nonlocal cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -9905,6 +9973,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ae_confirme_courant = False
             rrq_rpc_confirme_courant = False
             psv_confirme_courant = False
+            pensions_profil_courant = ProfilPensions2025()
             rapport_fiscal_a_reexporter = True
             aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
             aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
@@ -9953,8 +10022,8 @@ class ApplicationComptaPrivee(tk.Tk):
                         raise ValueError(f"Reconnaissez puis extrayez le document importé {chemin.name} avant de préparer le dossier.")
                     type_nom = classifier_document_fiscal(chemin).type_document
                     if (
-                        classification.type_document in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)"}
-                        or type_nom in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)"}
+                        classification.type_document in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16"}
+                        or type_nom in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16"}
                     ) and not donnees_fiscales_extraites.get(chemin):
                         raise ValueError(f"Aucune case extraite pour {chemin.name}; le feuillet ne peut pas être omis du calcul.")
                 dossier_valide = construire_dossier_fiscal_valide(
@@ -10042,7 +10111,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                             accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                             achat_habitation_federal=achat_habitation_federal_courant,
-                            cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant,
+                            cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant,
                             aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                             aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                             aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -10090,7 +10159,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                     accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                     achat_habitation_federal=achat_habitation_federal_courant,
-                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant,
+                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -10178,7 +10247,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal aidant_30425_federal_courant
             nonlocal accessibilite_domiciliaire_federale_courante
             nonlocal achat_habitation_federal_courant
-            nonlocal cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant, psv_confirme_courant, rrq_rpc_confirme_courant
+            nonlocal cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
             dossier = enregistrement.dossier
@@ -10267,6 +10336,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ae_confirme_courant = enregistrement.ae_confirme
             rrq_rpc_confirme_courant = enregistrement.rrq_rpc_confirme
             psv_confirme_courant = enregistrement.psv_confirme
+            pensions_profil_courant = enregistrement.profil_pensions
             aidant_30450_federal_courant = (
                 enregistrement.aidant_autre_personne_charge_federal
             )
@@ -10544,7 +10614,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                     accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                     achat_habitation_federal=achat_habitation_federal_courant,
-                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant,
+                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -10776,7 +10846,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(
             zone_actions,
-            text="Reconnaître T4 / RL-1 / T4E / RL-6 / T4A(P) / RL-2 / T4A(OAS)",
+            text="Reconnaître T4 / RL-1 et feuillets de prestations / pensions",
             command=reconnaitre_documents_fiscaux,
         ).pack(side="left", padx=(8, 0))
 
@@ -10941,6 +11011,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(zone_actions, text="Prestations RQAP 2025",
                    command=ouvrir_prestations_rqap_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Pensions, FERR et rentes 2025",
+                   command=ouvrir_pensions_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="PSV et suppléments 2025",
                    command=ouvrir_prestations_psv_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="RRQ/RPC 2025",
