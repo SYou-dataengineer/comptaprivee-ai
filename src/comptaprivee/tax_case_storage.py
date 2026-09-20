@@ -89,6 +89,7 @@ from .tax_field_validation import (
     STATUT_VALIDE,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_interest_income_2025 import ProfilInterets2025, valider_profil_interets_2025, consolider_interets_2025
 from .tax_replacement_benefits_2025 import (ProfilRemplacement2025, PrestationsRemplacement2025, valider_profil_remplacement_2025, detecter_remplacement_2025, consolider_remplacement_2025, appliquer_remplacement_2025, appliquer_redressement_358_2025, lignes_resume_remplacement_2025)
 from .tax_rrsp_withdrawals_2025 import (ProfilRetraits2025, Retraits2025, valider_profil_retraits_2025, detecter_retraits_2025, consolider_retraits_2025, appliquer_retraits_2025, lignes_resume_retraits_2025)
 from .tax_pension_income_2025 import ProfilPensions2025, valider_profil_pensions_2025, consolider_pensions_2025
@@ -148,6 +149,7 @@ class DossierFiscalEnregistre:
     cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
     rqap_confirme: bool = False
     ae_confirme: bool = False
+    profil_interets: ProfilInterets2025 = ProfilInterets2025()
     profil_remplacement: ProfilRemplacement2025 = ProfilRemplacement2025()
     profil_retraits: ProfilRetraits2025 = ProfilRetraits2025()
     profil_pensions: ProfilPensions2025 = ProfilPensions2025()
@@ -2433,12 +2435,21 @@ def sauvegarder_dossier_fiscal(
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool | None = None,
     ae_confirme: bool | None = None,
+    profil_interets: ProfilInterets2025 | None = None,
     profil_remplacement: ProfilRemplacement2025 | None = None,
     profil_retraits: ProfilRetraits2025 | None = None,
     profil_pensions: ProfilPensions2025 | None = None,
     psv_confirme: bool | None = None,
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    interets_effectif = profil_interets if profil_interets is not None else (estimation.profil_interets if estimation else ProfilInterets2025())
+    valider_profil_interets_2025(interets_effectif)
+    if estimation and interets_effectif != estimation.profil_interets:
+        raise ValueError("Le profil intérêts diffère de l’estimation.")
+    if interets_effectif.confirme:
+        if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or any(p and p.confirme for p in (profil_pensions, profil_retraits, profil_remplacement)):
+            raise ValueError("Intérêts avec autres prestations : hors périmètre 3A.")
+        consolider_interets_2025(dossier, interets_effectif)
     remplacement_effectif = profil_remplacement if profil_remplacement is not None else (estimation.profil_remplacement if estimation else ProfilRemplacement2025())
     valider_profil_remplacement_2025(remplacement_effectif)
     if estimation and remplacement_effectif != estimation.profil_remplacement:
@@ -2519,6 +2530,7 @@ def sauvegarder_dossier_fiscal(
         "profil_pensions": asdict(pensions_effectif),
         "profil_retraits": asdict(retraits_effectif),
         "profil_remplacement": asdict(remplacement_effectif),
+        "profil_interets": asdict(interets_effectif),
         "psv_confirme": confirme_psv,
         "rrq_rpc_confirme": confirme_rrq_rpc,
         "cotisations_rpa": {
@@ -2677,7 +2689,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             raise ValueError("Une donnée fiscale enregistrée est incomplète.") from erreur
         if statut not in STATUTS_VALIDATION_AUTORISES:
             raise ValueError("Statut de validation fiscale enregistré invalide.")
-        if type_document not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5"}:
+        if type_document not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3"}:
             raise ValueError("Type de document fiscal enregistré non pris en charge.")
         ve = _decimal_depuis_json(brut.get("valeur_extraite"), f"valeur_extraite[{index}]")
         vv = _decimal_depuis_json(brut.get("valeur_validee"), f"valeur_validee[{index}]")
@@ -2830,7 +2842,17 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc, pensions_profil.confirme, retraits_profil.confirme)):
             raise ValueError("Remplacement avec autres prestations : hors périmètre.")
         consolider_remplacement_2025(dossier, remplacement_profil)
+    try:
+        interets_profil = ProfilInterets2025(**contenu.get("profil_interets", {}))
+    except (TypeError, ValueError) as erreur:
+        raise ValueError("Profil intérêts enregistré invalide.") from erreur
+    valider_profil_interets_2025(interets_profil)
+    if interets_profil.confirme:
+        if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc, pensions_profil.confirme, retraits_profil.confirme, remplacement_profil.confirme)):
+            raise ValueError("Intérêts avec autres prestations : hors périmètre 3A.")
+        consolider_interets_2025(dossier, interets_profil)
     return DossierFiscalEnregistre(
+        profil_interets=interets_profil,
         profil_remplacement=remplacement_profil,
         profil_retraits=retraits_profil,
         profil_pensions=pensions_profil,

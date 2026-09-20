@@ -790,3 +790,101 @@ Tcl/Tk local). Aucun test antérieur retiré ou désactivé.
 pris en charge sont strictement ceux décrits dans chaque bloc; cette
 priorité ne constitue pas une couverture universelle des prestations,
 des familles, des cumuls de revenus ni des déclarations de retraite.
+
+## Priorité 3 — audit et découpage des revenus de placement 2025
+
+Audit du 20 septembre 2026, **avant toute modification du code 3A**, sur le
+socle 2H `4744592` (2 355 tests). Seul 3A est autorisé à être implémenté
+dans cette étape; arrêt après son commit, son push et sa CI pour bilan.
+
+### Références officielles et décisions fiscales
+
+- [ARC, feuille de calcul fédérale 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-d1/5000-d1-25e.pdf) : 12010 est inclus dans 12000; montants imposables des T5 11/25 et T3 32/50, sans ajouter une seconde fois les dividendes réels. Majorations 15 %/38 % selon nature; crédit 40425 distinct des crédits au taux de base. 12100 reçoit notamment T5 13/14/15/30 et T3 25, avec retrait des montants déjà déclarés antérieurement.
+- [ARC, intérêts 12100](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-12100-interest-other-investment-income.html) : intérêts payés/crédités et intérêts de remboursement d'impôt déclarables même sans T5 et sous 50 $. CPG composés : année de placement complète, sans attendre l'encaissement. Compte commun : quote-part liée aux apports, pas partage arbitraire. Bons du Trésor vendus avant échéance et billets liés peuvent combiner intérêts et capital.
+- [ARC, T5](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/tax-slips/understand-your-tax-slips/t5-slips/t5-statement-investment-income-slip-information-individuals.html) : 13 intérêts canadiens; 10/11/12 dividendes autres que déterminés; 24/25/26 déterminés; 18 gains en capital; 15/16 revenu/impôt étranger; 19 rentes et 30 billets liés à distinguer.
+- [ARC, guide T3 2025](https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/t4013/t3-trust-guide.html) : 23/32/39 autres dividendes, 49/50/51 déterminés; 21 gains, 25/34 revenu/impôt étranger non commercial, 42 ajustement du PBR. **26 est composite** (intérêts, location, entreprise, pension, etc.); aucune attribution automatique de toute cette case à 12100. Crédit fédéral des dividendes : 9,0301 %/15,0198 % des montants imposables selon nature.
+- [Revenu Québec, RL-3 version 2025-10](https://www.revenuquebec.ca/documents/fr/formulaires/rl/RL-3%282025-10%29.pdf) : D → 130; A1/A2 → 166/167, B → 128, C → 415; F/G revenu/impôt étranger; I gains; J rentes; K billets liés. Une devise et les comptes communs nécessitent un traitement distinct.
+- [Revenu Québec, guide TP-1.G 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.G%282025-12%29.pdf) : intérêts 130, dividendes 128 avec renseignements 166/167, crédit 415 (RL-3 C, RL-16 J). Sans relevé, crédit = 16,1460 % du dividende déterminé réel + 3,9330 % de l'ordinaire réel. Frais 231, rajustements 260/276; pertes antérieures 290 avec TP-729. Crédit étranger 409 via TP-772/annexe E; impôt non commercial disponible réduit du crédit fédéral. T3/RL-16 et T5008/RL-18 décrivent les mêmes opérations : ne jamais additionner les contreparties.
+- [ARC, gains en capital 2025](https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/t4037/capital-gains.html) et [annexe G Québec 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.G%282025-12%29.pdf) : produit moins PBR et frais d'aliénation; inclusion ordinaire **50 % en 2025**, fédéral 12700/annexe 3, Québec 139. Une perte nette ne réduit pas le salaire; report rétrospectif de trois ans ou prospectif sans limite dans le cas ordinaire. Pertes apparentes, biens personnels/précieux, entreprise, réserves, décès et exonérations exigent des règles propres. Ne pas coder une proposition de taux aux deux tiers comme règle 2025.
+- [ARC, T5008](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/tax-slips/understand-your-tax-slips/t5-slips/t5008-statement-securities-transactions-slip-information-individuals.html) : case 21 produit; case 20 coût comptable **pas nécessairement le PBR**. Registre des lots/coût moyen, frais, devise et distributions nécessaires; pas de calcul aveugle 21 − 20.
+- [ARC, pertes antérieures 25300](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/sujets/tout-votre-declaration-revenus/declaration-revenus/remplir-declaration-revenus/deductions-credits-depenses/ligne-25300-pertes-capital-nettes-autres-annees.html) : soldes non utilisés, ordre des années et ajustement au taux d'inclusion applicables. Distinguer revenu net et imposable; ne pas consommer un report deux fois. Reports fédéraux et Québec conservés séparément.
+- [ARC, frais 22100](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-22100-carrying-charges-interest-expenses.html) : frais admissibles et emprunts utilisés pour produire un revenu, exclusions pour régimes enregistrés et frais de transaction à traiter dans le PBR/produit. [Annexe N Québec 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.N%282025-12%29.pdf) : excédent des frais sur revenus à 260; interaction des pertes 290 à 276; solde et utilisation 252 à suivre séparément. Pas de simple copie de 22100 vers une déduction Québec nette.
+- [ARC, crédit étranger 40500 pour 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-40500-federal-foreign-tax-credit.html) : T2209, revenus bruts et impôts convertis en CAD, ventilation par pays/nature et limites conventionnelles; revenu exonéré par convention exclu du calcul. Les retenues étrangères ne sont pas des retenues canadiennes 43700/451. Dividendes étrangers sans crédit canadien pour dividendes; T1135 et TP-1079.8.BE à examiner séparément.
+- [Annexe F Québec 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf) : intérêts 130 dans l'assiette FSS; salaire exclu, déductions admises propres à l'annexe. Seuil 18 130 $, 1 % plafonné à 150 $ jusqu'à 63 060 $, puis 150 $ + 1 % de l'excédent, maximum 1 000 $. Ne pas calculer et additionner un plafond par feuillet.
+
+### Sous-blocs proposés et dépendances
+
+| Bloc | Périmètre à construire | Dépendances et garde-fous |
+| --- | --- | --- |
+| **3A — intérêts canadiens sur feuillets** | Une paire T5 13/RL-3 D, CAD, titulaire unique; 12100/130 et FSS | Extraction, validation des pièces et du profil, GUI, JSON, résumé, trace, PDF; seul bloc implémenté maintenant |
+| 3B — intérêts sans feuillet et autres intérêts documentés | Relevés bancaires, impôt remboursé, CPG courus; T3/RL-16 après ventilation | Identifiants des sources, déduplication avec 3A, échéanciers, intérêts déjà déclarés; attribution et devises restent exclus jusqu'à couverture |
+| 3C — dividendes canadiens | Déterminés/autres; T5/RL-3 puis T3/RL-16; majorations, crédits fédéral/Québec | Ordre des crédits et abattement, revenu net majoré, FSS, refus TOSI/cas particuliers; conservation des revenus réels et imposables |
+| 3D — dispositions et distributions en capital | Annexe 3/G, T5008/RL-18, T3/RL-16 et T5/RL-3 | PBR prouvé, frais, historique, pertes apparentes, taux 2025; différencier revenu d'entreprise et capital, contrôler impôt minimum |
+| 3E — frais de placement et annexe N | 22100/231, 260/276, reports 252 | Utilisation des emprunts, frais admissibles, revenus de placement des blocs précédents, soldes distincts; aucune double déduction de frais de transaction |
+| 3F — reports de pertes en capital | 25300/290, T1A/TP-1012.A, TP-729, soldes historiques | 3D et 3E; taux d'origine, avis de cotisation, ordre d'utilisation, plafonds et non-double consommation |
+| 3G — placements et impôts étrangers | Revenus bruts/devises, T2209/40500, TP-772/409, déclarations de biens étrangers | Pays, convention, limites de crédit et déductions connexes; pas de conversion ou crédit implicites |
+| 3H — combinaisons contrôlées | Plusieurs sources, placements + retraite/remplacement | Assiette FSS globale, récupérations AE/PSV, crédits/annexe B/RAMQ recalculés; validation de chaque combinaison avant ouverture |
+
+### Contrat du premier sous-bloc 3A
+
+Intérêts courants de source canadienne uniquement, T5 13 = RL-3 D, une paire
+distincte validée et un propriétaire bénéficiaire unique, comptes non
+enregistrés en CAD. Aucun ajout manuel d'intérêts sans feuillet. Les montants
+augmentent revenu total, net et imposable dans chaque juridiction, une seule
+fois; aucune retenue présumée. Avec ou sans un emploi ordinaire T4/RL-1.
+
+Refus explicite : autres cases monétaires positives, dividendes, T3,
+T5008/RL-18, gains/pertes, reports, frais de placement, impôt étranger,
+devises, copropriété/attribution, intérêts déjà déclarés, billets liés,
+assurance vie, successions et mélanges avec pensions ou prestations.
+Les feuillets T5 de rente du Bloc 2E conservent leur parcours : l'identifiant
+T5 seul ne suffit pas à sélectionner 3A. Les garde-fous 34990, crédits,
+RAMQ, revenus élevés et confidentialité locale demeurent.
+
+Toute modification pertinente doit révoquer la confirmation, invalider
+l'estimation et empêcher l'export du PDF antérieur. Ancien JSON sans profil
+intérêts : profil non confirmé. Arrêt obligatoire après validation de 3A.
+
+### Réalisation du Bloc 3A
+
+La chaîne locale est intégrée : classification RL-3, extraction des cases,
+validation T5 13 / RL-3 D, calcul 12100/130, FSS 446, formulaire défilant,
+JSON, résumé, trace et PDF. Les pièces sans données validées, cases
+dupliquées, sources absentes, montants négatifs/non finis et divergences
+d'appariement sont refusés. Les profils des autres prestations ne se
+cumulent pas avec 3A. Une correction des données révoque la confirmation;
+une nouvelle application du profil invalide l'estimation et son ancien PDF.
+
+Le [T5 officiel 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t5/t5-25e.pdf)
+confirme que la case 23 est un **code**, pas un revenu : seul 1 est accepté
+si cette case est saisie. Le code 2 (compte conjoint) est refusé. Les cases
+21, 22, 27, 28 et 29 ne sont pas extraites comme des montants; identité,
+devise, validité du feuillet et absence de doublons sont vérifiées et
+confirmées humainement sur les pièces complètes. L'extraction reste une
+aide soumise à validation, sans lecture automatique fiable de toute mise
+en page bancaire ni des codes textuels. Aucune somme de plusieurs paires.
+
+Le FSS utilise les intérêts bruts admissibles : seuil 18 130 $, premier
+plafond 150 $, reprise au-delà de 63 060 $, plafond final 1 000 $.
+Le salaire et la déduction REER ordinaire ne changent pas cette assiette.
+Les garde-fous historiques demeurent, notamment le refus du calcul global
+au-delà de 129 590 $ de revenu imposable Québec dans le parcours actuel
+des crédits. Le barème FSS est testé séparément jusqu'à son plafond.
+
+Exemples synthétiques vérifiés : 20 000 $ d'intérêts sans emploi donnent
+561,29 $ d'impôt fédéral de base, 468,68 $ après abattement Québec,
+200,06 $ d'impôt Québec et 18,70 $ de FSS, soit 687,44 $ au total.
+Avec le dossier salarial synthétique de 52 000 $, les revenus nets sont
+71 515 $ au fédéral et 70 095 $ au Québec; les retenues restent 13 700 $.
+
+Validation 3A : 106 nouveaux tests ciblés (99 moteur/persistance/PDF et
+7 GUI). Inspection visuelle du formulaire à 600×400 et 1000×700, tests
+d'accès aux boutons à 96/144/192 DPI, et inspection de toutes les pages
+des trois PDF synthétiques (sans emploi, avec emploi, second palier FSS).
+Les artefacts de contrôle restent dans `tmp/`, exclus de Git.
+
+Suite complète finale : **2 461 tests réussis**, 8 avertissements de
+dépréciation existants, aucun test retiré ou désactivé. Le code bénéficiaire
+T5 23 est aussi distingué des revenus dans le parcours rente 2E; les
+scénarios avant/après 65 ans restent identiques et le code conjoint reste
+refusé. Les Blocs 3B à 3H restent non implémentés.

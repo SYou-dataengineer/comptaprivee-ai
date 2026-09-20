@@ -232,6 +232,9 @@ def construire_trace_calcul_fiscal_2025(
         formule_revenu_federal += " + PSV 11300 + suppléments 14600 - récupération 23500 - déduction 25000"
         formule_revenu_quebec += " + PSV 114 + suppléments 148 - récupération 250 - déduction 295"
 
+    if estimation.interets.present:
+        formule_revenu_federal += " + intérêts 12100"
+        formule_revenu_quebec += " + intérêts 130"
     if estimation.remplacement.present:
         formule_revenu_federal += " + prestations 14400/14500 (25000 déduit uniquement de l’imposable)"
         formule_revenu_quebec += " + prestations 147/148 (295 déduit uniquement de l’imposable)"
@@ -331,6 +334,8 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_total += " + FSS Québec 446"
     if ae.present:
         formule_impot_total += " + récupération AE 42200 (sans abattement) + FSS Québec 446"
+    if estimation.interets.present:
+        formule_impot_total += " + FSS intérêts 446 (sans abattement)"
     if estimation.retraits.present:
         formule_impot_total += " + FSS retraits 446"
     if pensions.present:
@@ -1342,6 +1347,11 @@ def construire_trace_calcul_fiscal_2025(
         r = estimation.remplacement
         for code in ("14400", "14500", "25000", "147", "148", "295", "358"):
             lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"REMPLACEMENT", "Prestations " + code, estimation.profil_remplacement.source, "25000/295 réduisent l’imposable, pas le net; 358 réduit le montant personnel; FSS nul", getattr(r, "ligne_" + code)))
+
+    if estimation.interets.present:
+        r = estimation.interets
+        for libelle, montant in (("Intérêts 12100",r.ligne_12100),("Intérêts 130",r.ligne_130),("FSS intérêts 446",r.cotisation_fss)):
+            lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"INTÉRÊTS",libelle,estimation.profil_interets.source,"T5 13 = RL-3 D; une seule inclusion par juridiction; FSS annexe F sans abattement",montant))
 
     prochain_ordre = len(lignes) + 1
 

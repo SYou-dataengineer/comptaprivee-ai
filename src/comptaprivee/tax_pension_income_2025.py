@@ -95,6 +95,11 @@ def consolider_pensions_2025(dossier, profil=ProfilPensions2025()):
     retenue={'T4A':'022','T4RIF':'28'}.get(t)
     if retenue: autorisees[t].add(retenue)
     if tq=='RL-2': autorisees[tq].add('J')
+    if t=='T5' and (t,'23') in valeurs:
+        # Code bénéficiaire administratif, maintenant extrait avec les intérêts 3A.
+        if case(t,'23') != 1:
+            raise ValueError('T5 23 : bénéficiaire autre que particulier unique hors périmètre pensions.')
+        autorisees[t].add('23')
     if t=='T3':
         autorisees[t].add('26')
         if (t,'26') not in valeurs or case(t,'26')!=case(t,'31'):
