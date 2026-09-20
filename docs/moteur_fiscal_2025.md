@@ -705,3 +705,88 @@ deux pages du PDF fictif. Captures et rapports exclusivement dans `tmp/`.
 Suite complète 2G : **2 266 tests réussis**, aucun test retiré, désactivé ou
 ignoré; 8 avertissements existants, 63,90 s avec le Python `.venv` et les
 bibliothèques Tcl/Tk locales. Les profils individuels précédents restent testés.
+
+## Bloc 2H — autres prestations de remplacement 2025
+
+### Audit et périmètre retenu
+
+Sources officielles pour 2025, consultées le 20 septembre 2026 :
+
+- [ARC, indemnités pour accidents du travail, 14400](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-144-workers-compensation-benefits.html).
+- [ARC, assistance sociale, 14500](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/sujets/tout-votre-declaration-revenus/declaration-revenus/remplir-declaration-revenus/revenu-personnel/ligne-145-prestations-assistance-sociale.html).
+- [ARC, déduction 25000](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-25000-other-payments-deduction.html).
+- [ARC, feuillet T5007 2025](https://www.canada.ca/en/revenue-agency/services/forms-publications/forms/t5007.html).
+- [ARC, guide fédéral 2025](https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-years/general-income-tax-benefit-package/5000-g.html), étape 2, lien vers les [sommes non déclarables](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/amounts-that-taxed.html) : indemnité provinciale à une victime d'accident automobile.
+- [Revenu Québec, guide TP-1.G 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.G%282025-12%29.pdf), lignes 147, 148, 295 et 358.
+- [Déclaration TP-1 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D%282025-12%29.pdf), [annexe F](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf) et [annexe E](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.E%282025-12%29.pdf).
+
+| Profil intégré | Fédéral | Québec |
+| --- | --- | --- |
+| Assistance sociale ordinaire, T5007 11 = RL-5 A | 14500; déduction 25000 | 147; aucune déduction 295 |
+| CNESST courante, T5007 10 = RL-5 C | 14400; déduction 25000 | 148, source 01; déduction 295; M vers 358 |
+| SAAQ courante, victime de l'accident, RL-5 D seul | Aucun revenu ni déduction 25000 | 148, source 03; déduction 295; M vers 358 |
+
+25000 et 295 réduisent le revenu imposable, pas le revenu net utilisé pour
+les crédits. Les montants fédéral et Québec appariés ne sont jamais
+additionnés. Le redressement M est explicitement requis, même nul, et
+plafonné à 16 713,90 $; le crédit personnel utilise (18 571 − M) × 14 %.
+L'annexe F exclut 147/148 : aucune cotisation FSS sur ces prestations.
+L'annexe E n'est pas le calcul de 358; aucun redressement d'impôt
+rétroactif 443 n'est simulé.
+
+### Refus et limites
+
+Une seule paire de feuillets distincts (RL-5 seul pour SAAQ), une nature, avec ou sans emploi
+ordinaire, résidence Canada/Québec toute l'année et sans conjoint. L'aide
+fédérale peut devoir être attribuée au conjoint au revenu net supérieur :
+ce parcours conjugal est exclu. Les remboursements à l'employeur exigent
+un traitement distinct et sont refusés par confirmation explicite.
+
+SAAQ : le revenu net fédéral demeure inchangé, tandis que le revenu net
+Québec augmente. Un T5007 concomitant est refusé; aucune assimilation à
+CNESST. Le décès et la compensation pour perte d'un soutien financier
+restent exclus. Sont aussi refusés B/K, E (retrait préventif et autres indemnités),
+H/P (remboursements), O (années antérieures), revenu de base Q, régimes
+hors Québec nécessitant TP-752.0.0.6, décès, revenus étrangers, cas mixtes,
+autres prestations de retraite/remplacement et RAMQ publique. Les codes
+textuels doivent être revus sur la pièce : l'extraction numérique ne prouve
+pas leur absence. Aucune règle inventée pour une prestation non couverte.
+Les limites préexistantes sur crédits remboursables, 34990 et OCR demeurent.
+
+### Chaîne et validation
+
+Classification T5007/RL-5, extraction signée des cases, validation de la
+provenance, refus des doublons et des paires discordantes, calcul,
+formulaire défilant, résumé, trace, PDF et JSON intégrés au dossier fiscal.
+Les anciens JSON sans profil reçoivent un profil non confirmé. Nature ou
+source modifiée : confirmation retirée; extraction/préparation/application :
+estimation et ancien PDF invalidés. Rechargement testé avec nouveau calcul.
+
+89 nouveaux tests ciblés : 81 moteur/extraction/stockage/trace/PDF et 8 GUI.
+Inspection visuelle des six vues GUI à 600 × 400 et 1 000 × 700 et des six
+pages de trois PDF fictifs avec emploi. Aucun débordement de texte constaté.
+Captures et PDF conservés exclusivement dans `tmp/`, hors Git.
+
+Arrêt après ce bloc. La Priorité 3 n'est pas commencée.
+
+Validation finale 2H : **2 355 tests réussis**, 8 avertissements existants,
+aucun échec ni test ignoré, en 69,19 s (`python -m pytest -q`, Python `.venv`,
+Tcl/Tk local). Aucun test antérieur retiré ou désactivé.
+
+### Bilan des validations de la Priorité 2
+
+| Bloc | Nouveaux tests | Total à la clôture | Commit |
+| --- | ---: | ---: | --- |
+| 2A RQAP | 77 | 1 726 | 3915e8a |
+| 2B AE | 65 | 1 791 | 4467004 |
+| 2C RRQ/RPC | 91 | 1 882 | c5f8b58 |
+| 2D PSV | 81 | 1 963 | 89b83fd |
+| 2E Pensions | 151 | 2 114 | 395f228 |
+| 2F Retraits | 95 | 2 209 | 81c5f2f |
+| 2G Fractionnement | 57 | 2 266 | d344e82 |
+| 2H Autres prestations | 89 | 2 355 | Voir le commit de cette section |
+
+706 tests ajoutés depuis les 1 649 tests du socle avant 2A. Les profils
+pris en charge sont strictement ceux décrits dans chaque bloc; cette
+priorité ne constitue pas une couverture universelle des prestations,
+des familles, des cumuls de revenus ni des déclarations de retraite.

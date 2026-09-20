@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import textwrap
 import fitz
+from .tax_replacement_benefits_2025 import lignes_resume_remplacement_2025
 from .tax_rrsp_withdrawals_2025 import lignes_resume_retraits_2025
 from .tax_pension_income_2025 import lignes_resume_pensions_2025
 from .tax_old_age_security_2025 import lignes_resume_psv_2025
@@ -177,6 +178,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_resume_ae_2025(estimation.prestations_ae))
     lignes.extend(lignes_resume_rrq_rpc_2025(estimation.prestations_rrq_rpc))
     lignes.extend(lignes_resume_psv_2025(estimation.prestations_psv))
+    lignes.extend(lignes_resume_remplacement_2025(estimation.remplacement, estimation.profil_remplacement))
     lignes.extend(lignes_resume_retraits_2025(estimation.retraits, estimation.profil_retraits))
     lignes.extend(lignes_resume_pensions_2025(estimation.pensions, estimation.profil_pensions))
     if estimation.prestations_rqap.present or estimation.prestations_ae.present or estimation.prestations_rrq_rpc.present or estimation.prestations_psv.present or estimation.pensions.present or estimation.retraits.present:

@@ -232,6 +232,9 @@ def construire_trace_calcul_fiscal_2025(
         formule_revenu_federal += " + PSV 11300 + suppléments 14600 - récupération 23500 - déduction 25000"
         formule_revenu_quebec += " + PSV 114 + suppléments 148 - récupération 250 - déduction 295"
 
+    if estimation.remplacement.present:
+        formule_revenu_federal += " + prestations 14400/14500 (25000 déduit uniquement de l’imposable)"
+        formule_revenu_quebec += " + prestations 147/148 (295 déduit uniquement de l’imposable)"
     if estimation.retraits.present:
         formule_revenu_federal += " + retraits 12900/13000 - 23200"
         formule_revenu_quebec += " + retraits 154 - 250.6"
@@ -434,7 +437,8 @@ def construire_trace_calcul_fiscal_2025(
         _ligne(
             13, "QUÉBEC", "Crédit personnel de base",
             "Montant personnel de base Québec 2025",
-            "Montant personnel de base × taux du crédit",
+            ("(Montant personnel de base - redressement 358) × taux du crédit"
+             if estimation.remplacement.present else "Montant personnel de base × taux du crédit"),
             quebec.credit_personnel_base,
         ),
         _ligne(
@@ -1333,6 +1337,11 @@ def construire_trace_calcul_fiscal_2025(
         r = estimation.retraits
         for libelle, montant in (("REER 12900",r.ligne_12900),("Forfait 13000",r.ligne_13000),("Déduction 23200",r.ligne_23200),("Retraits 154",r.ligne_154),("Déduction 250.6",r.ligne_250_6),("FSS retraits 446",r.cotisation_fss),("Retenue retraits 43700",r.retenue_federale),("Retenue retraits 451",r.retenue_quebec)):
             lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"RETRAITS",libelle,estimation.profil_retraits.source,"Feuillets appariés, sans double compte",montant))
+
+    if estimation.remplacement.present:
+        r = estimation.remplacement
+        for code in ("14400", "14500", "25000", "147", "148", "295", "358"):
+            lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"REMPLACEMENT", "Prestations " + code, estimation.profil_remplacement.source, "25000/295 réduisent l’imposable, pas le net; 358 réduit le montant personnel; FSS nul", getattr(r, "ligne_" + code)))
 
     prochain_ordre = len(lignes) + 1
 

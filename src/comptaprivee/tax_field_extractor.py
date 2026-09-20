@@ -143,6 +143,8 @@ REGLES_PENSIONS = {
     t: tuple((c, label, (rf"\b(?:case|box|code)\s*{('0?' + c[1:]) if t == 'T4A' and c.startswith('0') else c}\b",)) for c, label in cases)
     for t, cases in {
         'T4A': [(c, {'016':'Pension RPA', '022':'Impôt fédéral retenu', '024':'Rente', '133':'Rente ou prestation variable (nature à confirmer)', '194':'RPAC'}.get(c,'Autre case T4A à vérifier')) for c in ('016','018','022','024','028','048','105','106','108','109','115','119','127','133','135','194')],
+        'T5007': [(c, 'Prestations : '+{'10':'accident du travail','11':'assistance sociale'}.get(c,'autre case à vérifier')) for c in ('10','11')],
+        'RL-5': [(c, 'Prestation/indemnité : '+{'A':'assistance sociale','C':'CNESST','D':'SAAQ','M':'redressement 358'}.get(c,'autre case à vérifier')) for c in ('A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','Q1','Q2','Q3','Q4')],
         'T4RSP': [(c, 'REER : '+{'22':'retrait', '20':'cotisations inutilisées', '30':'impôt retenu'}.get(c,'cas particulier à vérifier')) for c in ('16','18','20','22','24','25','26','27','28','30','34','35','36','37','40')],
         'T4RIF': [(c, 'FERR : '+{'16':'paiement', '22':'autre revenu ou déduction (exclu)', '24':'excédent déjà inclus', '28':'impôt fédéral retenu'}.get(c,'cas particulier exclu')) for c in ('16','18','20','22','24','28','35','36','37')],
         'T3': [(str(c), 'Pension admissible' if c==31 else 'Autre case T3 à vérifier') for c in range(21,53)],

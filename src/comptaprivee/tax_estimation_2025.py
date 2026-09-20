@@ -165,6 +165,7 @@ from .tax_union_dues_2025 import (
     credit_quebec_cotisations_2025,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_replacement_benefits_2025 import (ProfilRemplacement2025, PrestationsRemplacement2025, valider_profil_remplacement_2025, detecter_remplacement_2025, consolider_remplacement_2025, appliquer_remplacement_2025, appliquer_redressement_358_2025, lignes_resume_remplacement_2025)
 from .tax_rrsp_withdrawals_2025 import (ProfilRetraits2025, Retraits2025, valider_profil_retraits_2025, detecter_retraits_2025, consolider_retraits_2025, appliquer_retraits_2025, lignes_resume_retraits_2025)
 from .tax_pension_income_2025 import (ProfilPensions2025, RevenusPensions2025, TYPES_PENSIONS, valider_profil_pensions_2025, consolider_pensions_2025, appliquer_pensions_2025, credit_pension_federal_depuis_feuillets, credit_retraite_quebec_depuis_feuillets, lignes_resume_pensions_2025)
 from .tax_old_age_security_2025 import (PrestationsPsv2025, valider_confirmation_psv, consolider_prestations_psv_2025, appliquer_revenu_psv_2025, appliquer_recuperation_psv_2025, lignes_resume_psv_2025)
@@ -220,6 +221,8 @@ class EstimationFiscale2025:
     prestations_rqap: PrestationsRqap2025 = PrestationsRqap2025()
     ae_confirme: bool = False
     prestations_ae: PrestationsAe2025 = PrestationsAe2025()
+    profil_remplacement: ProfilRemplacement2025 = ProfilRemplacement2025()
+    remplacement: PrestationsRemplacement2025 = PrestationsRemplacement2025()
     profil_retraits: ProfilRetraits2025 = ProfilRetraits2025()
     retraits: Retraits2025 = Retraits2025()
     profil_pensions: ProfilPensions2025 = ProfilPensions2025()
@@ -279,6 +282,7 @@ def calculer_estimation_fiscale_2025(
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool = False,
     ae_confirme: bool = False,
+    profil_remplacement: ProfilRemplacement2025 = ProfilRemplacement2025(),
     profil_retraits: ProfilRetraits2025 = ProfilRetraits2025(),
     profil_pensions: ProfilPensions2025 = ProfilPensions2025(),
     psv_confirme: bool = False,
@@ -291,6 +295,13 @@ def calculer_estimation_fiscale_2025(
             "uniquement pour l'année 2025."
         )
 
+    valider_profil_remplacement_2025(profil_remplacement)
+    parcours_remplacement = profil_remplacement != ProfilRemplacement2025() or detecter_remplacement_2025(dossier)
+    remplacement = PrestationsRemplacement2025()
+    if parcours_remplacement:
+        if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or profil_pensions != ProfilPensions2025() or profil_retraits != ProfilRetraits2025():
+            raise ValueError("Remplacement avec autres prestations : hors périmètre.")
+        remplacement = consolider_remplacement_2025(dossier, profil_remplacement)
     valider_profil_retraits_2025(profil_retraits)
     parcours_retraits = profil_retraits != ProfilRetraits2025() or detecter_retraits_2025(dossier)
     retraits = Retraits2025()
@@ -319,7 +330,7 @@ def calculer_estimation_fiscale_2025(
         if ae_confirme or rqap_confirme:
             raise ValueError("RRQ/RPC avec AE/RQAP : profil combiné hors périmètre.")
         prestations_rrq_rpc = consolider_prestations_rrq_rpc_2025(dossier, rrq_rpc_confirme)
-    sans_emploi = (parcours_retraits or parcours_pensions or parcours_psv or parcours_rrq_rpc) and not any(d.type_document in {"T4", "RL-1"} for d in dossier.donnees_validees)
+    sans_emploi = (parcours_remplacement or parcours_retraits or parcours_pensions or parcours_psv or parcours_rrq_rpc) and not any(d.type_document in {"T4", "RL-1"} for d in dossier.donnees_validees)
     base = base_sans_emploi_rrq_rpc_2025(dossier) if sans_emploi else consolider_base_fiscale_emploi_2025(dossier)
 
     cotisations_excedentaires_effectives = (
@@ -401,7 +412,9 @@ def calculer_estimation_fiscale_2025(
     )
     prestations_ae = PrestationsAe2025()
     prestations_rqap = PrestationsRqap2025()
-    if parcours_retraits:
+    if parcours_remplacement:
+        revenu = appliquer_remplacement_2025(revenu, remplacement)
+    elif parcours_retraits:
         revenu = appliquer_retraits_2025(revenu, retraits)
     elif parcours_pensions:
         revenu = appliquer_pensions_2025(revenu, pensions)
@@ -870,6 +883,13 @@ def calculer_estimation_fiscale_2025(
         if assurance_medicaments is not None
         else AssuranceMedicamentsQuebec2025()
     )
+    if remplacement.present:
+        if (credits_federaux_age_pension_effectifs.reclamer_montant_pension
+                or montants_age_retraite_effectifs.reclamer_revenus_retraite
+                or montant_conjoint_federal_effectif.reclamer_montant):
+            raise ValueError("Prestations de remplacement : pensions et conjoint hors périmètre.")
+        if assurance_medicaments_effective.type_couverture.strip().lower() == "public":
+            raise ValueError("Prestations de remplacement et RAMQ publique : exemptions particulières hors périmètre.")
     if prestations_psv.supplements and assurance_medicaments_effective.type_couverture.strip().lower() == "public":
         raise ValueError("Suppléments PSV avec RAMQ publique : exemptions particulières hors périmètre.")
     valider_assurance_medicaments_2025(
@@ -945,6 +965,7 @@ def calculer_estimation_fiscale_2025(
         aidant_enfant_federal_effectif,
     )
     quebec = calculer_impot_quebec_preliminaire_2025(revenu)
+    quebec = appliquer_redressement_358_2025(quebec, remplacement)
     quebec = appliquer_credit_quebec_cotisations_2025(
         quebec,
         cotisations_effectives,
@@ -989,6 +1010,7 @@ def calculer_estimation_fiscale_2025(
         prestations_ae=prestations_ae,
         pensions=pensions,
         retraits=retraits,
+        remplacement=remplacement,
         prestations_psv=prestations_psv,
         prestations_rrq_rpc=prestations_rrq_rpc,
         cotisation_assurance_medicaments=(
@@ -1014,6 +1036,8 @@ def calculer_estimation_fiscale_2025(
         ae_confirme=ae_confirme,
         profil_pensions=profil_pensions,
         profil_retraits=profil_retraits,
+        profil_remplacement=profil_remplacement,
+        remplacement=remplacement,
         psv_confirme=psv_confirme,
         rrq_rpc_confirme=rrq_rpc_confirme,
         rqap_confirme=rqap_confirme,
@@ -1103,6 +1127,7 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_rpa_2025(estimation.cotisations_rpa),
         *lignes_resume_rqap_2025(estimation.prestations_rqap),
         *lignes_resume_ae_2025(estimation.prestations_ae),
+        *lignes_resume_remplacement_2025(estimation.remplacement, estimation.profil_remplacement),
         *lignes_resume_retraits_2025(estimation.retraits, estimation.profil_retraits),
         *lignes_resume_pensions_2025(estimation.pensions, estimation.profil_pensions),
         *lignes_resume_psv_2025(estimation.prestations_psv),

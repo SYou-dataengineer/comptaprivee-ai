@@ -18,6 +18,7 @@ autonomes, plusieurs employeurs et autres situations particulières.
 from dataclasses import dataclass
 from decimal import Decimal
 
+from .tax_replacement_benefits_2025 import PrestationsRemplacement2025
 from .tax_rrsp_withdrawals_2025 import Retraits2025
 from .tax_pension_income_2025 import RevenusPensions2025
 from .tax_old_age_security_2025 import PrestationsPsv2025
@@ -108,6 +109,7 @@ def calculer_rapprochement_fiscal_2025(
     prestations_rrq_rpc: PrestationsRrqRpc2025 = PrestationsRrqRpc2025(),
     prestations_psv: PrestationsPsv2025 = PrestationsPsv2025(),
     pensions: RevenusPensions2025 = RevenusPensions2025(),
+    remplacement: PrestationsRemplacement2025 = PrestationsRemplacement2025(),
     retraits: Retraits2025 = Retraits2025(),
 ) -> RapprochementFiscal2025:
     """Calcule une estimation de base du remboursement ou du solde."""
@@ -340,6 +342,7 @@ def calculer_rapprochement_fiscal_2025(
              else "PSV/suppléments ordinaires Québec 2025; récupération 42200 sans abattement, FSS nul." if prestations_psv.present
              else "Pensions domestiques ordinaires 2025, avec ou sans emploi; FSS sur la pension brute." if pensions.present
              else "Retraits REER et forfaits ordinaires 2025, avec ou sans emploi." if retraits.present
+             else "Prestations T5007/RL-5 ordinaires, avec ou sans emploi; redressement 358 inclus." if remplacement.present
              else "Le calcul couvre uniquement le profil emploi Québec simple 2025."),
             "L'abattement Québec est calculé à 16,5 % de l'impôt fédéral de base.",
             ("Retenues T4/RL-1 et T4E/RL-6 incluses; FSS ligne 446 calculé." if prestations_rqap.present
