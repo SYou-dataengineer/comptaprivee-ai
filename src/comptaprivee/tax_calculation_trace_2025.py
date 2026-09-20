@@ -7,6 +7,22 @@ déjà calculée à partir d'un dossier verrouillé et validé par le comptable.
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+
+def construire_trace_fractionnement_2025(r):
+    """Identités de conservation et formules auditées du dossier conjoint."""
+    return (
+        f'T1032 : 21000 cédant = 11600 bénéficiaire = {r.choix.montant_federal}; maximum = 50 % x {r.choix.cedant.t4a_016}.',
+        f'Annexe Q : 245 cédant = 123 bénéficiaire = {r.choix.montant_quebec}.',
+        f'Retenue fédérale déplacée = {r.choix.cedant.t4a_022} x {r.choix.montant_federal} / {r.choix.cedant.t4a_016} = {r.retenue_federale_transferee}.',
+        f'Retenue Québec déplacée = {r.choix.cedant.rl2_j} x {r.choix.montant_quebec} / {r.choix.cedant.rl2_a} = {r.retenue_quebec_transferee}.',
+        f'Revenus nets fédéraux conservés : {r.cedant.revenu_net_federal} + {r.beneficiaire.revenu_net_federal}.',
+        f'Revenu familial Québec inchangé : {r.revenu_familial_quebec}.',
+        f'Annexe B : somme des montants âge/retraite des deux personnes, moins une seule réduction familiale = {r.montant_361_couple}.',
+        '31400 RPA : minimum du revenu de pension après fractionnement et de 2 000 $.',
+        'FSS : pension Québec après 123/245; impôt fédéral après crédits et abattement Québec de 16,5 %.',
+        'Solde de chaque conjoint = impôts fédéral + Québec + FSS - retenues après répartition.',
+    )
+
 from .tax_age_retirement_2025 import (
     credit_quebec_age_retraite_2025,
     montant_age_2025,

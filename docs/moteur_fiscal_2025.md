@@ -656,3 +656,52 @@ aucun test ignoré. Inspection GUI à 600 × 400 et 1 000 × 700 et des six page
 de trois PDF. Bibliothèques Tcl/Tk copiées localement dans `tmp/` pour le
 dernier lancement Windows (63,76 s); l'intermittence du chargement système
 reste une limite d'environnement. Aucun fichier temporaire inclus dans Git.
+
+## Bloc 2G — fractionnement du revenu de pension 2025
+
+Audit officiel 2025 : [T1032 ARC](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t1032/t1032-25e.pdf),
+[annexe Q](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.Q%282025-12%29.pdf),
+[annexe B](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.B%282025-12%29.pdf)
+et [annexe F](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf).
+Le choix fédéral (21000/11600) et le choix Québec (245/123) sont indépendants,
+plafonnés chacun à 50 % de la pension admissible. Le Québec exige un cédant
+de 65 ans; la rente viagère RPA fédérale est admissible avant cet âge.
+Les retenues admissibles sont réparties proportionnellement, avec un seul
+arrondi du transfert : soustraction au cédant, addition au bénéficiaire.
+Les retenues Québec sont exclues de la retenue fédérale. Les deux revenus
+nets et les retenues totales sont conservés; les revenus totaux avant
+déduction ne doivent pas être confondus avec les revenus nets.
+
+Parcours local de couple distinct, indivisible : deux T4A 016/RL-2 A appariés,
+retenues T4A 022/RL-2 J exclusivement relatives à ces pensions, sources et
+âges revus manuellement. L'extraction existante des feuillets demeure
+disponible, mais l'importation automatique de deux dossiers individuels
+n'est pas intégrée. Le choix est saisi après validation des pièces, sans
+optimisation ni production des formulaires officiels signés. Le calcul
+revoit 30100, 31400, l'annexe B commune (une réduction familiale, répartition
+361 explicite), les impôts et le FSS après transfert.
+
+Limites logicielles explicites : seules les rentes viagères RPA; résidence
+Canada/Québec et union toute l'année, assurance médicaments privée complète.
+Nets de chaque conjoint compris entre 30 000 et 57 375 $ dans les deux
+juridictions, pour exclure les crédits conjugaux inutilisés et préserver
+le garde-fou 34990. Aucun salaire, autre revenu, PSV/RRQ/AE/RQAP, FERR,
+déduction, crédit particulier, succession, changement conjugal ou transfert
+de crédits. Ces bornes ne constituent pas des conditions légales générales.
+
+JSON de couple séparé avec schéma strict et écriture atomique; brouillons
+autorisés, calcul interdit sans les trois confirmations. Les anciens JSON
+individuels restent compatibles avec leur parcours, sans conversion implicite.
+Toute modification révoque les confirmations et le résultat/PDF; le
+rechargement rétablit les données validées mais impose un nouveau calcul.
+Résumé, trace des deux déclarations et PDF conjoint sont intégrés.
+
+Validation ciblée : 57 nouveaux tests, dont conservation et arrondis,
+conditions d'âge, choix indépendants, refus de profils incohérents,
+persistance, confirmations, PDF périmé et GUI à trois facteurs Tk.
+Inspection visuelle à 600 × 400 et 1 000 × 700 (haut, milieu, bas) et des
+deux pages du PDF fictif. Captures et rapports exclusivement dans `tmp/`.
+
+Suite complète 2G : **2 266 tests réussis**, aucun test retiré, désactivé ou
+ignoré; 8 avertissements existants, 63,90 s avec le Python `.venv` et les
+bibliothèques Tcl/Tk locales. Les profils individuels précédents restent testés.

@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
+from .gui_pension_splitting_2025 import ouvrir_fractionnement_2025
 
 from .gui_layout import (
     FormulaireDefilant,
@@ -11073,6 +11074,8 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_prestations_rqap_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Retraits REER et forfaits 2025",
                    command=ouvrir_retraits_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Fractionnement de pension 2025",
+                   command=lambda: ouvrir_fractionnement_2025(fenetre)).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Pensions, FERR et rentes 2025",
                    command=ouvrir_pensions_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="PSV et suppléments 2025",
