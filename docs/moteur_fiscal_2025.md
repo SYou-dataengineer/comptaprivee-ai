@@ -591,10 +591,68 @@ nécessaire pour les situations non identifiables par les cases. Les garde-fous
 existants (notamment 34990, hauts revenus et RAMQ), ainsi que les limites OCR,
 thèmes, DPI réels et multi-écrans, restent applicables.
 
-Le Bloc 2F n'est pas commencé et attend l'accord utilisateur.
+Les blocs 2F, 2G et 2H ont été autorisés successivement sous condition de
+validation complète et de CI verte du bloc précédent. Arrêt après 2H.
 
 Validation finale locale : **2 114 tests réussis**, aucun échec ni test ignoré,
 8 avertissements de dépréciation existants, en 61,59 s avec
 `python -m pytest -q` (Python de `.venv`, chemins Tcl/Tk explicites).
 Le test de refus d'un type non pris en charge utilise désormais T4RSP,
 puisque T5 est intégré au Bloc 2E. Aucun test retiré ou désactivé.
+
+## Bloc 2F — retraits REER et sommes forfaitaires 2025
+
+### Audit officiel et décisions
+
+Sources consultées le 20 septembre 2026, pour l'imposition 2025 :
+
+- [ARC, tableau des revenus de retraite 2025](https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-years/general-income-tax-benefit-package/5000-g.html).
+- [ARC, cases T4RSP et déclaration des revenus](https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/completing-slips-summaries/t4rsp-t4rif-information-returns/t4rsp-slip-summary/t4rsp-statement-rrsp-income.html).
+- [ARC, guide T4040 2025](https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/t4040/rrsps-other-registered-plans-retirement.html).
+- [ARC, T4 et allocations 66/67](https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/rc4120/employers-guide-filing-t4-slip-summary.html).
+- [Revenu Québec, guide TP-1.G 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.G%282025-12%29.pdf), lignes 122, 154 et 250.
+- [Revenu Québec, guide RL-2](https://www.revenuquebec.ca/fr/services-en-ligne/formulaires-et-publications/rl-2-g/guide-du-releve-2-revenus-de-retraite-et-rentes/), nature de la case C, remboursement F et retenue J.
+- [Annexe F 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf) et [annexe B 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.B%282025-12%29.pdf).
+
+| Cas audité | Fédéral | Québec | Décision logicielle |
+| --- | --- | --- | --- |
+| Retrait ordinaire REER non échu, T4RSP 22 | 12900 | RL-2 C, 154 point 6 | Intégré, sans transfert ni remboursement de cotisations |
+| Cotisations inutilisées, T4RSP 20 | 12900 et déduction 23200 | RL-2 F, 154 point 4 et 250 point 6 | Intégré avec T3012A approuvé et droit intégral confirmé |
+| Forfait RPA domestique T4A 018 | 13000 | RL-2 C, 154 point 6 | Intégré, sans antériorité 1972, transfert ou code spécial |
+| Rente périodique T4RSP 16 | 12900; crédit selon âge/nature | 122 selon nature | Exclue de ce parcours, ne pas traiter comme retrait |
+| Remboursement de primes T4RSP 18; décès 34 | 12900, règles successorales | D/E et autres cases selon bénéficiaire | Exclus : décès/conjoint et roulements non intégrés |
+| Désenregistrement T4RSP 26 | 12900 | Traitement selon nature | Exclu : ce n'est pas un retrait ordinaire |
+| T4RSP 28 positif/négatif | 12900 ou déduction 23200 | H/154 ou I/250 point 5 selon nature | Exclu : preuve et historique nécessaires |
+| T4A 106 | 13000, exonération décès éventuelle | Prestation de décès selon source | Exclu |
+| T4 66/67 | 13000, distinct de 14 | Allocation de retraite, RL-1 O/154 | Détecté et refusé : transferts et appariement non intégrés |
+| T4RSP 25/27, 24/36, 35/37/40 | RAP/REEP, conjoint, transfert ou succession | L/O, attribution et autres cases | Exclus explicitement |
+
+La case B du RL-2 n'est pas utilisée par défaut pour un retrait non échu.
+Les forfaits retenus n'alimentent pas 122 ni les crédits 31400/361. Les
+retenues T4RSP 30 ou T4A 022 et RL-2 J sont ajoutées une fois; aucun cumul
+du revenu fédéral et de sa contrepartie Québec. Le FSS utilise le forfait
+brut, diminué de la déduction 250 point 6 dans le seul parcours remboursé.
+
+### Chaîne et limites
+
+Extraction signée des cases T4RSP (y compris celles refusées), T4 66/67 et
+T4A 018/106/108, validation humaine, formulaire, calcul, stockage JSON,
+résumé, trace et PDF intégrés. Une seule paire de feuillets; avec ou sans
+emploi ordinaire. Nature/source modifiées : confirmation retirée. Extraction,
+préparation ou validation appliquée : estimation et lien PDF invalidés.
+Ancien JSON sans profil : confirmation fausse. Types JSON, montants,
+doublons, provenance, appariement et confirmations concurrentes contrôlés.
+
+RAP/REEP, décès, conjoint, transferts, rétroactivité, revenus étrangers,
+plusieurs natures et combinaisons avec pensions/PSV/RRQ/AE/RQAP restent
+exclus. Un négatif 28 n'est jamais normalisé en retrait ou ignoré.
+L'extraction des marqueurs ne remplace pas la revue complète, notamment
+pour les indicateurs textuels 24 et la nature du régime. Les garde-fous
+34990, RAMQ, hauts revenus et cotisations salariales sont conservés.
+
+Validation 2F : **95 nouveaux tests** (87 moteur/stockage/trace/PDF et 8 GUI),
+**2 209 tests réussis** dans la suite complète, 8 avertissements existants,
+aucun test ignoré. Inspection GUI à 600 × 400 et 1 000 × 700 et des six pages
+de trois PDF. Bibliothèques Tcl/Tk copiées localement dans `tmp/` pour le
+dernier lancement Windows (63,76 s); l'intermittence du chargement système
+reste une limite d'environnement. Aucun fichier temporaire inclus dans Git.

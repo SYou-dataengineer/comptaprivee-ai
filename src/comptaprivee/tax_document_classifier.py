@@ -104,7 +104,7 @@ def classifier_document_fiscal(
     # Ces feuillets partagent des cases et des libellés avec le T4/RL-1.
     # Leur identifiant explicite évite d'interpréter des prestations comme un salaire.
     nouveaux = []
-    for type_doc, motif in (("T4A", r"(?<![a-z0-9])t4a(?![a-z0-9]|[ _-]*\(|[ _-]*(?:oas|p|rca)\b)"), ("T4RIF", r"(?<![a-z0-9])t4rif(?![a-z0-9])"), ("T3", r"(?<![a-z0-9])t3(?![a-z0-9])"), ("T5", r"(?<![a-z0-9])t5(?![a-z0-9])"), ("RL-16", r"(?<![a-z0-9])(?:rl[ _-]?16|releve[ _-]*16)(?![a-z0-9])"), ("T4A(OAS)", r"(?<![a-z0-9])t4a[ _-]*\(?oas\)?(?![a-z0-9])"), ("T4A(P)", r"(?<![a-z0-9])t4a[ _-]*\(?p\)?(?![a-z0-9])"), ("RL-2", r"(?<![a-z0-9])(?:rl[ _-]?2|releve[ _-]*2)(?![a-z0-9])"), ("T4E", r"(?<![a-z0-9])t4e(?![a-z0-9])"), ("RL-6", r"(?<![a-z0-9])(?:rl[ _-]?6|releve[ _-]*6)(?![a-z0-9])")):
+    for type_doc, motif in (("T4RSP", r"(?<![a-z0-9])t4rsp(?![a-z0-9])"), ("T4A", r"(?<![a-z0-9])t4a(?![a-z0-9]|[ _-]*\(|[ _-]*(?:oas|p|rca)\b)"), ("T4RIF", r"(?<![a-z0-9])t4rif(?![a-z0-9])"), ("T3", r"(?<![a-z0-9])t3(?![a-z0-9])"), ("T5", r"(?<![a-z0-9])t5(?![a-z0-9])"), ("RL-16", r"(?<![a-z0-9])(?:rl[ _-]?16|releve[ _-]*16)(?![a-z0-9])"), ("T4A(OAS)", r"(?<![a-z0-9])t4a[ _-]*\(?oas\)?(?![a-z0-9])"), ("T4A(P)", r"(?<![a-z0-9])t4a[ _-]*\(?p\)?(?![a-z0-9])"), ("RL-2", r"(?<![a-z0-9])(?:rl[ _-]?2|releve[ _-]*2)(?![a-z0-9])"), ("T4E", r"(?<![a-z0-9])t4e(?![a-z0-9])"), ("RL-6", r"(?<![a-z0-9])(?:rl[ _-]?6|releve[ _-]*6)(?![a-z0-9])")):
         if re.search(motif, nom) or re.search(motif, contenu):
             nouveaux.append(type_doc)
     if nouveaux:

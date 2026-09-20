@@ -216,6 +216,9 @@ def construire_trace_calcul_fiscal_2025(
         formule_revenu_federal += " + PSV 11300 + suppléments 14600 - récupération 23500 - déduction 25000"
         formule_revenu_quebec += " + PSV 114 + suppléments 148 - récupération 250 - déduction 295"
 
+    if estimation.retraits.present:
+        formule_revenu_federal += " + retraits 12900/13000 - 23200"
+        formule_revenu_quebec += " + retraits 154 - 250.6"
     if pensions.present:
         formule_revenu_federal += " + pensions 11500 / 13000 / 12100 selon âge et nature"
         formule_revenu_quebec += " + pensions 122, sans double compte des feuillets"
@@ -309,6 +312,8 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_total += " + FSS Québec 446"
     if ae.present:
         formule_impot_total += " + récupération AE 42200 (sans abattement) + FSS Québec 446"
+    if estimation.retraits.present:
+        formule_impot_total += " + FSS retraits 446"
     if pensions.present:
         formule_impot_total += " + FSS pensions 446 (sans abattement)"
     if psv.present:
@@ -1307,6 +1312,11 @@ def construire_trace_calcul_fiscal_2025(
             ("Retenues totales", "RETENUES", "Retenue pensions 451", "RL-2 J, ajout une fois", pensions.retenue_quebec),
         ):
             lignes = _inserer_ligne_avant(lignes, cible, _ligne(0, section, libelle, pensions.source, formule, montant))
+
+    if estimation.retraits.present:
+        r = estimation.retraits
+        for libelle, montant in (("REER 12900",r.ligne_12900),("Forfait 13000",r.ligne_13000),("Déduction 23200",r.ligne_23200),("Retraits 154",r.ligne_154),("Déduction 250.6",r.ligne_250_6),("FSS retraits 446",r.cotisation_fss),("Retenue retraits 43700",r.retenue_federale),("Retenue retraits 451",r.retenue_quebec)):
+            lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"RETRAITS",libelle,estimation.profil_retraits.source,"Feuillets appariés, sans double compte",montant))
 
     prochain_ordre = len(lignes) + 1
 
