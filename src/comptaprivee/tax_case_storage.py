@@ -89,6 +89,7 @@ from .tax_field_validation import (
     STATUT_VALIDE,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_dividend_income_2025 import ProfilDividendes2025, valider_profil_dividendes_2025, consolider_dividendes_2025
 from .tax_interest_income_2025 import ProfilInterets2025, valider_profil_interets_2025, consolider_interets_2025
 from .tax_replacement_benefits_2025 import (ProfilRemplacement2025, PrestationsRemplacement2025, valider_profil_remplacement_2025, detecter_remplacement_2025, consolider_remplacement_2025, appliquer_remplacement_2025, appliquer_redressement_358_2025, lignes_resume_remplacement_2025)
 from .tax_rrsp_withdrawals_2025 import (ProfilRetraits2025, Retraits2025, valider_profil_retraits_2025, detecter_retraits_2025, consolider_retraits_2025, appliquer_retraits_2025, lignes_resume_retraits_2025)
@@ -149,6 +150,7 @@ class DossierFiscalEnregistre:
     cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
     rqap_confirme: bool = False
     ae_confirme: bool = False
+    profil_dividendes: ProfilDividendes2025 = ProfilDividendes2025()
     profil_interets: ProfilInterets2025 = ProfilInterets2025()
     profil_remplacement: ProfilRemplacement2025 = ProfilRemplacement2025()
     profil_retraits: ProfilRetraits2025 = ProfilRetraits2025()
@@ -2435,6 +2437,7 @@ def sauvegarder_dossier_fiscal(
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool | None = None,
     ae_confirme: bool | None = None,
+    profil_dividendes: ProfilDividendes2025 | None = None,
     profil_interets: ProfilInterets2025 | None = None,
     profil_remplacement: ProfilRemplacement2025 | None = None,
     profil_retraits: ProfilRetraits2025 | None = None,
@@ -2442,6 +2445,14 @@ def sauvegarder_dossier_fiscal(
     psv_confirme: bool | None = None,
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    dividendes_effectif = profil_dividendes if profil_dividendes is not None else (estimation.profil_dividendes if estimation else ProfilDividendes2025())
+    valider_profil_dividendes_2025(dividendes_effectif)
+    if estimation and dividendes_effectif != estimation.profil_dividendes:
+        raise ValueError("Le profil dividendes diffère de l’estimation.")
+    if dividendes_effectif.confirme:
+        if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or any(p and p != type(p)() for p in (profil_pensions, profil_retraits, profil_remplacement, profil_interets)):
+            raise ValueError("Dividendes avec autres placements/prestations : hors périmètre 3C.")
+        consolider_dividendes_2025(dossier, dividendes_effectif)
     interets_effectif = profil_interets if profil_interets is not None else (estimation.profil_interets if estimation else ProfilInterets2025())
     valider_profil_interets_2025(interets_effectif)
     if estimation and interets_effectif != estimation.profil_interets:
@@ -2531,6 +2542,7 @@ def sauvegarder_dossier_fiscal(
         "profil_retraits": asdict(retraits_effectif),
         "profil_remplacement": asdict(remplacement_effectif),
         "profil_interets": asdict(interets_effectif),
+        "profil_dividendes": asdict(dividendes_effectif),
         "psv_confirme": confirme_psv,
         "rrq_rpc_confirme": confirme_rrq_rpc,
         "cotisations_rpa": {
@@ -2851,7 +2863,17 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc, pensions_profil.confirme, retraits_profil.confirme, remplacement_profil.confirme)):
             raise ValueError("Intérêts avec autres prestations : hors périmètre 3A.")
         consolider_interets_2025(dossier, interets_profil)
+    try:
+        dividendes_profil = ProfilDividendes2025(**contenu.get("profil_dividendes", {}))
+    except (TypeError, ValueError) as erreur:
+        raise ValueError("Profil dividendes enregistré invalide.") from erreur
+    valider_profil_dividendes_2025(dividendes_profil)
+    if dividendes_profil.confirme:
+        if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc)) or any(p != type(p)() for p in (pensions_profil, retraits_profil, remplacement_profil, interets_profil)):
+            raise ValueError("Dividendes avec autres placements/prestations : hors périmètre 3C.")
+        consolider_dividendes_2025(dossier, dividendes_profil)
     return DossierFiscalEnregistre(
+        profil_dividendes=dividendes_profil,
         profil_interets=interets_profil,
         profil_remplacement=remplacement_profil,
         profil_retraits=retraits_profil,

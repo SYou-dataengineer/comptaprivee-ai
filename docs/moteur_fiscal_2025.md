@@ -955,3 +955,69 @@ Les dividendes et tous les blocs 3C à 3H restent à construire.
 
 Suite complète finale `python -m pytest -q` : **2 560 tests réussis**,
 8 avertissements de dépréciation existants, aucun échec (82,03 s en local).
+
+### Bloc 3C — audit préalable et périmètre arrêté
+
+Audit du 20 septembre 2026, exclusivement sur les éditions fiscales 2025 :
+
+- [Feuille fédérale 5000-D1 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-d1/5000-d1-25e.pdf) :
+  12000 inclut les deux catégories majorées; 12010 est le sous-total ordinaire,
+  jamais un revenu supplémentaire. Majorations 38 % et 15 %. 40425 reprend
+  les crédits des feuillets, séparément du revenu.
+- [T5 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t5/t5-25e.pdf) :
+  admissibles 24/25/26, autres dividendes 10/11/12 (réel/imposable/crédit).
+  Contrôle des crédits aux taux de 15,0198 % et 9,0301 % du montant imposable.
+- [Déclaration fédérale Québec 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-r/5005-r-25e.txt) :
+  40425 réduit 42900, après les crédits 35000, avec plancher zéro;
+  l'abattement 44000 de 16,5 % porte sur ce 42900 réduit.
+- [RL-3 2025-10](https://www.revenuquebec.ca/documents/fr/formulaires/rl/RL-3%282025-10%29.pdf) :
+  A1 et A2 réels vers 166/167, B imposable vers 128, C crédit vers 415.
+- [Guide TP-1 2025, lignes 128 et 415](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.G%282025-12%29.pdf) :
+  majorations identiques; contrôle du crédit Québec à 16,1460 % du réel
+  déterminé et 3,9330 % du réel ordinaire. Crédit non remboursable.
+- [Annexe F 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf) :
+  lignes 23 à 25 retirent la majoration de l'assiette; FSS sur les dividendes
+  réels, salaire exclu. Les crédits dividendes ne réduisent pas le FSS.
+- [T3 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t3/t3-25b.pdf) :
+  admissibles 49/50/51, ordinaires 23/32/39. Le guide TP-1 rattache RL-16 I
+  à 128 et J à 415. Les distributions de fiducie restent refusées dans
+  cette livraison : validation détaillée des cases réelles et distributions
+  mixtes non achevée (PDF RL-16 2025 inaccessible lors de cet audit).
+
+Périmètre accepté avant codage : une seule paire T5/RL-3 distincte et
+complète, un particulier titulaire unique, résident Canada/Québec toute
+l'année 2025, dividendes canadiens ordinaires et/ou déterminés uniquement,
+avec ou sans emploi ordinaire. Les dix cases monétaires 10/11/12/24/25/26
+et A1/A2/B/C sont explicites, même nulles. Concordance exacte au cent
+après arrondi; un écart est refusé, jamais corrigé silencieusement.
+Les revenus total, net et imposable augmentent du seul montant majoré.
+Les crédits sont consommés au plus à hauteur de l'impôt disponible.
+
+Refus : plusieurs paires, T3/RL-16, sans feuillet, étranger/devise,
+conjoint/attribution/transfert, TOSI, décès/succession, sociétés ou fiducies,
+dividendes en capital, comptes non réclamés, frais, intérêts ou autres
+placements combinés, pensions/prestations combinées, ajustements 293/297,
+minimum alternatif et autres cas complexes. Vérification humaine des
+feuillets complets, codes administratifs, année et identité obligatoire.
+Les garde-fous globaux et crédits à revenu net recalculé restent applicables.
+Les anciennes sauvegardes conservent un profil dividendes vide par défaut.
+
+Livraison 3C : extraction identifiée des cases réelles/imposables/crédits et
+des retenues hors périmètre RL-3 207/208; validation de la paire; calcul,
+formulaire défilant, JSON, résumé, trace et PDF intégrés. Toute modification
+fiscale invalide l'estimation et son PDF; modifier le justificatif révoque
+la confirmation, et une nouvelle extraction révoque le profil confirmé.
+
+Validation finale : **118 nouveaux tests**, dont 7 GUI; **2 678 tests réussis**
+avec `python -m pytest -q` (87,06 s), huit avertissements de dépréciation
+préexistants. Aucun test supprimé ou désactivé. Inspection visuelle du
+formulaire en 600×400 et 1000×700, haut et bas accessibles, actions fixes;
+tests de disposition à 96/144/192 DPI. Six pages de PDF inspectées :
+admissibles seuls, ordinaires seuls, deux catégories avec salaire.
+Tous les artefacts sont synthétiques, locaux et exclus de Git dans `tmp/`.
+
+Limites restantes : T5/RL-3 seulement; pas de T3/RL-16 ni cumul avec
+intérêts ou autres prestations; dix cases explicites exigées, aucun écart
+d'arrondi accepté automatiquement. Vérification humaine de l'identité,
+des codes et des exclusions. Les limites générales du moteur, dont le
+revenu imposable Québec de 129 590 $, restent inchangées. 3D non commencé.

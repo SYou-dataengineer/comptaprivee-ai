@@ -232,6 +232,9 @@ def construire_trace_calcul_fiscal_2025(
         formule_revenu_federal += " + PSV 11300 + suppléments 14600 - récupération 23500 - déduction 25000"
         formule_revenu_quebec += " + PSV 114 + suppléments 148 - récupération 250 - déduction 295"
 
+    if estimation.dividendes.present:
+        formule_revenu_federal += " + dividendes majorés 12000 (12010 déjà inclus)"
+        formule_revenu_quebec += " + dividendes majorés 128"
     if estimation.interets.present:
         formule_revenu_federal += " + intérêts directs 12100 + intérêts T3 13000"
         formule_revenu_quebec += " + intérêts 130"
@@ -327,6 +330,9 @@ def construire_trace_calcul_fiscal_2025(
             " - crédit âge/retraite ligne 361"
         )
 
+    if estimation.dividendes.present:
+        formule_impot_federal += " - crédit dividendes 40425, plancher zéro avant abattement"
+        formule_impot_quebec += " - crédit dividendes 415, plancher zéro"
     formule_impot_total = (
         "Impôt fédéral après abattement + impôt Québec"
     )
@@ -334,6 +340,8 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_total += " + FSS Québec 446"
     if ae.present:
         formule_impot_total += " + récupération AE 42200 (sans abattement) + FSS Québec 446"
+    if estimation.dividendes.present:
+        formule_impot_total += " + FSS dividendes 446 (montants réels)"
     if estimation.interets.present:
         formule_impot_total += " + FSS intérêts 446 (sans abattement)"
     if estimation.retraits.present:
@@ -1354,6 +1362,12 @@ def construire_trace_calcul_fiscal_2025(
         source = profil.source if profil.nature == 'T5_RL3' else f'{profil.identifiant_source}; {profil.date_debut} au {profil.date_fin}; {profil.source}'
         for libelle, montant in (("Intérêts 12100",r.ligne_12100),("Intérêts T3 13000",r.ligne_13000),("Intérêts 130",r.ligne_130),("FSS intérêts 446",r.cotisation_fss)):
             lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"INTÉRÊTS",libelle,source,"Source intérêts validée; une seule inclusion par juridiction; FSS annexe F sans abattement",montant))
+
+    if estimation.dividendes.present:
+        r = estimation.dividendes
+        for code in ("166", "167", "12000", "12010", "128", "40425", "415"):
+            lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"DIVIDENDES", "Dividendes " + code, estimation.profil_dividendes.source, "Réel 166/167; imposable 12000/128; 12010 inclus dans 12000; crédits non remboursables distincts du revenu", getattr(r, "ligne_" + code)))
+        lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"QUÉBEC", "FSS dividendes 446", "Annexe F 2025", "Assiette = réels 166 + 167; majoration exclue; sans abattement", r.cotisation_fss))
 
     prochain_ordre = len(lignes) + 1
 

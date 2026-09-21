@@ -165,6 +165,7 @@ from .tax_union_dues_2025 import (
     credit_quebec_cotisations_2025,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_dividend_income_2025 import (ProfilDividendes2025, Dividendes2025, valider_profil_dividendes_2025, detecter_dividendes_2025, consolider_dividendes_2025, appliquer_dividendes_2025, appliquer_credits_dividendes_2025, lignes_resume_dividendes_2025)
 from .tax_interest_income_2025 import (ProfilInterets2025, Interets2025, valider_profil_interets_2025, detecter_interets_2025, consolider_interets_2025, appliquer_interets_2025, lignes_resume_interets_2025)
 from .tax_replacement_benefits_2025 import (ProfilRemplacement2025, PrestationsRemplacement2025, valider_profil_remplacement_2025, detecter_remplacement_2025, consolider_remplacement_2025, appliquer_remplacement_2025, appliquer_redressement_358_2025, lignes_resume_remplacement_2025)
 from .tax_rrsp_withdrawals_2025 import (ProfilRetraits2025, Retraits2025, valider_profil_retraits_2025, detecter_retraits_2025, consolider_retraits_2025, appliquer_retraits_2025, lignes_resume_retraits_2025)
@@ -222,6 +223,8 @@ class EstimationFiscale2025:
     prestations_rqap: PrestationsRqap2025 = PrestationsRqap2025()
     ae_confirme: bool = False
     prestations_ae: PrestationsAe2025 = PrestationsAe2025()
+    profil_dividendes: ProfilDividendes2025 = ProfilDividendes2025()
+    dividendes: Dividendes2025 = Dividendes2025()
     profil_interets: ProfilInterets2025 = ProfilInterets2025()
     interets: Interets2025 = Interets2025()
     profil_remplacement: ProfilRemplacement2025 = ProfilRemplacement2025()
@@ -285,6 +288,7 @@ def calculer_estimation_fiscale_2025(
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool = False,
     ae_confirme: bool = False,
+    profil_dividendes: ProfilDividendes2025 = ProfilDividendes2025(),
     profil_interets: ProfilInterets2025 = ProfilInterets2025(),
     profil_remplacement: ProfilRemplacement2025 = ProfilRemplacement2025(),
     profil_retraits: ProfilRetraits2025 = ProfilRetraits2025(),
@@ -299,8 +303,15 @@ def calculer_estimation_fiscale_2025(
             "uniquement pour l'année 2025."
         )
 
+    valider_profil_dividendes_2025(profil_dividendes)
+    parcours_dividendes = profil_dividendes != ProfilDividendes2025() or detecter_dividendes_2025(dossier)
+    dividendes = Dividendes2025()
+    if parcours_dividendes:
+        if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or profil_pensions != ProfilPensions2025() or profil_retraits != ProfilRetraits2025() or profil_remplacement != ProfilRemplacement2025() or profil_interets != ProfilInterets2025():
+            raise ValueError("Dividendes avec autres placements ou prestations : hors périmètre 3C.")
+        dividendes = consolider_dividendes_2025(dossier, profil_dividendes)
     valider_profil_interets_2025(profil_interets)
-    parcours_interets = profil_interets != ProfilInterets2025() or detecter_interets_2025(dossier)
+    parcours_interets = not parcours_dividendes and (profil_interets != ProfilInterets2025() or detecter_interets_2025(dossier))
     interets = Interets2025()
     if parcours_interets:
         if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or profil_pensions != ProfilPensions2025() or profil_retraits != ProfilRetraits2025() or profil_remplacement != ProfilRemplacement2025():
@@ -321,7 +332,7 @@ def calculer_estimation_fiscale_2025(
             raise ValueError("Retraits avec autres prestations ou pensions : hors périmètre.")
         retraits = consolider_retraits_2025(dossier, profil_retraits)
     valider_profil_pensions_2025(profil_pensions)
-    parcours_pensions = not parcours_interets and not parcours_retraits and (profil_pensions != ProfilPensions2025() or any(d.type_document in TYPES_PENSIONS for d in dossier.donnees_validees))
+    parcours_pensions = not parcours_dividendes and not parcours_interets and not parcours_retraits and (profil_pensions != ProfilPensions2025() or any(d.type_document in TYPES_PENSIONS for d in dossier.donnees_validees))
     pensions = RevenusPensions2025()
     if parcours_pensions:
         if rqap_confirme or ae_confirme or rrq_rpc_confirme or psv_confirme:
@@ -341,7 +352,7 @@ def calculer_estimation_fiscale_2025(
         if ae_confirme or rqap_confirme:
             raise ValueError("RRQ/RPC avec AE/RQAP : profil combiné hors périmètre.")
         prestations_rrq_rpc = consolider_prestations_rrq_rpc_2025(dossier, rrq_rpc_confirme)
-    sans_emploi = (parcours_interets or parcours_remplacement or parcours_retraits or parcours_pensions or parcours_psv or parcours_rrq_rpc) and not any(d.type_document in {"T4", "RL-1"} for d in dossier.donnees_validees)
+    sans_emploi = (parcours_dividendes or parcours_interets or parcours_remplacement or parcours_retraits or parcours_pensions or parcours_psv or parcours_rrq_rpc) and not any(d.type_document in {"T4", "RL-1"} for d in dossier.donnees_validees)
     base = base_sans_emploi_rrq_rpc_2025(dossier) if sans_emploi else consolider_base_fiscale_emploi_2025(dossier)
 
     cotisations_excedentaires_effectives = (
@@ -423,7 +434,9 @@ def calculer_estimation_fiscale_2025(
     )
     prestations_ae = PrestationsAe2025()
     prestations_rqap = PrestationsRqap2025()
-    if parcours_interets:
+    if parcours_dividendes:
+        revenu = appliquer_dividendes_2025(revenu, dividendes)
+    elif parcours_interets:
         revenu = appliquer_interets_2025(revenu, interets)
     elif parcours_remplacement:
         revenu = appliquer_remplacement_2025(revenu, remplacement)
@@ -523,6 +536,8 @@ def calculer_estimation_fiscale_2025(
         montants_age_retraite_effectifs
     )
 
+    if dividendes.present and montants_age_retraite_effectifs.reclamer_revenus_retraite:
+        raise ValueError("Dividendes : aucun revenu admissible 361.")
     if interets.present and montants_age_retraite_effectifs.reclamer_revenus_retraite:
         raise ValueError("Intérêts : aucun revenu admissible 361.")
     if retraits.present and montants_age_retraite_effectifs.reclamer_revenus_retraite:
@@ -1011,6 +1026,7 @@ def calculer_estimation_fiscale_2025(
         quebec,
         montants_age_retraite_effectifs,
     )
+    federal, quebec = appliquer_credits_dividendes_2025(federal, quebec, dividendes)
     remboursements_cotisations = (
         calculer_remboursements_cotisations_2025(
             cotisations_excedentaires_effectives
@@ -1027,6 +1043,7 @@ def calculer_estimation_fiscale_2025(
         retraits=retraits,
         remplacement=remplacement,
         interets=interets,
+        dividendes=dividendes,
         prestations_psv=prestations_psv,
         prestations_rrq_rpc=prestations_rrq_rpc,
         cotisation_assurance_medicaments=(
@@ -1054,8 +1071,10 @@ def calculer_estimation_fiscale_2025(
         profil_retraits=profil_retraits,
         profil_remplacement=profil_remplacement,
         profil_interets=profil_interets,
+        profil_dividendes=profil_dividendes,
         remplacement=remplacement,
         interets=interets,
+        dividendes=dividendes,
         psv_confirme=psv_confirme,
         rrq_rpc_confirme=rrq_rpc_confirme,
         rqap_confirme=rqap_confirme,
@@ -1145,6 +1164,7 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_rpa_2025(estimation.cotisations_rpa),
         *lignes_resume_rqap_2025(estimation.prestations_rqap),
         *lignes_resume_ae_2025(estimation.prestations_ae),
+        *lignes_resume_dividendes_2025(estimation.dividendes, estimation.profil_dividendes),
         *lignes_resume_interets_2025(estimation.interets, estimation.profil_interets),
         *lignes_resume_remplacement_2025(estimation.remplacement, estimation.profil_remplacement),
         *lignes_resume_retraits_2025(estimation.retraits, estimation.profil_retraits),
@@ -1152,7 +1172,7 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_psv_2025(estimation.prestations_psv),
         *lignes_resume_rrq_rpc_2025(estimation.prestations_rrq_rpc),
         *([f"Revenu total fédéral : {formater_montant_estimation(revenu.revenu_total_federal)}",
-           f"Revenu total Québec : {formater_montant_estimation(revenu.revenu_total_quebec)}"] if estimation.prestations_rqap.present or estimation.prestations_ae.present or estimation.prestations_rrq_rpc.present or estimation.prestations_psv.present or estimation.pensions.present or estimation.retraits.present or estimation.interets.present else []),
+           f"Revenu total Québec : {formater_montant_estimation(revenu.revenu_total_quebec)}"] if estimation.prestations_rqap.present or estimation.prestations_ae.present or estimation.prestations_rrq_rpc.present or estimation.prestations_psv.present or estimation.pensions.present or estimation.retraits.present or estimation.interets.present or estimation.dividendes.present else []),
         *(
             [
                 "",

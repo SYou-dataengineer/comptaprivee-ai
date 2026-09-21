@@ -143,13 +143,13 @@ REGLES_PENSIONS = {
     t: tuple((c, label, (rf"\b(?:case|box|code)\s*{('0?' + c[1:]) if t == 'T4A' and c.startswith('0') else c}\b(?!-\d)",)) for c, label in cases)
     for t, cases in {
         'T4A': [(c, {'016':'Pension RPA', '022':'Impôt fédéral retenu', '024':'Rente', '133':'Rente ou prestation variable (nature à confirmer)', '194':'RPAC'}.get(c,'Autre case T4A à vérifier')) for c in ('016','018','022','024','028','048','105','106','108','109','115','119','127','133','135','194')],
-        'RL-3': [(c, 'Intérêts canadiens' if c=='D' else 'Autre case RL-3 à vérifier') for c in ('A1','A2','B','C','D','E','F','G','H','I','J','K','E-1','E-2','H-2','K-1')],
+        'RL-3': [(c, {'A1':'Dividendes déterminés réels','A2':'Dividendes ordinaires réels','B':'Dividendes imposables','C':'Crédit Québec pour dividendes','D':'Intérêts canadiens'}.get(c,'Autre case RL-3 à vérifier')) for c in ('A1','A2','B','C','D','E','F','G','H','I','J','K','E-1','E-2','H-2','K-1','207','208')],
         'T5007': [(c, 'Prestations : '+{'10':'accident du travail','11':'assistance sociale'}.get(c,'autre case à vérifier')) for c in ('10','11')],
         'RL-5': [(c, 'Prestation/indemnité : '+{'A':'assistance sociale','C':'CNESST','D':'SAAQ','M':'redressement 358'}.get(c,'autre case à vérifier')) for c in ('A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','Q1','Q2','Q3','Q4')],
         'T4RSP': [(c, 'REER : '+{'22':'retrait', '20':'cotisations inutilisées', '30':'impôt retenu'}.get(c,'cas particulier à vérifier')) for c in ('16','18','20','22','24','25','26','27','28','30','34','35','36','37','40')],
         'T4RIF': [(c, 'FERR : '+{'16':'paiement', '22':'autre revenu ou déduction (exclu)', '24':'excédent déjà inclus', '28':'impôt fédéral retenu'}.get(c,'cas particulier exclu')) for c in ('16','18','20','22','24','28','35','36','37')],
         'T3': [(str(c), 'Pension admissible' if c==31 else 'Autre case T3 à vérifier') for c in range(21,58)],
-        'T5': [(str(c), {13:'Intérêts canadiens',19:'Rente',23:'Code du bénéficiaire (pas un revenu)'}.get(c,'Autre case T5 à vérifier')) for c in (10,11,12,13,14,15,16,17,18,19,23,24,25,26,30)],
+        'T5': [(str(c), {10:'Dividendes ordinaires réels',11:'Dividendes ordinaires imposables',12:'Crédit fédéral dividendes ordinaires',13:'Intérêts canadiens',19:'Rente',23:'Code du bénéficiaire (pas un revenu)',24:'Dividendes admissibles réels',25:'Dividendes admissibles imposables',26:'Crédit fédéral dividendes admissibles'}.get(c,'Autre case T5 à vérifier')) for c in (10,11,12,13,14,15,16,17,18,19,23,24,25,26,30)],
         'RL-16': [(c, 'Pension admissible' if c=='D' else 'Autre case RL-16 hors périmètre') for c in 'ABCDEFGHIJKLMNOPQRST'],
     }.items()
 }
