@@ -184,6 +184,7 @@ from .tax_federal_home_accessibility_2025 import (
     DepensesAccessibiliteDomiciliaireFederal2025,
     valider_depenses_accessibilite_domiciliaire_2025,
 )
+from .tax_documented_interest_2025 import NATURES_INTERETS_DOCUMENTES
 from .tax_interest_income_2025 import ProfilInterets2025, consolider_interets_2025
 from .tax_replacement_benefits_2025 import ProfilRemplacement2025, NATURES_REMPLACEMENT, consolider_remplacement_2025
 from .tax_rrsp_withdrawals_2025 import ProfilRetraits2025, NATURES_RETRAITS, consolider_retraits_2025
@@ -2855,6 +2856,71 @@ class ApplicationComptaPrivee(tk.Tk):
             derniere_estimation = None
             dernier_rapport_pdf = None
             rapport_fiscal_a_reexporter = True
+
+        def ouvrir_interets_documentes_2025() -> None:
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Intérêts documentés 2025 (3B)")
+            dimensionner_fenetre(dialogue, 800, 650)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(0, weight=1)
+            textes = [
+                "Intérêts documentés 2025 — Bloc 3B",
+                "Une source économique, avec ou sans emploi : banque, remboursement d'impôt, CPG annuel ou fonds de placement T3/RL-16 exclusivement intérêts.",
+                "Banque/impôt/CPG : fédéral 12100, Québec 130. T3 26 = RL-16 G : fédéral 13000, Québec 130. Aucune addition des contreparties; FSS 446 calculé une fois.",
+                "CPG : uniquement l'année complète janvier-décembre 2025, taux fixe, échéancier annuel et méthode d'exercice Québec vérifiés. Autres anniversaires et échéances partielles refusés.",
+                "Exclus : cumul avec T5/RL-3, sources multiples, intérêts déjà déclarés, devises, conjoint, attribution, frais, fiducie personnelle/désignée, décès, dividendes, autres placements et prestations. Vérifiez identité, année, CAD et tous les montants sur les pièces complètes.",
+            ]
+            for i, texte in enumerate(textes):
+                ttk.Label(cadre,text=texte,wraplength=520,justify="left").grid(row=i,column=0,sticky="w",pady=8)
+            courant = interets_profil_courant if interets_profil_courant.nature != 'T5_RL3' else ProfilInterets2025(nature='BANQUE')
+            nature = tk.StringVar(value=courant.nature)
+            identifiant = tk.StringVar(value=courant.identifiant_source)
+            debut = tk.StringVar(value=courant.date_debut)
+            fin = tk.StringVar(value=courant.date_fin)
+            echeancier = tk.BooleanVar(value=courant.echeancier_confirme)
+            ventilation = tk.BooleanVar(value=courant.ventilation_confirmee)
+            source = tk.StringVar(value=courant.source)
+            confirme = tk.BooleanVar(value=courant.confirme)
+            ttk.Label(cadre,text="Nature des intérêts validés").grid(row=5,column=0,sticky="w")
+            ttk.Combobox(cadre,name="nature_interets_documentes",textvariable=nature,values=NATURES_INTERETS_DOCUMENTES,state="readonly").grid(row=6,column=0,sticky="ew")
+            for i,(nom,label,variable) in enumerate((
+                ('identifiant_interets_documentes','Identifiant stable du compte/contrat/avis (sans NAS)',identifiant),
+                ('debut_interets_documentes','Début de période AAAA-MM-JJ',debut),
+                ('fin_interets_documentes','Fin de période AAAA-MM-JJ',fin),
+                ('source_interets_documentes','Justificatif et ventilation/échéancier si nécessaire',source))):
+                ttk.Label(cadre,text=label).grid(row=7+i*2,column=0,sticky="w",pady=(8,0))
+                ttk.Entry(cadre,name=nom,textvariable=variable).grid(row=8+i*2,column=0,sticky="ew")
+            tk.Checkbutton(cadre,name="echeancier_interets_documentes",variable=echeancier,wraplength=520,justify="left",text="CPG uniquement : échéancier annuel 2025 et historique vérifiés; taux fixe, anniversaire au 31 décembre, méthode d'exercice Québec, sans changement de méthode ni somme déjà déclarée.").grid(row=15,column=0,sticky="w",pady=8)
+            tk.Checkbutton(cadre,name="ventilation_interets_documentes",variable=ventilation,wraplength=520,justify="left",text="T3 uniquement : ventilation du fonds vérifiée, exclusivement intérêts canadiens; 26 = RL-16 G, toutes autres cases monétaires nulles. Aucun revenu de pension, loyer, entreprise, décès ni fiducie personnelle/désignée.").grid(row=16,column=0,sticky="w",pady=8)
+            tk.Checkbutton(cadre,name="confirmation_interets_documentes",variable=confirme,wraplength=520,justify="left",text="Je confirme la source unique, les montants validés et la période 2025, la résidence Canada/Québec toute l'année et les exclusions. Aucun doublon avec un feuillet ou une autre année. Intérêts seuls, sans capital ni remboursement principal. Crédits et assurance médicaments revus.").grid(row=17,column=0,sticky="w",pady=12)
+            for variable in (nature,identifiant,debut,fin,source,echeancier,ventilation):
+                variable.trace_add("write",lambda *_:confirme.set(False))
+            dossier_apercu = self.dossier_fiscal_valide_courant
+            def appliquer_interets():
+                nonlocal retraits_profil_courant, remplacement_profil_courant, interets_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                try:
+                    if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
+                        raise ValueError("Le dossier a changé; préparez-le puis rouvrez le formulaire.")
+                    profil = ProfilInterets2025(source=source.get().strip(),confirme=confirme.get(),nature=nature.get(),identifiant_source=identifiant.get().strip(),date_debut=debut.get().strip(),date_fin=fin.get().strip(),echeancier_confirme=echeancier.get(),ventilation_confirmee=ventilation.get())
+                    consolider_interets_2025(dossier_apercu,profil)
+                except (ValueError,TypeError) as erreur:
+                    messagebox.showerror("Intérêts invalides",str(erreur),parent=dialogue)
+                    return
+                interets_profil_courant = profil
+                remplacement_profil_courant = ProfilRemplacement2025()
+                retraits_profil_courant = ProfilRetraits2025()
+                pensions_profil_courant = ProfilPensions2025()
+                rqap_confirme_courant = ae_confirme_courant = rrq_rpc_confirme_courant = psv_confirme_courant = False
+                derniere_estimation = dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Intérêts validés; recalculez l'estimation.")
+                dialogue.destroy()
+            ttk.Button(formulaire.actions,text="Fermer",command=dialogue.destroy).pack(side="right")
+            ttk.Button(formulaire.actions,text="Valider et appliquer",command=appliquer_interets).pack(side="right")
+            organiser_boutons(formulaire.actions)
 
         def ouvrir_interets_2025() -> None:
             dialogue = tk.Toplevel(fenetre)
@@ -9574,7 +9640,7 @@ class ApplicationComptaPrivee(tk.Tk):
             rl2 = sum(r.type_document == "RL-2" for r in classifications_fiscales.values())
             rl6 = sum(r.type_document == "RL-6" for r in classifications_fiscales.values())
             oas = sum(r.type_document == "T4A(OAS)" for r in classifications_fiscales.values())
-            pensions_types = {t: sum(r.type_document == t for r in classifications_fiscales.values()) for t in ("T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3")}
+            pensions_types = {t: sum(r.type_document == t for r in classifications_fiscales.values()) for t in ("T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS")}
             autres = len(classifications_fiscales) - sum(pensions_types.values()) - oas - t4 - rl1 - t4e - rl6 - t4ap - rl2
 
             message = (
@@ -10042,7 +10108,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 if (
                     classification is None
                     or classification.type_document
-                    not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3"}
+                    not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS"}
                 ):
                     continue
 
@@ -10203,8 +10269,8 @@ class ApplicationComptaPrivee(tk.Tk):
                         raise ValueError(f"Reconnaissez puis extrayez le document importé {chemin.name} avant de préparer le dossier.")
                     type_nom = classifier_document_fiscal(chemin).type_document
                     if (
-                        classification.type_document in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3"}
-                        or type_nom in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3"}
+                        classification.type_document in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS"}
+                        or type_nom in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS"}
                     ) and not donnees_fiscales_extraites.get(chemin):
                         raise ValueError(f"Aucune case extraite pour {chemin.name}; le feuillet ne peut pas être omis du calcul.")
                 dossier_valide = construire_dossier_fiscal_valide(
@@ -11195,6 +11261,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(zone_actions, text="Prestations RQAP 2025",
                    command=ouvrir_prestations_rqap_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Intérêts documentés 2025 (3B)",
+                   command=ouvrir_interets_documentes_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Intérêts canadiens 2025",
                    command=ouvrir_interets_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Autres prestations 2025",

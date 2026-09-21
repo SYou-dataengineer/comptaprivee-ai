@@ -888,3 +888,70 @@ dépréciation existants, aucun test retiré ou désactivé. Le code bénéficia
 T5 23 est aussi distingué des revenus dans le parcours rente 2E; les
 scénarios avant/après 65 ans restent identiques et le code conjoint reste
 refusé. Les Blocs 3B à 3H restent non implémentés.
+
+### Audit préalable du Bloc 3B — intérêts documentés, 2025
+
+Audit effectué avant modification du code 3B, sur le socle `45d5e68`.
+Le découpage reste inchangé : les dividendes appartiennent à **3C**.
+
+- [ARC 12100, instructions visant 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-12100-interest-other-investment-income.html) : intérêts bancaires payés/crédités, même sans feuillet et sous 50 $, et intérêts de remboursements d'impôt reçus en 2025. CPG : intérêts de chaque année complète de placement, pas uniquement à l'encaissement. Une période juillet 2024–juin 2025 relève de 2025 au fédéral.
+- [Guide Québec TP-1.G 2025, page 24, ligne 130](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.G%282025-12%29.pdf) : intérêts sans feuillet et sur remboursement d'impôt déclarables. Plusieurs méthodes de déclaration des contrats sont possibles; ne pas présumer une période Québec identique à la période fédérale. Le code ci-dessous limite donc les CPG aux intérêts annuels du 1er janvier au 31 décembre 2025, échéancier et méthode d'exercice Québec confirmés, aucun changement de méthode ni montant déjà déclaré. Autres anniversaires, échéance partielle, taux variables et historiques ambigus refusés.
+- [T3 officiel 2025, page 2](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t3/t3-25b.pdf) : **26 moins 31 va à 13000**, même si la nature économique est un intérêt. La case 25, étrangère, va à 12100 et reste exclue. [Guide T3 2025](https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/t4013/t3-trust-guide.html) : 26 peut aussi contenir loyers, entreprise, décès ou pensions. Aucune assimilation automatique à des intérêts. 3B exige une ventilation confirmant exclusivement des intérêts canadiens ordinaires, case 31 nulle et toutes autres cases monétaires nulles; T3 26 = RL-16 G, Québec 130 selon le guide TP-1.G. Les fiducies personnelles, successions, fiducies désignées et montants mixtes sont exclus; seul un fonds de placement ordinaire documenté est accepté.
+- [Annexe F 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf) : les intérêts Québec 130 sont assujettis au FSS. Aucun crédit pour dividendes, majoration ni retenue implicite. Les montants entrent une fois dans le revenu total, net et imposable; crédits et RAMQ suivent les revenus recalculés et leurs garde-fous existants.
+
+Périmètre sûr retenu : **une source économique documentée**, avec ou sans
+emploi, soit banque, remboursement d'impôt, CPG annuel décrit ci-dessus,
+ou paire T3/RL-16 exclusivement intérêts après ventilation. Identifiant
+stable, période 2025 et justificatif obligatoires. Les pièces appariées
+sont des contreparties, jamais des revenus supplémentaires. Les cumuls
+3A+3B, sources multiples, devises, attribution, comptes conjoints, frais,
+prêts privés, titres négociés et revenus déjà déclarés sont refusés : la
+combinaison de plusieurs sources reste réservée à 3H. Cette restriction
+empêche notamment de compter le même intérêt sur un relevé bancaire et
+son T5. Pas de calcul de rendement à partir d'un taux supposé.
+
+L'extraction des états sans feuillet vise un état d'intérêts 2025 identifié
+et des libellés explicites; elle ne transforme pas un solde bancaire ou
+le montant principal d'un remboursement en intérêt. Toute extraction
+doit passer par la validation comptable existante.
+
+### Réalisation et validation du Bloc 3B
+
+Le profil intérêts conserve les anciens champs 3A et ajoute nature,
+identifiant de source, dates et confirmations de ventilation/échéancier.
+Les anciens JSON 3A restent compatibles. Le formulaire 3B, les données
+validées, la sauvegarde/relecture, le résumé, la trace et le rapport PDF
+utilisent ce même profil. Modifier un champ pertinent révoque la
+confirmation; modifier les pièces ou appliquer le profil invalide
+l'estimation et bloque l'export de son ancien PDF.
+
+Extraction sans feuillet : document identifié « État/Relevé/Avis intérêts
+2025 », libellé explicite suivi de `:` et du montant sur la même ligne.
+Libellés couverts : « Intérêts bancaires 2025 », « Intérêts crédités 2025 »,
+« Intérêts sur remboursement d'impôt 2025 », « Intérêts courus CPG 2025 ».
+Les intérêts déjà déclarés, dividendes, frais de placement et impôts
+étrangers repérés sont conservés pour provoquer un refus s'ils sont
+positifs. Un solde, un capital, un montant placé sur une autre ligne ou
+une autre année n'est jamais assimilé à un intérêt. Cette extraction
+limitée n'est pas une reconnaissance universelle des relevés bancaires;
+les pièces complètes et les informations non extraites doivent être
+vérifiées humainement. Les doublons ne sont pas additionnés implicitement.
+
+Contrôles : **99 nouveaux tests ciblés** (83 métier/extraction/persistance/
+PDF, 16 GUI), dont conservation de 3A, T3 13000 distinct de 12100,
+appariement 26/G, petits montants, seuils FSS, REER sans réduction du FSS,
+crédits à revenu net périmé refusés, périodes CPG, JSON invalide,
+confirmations révoquées et anciens PDF bloqués. Aucun test retiré ou
+désactivé. Inspection visuelle du formulaire 600×400 et 1000×700 et des
+huit pages des quatre PDF synthétiques corrigés; boutons vérifiés aussi
+à 96/144/192 DPI. Artefacts synthétiques dans `tmp/`, exclus de Git.
+
+Limites maintenues : une seule source, aucun cumul 3A+3B, aucun calcul
+automatique d'un rendement CPG, aucun report d'intérêts déjà déclarés,
+aucune ventilation d'une fiducie mixte, aucune devise ni attribution.
+Les garde-fous du moteur global sur crédits, RAMQ et revenus élevés
+(notamment 129 590 $ de revenu imposable Québec) restent en vigueur.
+Les dividendes et tous les blocs 3C à 3H restent à construire.
+
+Suite complète finale `python -m pytest -q` : **2 560 tests réussis**,
+8 avertissements de dépréciation existants, aucun échec (82,03 s en local).

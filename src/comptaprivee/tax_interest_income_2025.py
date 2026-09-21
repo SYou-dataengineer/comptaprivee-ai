@@ -20,6 +20,12 @@ class ProfilInterets2025:
     compte_conjoint: bool = False
     frais_placement: bool = False
     deja_declares: bool = False
+    nature: str = 'T5_RL3'
+    identifiant_source: str = ''
+    date_debut: str = ''
+    date_fin: str = ''
+    echeancier_confirme: bool = False
+    ventilation_confirmee: bool = False
 
 
 @dataclass(frozen=True)
@@ -28,12 +34,13 @@ class Interets2025:
     ligne_130: Decimal = ZERO
     cotisation_fss: Decimal = ZERO
     present: bool = False
+    ligne_13000: Decimal = ZERO
 
 
 def valider_profil_interets_2025(p):
     if not isinstance(p, ProfilInterets2025):
         raise ValueError('Profil intérêts invalide.')
-    for nom in ('confirme', 'compte_conjoint', 'frais_placement', 'deja_declares'):
+    for nom in ('confirme', 'compte_conjoint', 'frais_placement', 'deja_declares', 'echeancier_confirme', 'ventilation_confirmee'):
         if type(getattr(p, nom)) is not bool:
             raise ValueError('Les confirmations intérêts doivent être booléennes.')
     if not isinstance(p.source, str) or not isinstance(p.devise, str):
@@ -42,12 +49,14 @@ def valider_profil_interets_2025(p):
         raise ValueError('Intérêts : devise étrangère, compte conjoint, frais ou intérêts déjà déclarés hors périmètre 3A.')
     if p.confirme and not p.source.strip():
         raise ValueError('Justificatif des intérêts obligatoire.')
+    from .tax_documented_interest_2025 import valider_nature_interets_documentes_2025
+    valider_nature_interets_documentes_2025(p)
     return p
 
 
 def detecter_interets_2025(dossier):
     # T5 19 est déjà couvert par les pensions; ne pas détourner ce parcours.
-    return any(d.type_document == 'RL-3' or
+    return any(d.type_document in {'RL-3', 'INTERETS'} or
                (d.type_document == 'T5' and d.case == '13' and d.valeur_validee != ZERO)
                for d in dossier.donnees_validees)
 
@@ -55,7 +64,10 @@ def detecter_interets_2025(dossier):
 def consolider_interets_2025(dossier, profil):
     valider_profil_interets_2025(profil)
     if not profil.confirme:
-        raise ValueError('Confirmez les intérêts canadiens et les exclusions du Bloc 3A.')
+        raise ValueError('Confirmez les intérêts canadiens et les exclusions du parcours 3A ou 3B choisi.')
+    if profil.nature != 'T5_RL3':
+        from .tax_documented_interest_2025 import consolider_interets_documentes_2025
+        return consolider_interets_documentes_2025(dossier, profil)
     if dossier.annee_fiscale != 2025 or dossier.province.casefold() not in {'québec', 'quebec'}:
         raise ValueError('Intérêts : dossier Québec 2025 requis.')
     if any(d.type_document not in {'T4', 'RL-1', 'T5', 'RL-3'} for d in dossier.donnees_validees):
@@ -93,19 +105,22 @@ def consolider_interets_2025(dossier, profil):
 
 def appliquer_interets_2025(revenu, p):
     return replace(revenu,
-        revenu_total_federal=revenu.revenu_total_federal + p.ligne_12100,
-        revenu_net_federal=revenu.revenu_net_federal + p.ligne_12100,
-        revenu_imposable_federal=revenu.revenu_imposable_federal + p.ligne_12100,
+        revenu_total_federal=revenu.revenu_total_federal + p.ligne_12100 + p.ligne_13000,
+        revenu_net_federal=revenu.revenu_net_federal + p.ligne_12100 + p.ligne_13000,
+        revenu_imposable_federal=revenu.revenu_imposable_federal + p.ligne_12100 + p.ligne_13000,
         revenu_total_quebec=revenu.revenu_total_quebec + p.ligne_130,
         revenu_net_quebec=revenu.revenu_net_quebec + p.ligne_130,
         revenu_imposable_quebec=revenu.revenu_imposable_quebec + p.ligne_130,
         profil='Intérêts canadiens ordinaires Québec 2025',
-        limitations=('Intérêts canadiens ordinaires appariés T5/RL-3, avec ou sans emploi; autres placements exclus.',))
+        limitations=('Intérêts canadiens documentés, avec ou sans emploi; autres placements exclus.',))
 
 
 def lignes_resume_interets_2025(p, profil):
     if not p.present:
         return []
+    if profil.nature != 'T5_RL3':
+        from .tax_documented_interest_2025 import lignes_resume_interets_documentes_2025
+        return lignes_resume_interets_documentes_2025(p, profil)
     f = formater_montant_fiscal
     return ['', 'INTÉRÊTS CANADIENS 2025 — BLOC 3A',
         f'Justificatif : {profil.source}',

@@ -2689,7 +2689,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             raise ValueError("Une donnée fiscale enregistrée est incomplète.") from erreur
         if statut not in STATUTS_VALIDATION_AUTORISES:
             raise ValueError("Statut de validation fiscale enregistré invalide.")
-        if type_document not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3"}:
+        if type_document not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS"}:
             raise ValueError("Type de document fiscal enregistré non pris en charge.")
         ve = _decimal_depuis_json(brut.get("valeur_extraite"), f"valeur_extraite[{index}]")
         vv = _decimal_depuis_json(brut.get("valeur_validee"), f"valeur_validee[{index}]")

@@ -233,7 +233,7 @@ def construire_trace_calcul_fiscal_2025(
         formule_revenu_quebec += " + PSV 114 + suppléments 148 - récupération 250 - déduction 295"
 
     if estimation.interets.present:
-        formule_revenu_federal += " + intérêts 12100"
+        formule_revenu_federal += " + intérêts directs 12100 + intérêts T3 13000"
         formule_revenu_quebec += " + intérêts 130"
     if estimation.remplacement.present:
         formule_revenu_federal += " + prestations 14400/14500 (25000 déduit uniquement de l’imposable)"
@@ -1350,8 +1350,10 @@ def construire_trace_calcul_fiscal_2025(
 
     if estimation.interets.present:
         r = estimation.interets
-        for libelle, montant in (("Intérêts 12100",r.ligne_12100),("Intérêts 130",r.ligne_130),("FSS intérêts 446",r.cotisation_fss)):
-            lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"INTÉRÊTS",libelle,estimation.profil_interets.source,"T5 13 = RL-3 D; une seule inclusion par juridiction; FSS annexe F sans abattement",montant))
+        profil = estimation.profil_interets
+        source = profil.source if profil.nature == 'T5_RL3' else f'{profil.identifiant_source}; {profil.date_debut} au {profil.date_fin}; {profil.source}'
+        for libelle, montant in (("Intérêts 12100",r.ligne_12100),("Intérêts T3 13000",r.ligne_13000),("Intérêts 130",r.ligne_130),("FSS intérêts 446",r.cotisation_fss)):
+            lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"INTÉRÊTS",libelle,source,"Source intérêts validée; une seule inclusion par juridiction; FSS annexe F sans abattement",montant))
 
     prochain_ordre = len(lignes) + 1
 

@@ -345,7 +345,7 @@ def calculer_rapprochement_fiscal_2025(
              else "Pensions domestiques ordinaires 2025, avec ou sans emploi; FSS sur la pension brute." if pensions.present
              else "Retraits REER et forfaits ordinaires 2025, avec ou sans emploi." if retraits.present
              else "Prestations T5007/RL-5 ordinaires, avec ou sans emploi; redressement 358 inclus." if remplacement.present
-             else "Intérêts canadiens T5/RL-3 2025, avec ou sans emploi; FSS 446 inclus." if interets.present
+             else "Intérêts canadiens documentés 2025, avec ou sans emploi; FSS 446 inclus." if interets.present
              else "Le calcul couvre uniquement le profil emploi Québec simple 2025."),
             "L'abattement Québec est calculé à 16,5 % de l'impôt fédéral de base.",
             ("Retenues T4/RL-1 et T4E/RL-6 incluses; FSS ligne 446 calculé." if prestations_rqap.present

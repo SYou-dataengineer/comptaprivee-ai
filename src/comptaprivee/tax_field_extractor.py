@@ -148,7 +148,7 @@ REGLES_PENSIONS = {
         'RL-5': [(c, 'Prestation/indemnité : '+{'A':'assistance sociale','C':'CNESST','D':'SAAQ','M':'redressement 358'}.get(c,'autre case à vérifier')) for c in ('A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','Q1','Q2','Q3','Q4')],
         'T4RSP': [(c, 'REER : '+{'22':'retrait', '20':'cotisations inutilisées', '30':'impôt retenu'}.get(c,'cas particulier à vérifier')) for c in ('16','18','20','22','24','25','26','27','28','30','34','35','36','37','40')],
         'T4RIF': [(c, 'FERR : '+{'16':'paiement', '22':'autre revenu ou déduction (exclu)', '24':'excédent déjà inclus', '28':'impôt fédéral retenu'}.get(c,'cas particulier exclu')) for c in ('16','18','20','22','24','28','35','36','37')],
-        'T3': [(str(c), 'Pension admissible' if c==31 else 'Autre case T3 à vérifier') for c in range(21,53)],
+        'T3': [(str(c), 'Pension admissible' if c==31 else 'Autre case T3 à vérifier') for c in range(21,58)],
         'T5': [(str(c), {13:'Intérêts canadiens',19:'Rente',23:'Code du bénéficiaire (pas un revenu)'}.get(c,'Autre case T5 à vérifier')) for c in (10,11,12,13,14,15,16,17,18,19,23,24,25,26,30)],
         'RL-16': [(c, 'Pension admissible' if c=='D' else 'Autre case RL-16 hors périmètre') for c in 'ABCDEFGHIJKLMNOPQRST'],
     }.items()
@@ -272,6 +272,29 @@ def extraire_cases_fiscales(
 ) -> tuple[DonneeFiscaleExtraite, ...]:
     """Extrait les cases connues et conserve la source de chaque valeur."""
     type_normalise = type_document.strip().upper()
+
+    if type_normalise == 'INTERETS':
+        # Aucun rapprochement d'un solde, capital ou remboursement principal.
+        # Le montant doit figurer sur la même ligne que son libellé explicite.
+        libelles = {
+            'BANQUE': r'int[ée]r[êe]ts\s+(?:bancaires|cr[ée]dit[ée]s)\s+2025',
+            'REMBOURSEMENT_IMPOT': r'int[ée]r[êe]ts\s+sur\s+remboursement\s+d[’\x27]imp[ôo]t\s+2025',
+            'CPG_ANNUEL': r'int[ée]r[êe]ts\s+courus\s+CPG\s+2025',
+            'DEJA_DECLARES': r'int[ée]r[êe]ts\s+d[ée]j[àa]\s+d[ée]clar[ée]s',
+            'DIVIDENDES': r'dividendes\s+2025',
+            'FRAIS': r'frais\s+de\s+placement\s+2025',
+            'IMPOT_ETRANGER': r'imp[ôo]t\s+[ée]tranger\s+2025',
+        }
+        donnees = []
+        for case, motif in libelles.items():
+            for correspondance in re.finditer(rf'^[ \t]*({motif})[ \t]*:[ \t]*([^\r\n]+)\r?$', texte, re.IGNORECASE | re.MULTILINE):
+                brut = correspondance.group(2).strip().removesuffix('$').strip()
+                try:
+                    valeur = convertir_montant_fiscal(brut)
+                except ValueError:
+                    continue
+                donnees.append(DonneeFiscaleExtraite(Path(source_document), 'INTERETS', case, correspondance.group(1), valeur, brut))
+        return tuple(donnees)
 
     if type_normalise == "T4":
         regles = REGLES_T4
