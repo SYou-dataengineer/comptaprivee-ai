@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import textwrap
 import fitz
+from .tax_capital_gains_2025 import lignes_resume_capital_2025
 from .tax_dividend_income_2025 import lignes_resume_dividendes_2025
 from .tax_interest_income_2025 import lignes_resume_interets_2025
 from .tax_replacement_benefits_2025 import lignes_resume_remplacement_2025
@@ -180,12 +181,13 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_resume_ae_2025(estimation.prestations_ae))
     lignes.extend(lignes_resume_rrq_rpc_2025(estimation.prestations_rrq_rpc))
     lignes.extend(lignes_resume_psv_2025(estimation.prestations_psv))
+    lignes.extend(lignes_resume_capital_2025(estimation.capital, estimation.profil_capital))
     lignes.extend(lignes_resume_dividendes_2025(estimation.dividendes, estimation.profil_dividendes))
     lignes.extend(lignes_resume_interets_2025(estimation.interets, estimation.profil_interets))
     lignes.extend(lignes_resume_remplacement_2025(estimation.remplacement, estimation.profil_remplacement))
     lignes.extend(lignes_resume_retraits_2025(estimation.retraits, estimation.profil_retraits))
     lignes.extend(lignes_resume_pensions_2025(estimation.pensions, estimation.profil_pensions))
-    if estimation.prestations_rqap.present or estimation.prestations_ae.present or estimation.prestations_rrq_rpc.present or estimation.prestations_psv.present or estimation.pensions.present or estimation.retraits.present or estimation.interets.present or estimation.dividendes.present:
+    if estimation.prestations_rqap.present or estimation.prestations_ae.present or estimation.prestations_rrq_rpc.present or estimation.prestations_psv.present or estimation.pensions.present or estimation.retraits.present or estimation.interets.present or estimation.dividendes.present or estimation.capital.present:
         lignes.extend([
             f"Revenu total fédéral : {formater_montant_estimation(r.revenu_total_federal)}",
             f"Revenu total Québec : {formater_montant_estimation(r.revenu_total_quebec)}",

@@ -185,6 +185,7 @@ from .tax_federal_home_accessibility_2025 import (
     valider_depenses_accessibilite_domiciliaire_2025,
 )
 from .tax_documented_interest_2025 import NATURES_INTERETS_DOCUMENTES
+from .tax_capital_gains_2025 import ProfilCapital2025, CHAMPS_CAPITAL, consolider_capital_2025
 from .tax_dividend_income_2025 import ProfilDividendes2025, consolider_dividendes_2025
 from .tax_interest_income_2025 import ProfilInterets2025, consolider_interets_2025
 from .tax_replacement_benefits_2025 import ProfilRemplacement2025, NATURES_REMPLACEMENT, consolider_remplacement_2025
@@ -2478,6 +2479,7 @@ class ApplicationComptaPrivee(tk.Tk):
         remplacement_profil_courant = ProfilRemplacement2025()
         interets_profil_courant = ProfilInterets2025()
         dividendes_profil_courant = ProfilDividendes2025()
+        capital_profil_courant = ProfilCapital2025()
         rapport_fiscal_a_reexporter = False
         aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
         aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
@@ -2846,7 +2848,7 @@ class ApplicationComptaPrivee(tk.Tk):
             organiser_boutons(formulaire.actions)
 
         def invalider_profil_rqap() -> None:
-            nonlocal rqap_confirme_courant, ae_confirme_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+            nonlocal rqap_confirme_courant, ae_confirme_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
             rqap_confirme_courant = False
             ae_confirme_courant = False
             rrq_rpc_confirme_courant = False
@@ -2856,6 +2858,7 @@ class ApplicationComptaPrivee(tk.Tk):
             remplacement_profil_courant = ProfilRemplacement2025()
             interets_profil_courant = ProfilInterets2025()
             dividendes_profil_courant = ProfilDividendes2025()
+            capital_profil_courant = ProfilCapital2025()
             derniere_estimation = None
             dernier_rapport_pdf = None
             rapport_fiscal_a_reexporter = True
@@ -2903,7 +2906,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 variable.trace_add("write",lambda *_:confirme.set(False))
             dossier_apercu = self.dossier_fiscal_valide_courant
             def appliquer_interets():
-                nonlocal retraits_profil_courant, remplacement_profil_courant, dividendes_profil_courant, interets_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal retraits_profil_courant, remplacement_profil_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez le formulaire.")
@@ -2914,6 +2917,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     return
                 interets_profil_courant = profil
                 dividendes_profil_courant = ProfilDividendes2025()
+                capital_profil_courant = ProfilCapital2025()
                 remplacement_profil_courant = ProfilRemplacement2025()
                 retraits_profil_courant = ProfilRetraits2025()
                 pensions_profil_courant = ProfilPensions2025()
@@ -2924,6 +2928,66 @@ class ApplicationComptaPrivee(tk.Tk):
                 dialogue.destroy()
             ttk.Button(formulaire.actions,text="Fermer",command=dialogue.destroy).pack(side="right")
             ttk.Button(formulaire.actions,text="Valider et appliquer",command=appliquer_interets).pack(side="right")
+            organiser_boutons(formulaire.actions)
+
+        def ouvrir_capital_2025() -> None:
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Gains et pertes en capital 2025")
+            dimensionner_fenetre(dialogue, 800, 650)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(0, weight=1)
+            textes = [
+                "Gains et pertes en capital 2025 — Bloc 3D",
+                "Une vente 2025 d'un lot unique d'actions canadiennes cotées (SHS), acheté depuis 2000 et vendu entièrement. Une paire T5008/RL-18 distincte, CAD, titulaire unique; avec ou sans salaire ordinaire.",
+                "PBR indépendant documenté, jamais copié automatiquement de la case 20. T5008 21 brut - courtage = RL-18 21. Gain = brut - PBR - courtage - autres frais; aucune double déduction.",
+                "Inclusion 50 % vers 12700/139; FSS sur le gain imposable positif. Une perte ne réduit pas le salaire; reports réservés à 3F. Salaire brut + gain intégral limité à 177 882 $ pour exclure l'IMR non couvert.",
+                "Exclus : plusieurs lots/ventes, fonds, distributions T3/T5, réinvestissements, PBR complexe, étranger, compte conjoint, attribution, entreprise, options, dons, décès, crypto, immeubles, pertes antérieures et autres placements/prestations combinés.",
+            ]
+            for i, texte in enumerate(textes):
+                ttk.Label(cadre,text=texte,wraplength=520,justify="left").grid(row=i,column=0,sticky="w",pady=8)
+            variables = {}
+            for i, (nom, libelle) in enumerate(CHAMPS_CAPITAL):
+                variable = tk.StringVar(value=getattr(capital_profil_courant, nom))
+                variables[nom] = variable
+                ttk.Label(cadre,text=libelle,wraplength=520).grid(row=5+2*i,column=0,sticky="w",pady=(8,0))
+                ttk.Entry(cadre,name=nom+"_capital",textvariable=variable).grid(row=6+2*i,column=0,sticky="ew",pady=4)
+            pbr_confirme = tk.BooleanVar(value=capital_profil_courant.pbr_confirme)
+            confirme = tk.BooleanVar(value=capital_profil_courant.confirme)
+            tk.Checkbutton(cadre,name="confirmation_pbr_capital",variable=pbr_confirme,wraplength=520,justify="left",text="PBR vérifié sur la preuve d'achat et les frais d'acquisition du lot entier, indépendamment de la case 20. Aucun ajustement historique, lot identique ailleurs, distribution réinvestie ni réorganisation.").grid(row=23,column=0,sticky="w",pady=12)
+            tk.Checkbutton(cadre,name="confirmation_capital",variable=confirme,wraplength=520,justify="left",text="Je confirme la paire complète 2025, l'identité, la quantité, la nature SHS et les dates. Résidence Canada/Québec toute l'année. Aucun cas exclu ci-dessus, aucune perte apparente : aucun achat ou droit d'achat identique par moi ou un affilié dans les 30 jours avant/après la vente (vérification jusqu'au 30e jour, même en 2026). Frais ventilés et non déduits ailleurs; aucune autre disposition ni distribution, aucun IMR antérieur. Codes administratifs et devises vérifiés humainement; salaire ordinaire sans exemption RRQ. Crédits et assurance médicaments revus séparément.").grid(row=24,column=0,sticky="w",pady=12)
+            def deconfirmer_capital(*_):
+                pbr_confirme.set(False)
+                confirme.set(False)
+            for variable in variables.values():
+                variable.trace_add("write",deconfirmer_capital)
+            pbr_confirme.trace_add("write",lambda *_:confirme.set(False))
+            dossier_apercu = self.dossier_fiscal_valide_courant
+            def appliquer_capital():
+                nonlocal retraits_profil_courant, remplacement_profil_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                try:
+                    if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
+                        raise ValueError("Le dossier a changé; préparez-le puis rouvrez le formulaire.")
+                    profil = ProfilCapital2025(**{nom:var.get().strip() for nom,var in variables.items()},confirme=confirme.get(),pbr_confirme=pbr_confirme.get())
+                    consolider_capital_2025(dossier_apercu,profil)
+                except (ValueError,TypeError) as erreur:
+                    messagebox.showerror("Capital invalide",str(erreur),parent=dialogue)
+                    return
+                capital_profil_courant = profil
+                dividendes_profil_courant = ProfilDividendes2025()
+                interets_profil_courant = ProfilInterets2025()
+                remplacement_profil_courant = ProfilRemplacement2025()
+                retraits_profil_courant = ProfilRetraits2025()
+                pensions_profil_courant = ProfilPensions2025()
+                rqap_confirme_courant = ae_confirme_courant = rrq_rpc_confirme_courant = psv_confirme_courant = False
+                derniere_estimation = dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Capital validé; recalculez l'estimation.")
+                dialogue.destroy()
+            ttk.Button(formulaire.actions,text="Fermer",command=dialogue.destroy).pack(side="right")
+            ttk.Button(formulaire.actions,text="Valider et appliquer",command=appliquer_capital).pack(side="right")
             organiser_boutons(formulaire.actions)
 
         def ouvrir_dividendes_2025() -> None:
@@ -2953,7 +3017,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 variable.trace_add("write",lambda *_:confirme.set(False))
             dossier_apercu = self.dossier_fiscal_valide_courant
             def appliquer_dividendes():
-                nonlocal retraits_profil_courant, remplacement_profil_courant, dividendes_profil_courant, interets_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal retraits_profil_courant, remplacement_profil_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez le formulaire.")
@@ -2963,6 +3027,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     messagebox.showerror("Dividendes invalides",str(erreur),parent=dialogue)
                     return
                 dividendes_profil_courant = profil
+                capital_profil_courant = ProfilCapital2025()
                 interets_profil_courant = ProfilInterets2025()
                 remplacement_profil_courant = ProfilRemplacement2025()
                 retraits_profil_courant = ProfilRetraits2025()
@@ -3003,7 +3068,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 variable.trace_add("write",lambda *_:confirme.set(False))
             dossier_apercu = self.dossier_fiscal_valide_courant
             def appliquer_interets():
-                nonlocal retraits_profil_courant, remplacement_profil_courant, dividendes_profil_courant, interets_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal retraits_profil_courant, remplacement_profil_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez le formulaire.")
@@ -3014,6 +3079,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     return
                 interets_profil_courant = profil
                 dividendes_profil_courant = ProfilDividendes2025()
+                capital_profil_courant = ProfilCapital2025()
                 remplacement_profil_courant = ProfilRemplacement2025()
                 retraits_profil_courant = ProfilRetraits2025()
                 pensions_profil_courant = ProfilPensions2025()
@@ -3056,7 +3122,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 variable.trace_add("write",lambda *_:confirme.set(False))
             dossier_apercu = self.dossier_fiscal_valide_courant
             def appliquer_remplacement():
-                nonlocal retraits_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal retraits_profil_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez le formulaire.")
@@ -3068,6 +3134,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 remplacement_profil_courant = profil
                 interets_profil_courant = ProfilInterets2025()
                 dividendes_profil_courant = ProfilDividendes2025()
+                capital_profil_courant = ProfilCapital2025()
                 retraits_profil_courant = ProfilRetraits2025()
                 pensions_profil_courant = ProfilPensions2025()
                 rqap_confirme_courant = ae_confirme_courant = rrq_rpc_confirme_courant = psv_confirme_courant = False
@@ -3109,7 +3176,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 variable.trace_add("write",lambda *_:confirme.set(False))
             dossier_apercu = self.dossier_fiscal_valide_courant
             def appliquer_retraits():
-                nonlocal dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez le formulaire.")
@@ -3122,6 +3189,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 remplacement_profil_courant = ProfilRemplacement2025()
                 interets_profil_courant = ProfilInterets2025()
                 dividendes_profil_courant = ProfilDividendes2025()
+                capital_profil_courant = ProfilCapital2025()
                 pensions_profil_courant = ProfilPensions2025()
                 rqap_confirme_courant = ae_confirme_courant = rrq_rpc_confirme_courant = psv_confirme_courant = False
                 derniere_estimation = dernier_rapport_pdf = None
@@ -3172,7 +3240,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 variable.trace_add("write", lambda *_: confirme.set(False))
             dossier_apercu = self.dossier_fiscal_valide_courant
             def appliquer():
-                nonlocal dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Préparez le dossier puis rouvrez ce formulaire si le dossier a changé.")
@@ -3186,6 +3254,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 remplacement_profil_courant = ProfilRemplacement2025()
                 interets_profil_courant = ProfilInterets2025()
                 dividendes_profil_courant = ProfilDividendes2025()
+                capital_profil_courant = ProfilCapital2025()
                 rqap_confirme_courant = ae_confirme_courant = rrq_rpc_confirme_courant = psv_confirme_courant = False
                 derniere_estimation = dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
@@ -3228,7 +3297,7 @@ class ApplicationComptaPrivee(tk.Tk):
                       wraplength=520).grid(row=len(textes)+1, column=0, sticky="w", pady=8)
 
             def appliquer_psv():
-                nonlocal dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, rqap_confirme_courant, ae_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, rqap_confirme_courant, ae_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez ce formulaire.")
@@ -3242,6 +3311,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 remplacement_profil_courant = ProfilRemplacement2025()
                 interets_profil_courant = ProfilInterets2025()
                 dividendes_profil_courant = ProfilDividendes2025()
+                capital_profil_courant = ProfilCapital2025()
                 rrq_rpc_confirme_courant = False
                 rqap_confirme_courant = False
                 ae_confirme_courant = False
@@ -3288,7 +3358,7 @@ class ApplicationComptaPrivee(tk.Tk):
                       wraplength=520).grid(row=len(textes)+1, column=0, sticky="w", pady=8)
 
             def appliquer_rrq_rpc():
-                nonlocal dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, rqap_confirme_courant, ae_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, rqap_confirme_courant, ae_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez ce formulaire.")
@@ -3303,6 +3373,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 remplacement_profil_courant = ProfilRemplacement2025()
                 interets_profil_courant = ProfilInterets2025()
                 dividendes_profil_courant = ProfilDividendes2025()
+                capital_profil_courant = ProfilCapital2025()
                 rqap_confirme_courant = False
                 ae_confirme_courant = False
                 derniere_estimation = None
@@ -3348,7 +3419,7 @@ class ApplicationComptaPrivee(tk.Tk):
                       wraplength=520).grid(row=len(textes)+1, column=0, sticky="w", pady=8)
 
             def appliquer_ae():
-                nonlocal ae_confirme_courant, rqap_confirme_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal ae_confirme_courant, rqap_confirme_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez ce formulaire.")
@@ -3365,6 +3436,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 remplacement_profil_courant = ProfilRemplacement2025()
                 interets_profil_courant = ProfilInterets2025()
                 dividendes_profil_courant = ProfilDividendes2025()
+                capital_profil_courant = ProfilCapital2025()
                 derniere_estimation = None
                 dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
@@ -3408,7 +3480,7 @@ class ApplicationComptaPrivee(tk.Tk):
                       wraplength=520).grid(row=len(textes)+1, column=0, sticky="w", pady=8)
 
             def appliquer_rqap():
-                nonlocal rqap_confirme_courant, ae_confirme_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal rqap_confirme_courant, ae_confirme_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez ce formulaire.")
@@ -3425,6 +3497,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 remplacement_profil_courant = ProfilRemplacement2025()
                 interets_profil_courant = ProfilInterets2025()
                 dividendes_profil_courant = ProfilDividendes2025()
+                capital_profil_courant = ProfilCapital2025()
                 derniere_estimation = None
                 dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
@@ -9702,7 +9775,7 @@ class ApplicationComptaPrivee(tk.Tk):
             rl2 = sum(r.type_document == "RL-2" for r in classifications_fiscales.values())
             rl6 = sum(r.type_document == "RL-6" for r in classifications_fiscales.values())
             oas = sum(r.type_document == "T4A(OAS)" for r in classifications_fiscales.values())
-            pensions_types = {t: sum(r.type_document == t for r in classifications_fiscales.values()) for t in ("T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS")}
+            pensions_types = {t: sum(r.type_document == t for r in classifications_fiscales.values()) for t in ("T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS", "T5008", "RL-18")}
             autres = len(classifications_fiscales) - sum(pensions_types.values()) - oas - t4 - rl1 - t4e - rl6 - t4ap - rl2
 
             message = (
@@ -10170,7 +10243,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 if (
                     classification is None
                     or classification.type_document
-                    not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS"}
+                    not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS", "T5008", "RL-18"}
                 ):
                     continue
 
@@ -10234,7 +10307,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal aidant_30425_federal_courant
             nonlocal accessibilite_domiciliaire_federale_courante
             nonlocal achat_habitation_federal_courant
-            nonlocal cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant
+            nonlocal cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -10284,6 +10357,7 @@ class ApplicationComptaPrivee(tk.Tk):
             remplacement_profil_courant = ProfilRemplacement2025()
             interets_profil_courant = ProfilInterets2025()
             dividendes_profil_courant = ProfilDividendes2025()
+            capital_profil_courant = ProfilCapital2025()
             rapport_fiscal_a_reexporter = True
             aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
             aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
@@ -10332,8 +10406,8 @@ class ApplicationComptaPrivee(tk.Tk):
                         raise ValueError(f"Reconnaissez puis extrayez le document importé {chemin.name} avant de préparer le dossier.")
                     type_nom = classifier_document_fiscal(chemin).type_document
                     if (
-                        classification.type_document in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS"}
-                        or type_nom in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS"}
+                        classification.type_document in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS", "T5008", "RL-18"}
+                        or type_nom in {"T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS", "T5008", "RL-18"}
                     ) and not donnees_fiscales_extraites.get(chemin):
                         raise ValueError(f"Aucune case extraite pour {chemin.name}; le feuillet ne peut pas être omis du calcul.")
                 dossier_valide = construire_dossier_fiscal_valide(
@@ -10421,7 +10495,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                             accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                             achat_habitation_federal=achat_habitation_federal_courant,
-                            cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant, profil_retraits=retraits_profil_courant, profil_remplacement=remplacement_profil_courant, profil_interets=interets_profil_courant, profil_dividendes=dividendes_profil_courant,
+                            cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant, profil_retraits=retraits_profil_courant, profil_remplacement=remplacement_profil_courant, profil_interets=interets_profil_courant, profil_dividendes=dividendes_profil_courant, profil_capital=capital_profil_courant,
                             aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                             aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                             aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -10469,7 +10543,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                     accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                     achat_habitation_federal=achat_habitation_federal_courant,
-                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant, profil_retraits=retraits_profil_courant, profil_remplacement=remplacement_profil_courant, profil_interets=interets_profil_courant, profil_dividendes=dividendes_profil_courant,
+                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant, profil_retraits=retraits_profil_courant, profil_remplacement=remplacement_profil_courant, profil_interets=interets_profil_courant, profil_dividendes=dividendes_profil_courant, profil_capital=capital_profil_courant,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -10557,7 +10631,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal aidant_30425_federal_courant
             nonlocal accessibilite_domiciliaire_federale_courante
             nonlocal achat_habitation_federal_courant
-            nonlocal cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant
+            nonlocal cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
             dossier = enregistrement.dossier
@@ -10651,6 +10725,7 @@ class ApplicationComptaPrivee(tk.Tk):
             remplacement_profil_courant = enregistrement.profil_remplacement
             interets_profil_courant = enregistrement.profil_interets
             dividendes_profil_courant = enregistrement.profil_dividendes
+            capital_profil_courant = enregistrement.profil_capital
             aidant_30450_federal_courant = (
                 enregistrement.aidant_autre_personne_charge_federal
             )
@@ -10928,7 +11003,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                     accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                     achat_habitation_federal=achat_habitation_federal_courant,
-                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant, profil_retraits=retraits_profil_courant, profil_remplacement=remplacement_profil_courant, profil_interets=interets_profil_courant, profil_dividendes=dividendes_profil_courant,
+                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant, profil_retraits=retraits_profil_courant, profil_remplacement=remplacement_profil_courant, profil_interets=interets_profil_courant, profil_dividendes=dividendes_profil_courant, profil_capital=capital_profil_courant,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -11327,6 +11402,8 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_prestations_rqap_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Intérêts documentés 2025 (3B)",
                    command=ouvrir_interets_documentes_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Gains et pertes en capital 2025",
+                   command=ouvrir_capital_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Dividendes canadiens 2025",
                    command=ouvrir_dividendes_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Intérêts canadiens 2025",

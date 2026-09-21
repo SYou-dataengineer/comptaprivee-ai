@@ -142,6 +142,8 @@ REGLES_RL6 = tuple(
 REGLES_PENSIONS = {
     t: tuple((c, label, (rf"\b(?:case|box|code)\s*{('0?' + c[1:]) if t == 'T4A' and c.startswith('0') else c}\b(?!-\d)",)) for c, label in cases)
     for t, cases in {
+        'T5008': [(c, {'20':'Coût comptable (pas le PBR automatique)','21':'Produit brut de disposition'}.get(c,'Autre case capital hors périmètre')) for c in ('19','20','21','23')],
+        'RL-18': [(c, {'20':'Coût comptable (pas le PBR automatique)','21':'Produit net de courtage'}.get(c,'Autre case capital hors périmètre')) for c in ('19','20','21','23')],
         'T4A': [(c, {'016':'Pension RPA', '022':'Impôt fédéral retenu', '024':'Rente', '133':'Rente ou prestation variable (nature à confirmer)', '194':'RPAC'}.get(c,'Autre case T4A à vérifier')) for c in ('016','018','022','024','028','048','105','106','108','109','115','119','127','133','135','194')],
         'RL-3': [(c, {'A1':'Dividendes déterminés réels','A2':'Dividendes ordinaires réels','B':'Dividendes imposables','C':'Crédit Québec pour dividendes','D':'Intérêts canadiens'}.get(c,'Autre case RL-3 à vérifier')) for c in ('A1','A2','B','C','D','E','F','G','H','I','J','K','E-1','E-2','H-2','K-1','207','208')],
         'T5007': [(c, 'Prestations : '+{'10':'accident du travail','11':'assistance sociale'}.get(c,'autre case à vérifier')) for c in ('10','11')],

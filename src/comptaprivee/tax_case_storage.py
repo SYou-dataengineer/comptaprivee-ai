@@ -89,6 +89,7 @@ from .tax_field_validation import (
     STATUT_VALIDE,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_capital_gains_2025 import ProfilCapital2025, valider_profil_capital_2025, consolider_capital_2025
 from .tax_dividend_income_2025 import ProfilDividendes2025, valider_profil_dividendes_2025, consolider_dividendes_2025
 from .tax_interest_income_2025 import ProfilInterets2025, valider_profil_interets_2025, consolider_interets_2025
 from .tax_replacement_benefits_2025 import (ProfilRemplacement2025, PrestationsRemplacement2025, valider_profil_remplacement_2025, detecter_remplacement_2025, consolider_remplacement_2025, appliquer_remplacement_2025, appliquer_redressement_358_2025, lignes_resume_remplacement_2025)
@@ -150,6 +151,7 @@ class DossierFiscalEnregistre:
     cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
     rqap_confirme: bool = False
     ae_confirme: bool = False
+    profil_capital: ProfilCapital2025 = ProfilCapital2025()
     profil_dividendes: ProfilDividendes2025 = ProfilDividendes2025()
     profil_interets: ProfilInterets2025 = ProfilInterets2025()
     profil_remplacement: ProfilRemplacement2025 = ProfilRemplacement2025()
@@ -2437,6 +2439,7 @@ def sauvegarder_dossier_fiscal(
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool | None = None,
     ae_confirme: bool | None = None,
+    profil_capital: ProfilCapital2025 | None = None,
     profil_dividendes: ProfilDividendes2025 | None = None,
     profil_interets: ProfilInterets2025 | None = None,
     profil_remplacement: ProfilRemplacement2025 | None = None,
@@ -2445,6 +2448,14 @@ def sauvegarder_dossier_fiscal(
     psv_confirme: bool | None = None,
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    capital_effectif = profil_capital if profil_capital is not None else (estimation.profil_capital if estimation else ProfilCapital2025())
+    valider_profil_capital_2025(capital_effectif)
+    if estimation and capital_effectif != estimation.profil_capital:
+        raise ValueError("Le profil capital diffère de l’estimation.")
+    if capital_effectif.confirme:
+        if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or any(p and p != type(p)() for p in (profil_pensions, profil_retraits, profil_remplacement, profil_interets, profil_dividendes)):
+            raise ValueError("Capital avec autres placements/prestations : hors périmètre 3D.")
+        consolider_capital_2025(dossier, capital_effectif)
     dividendes_effectif = profil_dividendes if profil_dividendes is not None else (estimation.profil_dividendes if estimation else ProfilDividendes2025())
     valider_profil_dividendes_2025(dividendes_effectif)
     if estimation and dividendes_effectif != estimation.profil_dividendes:
@@ -2543,6 +2554,7 @@ def sauvegarder_dossier_fiscal(
         "profil_remplacement": asdict(remplacement_effectif),
         "profil_interets": asdict(interets_effectif),
         "profil_dividendes": asdict(dividendes_effectif),
+        "profil_capital": asdict(capital_effectif),
         "psv_confirme": confirme_psv,
         "rrq_rpc_confirme": confirme_rrq_rpc,
         "cotisations_rpa": {
@@ -2701,7 +2713,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             raise ValueError("Une donnée fiscale enregistrée est incomplète.") from erreur
         if statut not in STATUTS_VALIDATION_AUTORISES:
             raise ValueError("Statut de validation fiscale enregistré invalide.")
-        if type_document not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS"}:
+        if type_document not in {"T4", "RL-1", "T4E", "RL-6", "T4A(P)", "RL-2", "T4A(OAS)", "T4A", "T4RIF", "T3", "T5", "RL-16", "T4RSP", "T5007", "RL-5", "RL-3", "INTERETS", "T5008", "RL-18"}:
             raise ValueError("Type de document fiscal enregistré non pris en charge.")
         ve = _decimal_depuis_json(brut.get("valeur_extraite"), f"valeur_extraite[{index}]")
         vv = _decimal_depuis_json(brut.get("valeur_validee"), f"valeur_validee[{index}]")
@@ -2872,7 +2884,17 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc)) or any(p != type(p)() for p in (pensions_profil, retraits_profil, remplacement_profil, interets_profil)):
             raise ValueError("Dividendes avec autres placements/prestations : hors périmètre 3C.")
         consolider_dividendes_2025(dossier, dividendes_profil)
+    try:
+        capital_profil = ProfilCapital2025(**contenu.get("profil_capital", {}))
+    except (TypeError, ValueError) as erreur:
+        raise ValueError("Profil capital enregistré invalide.") from erreur
+    valider_profil_capital_2025(capital_profil)
+    if capital_profil.confirme:
+        if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc)) or any(p != type(p)() for p in (pensions_profil, retraits_profil, remplacement_profil, interets_profil, dividendes_profil)):
+            raise ValueError("Capital avec autres placements/prestations : hors périmètre 3D.")
+        consolider_capital_2025(dossier, capital_profil)
     return DossierFiscalEnregistre(
+        profil_capital=capital_profil,
         profil_dividendes=dividendes_profil,
         profil_interets=interets_profil,
         profil_remplacement=remplacement_profil,

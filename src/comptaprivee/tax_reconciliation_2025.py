@@ -18,6 +18,7 @@ autonomes, plusieurs employeurs et autres situations particulières.
 from dataclasses import dataclass
 from decimal import Decimal
 
+from .tax_capital_gains_2025 import GainsCapital2025
 from .tax_dividend_income_2025 import Dividendes2025
 from .tax_interest_income_2025 import Interets2025
 from .tax_replacement_benefits_2025 import PrestationsRemplacement2025
@@ -111,6 +112,7 @@ def calculer_rapprochement_fiscal_2025(
     prestations_rrq_rpc: PrestationsRrqRpc2025 = PrestationsRrqRpc2025(),
     prestations_psv: PrestationsPsv2025 = PrestationsPsv2025(),
     pensions: RevenusPensions2025 = RevenusPensions2025(),
+    capital: GainsCapital2025 = GainsCapital2025(),
     dividendes: Dividendes2025 = Dividendes2025(),
     interets: Interets2025 = Interets2025(),
     remplacement: PrestationsRemplacement2025 = PrestationsRemplacement2025(),
@@ -162,7 +164,7 @@ def calculer_rapprochement_fiscal_2025(
         + cotisation_assurance_medicaments
         + prestations_rqap.cotisation_fss
         + prestations_ae.cotisation_fss + prestations_ae.recuperation
-        + prestations_rrq_rpc.cotisation_fss + prestations_psv.recuperation + pensions.cotisation_fss + retraits.cotisation_fss + interets.cotisation_fss + dividendes.cotisation_fss
+        + prestations_rrq_rpc.cotisation_fss + prestations_psv.recuperation + pensions.cotisation_fss + retraits.cotisation_fss + interets.cotisation_fss + dividendes.cotisation_fss + capital.cotisation_fss
     )
 
     retenues_totales = arrondir_cent(
@@ -347,6 +349,7 @@ def calculer_rapprochement_fiscal_2025(
              else "Pensions domestiques ordinaires 2025, avec ou sans emploi; FSS sur la pension brute." if pensions.present
              else "Retraits REER et forfaits ordinaires 2025, avec ou sans emploi." if retraits.present
              else "Prestations T5007/RL-5 ordinaires, avec ou sans emploi; redressement 358 inclus." if remplacement.present
+             else "Vente unique actions canadiennes 2025 : gain imposable 12700/139 et FSS; aucun report de perte." if capital.present
              else "Dividendes canadiens T5/RL-3 2025; crédits 40425/415 et FSS sur les montants réels inclus." if dividendes.present
              else "Intérêts canadiens documentés 2025, avec ou sans emploi; FSS 446 inclus." if interets.present
              else "Le calcul couvre uniquement le profil emploi Québec simple 2025."),
@@ -435,6 +438,7 @@ def calculer_rapprochement_fiscal_2025(
                      else "Aucune prime d'assurance médicaments; FSS RRQ/RPC inclus." if prestations_rrq_rpc.cotisation_fss
                      else "Aucune prime d'assurance médicaments; FSS pensions inclus." if pensions.present
                      else "Aucune prime d'assurance médicaments; FSS retraits inclus." if retraits.present
+                     else "Aucune prime d'assurance médicaments; FSS capital inclus." if capital.present
                      else "Aucune prime d'assurance médicaments; FSS dividendes inclus." if dividendes.present
                      else "Aucune prime d'assurance médicaments; FSS intérêts inclus." if interets.present
                      else "Aucune prime d'assurance médicaments ni contribution Québec additionnelle."),
@@ -459,7 +463,7 @@ def calculer_rapprochement_fiscal_2025(
                     )
                 )
             ),
-            ("Aucun revenu autonome, autre placement, location ou gain en capital." if interets.present or dividendes.present else "Aucun revenu autonome, placement, location ou gain en capital."),
+            ("Aucun revenu autonome, autre placement ni location; une seule disposition en capital." if capital.present else "Aucun revenu autonome, autre placement, location ou gain en capital." if interets.present or dividendes.present else "Aucun revenu autonome, placement, location ou gain en capital."),
             "Aucun traitement avancé CNESST/SAAQ.",
             "Aucune transmission ARC ou Revenu Québec.",
         ),

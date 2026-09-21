@@ -232,6 +232,9 @@ def construire_trace_calcul_fiscal_2025(
         formule_revenu_federal += " + PSV 11300 + suppléments 14600 - récupération 23500 - déduction 25000"
         formule_revenu_quebec += " + PSV 114 + suppléments 148 - récupération 250 - déduction 295"
 
+    if estimation.capital.present:
+        formule_revenu_federal += " + gain imposable positif 12700"
+        formule_revenu_quebec += " + gain imposable positif 139"
     if estimation.dividendes.present:
         formule_revenu_federal += " + dividendes majorés 12000 (12010 déjà inclus)"
         formule_revenu_quebec += " + dividendes majorés 128"
@@ -340,6 +343,8 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_total += " + FSS Québec 446"
     if ae.present:
         formule_impot_total += " + récupération AE 42200 (sans abattement) + FSS Québec 446"
+    if estimation.capital.present:
+        formule_impot_total += " + FSS capital 446 sur gain imposable"
     if estimation.dividendes.present:
         formule_impot_total += " + FSS dividendes 446 (montants réels)"
     if estimation.interets.present:
@@ -1368,6 +1373,11 @@ def construire_trace_calcul_fiscal_2025(
         for code in ("166", "167", "12000", "12010", "128", "40425", "415"):
             lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"DIVIDENDES", "Dividendes " + code, estimation.profil_dividendes.source, "Réel 166/167; imposable 12000/128; 12010 inclus dans 12000; crédits non remboursables distincts du revenu", getattr(r, "ligne_" + code)))
         lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"QUÉBEC", "FSS dividendes 446", "Annexe F 2025", "Assiette = réels 166 + 167; majoration exclue; sans abattement", r.cotisation_fss))
+
+    if estimation.capital.present:
+        r = estimation.capital
+        for libelle, valeur, formule in (("Produit brut 13199",r.produit,"T5008 21 = RL-18 21 + courtage"),("PBR indépendant",r.pbr,"Preuve distincte de la case 20"),("Frais de disposition",r.frais_courtage+r.frais_autres,"Courtage + autres frais; aucune double déduction"),("Gain/perte 13200 / G 10",r.gain_perte,"Produit brut - PBR - courtage - autres frais"),("Gain imposable 12700 / 139",r.ligne_12700,"50 % du gain positif; aucune perte déduite du salaire"),("Perte nette 2025 à vérifier",r.perte_nette_2025,"50 % de la perte; aucun report utilisé ou certifié"),("FSS capital 446",r.cotisation_fss,"Assiette = gain imposable 139; annexe F 2025")):
+            lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"CAPITAL", libelle, estimation.profil_capital.source, formule, valeur))
 
     prochain_ordre = len(lignes) + 1
 

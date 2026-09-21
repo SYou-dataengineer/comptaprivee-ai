@@ -1021,3 +1021,77 @@ intérêts ou autres prestations; dix cases explicites exigées, aucun écart
 d'arrondi accepté automatiquement. Vérification humaine de l'identité,
 des codes et des exclusions. Les limites générales du moteur, dont le
 revenu imposable Québec de 129 590 $, restent inchangées. 3D non commencé.
+
+### Bloc 3D — audit préalable, dispositions en capital 2025
+
+Audit du 21 septembre 2026 avant codage. Le découpage place les reports
+de pertes en **3F** et les frais de placement courants en **3E** : aucun
+report antérieur ni déduction 22100/231 n'est ajouté par 3D.
+
+Sources officielles applicables à 2025 et décisions :
+
+- [Annexe 3 fédérale 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-s3/5000-s3-25e.pdf) :
+  actions cotées, produit 13199, gain/perte 13200; gain = produit − PBR −
+  frais de disposition. Inclusion 50 %, résultat positif vers 12700.
+  Une perte nette ne devient pas une déduction du salaire.
+- [Guide ARC T4037 2025](https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/t4037/capital-gains.html) :
+  acquisition et frais d'achat dans le PBR, coût moyen des biens identiques;
+  pertes apparentes lorsque rachat par le contribuable ou un affilié dans
+  la période de 30 jours avant/après et détention au trentième jour.
+  Les pertes nettes ordinaires peuvent servir sur trois années antérieures
+  ou les années futures; leur application reste réservée à 3F.
+- [Guide ARC T5008, édition du 31 juillet 2025](https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/t4091/t5008-guide-return-securities-transactions.html) :
+  case 20 coût comptable, pas nécessairement PBR fiscal. Case 21 produit
+  total, sans déduction de frais. La page du formulaire propose désormais
+  une édition 2026 : elle n'est pas utilisée comme règle 2025.
+- [Guide RL-18.G 2025-10](https://www.revenuquebec.ca/documents/fr/formulaires/rl/RL-18.G%282025-10%29.pdf),
+  sections 3.13/3.14 : case 20 à vérifier, case 21 diminuée des frais de
+  courtage. Les frais bancaires de disposition se déduisent au calcul du
+  gain. Contrôle retenu : T5008 21 − courtage = RL-18 21; gain identique
+  au fédéral et au Québec, frais déduits une seule fois. SHS désigne une action.
+- [Annexe G 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.G%282025-12%29.pdf) :
+  actions à la partie B, ligne 10; inclusion 50 % partie F, positif vers
+  139. Distributions T3/T5 vers annexe 3 17600/17400 et RL-16/RL-3 vers
+  annexe G nécessitent une ventilation; elles sont explicitement exclues.
+- [Annexe F 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf) :
+  139 reste dans l'assiette FSS; salaire retiré. FSS sur le gain imposable
+  positif, pas sur le produit ni le gain brut; perte nette : assiette nulle.
+- [T691 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t691/t691-25e.pdf)
+  et [TP-776.42 2025-10](https://www.revenuquebec.ca/documents/fr/formulaires/tp/TP-776.42%282025-10%29.pdf) :
+  prise en compte du gain non imposable dans le revenu modifié; exemptions
+  respectives 177 882 $ et 179 990 $. Le parcours refuse salaire brut maximal
+  des deux juridictions + gain positif intégral > 177 882 $, même si des
+  déductions permettraient un résultat inférieur. Aucun calcul IMR ni report.
+
+Périmètre conservateur arrêté avant codage : un particulier résident
+Canada/Québec toute l'année, une seule vente 2025 en CAD, pleine propriété
+d'un lot unique d'actions canadiennes cotées (SHS), acheté depuis 2000,
+vendu entièrement, avec ou sans emploi ordinaire. Une paire de fichiers
+T5008/RL-18 distincts, une transaction chacun. PBR saisi séparément, preuve
+d'acquisition et frais d'achat vérifiés; source PBR et confirmation dédiées.
+La case 20, absente ou différente du PBR, n'est jamais copiée au calcul.
+Courtage et autres frais de disposition explicitement saisis, même nuls,
+avec justificatif. Dates, titre, identité, quantité totale, codes, devise
+et exhaustivité des opérations vérifiés humainement sur les documents.
+
+Les revenus total/net/imposable augmentent du seul gain imposable positif;
+les crédits dépendant du revenu net doivent être revalidés. Une perte est
+affichée et sauvegardée comme résultat 2025 à vérifier, sans report consommé
+ni solde de report certifié. Refus des achats dans les 30 jours avant la
+vente, de tout rachat/option d'achat affilié dans la fenêtre de perte
+apparente, des positions multiples, distributions réinvesties, ajustements
+PBR, réorganisations, T3/T5, fonds, étranger, conjoints/attribution, options,
+entreprise, crypto, immeubles, décès, dons, réserves, exemptions, pertes
+antérieures, autres placements et prestations combinés. Les documents
+consolidés mixtes sont refusés, sans extraction automatique des transactions.
+
+Validation finale 3D : 117 nouveaux tests (99 métier et 18 GUI), tous réussis;
+suite complète `python -m pytest -q` : 2 795 réussis, 8 avertissements de
+dépréciation. Une première exécution a rencontré une erreur d'initialisation
+Tk dans le module GUI RRQ/RPC; le contrôle isolé (29 tests) et la relance
+complète ont réussi sans retirer ni désactiver de test. Inspection visuelle
+du formulaire aux dimensions 600 × 400 et 1 000 × 700, avec défilement et
+actions accessibles; six pages PDF contrôlées (gain, perte, gain avec emploi).
+Persistance, rechargement, révocation des confirmations et invalidation des
+PDF périmés vérifiés. Artefacts synthétiques de contrôle conservés hors Git
+dans `tmp/`. Le Bloc 3E n'est pas commencé.
