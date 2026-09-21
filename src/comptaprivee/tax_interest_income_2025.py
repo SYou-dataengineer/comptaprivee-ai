@@ -128,5 +128,5 @@ def lignes_resume_interets_2025(p, profil):
         f'RL-3 D / Québec 130 : {f(p.ligne_130)}',
         'Montants appariés : revenu total, net et imposable augmentés une seule fois par juridiction.',
         f'FSS 446 sur les intérêts : {f(p.cotisation_fss)}; aucune retenue ajoutée.',
-        'CAD, titulaire unique; sans frais, revenus étrangers, dividendes, gains ou intérêts déjà déclarés.',
+        'CAD, titulaire unique; frais courants à valider séparément en 3E; revenus étrangers, dividendes, gains ou intérêts déjà déclarés exclus.',
         'Intérêts sans feuillet, comptes communs et combinaisons avec pensions/prestations hors périmètre.']

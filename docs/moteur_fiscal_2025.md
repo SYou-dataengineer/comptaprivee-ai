@@ -1095,3 +1095,84 @@ actions accessibles; six pages PDF contrôlées (gain, perte, gain avec emploi).
 Persistance, rechargement, révocation des confirmations et invalidation des
 PDF périmés vérifiés. Artefacts synthétiques de contrôle conservés hors Git
 dans `tmp/`. Le Bloc 3E n'est pas commencé.
+
+### Bloc 3E — audit préalable et contrat accepté (21 septembre 2026)
+
+Le périmètre du tableau reste frais de placement et annexe N, et non les
+pertes en capital reportées (3F). Sources officielles 2025 consultées avant
+modification du code :
+
+- [ARC, ligne 22100](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-22100-carrying-charges-interest-expenses.html), page portant explicitement sur 2025 : gestion/garde de placements non enregistrés et intérêts payés pour produire intérêts/dividendes; commissions exclues. Un placement ne pouvant produire que des gains ne justifie pas la déduction des intérêts.
+- [RQ, guide TP-1.G 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.G%282025-12%29.pdf), lignes 231/252/260/276 : frais admissibles, plafonnement québécois et suivi des reports. [Ligne 231](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/201-a-260-revenu-net/ligne-231/) : commissions d'achat au coût, commissions de vente à l'annexe G; emprunts après disposition soumis à règles particulières.
+- [Annexe N 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.N%282025-12%29.pdf) : frais 231 à N12/N18; revenus 128/130/139 à N20/N22/N34. N40 = max(0, N18 − N36) vers 260. Partie C/276 liée notamment à 290, donc refusée ici. N70 : ancien solde québécois inutilisé; N78 : demande 252 limitée au solde et au surplus des revenus sur les frais. N80 = N70 + N40 − N78 dans le périmètre accepté.
+- [RQ, ligne 252 pour 2025](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/201-a-260-revenu-net/ligne-252/) : somme des rajustements depuis 2004, moins toute utilisation antérieure, y compris rétrospective. Aucun report fédéral équivalent à présumer.
+- [Annexe F 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf) : F56 déduit 231; 252 et 260 ne sont pas des ajustements de cette assiette. Dividendes réels, intérêts bruts ou gain imposable, moins frais 231; un seul FSS recalculé.
+
+Contrat conservateur : un seul parcours de revenus déjà validé 3A, 3B,
+3C ou 3D, avec ou sans emploi ordinaire. Titulaire unique, CAD, comptes
+non enregistrés; gestion/garde et intérêts simples payés en 2025, montants
+identiques admissibles dans les deux juridictions. Factures, preuve du
+paiement, contrat et traçabilité directe de l'emprunt vers le placement
+déclaré requis; aucune affectation personnelle, mixte, refinancée ou après
+vente. Intérêts sur emprunt refusés dans les parcours vente 3D et remboursement
+d'impôt 3B. Les honoraires de conseil, frais juridiques/comptables, montants
+RL-1 L-4, frais intégrés à un fonds/T3, assurance vie, régimes enregistrés,
+frais de transaction, étranger, conjoint, abris fiscaux et cas complexes
+restent refusés. Les preuves sont référencées dans le profil; import local
+facultatif d'une pièce pour proposer ses montants explicitement libellés,
+jamais pour décider automatiquement de leur admissibilité. Pas de somme
+automatique de documents ni d'ajout des frais aux feuillets de revenu.
+
+Report 252 : saisie explicite du seul solde Québec vérifié sur les annexes N,
+avis et registre de toutes les utilisations depuis 2004; confirmation dédiée.
+Demande explicite, sans optimisation ni report rétrospectif automatique.
+Solde d'ouverture immuable, consommation 2025 calculée une fois et solde de
+clôture séparé; aucun solde fédéral ni perte en capital réutilisé.
+
+22100 diminue les revenus net/imposable fédéraux; 231 − 260 + 252 diminue
+les revenus net/imposable Québec. Le revenu total et les retenues restent
+inchangés. Les crédits sont recalculés/leurs données de revenu revalidées;
+le crédit de dividendes reste indépendant. Refus d'un revenu net négatif
+ou d'un déficit nécessitant un report non couvert. Garde-fou IMR : revenu
+total avant déductions augmenté de la moitié non imposable du gain positif
+au plus 177 882 $, et aucun IMR antérieur. Garde-fous historiques conservés.
+Toute modification révoque la confirmation des frais et du report et rend
+l'estimation/PDF périmé après application; tout changement du dossier ou
+du profil de placement révoque la confirmation 3E. Arrêt après 3E.
+
+Précisions de livraison : les frais courants liés à un remboursement d'impôt
+sont refusés (gestion comprise); seul un report 252 documenté est accepté
+dans ce parcours. Les revenus des T5/RL-3, intérêts sans feuillet/CPG et
+T3/RL-16 déjà ventilés, dividendes T5/RL-3 ou vente T5008/RL-18 restent
+validés par leurs consolidateurs existants. Les anciens indicateurs de frais
+non traités des profils 3A/3C continuent à bloquer : le montant admissible
+doit passer exclusivement par le profil distinct 3E.
+
+L'import local du formulaire propose uniquement les libellés explicites
+« Frais de gestion/garde : montant » et « Intérêts payés/sur emprunt : montant »,
+sur une pièce portant l'année 2025. Une case vide ne capture pas la ligne
+suivante; doublons et montants ambigus sont refusés. Un nouvel import remplace
+les propositions, sans cumul. Autres mises en page : transcription vérifiée
+requise. L'import n'infère ni admissibilité ni montant de report.
+
+La confirmation est liée par une empreinte locale aux frais, justificatifs,
+valeurs du dossier et profils de placement. Toute différence dans un JSON
+confirmé impose une revalidation; ce contrôle de cohérence n'est pas une
+signature de sécurité. Les anciens JSON sans profil 3E restent lisibles.
+Le solde d'ouverture et la demande restent immuables; recalculer/recharger
+ne consomme jamais une deuxième fois le report. Le FSS final remplace celui
+du parcours de revenus dans le rapprochement, le résumé, la trace et le PDF.
+
+Validation finale 3E : **129 nouveaux tests** (113 métier, 16 GUI), tous
+réussis; contrôle étendu avec les tests de mise en page : 157 réussis.
+Suite complète `python -m pytest -q` : **2 924 réussis**, 8 avertissements
+de dépréciation, 93,54 s. La première exécution avait rencontré une erreur
+Tcl `tcl_findLibrary` à la création d'une racine Tk; les contrôles isolés et
+la suite complète ont réussi avec les bibliothèques Tcl/Tk de l'installation
+Python, sans retirer ni désactiver de test.
+
+Inspection visuelle : formulaire 600 × 400 et 1 000 × 700, trois positions
+de défilement; six pages PDF (report 252, excédent des frais avec salaire,
+dividendes avec frais). Aucun chevauchement ni bouton inaccessible constaté.
+Artefacts synthétiques de contrôle hors Git dans `tmp/`; aucune donnée client
+ajoutée. Le Bloc 3F n'est pas commencé.

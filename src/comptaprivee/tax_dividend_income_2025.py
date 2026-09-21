@@ -130,4 +130,4 @@ def lignes_resume_dividendes_2025(p, profil):
         "Crédits non remboursables, limités à l'impôt disponible; aucun ajout au revenu ni aux retenues.",
         'Revenus total, net et imposable : montant majoré inclus une seule fois par juridiction.',
         f'FSS 446 sur les montants réels : {f(p.cotisation_fss)}; majoration exclue.',
-        'Une paire T5/RL-3 en CAD. T3/RL-16, conjoint, étranger, frais, autres placements et cas complexes exclus.']
+        'Une paire T5/RL-3 en CAD. Frais courants à valider séparément en 3E; T3/RL-16, conjoint, étranger, autres placements et cas complexes exclus.']

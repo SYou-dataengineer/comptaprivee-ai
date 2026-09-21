@@ -103,4 +103,4 @@ def lignes_resume_interets_documentes_2025(p, profil):
         'Une inclusion par juridiction; aucune majoration, aucun crédit de dividendes ni retenue ajoutée.',
         *(['CPG : année civile complète, échéancier et méthode Québec confirmés; aucune période déjà déclarée.'] if profil.nature == 'CPG_ANNUEL' else []),
         *(['T3 : ventilation confirmée, intérêts canadiens uniquement; T3/RL-16 comptés une seule fois.'] if profil.nature == 'T3_INTERETS' else []),
-        'Exclus : cumul T5/RL-3, sources multiples, frais, attribution, compte conjoint, devise, décès et cas complexes.']
+        'Frais courants à valider séparément en 3E. Exclus : cumul T5/RL-3, sources multiples, attribution, compte conjoint, devise, décès et cas complexes.']

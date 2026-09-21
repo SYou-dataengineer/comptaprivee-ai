@@ -8,7 +8,7 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 
 from .tax_age_retirement_2025 import (
@@ -165,6 +165,7 @@ from .tax_union_dues_2025 import (
     credit_quebec_cotisations_2025,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_investment_expenses_2025 import (ProfilFraisPlacement2025, FraisPlacement2025, verifier_confirmation_frais_2025, calculer_frais_placement_2025, lignes_resume_frais_placement_2025)
 from .tax_capital_gains_2025 import (ProfilCapital2025, GainsCapital2025, valider_profil_capital_2025, detecter_capital_2025, consolider_capital_2025, appliquer_capital_2025, lignes_resume_capital_2025)
 from .tax_dividend_income_2025 import (ProfilDividendes2025, Dividendes2025, valider_profil_dividendes_2025, detecter_dividendes_2025, consolider_dividendes_2025, appliquer_dividendes_2025, appliquer_credits_dividendes_2025, lignes_resume_dividendes_2025)
 from .tax_interest_income_2025 import (ProfilInterets2025, Interets2025, valider_profil_interets_2025, detecter_interets_2025, consolider_interets_2025, appliquer_interets_2025, lignes_resume_interets_2025)
@@ -224,6 +225,8 @@ class EstimationFiscale2025:
     prestations_rqap: PrestationsRqap2025 = PrestationsRqap2025()
     ae_confirme: bool = False
     prestations_ae: PrestationsAe2025 = PrestationsAe2025()
+    profil_frais_placement: ProfilFraisPlacement2025 = ProfilFraisPlacement2025()
+    frais_placement: FraisPlacement2025 = FraisPlacement2025()
     profil_capital: ProfilCapital2025 = ProfilCapital2025()
     capital: GainsCapital2025 = GainsCapital2025()
     profil_dividendes: ProfilDividendes2025 = ProfilDividendes2025()
@@ -291,6 +294,7 @@ def calculer_estimation_fiscale_2025(
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool = False,
     ae_confirme: bool = False,
+    profil_frais_placement: ProfilFraisPlacement2025 = ProfilFraisPlacement2025(),
     profil_capital: ProfilCapital2025 = ProfilCapital2025(),
     profil_dividendes: ProfilDividendes2025 = ProfilDividendes2025(),
     profil_interets: ProfilInterets2025 = ProfilInterets2025(),
@@ -307,6 +311,7 @@ def calculer_estimation_fiscale_2025(
             "uniquement pour l'année 2025."
         )
 
+    verifier_confirmation_frais_2025(profil_frais_placement, dossier, profil_interets, profil_dividendes, profil_capital)
     valider_profil_capital_2025(profil_capital)
     parcours_capital = profil_capital != ProfilCapital2025() or detecter_capital_2025(dossier)
     capital = GainsCapital2025()
@@ -492,6 +497,17 @@ def calculer_estimation_fiscale_2025(
         revenu,
         cotisations_effectives,
     )
+
+    revenu, frais_placement = calculer_frais_placement_2025(
+        profil_frais_placement, revenu, interets, dividendes, capital, profil_interets)
+    if frais_placement.present:
+        # Une seule cotisation finale, réutilisée partout (résumé, trace, rapprochement).
+        if interets.present:
+            interets = replace(interets, cotisation_fss=frais_placement.cotisation_fss)
+        if dividendes.present:
+            dividendes = replace(dividendes, cotisation_fss=frais_placement.cotisation_fss)
+        if capital.present:
+            capital = replace(capital, cotisation_fss=frais_placement.cotisation_fss)
 
     revenu, prestations_ae = appliquer_recuperation_ae_2025(revenu, prestations_ae)
     revenu, prestations_psv = appliquer_recuperation_psv_2025(revenu, prestations_psv)
@@ -1088,6 +1104,8 @@ def calculer_estimation_fiscale_2025(
         profil_remplacement=profil_remplacement,
         profil_interets=profil_interets,
         profil_dividendes=profil_dividendes,
+        profil_frais_placement=profil_frais_placement,
+        frais_placement=frais_placement,
         profil_capital=profil_capital,
         remplacement=remplacement,
         interets=interets,
@@ -1182,6 +1200,7 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_rpa_2025(estimation.cotisations_rpa),
         *lignes_resume_rqap_2025(estimation.prestations_rqap),
         *lignes_resume_ae_2025(estimation.prestations_ae),
+        *lignes_resume_frais_placement_2025(estimation.frais_placement, estimation.profil_frais_placement),
         *lignes_resume_capital_2025(estimation.capital, estimation.profil_capital),
         *lignes_resume_dividendes_2025(estimation.dividendes, estimation.profil_dividendes),
         *lignes_resume_interets_2025(estimation.interets, estimation.profil_interets),

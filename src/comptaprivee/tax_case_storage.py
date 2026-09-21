@@ -89,6 +89,7 @@ from .tax_field_validation import (
     STATUT_VALIDE,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_investment_expenses_2025 import ProfilFraisPlacement2025, valider_profil_frais_placement_2025, verifier_confirmation_frais_2025
 from .tax_capital_gains_2025 import ProfilCapital2025, valider_profil_capital_2025, consolider_capital_2025
 from .tax_dividend_income_2025 import ProfilDividendes2025, valider_profil_dividendes_2025, consolider_dividendes_2025
 from .tax_interest_income_2025 import ProfilInterets2025, valider_profil_interets_2025, consolider_interets_2025
@@ -151,6 +152,7 @@ class DossierFiscalEnregistre:
     cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
     rqap_confirme: bool = False
     ae_confirme: bool = False
+    profil_frais_placement: ProfilFraisPlacement2025 = ProfilFraisPlacement2025()
     profil_capital: ProfilCapital2025 = ProfilCapital2025()
     profil_dividendes: ProfilDividendes2025 = ProfilDividendes2025()
     profil_interets: ProfilInterets2025 = ProfilInterets2025()
@@ -2439,6 +2441,7 @@ def sauvegarder_dossier_fiscal(
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool | None = None,
     ae_confirme: bool | None = None,
+    profil_frais_placement: ProfilFraisPlacement2025 | None = None,
     profil_capital: ProfilCapital2025 | None = None,
     profil_dividendes: ProfilDividendes2025 | None = None,
     profil_interets: ProfilInterets2025 | None = None,
@@ -2448,6 +2451,10 @@ def sauvegarder_dossier_fiscal(
     psv_confirme: bool | None = None,
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    frais_effectif = profil_frais_placement if profil_frais_placement is not None else (estimation.profil_frais_placement if estimation else ProfilFraisPlacement2025())
+    valider_profil_frais_placement_2025(frais_effectif)
+    if estimation and frais_effectif != estimation.profil_frais_placement:
+        raise ValueError("Le profil frais de placement diffère de l'estimation.")
     capital_effectif = profil_capital if profil_capital is not None else (estimation.profil_capital if estimation else ProfilCapital2025())
     valider_profil_capital_2025(capital_effectif)
     if estimation and capital_effectif != estimation.profil_capital:
@@ -2536,6 +2543,7 @@ def sauvegarder_dossier_fiscal(
     # impose ensuite la cohérence avec les cases validées.
     if rpa.montant_federal:
         verifier_rpa_dossier_2025(dossier, rpa)
+    verifier_confirmation_frais_2025(frais_effectif, dossier, interets_effectif, dividendes_effectif, capital_effectif)
     if destination is None:
         DOSSIERS_FISCAUX_DIR.mkdir(parents=True, exist_ok=True)
         chemin = DOSSIERS_FISCAUX_DIR / nom_fichier_dossier_fiscal(dossier)
@@ -2554,6 +2562,7 @@ def sauvegarder_dossier_fiscal(
         "profil_remplacement": asdict(remplacement_effectif),
         "profil_interets": asdict(interets_effectif),
         "profil_dividendes": asdict(dividendes_effectif),
+        "profil_frais_placement": asdict(frais_effectif),
         "profil_capital": asdict(capital_effectif),
         "psv_confirme": confirme_psv,
         "rrq_rpc_confirme": confirme_rrq_rpc,
@@ -2893,7 +2902,13 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc)) or any(p != type(p)() for p in (pensions_profil, retraits_profil, remplacement_profil, interets_profil, dividendes_profil)):
             raise ValueError("Capital avec autres placements/prestations : hors périmètre 3D.")
         consolider_capital_2025(dossier, capital_profil)
+    try:
+        frais_profil = ProfilFraisPlacement2025(**contenu.get("profil_frais_placement", {}))
+    except (TypeError, ValueError) as erreur:
+        raise ValueError("Profil frais de placement enregistré invalide.") from erreur
+    verifier_confirmation_frais_2025(frais_profil, dossier, interets_profil, dividendes_profil, capital_profil)
     return DossierFiscalEnregistre(
+        profil_frais_placement=frais_profil,
         profil_capital=capital_profil,
         profil_dividendes=dividendes_profil,
         profil_interets=interets_profil,
