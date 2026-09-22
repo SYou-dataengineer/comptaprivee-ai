@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import textwrap
 import fitz
+from .tax_capital_loss_carryovers_2025 import lignes_resume_reports_pertes_2025
 from .tax_investment_expenses_2025 import lignes_resume_frais_placement_2025
 from .tax_capital_gains_2025 import lignes_resume_capital_2025
 from .tax_dividend_income_2025 import lignes_resume_dividendes_2025
@@ -182,8 +183,9 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_resume_ae_2025(estimation.prestations_ae))
     lignes.extend(lignes_resume_rrq_rpc_2025(estimation.prestations_rrq_rpc))
     lignes.extend(lignes_resume_psv_2025(estimation.prestations_psv))
-    lignes.extend(lignes_resume_frais_placement_2025(estimation.frais_placement, estimation.profil_frais_placement))
-    lignes.extend(lignes_resume_capital_2025(estimation.capital, estimation.profil_capital))
+    lignes.extend(lignes_resume_reports_pertes_2025(estimation.reports_pertes, estimation.profil_reports_pertes))
+    lignes.extend(lignes_resume_frais_placement_2025(estimation.frais_placement, estimation.profil_frais_placement, estimation.reports_pertes.present))
+    lignes.extend(lignes_resume_capital_2025(estimation.capital, estimation.profil_capital, estimation.reports_pertes.present))
     lignes.extend(lignes_resume_dividendes_2025(estimation.dividendes, estimation.profil_dividendes))
     lignes.extend(lignes_resume_interets_2025(estimation.interets, estimation.profil_interets))
     lignes.extend(lignes_resume_remplacement_2025(estimation.remplacement, estimation.profil_remplacement))

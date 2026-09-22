@@ -158,7 +158,7 @@ def calculer_frais_placement_2025(p, revenu, interets, dividendes, capital, prof
         revenu_imposable_quebec=revenu.revenu_imposable_quebec-deduction_qc), r
 
 
-def lignes_resume_frais_placement_2025(r, p):
+def lignes_resume_frais_placement_2025(r, p, reports=False):
     if not r.present:
         return []
     f = formater_montant_fiscal
@@ -168,10 +168,10 @@ def lignes_resume_frais_placement_2025(r, p):
         f'Gestion/garde : {f(montant_frais_2025(p.gestion))}; intérêts : {f(montant_frais_2025(p.interets))}',
         f'Déduction fédérale 22100 / Québec 231 : {f(r.ligne_231)}',
         f'Revenus de placement N36 : {f(r.revenus_n36)}; rajustement 260 : {f(r.ligne_260)}',
-        f'Rajustement 276 : {f(r.ligne_276)} (pertes antérieures exclues)',
+        f'Rajustement 276 : {f(r.ligne_276)} ' + ('(annexe N avec pertes 3F)' if reports else '(pertes antérieures exclues)'),
         f'Report Québec : ouverture N70 {f(r.solde_ouverture)}; utilisé 252/N78 {f(r.ligne_252)}; clôture N80 {f(r.solde_cloture)}',
         f'Preuve du report : {p.source_report or "Solde nul confirmé"}',
-        'Revenu total inchangé; déductions au revenu net et imposable. Aucun report fédéral consommé.',
+        'Revenu total inchangé; déductions au revenu net et imposable. Aucun report fédéral de frais consommé.',
         f'FSS final 446 : {f(r.cotisation_fss)}; assiette après 231 : {f(r.assiette_fss)} (252 sans effet).',
         'Ce FSS remplace celui du parcours de placement; aucune addition des deux cotisations.',
-        'Aucun frais de transaction/PBR redéduit. Pas de report rétrospectif ni de perte en capital antérieure.']
+        'Aucun frais de transaction/PBR redéduit. Pas de report rétrospectif; pertes en capital traitées séparément en 3F.']

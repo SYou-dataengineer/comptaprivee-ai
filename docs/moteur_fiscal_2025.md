@@ -1176,3 +1176,70 @@ de défilement; six pages PDF (report 252, excédent des frais avec salaire,
 dividendes avec frais). Aucun chevauchement ni bouton inaccessible constaté.
 Artefacts synthétiques de contrôle hors Git dans `tmp/`; aucune donnée client
 ajoutée. Le Bloc 3F n'est pas commencé.
+
+### Bloc 3F — audit préalable et périmètre retenu
+
+Audit avant code sur le socle 3E `99de3b4` (2 924 tests). Sources officielles
+applicables à la déclaration **2025** :
+
+- [ARC, ligne 25300, année 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-25300-net-capital-losses-other-years.html) : solde inutilisé, pertes les plus anciennes d'abord, plafond des gains imposables; exceptions avant le 23 mai 1985 exclues.
+- [ARC, T4037 Gains en capital 2025](https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/t4037/capital-gains.html) : inclusion 50 % de 2001 à 2025; autre taux historique à rajuster. 25300 réduit l'imposable, pas le net. Perte nette 2025 reportable sur gains de 2022–2024 via T1A ou années futures sans limite ordinaire; pas de déduction sur salaire.
+- [RQ, ligne 290](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/276-a-298-2-revenu-imposable/ligne-290/) et [TP-729](https://www.revenuquebec.ca/documents/fr/formulaires/tp/TP-729%282024-10%29.pdf) : demande au plus petit du solde et de 139; ordre chronologique; solde au taux de l'année du report. TP-729 version 2024-10 est le formulaire actuellement lié par l'aide 2025, non une règle de calcul de 2024 appliquée aveuglément.
+- [RQ, ligne 276 point 9](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/276-a-298-2-revenu-imposable/ligne-276/) et [annexe N 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.N%282025-12%29.pdf) : 290 à N52, N64 vers 276; ajustement ajouté à l'imposable, pas au net. 252 limité au surplus après N18 **et N54**; clôture N80 = N70 + 260 + 276 − 252. Ce solde de frais est distinct des pertes en capital.
+- [Annexe F 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf) : les reports de pertes 25300/290 ne réduisent pas le gain inclus au revenu total ni l'assiette FSS. Les crédits fondés sur le revenu net restent fondés sur ce revenu, pas sur l'imposable après pertes.
+
+**Périmètre accepté avant implémentation :** un parcours 3D confirmé, avec
+ou sans emploi ordinaire et frais 3E validés. Historique exhaustif par année
+**2004 à 2024**, soldes fédéral et Québec indépendants, déjà nets au taux
+de 50 % (jamais des pertes brutes), après toutes utilisations antérieures.
+Avis de cotisation/recotisation ARC et RQ, anciennes annexes 3/G, TP-729 et
+registre des utilisations requis, avec confirmation distincte. Demandes
+2025 explicites et indépendantes; consommation automatique chronologique
+dans chaque juridiction, jamais de maximisation ni de copie d'un solde.
+Si aucun solde : historique vide confirmé. Le dossier 3D fournit seul le
+gain/perte courant; aucune saisie manuelle en double de la perte 2025.
+
+Le revenu total, net, retenues et FSS restent inchangés par 3F. Seuls les
+imposables diminuent de 25300 et de 290 − 276. Refus d'un imposable négatif
+ou d'un profil demandant de déduire plus que le gain ou le solde. Une
+demande 252 devenue excessive à cause de N52 est refusée, jamais réduite
+silencieusement. Le rajustement 276 est ajouté au solde distinct de frais
+3E, sans conserver simultanément la perte en capital déjà consommée.
+
+Perte nette 2025 : aucun report utilisé en 2025, ajout unique à une ligne
+2025 du registre de clôture prospectif, provisoire à rapprocher des futurs
+avis. Recalcul et rechargement partent toujours des soldes d'ouverture
+immuables; aucune nouvelle consommation ni double ajout. Les résultats ne
+constituent ni un TP-729/T1A officiel ni une déclaration transmise.
+
+**Refus explicites :** soldes avant 2004 (dont 1985 et taux historiques),
+PDTPE/ABIL convertie, biens précieux/personnels, exonérations, réserves,
+décès, étranger, conjoint, pertes apparentes, plusieurs ventes 2025,
+réorganisations, solde incertain, années dupliquées, corrections pendantes,
+IMR non couvert et report rétrospectif (T1A/TP-1012.A). Les possibilités
+légales de report rétrospectif sont documentées mais ne sont pas calculées.
+Tous les garde-fous 3D/3E restent actifs; leurs indicateurs de reports non
+traités restent bloquants, le profil distinct 3F étant l'unique chemin validé.
+Arrêt après 3F, sans commencer 3G.
+
+**Validation de livraison 3F :** 100 nouveaux tests ciblés (87 moteur et
+persistance, 13 GUI). Conservation des soldes dans chaque juridiction,
+plafonds au cent, ancienneté, revenu net et FSS inchangés, crédit d'âge,
+annexe N 276/252 et absence de double report après rechargement vérifiés.
+Les modifications du dossier, de la vente, des frais ou du registre
+révoquent les confirmations; une ancienne estimation ne peut plus être
+exportée et son PDF n'est plus associé au dossier sauvegardé.
+
+Inspection visuelle réelle du formulaire en 600 × 400 et 1000 × 700,
+en haut, au milieu et en bas : champs accessibles et boutons fixes visibles.
+Quatre PDF synthétiques inspectés intégralement (10 pages) : gain, perte
+2025, interaction annexe N et registre complet 2004–2024. Le registre
+compact présente explicitement ouverture / utilisé / clôture et évite
+une page finale isolée dans le scénario de perte. Artefacts uniquement
+dans `tmp/`, exclus de Git, notamment `tmp/integrate_3f.py`.
+
+Suite complète finale : `python -m pytest -q`, **3 024 tests réussis**,
+8 avertissements de dépréciation, aucun test supprimé ou désactivé.
+Sous Windows, des initialisations Tcl/Tk intermittentes ont échoué lors
+des premières exécutions avec chemins forcés; l'exécution finale complète
+a réussi avec la découverte native, sans `TCL_LIBRARY` ni `TK_LIBRARY`.

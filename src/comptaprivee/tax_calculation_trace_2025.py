@@ -232,6 +232,9 @@ def construire_trace_calcul_fiscal_2025(
         formule_revenu_federal += " + PSV 11300 + suppléments 14600 - récupération 23500 - déduction 25000"
         formule_revenu_quebec += " + PSV 114 + suppléments 148 - récupération 250 - déduction 295"
 
+    if estimation.reports_pertes.present:
+        formule_revenu_federal += " - pertes 25300 (imposable uniquement)"
+        formule_revenu_quebec += " - pertes 290 + rajustement 276 (imposable uniquement)"
     if estimation.frais_placement.present:
         formule_revenu_federal += " - frais 22100"
         formule_revenu_quebec += " - frais 231 + rajustement 260 - report 252"
@@ -1383,13 +1386,25 @@ def construire_trace_calcul_fiscal_2025(
             ("Frais 22100 / 231", r.ligne_231, "Gestion/garde + intérêts admissibles; hors frais de transaction"),
             ("Revenus annexe N 36", r.revenus_n36, "128 + 130 + 139 dans le périmètre 3E"),
             ("Rajustement 260", r.ligne_260, "max(0, frais N18 - revenus N36)"),
-            ("Rajustement 276", r.ligne_276, "0 : autres pertes exclues"),
+            ("Rajustement 276", r.ligne_276, "Annexe N : pertes 3F si présentes, sinon 0"),
             ("Solde ouverture N70", r.solde_ouverture, "Solde Québec vérifié avant utilisation 2025"),
-            ("Report 252 / N78", r.ligne_252, "Demande <= min(N70, max(0, N36 - N18))"),
-            ("Solde clôture N80", r.solde_cloture, "N70 + 260 - 252; pas de report fédéral"),
+            ("Report 252 / N78", r.ligne_252, "Demande <= min(N70, max(0, N36 - N18 - N54))"),
+            ("Solde clôture N80", r.solde_cloture, "N70 + 260 + 276 - 252; solde frais distinct des pertes"),
             ("Assiette FSS après frais", r.assiette_fss, "Intérêts + dividendes réels + gain imposable - 231; 252 sans effet"),
             ("FSS final 3E", r.cotisation_fss, "Annexe F, remplace le FSS avant frais, une seule cotisation")):
             lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0, "FRAIS PLACEMENT", libelle, estimation.profil_frais_placement.source, formule, valeur))
+    if estimation.reports_pertes.present:
+        r = estimation.reports_pertes
+        for libelle, valeur, formule in (
+            ("Pertes antérieures 25300", r.ligne_25300, "Imposable fédéral seulement; plafond 12700 et solde ARC; ordre chronologique"),
+            ("Pertes antérieures 290 / N52", r.ligne_290, "Imposable Québec seulement; plafond 139 et solde RQ; ordre chronologique"),
+            ("Rajustement pertes 276 / N64", r.ligne_276, "max(0, 290 - max(0, N36 - N18)); ajouté à l'imposable et au solde frais"),
+            ("Perte nouvelle 2025", r.perte_2025, "Perte nette 3D, une seule addition au registre futur; aucune déduction courante")):
+            lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0, "REPORTS PERTES", libelle, estimation.profil_reports_pertes.source_federale + " / " + estimation.profil_reports_pertes.source_quebec, formule, valeur))
+        for solde in r.soldes:
+            for nom, valeur in vars(solde).items():
+                if nom != "annee":
+                    lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0, "REPORTS PERTES", str(solde.annee) + " " + nom, "Registre confirmé ARC/RQ", "Ouverture immuable - utilisation; 2025 = nouvelle perte nette", valeur))
     if estimation.capital.present:
         r = estimation.capital
         for libelle, valeur, formule in (("Produit brut 13199",r.produit,"T5008 21 = RL-18 21 + courtage"),("PBR indépendant",r.pbr,"Preuve distincte de la case 20"),("Frais de disposition",r.frais_courtage+r.frais_autres,"Courtage + autres frais; aucune double déduction"),("Gain/perte 13200 / G 10",r.gain_perte,"Produit brut - PBR - courtage - autres frais"),("Gain imposable 12700 / 139",r.ligne_12700,"50 % du gain positif; aucune perte déduite du salaire"),("Perte nette 2025 à vérifier",r.perte_nette_2025,"50 % de la perte; aucun report utilisé ou certifié"),("FSS capital 446",r.cotisation_fss,("Assiette = gain imposable 139 - frais 231; annexe F 2025" if estimation.frais_placement.present else "Assiette = gain imposable 139; annexe F 2025"))):

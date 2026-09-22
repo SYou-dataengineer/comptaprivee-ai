@@ -165,6 +165,7 @@ from .tax_union_dues_2025 import (
     credit_quebec_cotisations_2025,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_capital_loss_carryovers_2025 import (ProfilReportsPertes2025, ReportsPertes2025, verifier_confirmation_reports_pertes_2025, appliquer_reports_pertes_2025, lignes_resume_reports_pertes_2025)
 from .tax_investment_expenses_2025 import (ProfilFraisPlacement2025, FraisPlacement2025, verifier_confirmation_frais_2025, calculer_frais_placement_2025, lignes_resume_frais_placement_2025)
 from .tax_capital_gains_2025 import (ProfilCapital2025, GainsCapital2025, valider_profil_capital_2025, detecter_capital_2025, consolider_capital_2025, appliquer_capital_2025, lignes_resume_capital_2025)
 from .tax_dividend_income_2025 import (ProfilDividendes2025, Dividendes2025, valider_profil_dividendes_2025, detecter_dividendes_2025, consolider_dividendes_2025, appliquer_dividendes_2025, appliquer_credits_dividendes_2025, lignes_resume_dividendes_2025)
@@ -225,6 +226,8 @@ class EstimationFiscale2025:
     prestations_rqap: PrestationsRqap2025 = PrestationsRqap2025()
     ae_confirme: bool = False
     prestations_ae: PrestationsAe2025 = PrestationsAe2025()
+    profil_reports_pertes: ProfilReportsPertes2025 = ProfilReportsPertes2025()
+    reports_pertes: ReportsPertes2025 = ReportsPertes2025()
     profil_frais_placement: ProfilFraisPlacement2025 = ProfilFraisPlacement2025()
     frais_placement: FraisPlacement2025 = FraisPlacement2025()
     profil_capital: ProfilCapital2025 = ProfilCapital2025()
@@ -294,6 +297,7 @@ def calculer_estimation_fiscale_2025(
     cotisations_rpa: CotisationsRpa2025 | None = None,
     rqap_confirme: bool = False,
     ae_confirme: bool = False,
+    profil_reports_pertes: ProfilReportsPertes2025 = ProfilReportsPertes2025(),
     profil_frais_placement: ProfilFraisPlacement2025 = ProfilFraisPlacement2025(),
     profil_capital: ProfilCapital2025 = ProfilCapital2025(),
     profil_dividendes: ProfilDividendes2025 = ProfilDividendes2025(),
@@ -311,6 +315,7 @@ def calculer_estimation_fiscale_2025(
             "uniquement pour l'année 2025."
         )
 
+    verifier_confirmation_reports_pertes_2025(profil_reports_pertes, dossier, profil_capital, profil_frais_placement)
     verifier_confirmation_frais_2025(profil_frais_placement, dossier, profil_interets, profil_dividendes, profil_capital)
     valider_profil_capital_2025(profil_capital)
     parcours_capital = profil_capital != ProfilCapital2025() or detecter_capital_2025(dossier)
@@ -508,6 +513,9 @@ def calculer_estimation_fiscale_2025(
             dividendes = replace(dividendes, cotisation_fss=frais_placement.cotisation_fss)
         if capital.present:
             capital = replace(capital, cotisation_fss=frais_placement.cotisation_fss)
+
+    revenu, frais_placement, reports_pertes = appliquer_reports_pertes_2025(
+        profil_reports_pertes, revenu, capital, frais_placement)
 
     revenu, prestations_ae = appliquer_recuperation_ae_2025(revenu, prestations_ae)
     revenu, prestations_psv = appliquer_recuperation_psv_2025(revenu, prestations_psv)
@@ -1097,6 +1105,10 @@ def calculer_estimation_fiscale_2025(
         ),
     )
 
+    if reports_pertes.present:
+        rapprochement = replace(rapprochement, limitations=tuple(
+            texte.replace("aucun report de perte", "reports de pertes validés séparément en 3F")
+            for texte in rapprochement.limitations))
     return EstimationFiscale2025(
         ae_confirme=ae_confirme,
         profil_pensions=profil_pensions,
@@ -1104,6 +1116,8 @@ def calculer_estimation_fiscale_2025(
         profil_remplacement=profil_remplacement,
         profil_interets=profil_interets,
         profil_dividendes=profil_dividendes,
+        profil_reports_pertes=profil_reports_pertes,
+        reports_pertes=reports_pertes,
         profil_frais_placement=profil_frais_placement,
         frais_placement=frais_placement,
         profil_capital=profil_capital,
@@ -1200,8 +1214,9 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_rpa_2025(estimation.cotisations_rpa),
         *lignes_resume_rqap_2025(estimation.prestations_rqap),
         *lignes_resume_ae_2025(estimation.prestations_ae),
-        *lignes_resume_frais_placement_2025(estimation.frais_placement, estimation.profil_frais_placement),
-        *lignes_resume_capital_2025(estimation.capital, estimation.profil_capital),
+        *lignes_resume_reports_pertes_2025(estimation.reports_pertes, estimation.profil_reports_pertes),
+        *lignes_resume_frais_placement_2025(estimation.frais_placement, estimation.profil_frais_placement, estimation.reports_pertes.present),
+        *lignes_resume_capital_2025(estimation.capital, estimation.profil_capital, estimation.reports_pertes.present),
         *lignes_resume_dividendes_2025(estimation.dividendes, estimation.profil_dividendes),
         *lignes_resume_interets_2025(estimation.interets, estimation.profil_interets),
         *lignes_resume_remplacement_2025(estimation.remplacement, estimation.profil_remplacement),
