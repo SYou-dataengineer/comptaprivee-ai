@@ -94,6 +94,13 @@ from .tax_investment_expenses_2025 import ProfilFraisPlacement2025, valider_prof
 from .tax_capital_gains_2025 import ProfilCapital2025, valider_profil_capital_2025, consolider_capital_2025
 from .tax_dividend_income_2025 import ProfilDividendes2025, valider_profil_dividendes_2025, consolider_dividendes_2025
 from .tax_interest_income_2025 import ProfilInterets2025, valider_profil_interets_2025, consolider_interets_2025
+from .tax_foreign_investment_2025 import (
+    ProfilPlacementEtranger2025,
+    ProfilCreditImpotEtranger2025,
+    valider_profil_placement_etranger_2025,
+    consolider_placement_etranger_2025,
+    valider_profil_credit_impot_etranger_2025,
+)
 from .tax_replacement_benefits_2025 import (ProfilRemplacement2025, PrestationsRemplacement2025, valider_profil_remplacement_2025, detecter_remplacement_2025, consolider_remplacement_2025, appliquer_remplacement_2025, appliquer_redressement_358_2025, lignes_resume_remplacement_2025)
 from .tax_rrsp_withdrawals_2025 import (ProfilRetraits2025, Retraits2025, valider_profil_retraits_2025, detecter_retraits_2025, consolider_retraits_2025, appliquer_retraits_2025, lignes_resume_retraits_2025)
 from .tax_pension_income_2025 import ProfilPensions2025, valider_profil_pensions_2025, consolider_pensions_2025
@@ -158,6 +165,8 @@ class DossierFiscalEnregistre:
     profil_capital: ProfilCapital2025 = ProfilCapital2025()
     profil_dividendes: ProfilDividendes2025 = ProfilDividendes2025()
     profil_interets: ProfilInterets2025 = ProfilInterets2025()
+    profil_placement_etranger: ProfilPlacementEtranger2025 = ProfilPlacementEtranger2025()
+    profil_credit_impot_etranger: ProfilCreditImpotEtranger2025 = ProfilCreditImpotEtranger2025()
     profil_remplacement: ProfilRemplacement2025 = ProfilRemplacement2025()
     profil_retraits: ProfilRetraits2025 = ProfilRetraits2025()
     profil_pensions: ProfilPensions2025 = ProfilPensions2025()
@@ -2448,6 +2457,8 @@ def sauvegarder_dossier_fiscal(
     profil_capital: ProfilCapital2025 | None = None,
     profil_dividendes: ProfilDividendes2025 | None = None,
     profil_interets: ProfilInterets2025 | None = None,
+    profil_placement_etranger: ProfilPlacementEtranger2025 | None = None,
+    profil_credit_impot_etranger: ProfilCreditImpotEtranger2025 | None = None,
     profil_remplacement: ProfilRemplacement2025 | None = None,
     profil_retraits: ProfilRetraits2025 | None = None,
     profil_pensions: ProfilPensions2025 | None = None,
@@ -2477,6 +2488,50 @@ def sauvegarder_dossier_fiscal(
         if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or any(p and p != type(p)() for p in (profil_pensions, profil_retraits, profil_remplacement, profil_interets)):
             raise ValueError("Dividendes avec autres placements/prestations : hors périmètre 3C.")
         consolider_dividendes_2025(dossier, dividendes_effectif)
+    placement_etranger_effectif = (
+        profil_placement_etranger
+        if profil_placement_etranger is not None
+        else (
+            estimation.profil_placement_etranger
+            if estimation is not None
+            else ProfilPlacementEtranger2025()
+        )
+    )
+    valider_profil_placement_etranger_2025(placement_etranger_effectif)
+    if (
+        estimation is not None
+        and placement_etranger_effectif != estimation.profil_placement_etranger
+    ):
+        raise ValueError("Le profil placement étranger diffère de l'estimation.")
+
+    credit_etranger_effectif = (
+        profil_credit_impot_etranger
+        if profil_credit_impot_etranger is not None
+        else (
+            estimation.profil_credit_impot_etranger
+            if estimation is not None
+            else ProfilCreditImpotEtranger2025()
+        )
+    )
+    if (
+        estimation is not None
+        and credit_etranger_effectif != estimation.profil_credit_impot_etranger
+    ):
+        raise ValueError("Le profil de crédit étranger diffère de l'estimation.")
+
+    if placement_etranger_effectif != ProfilPlacementEtranger2025():
+        placement_etranger_resultat = consolider_placement_etranger_2025(
+            dossier, placement_etranger_effectif
+        )
+        valider_profil_credit_impot_etranger_2025(
+            credit_etranger_effectif, placement_etranger_resultat
+        )
+    elif credit_etranger_effectif != ProfilCreditImpotEtranger2025():
+        raise ValueError(
+            "Un profil de crédit étranger ne peut pas être sauvegardé "
+            "sans profil de placement étranger."
+        )
+
     interets_effectif = profil_interets if profil_interets is not None else (estimation.profil_interets if estimation else ProfilInterets2025())
     valider_profil_interets_2025(interets_effectif)
     if estimation and interets_effectif != estimation.profil_interets:
@@ -2568,6 +2623,18 @@ def sauvegarder_dossier_fiscal(
         "profil_retraits": asdict(retraits_effectif),
         "profil_remplacement": asdict(remplacement_effectif),
         "profil_interets": asdict(interets_effectif),
+        "profil_placement_etranger": asdict(placement_etranger_effectif),
+        "profil_credit_impot_etranger": {
+            "credit_federal_40500": _decimal_texte(
+                credit_etranger_effectif.credit_federal_40500
+            ),
+            "credit_quebec_409": _decimal_texte(
+                credit_etranger_effectif.credit_quebec_409
+            ),
+            "source_t2209": credit_etranger_effectif.source_t2209,
+            "source_tp772": credit_etranger_effectif.source_tp772,
+            "confirme": credit_etranger_effectif.confirme,
+        },
         "profil_dividendes": asdict(dividendes_effectif),
         "profil_reports_pertes": asdict(pertes_effectif),
         "profil_frais_placement": asdict(frais_effectif),
@@ -2857,6 +2924,44 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
             raise ValueError("PSV avec AE/RQAP/RRQ : hors périmètre.")
         consolider_prestations_psv_2025(dossier, True)
     try:
+        placement_etranger_profil = ProfilPlacementEtranger2025(
+            **contenu.get("profil_placement_etranger", {})
+        )
+    except (TypeError, ValueError) as erreur:
+        raise ValueError("Profil placement étranger enregistré invalide.") from erreur
+    valider_profil_placement_etranger_2025(placement_etranger_profil)
+
+    credit_brut = contenu.get("profil_credit_impot_etranger", {})
+    if not isinstance(credit_brut, dict):
+        raise ValueError("Profil crédit étranger enregistré invalide.")
+    try:
+        credit_etranger_profil = ProfilCreditImpotEtranger2025(
+            credit_federal_40500=_decimal_depuis_json(
+                credit_brut.get("credit_federal_40500", "0"),
+                "profil_credit_impot_etranger.credit_federal_40500",
+            ),
+            credit_quebec_409=_decimal_depuis_json(
+                credit_brut.get("credit_quebec_409", "0"),
+                "profil_credit_impot_etranger.credit_quebec_409",
+            ),
+            source_t2209=str(credit_brut.get("source_t2209", "")),
+            source_tp772=str(credit_brut.get("source_tp772", "")),
+            confirme=credit_brut.get("confirme", False),
+        )
+    except (TypeError, ValueError) as erreur:
+        raise ValueError("Profil crédit étranger enregistré invalide.") from erreur
+
+    if placement_etranger_profil != ProfilPlacementEtranger2025():
+        placement_etranger_resultat = consolider_placement_etranger_2025(
+            dossier, placement_etranger_profil
+        )
+        valider_profil_credit_impot_etranger_2025(
+            credit_etranger_profil, placement_etranger_resultat
+        )
+    elif credit_etranger_profil != ProfilCreditImpotEtranger2025():
+        raise ValueError("Profil crédit étranger présent sans placement étranger.")
+
+    try:
         pensions_profil = ProfilPensions2025(**contenu.get("profil_pensions", {}))
     except (TypeError, ValueError) as erreur:
         raise ValueError("Profil pensions enregistré invalide.") from erreur
@@ -2926,6 +3031,8 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         profil_capital=capital_profil,
         profil_dividendes=dividendes_profil,
         profil_interets=interets_profil,
+        profil_placement_etranger=placement_etranger_profil,
+        profil_credit_impot_etranger=credit_etranger_profil,
         profil_remplacement=remplacement_profil,
         profil_retraits=retraits_profil,
         profil_pensions=pensions_profil,

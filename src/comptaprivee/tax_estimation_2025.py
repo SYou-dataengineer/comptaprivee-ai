@@ -170,6 +170,20 @@ from .tax_investment_expenses_2025 import (ProfilFraisPlacement2025, FraisPlacem
 from .tax_capital_gains_2025 import (ProfilCapital2025, GainsCapital2025, valider_profil_capital_2025, detecter_capital_2025, consolider_capital_2025, appliquer_capital_2025, lignes_resume_capital_2025)
 from .tax_dividend_income_2025 import (ProfilDividendes2025, Dividendes2025, valider_profil_dividendes_2025, detecter_dividendes_2025, consolider_dividendes_2025, appliquer_dividendes_2025, appliquer_credits_dividendes_2025, lignes_resume_dividendes_2025)
 from .tax_interest_income_2025 import (ProfilInterets2025, Interets2025, valider_profil_interets_2025, detecter_interets_2025, consolider_interets_2025, appliquer_interets_2025, lignes_resume_interets_2025)
+from .tax_foreign_investment_2025 import (
+    ProfilPlacementEtranger2025,
+    PlacementEtranger2025,
+    ProfilCreditImpotEtranger2025,
+    CreditImpotEtranger2025,
+    valider_profil_placement_etranger_2025,
+    detecter_placement_etranger_2025,
+    consolider_placement_etranger_2025,
+    appliquer_placement_etranger_2025,
+    consolider_credit_impot_etranger_2025,
+    appliquer_credit_impot_etranger_2025,
+    lignes_resume_placement_etranger_2025,
+    lignes_resume_credit_impot_etranger_2025,
+)
 from .tax_replacement_benefits_2025 import (ProfilRemplacement2025, PrestationsRemplacement2025, valider_profil_remplacement_2025, detecter_remplacement_2025, consolider_remplacement_2025, appliquer_remplacement_2025, appliquer_redressement_358_2025, lignes_resume_remplacement_2025)
 from .tax_rrsp_withdrawals_2025 import (ProfilRetraits2025, Retraits2025, valider_profil_retraits_2025, detecter_retraits_2025, consolider_retraits_2025, appliquer_retraits_2025, lignes_resume_retraits_2025)
 from .tax_pension_income_2025 import (ProfilPensions2025, RevenusPensions2025, TYPES_PENSIONS, valider_profil_pensions_2025, consolider_pensions_2025, appliquer_pensions_2025, credit_pension_federal_depuis_feuillets, credit_retraite_quebec_depuis_feuillets, lignes_resume_pensions_2025)
@@ -236,6 +250,10 @@ class EstimationFiscale2025:
     dividendes: Dividendes2025 = Dividendes2025()
     profil_interets: ProfilInterets2025 = ProfilInterets2025()
     interets: Interets2025 = Interets2025()
+    profil_placement_etranger: ProfilPlacementEtranger2025 = ProfilPlacementEtranger2025()
+    placement_etranger: PlacementEtranger2025 = PlacementEtranger2025()
+    profil_credit_impot_etranger: ProfilCreditImpotEtranger2025 = ProfilCreditImpotEtranger2025()
+    credit_impot_etranger: CreditImpotEtranger2025 = CreditImpotEtranger2025()
     profil_remplacement: ProfilRemplacement2025 = ProfilRemplacement2025()
     remplacement: PrestationsRemplacement2025 = PrestationsRemplacement2025()
     profil_retraits: ProfilRetraits2025 = ProfilRetraits2025()
@@ -302,6 +320,8 @@ def calculer_estimation_fiscale_2025(
     profil_capital: ProfilCapital2025 = ProfilCapital2025(),
     profil_dividendes: ProfilDividendes2025 = ProfilDividendes2025(),
     profil_interets: ProfilInterets2025 = ProfilInterets2025(),
+    profil_placement_etranger: ProfilPlacementEtranger2025 = ProfilPlacementEtranger2025(),
+    profil_credit_impot_etranger: ProfilCreditImpotEtranger2025 = ProfilCreditImpotEtranger2025(),
     profil_remplacement: ProfilRemplacement2025 = ProfilRemplacement2025(),
     profil_retraits: ProfilRetraits2025 = ProfilRetraits2025(),
     profil_pensions: ProfilPensions2025 = ProfilPensions2025(),
@@ -313,6 +333,40 @@ def calculer_estimation_fiscale_2025(
         raise ValueError(
             "L'estimation fiscale automatique est disponible "
             "uniquement pour l'année 2025."
+        )
+
+    valider_profil_placement_etranger_2025(profil_placement_etranger)
+    parcours_etranger = (
+        profil_placement_etranger != ProfilPlacementEtranger2025()
+        or detecter_placement_etranger_2025(dossier)
+    )
+    placement_etranger = PlacementEtranger2025()
+    credit_impot_etranger = CreditImpotEtranger2025()
+    if parcours_etranger:
+        if (
+            profil_capital != ProfilCapital2025()
+            or profil_dividendes != ProfilDividendes2025()
+            or profil_interets != ProfilInterets2025()
+            or profil_frais_placement != ProfilFraisPlacement2025()
+            or profil_reports_pertes != ProfilReportsPertes2025()
+            or profil_pensions != ProfilPensions2025()
+            or profil_retraits != ProfilRetraits2025()
+            or profil_remplacement != ProfilRemplacement2025()
+            or any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme))
+        ):
+            raise ValueError(
+                "Placement étranger avec autre placement, pension ou prestation : "
+                "hors périmètre 3G initial."
+            )
+        placement_etranger = consolider_placement_etranger_2025(
+            dossier, profil_placement_etranger
+        )
+        credit_impot_etranger = consolider_credit_impot_etranger_2025(
+            placement_etranger, profil_credit_impot_etranger
+        )
+    elif profil_credit_impot_etranger != ProfilCreditImpotEtranger2025():
+        raise ValueError(
+            "Profil de crédit étranger fourni sans parcours de placement étranger."
         )
 
     verifier_confirmation_reports_pertes_2025(profil_reports_pertes, dossier, profil_capital, profil_frais_placement)
@@ -332,7 +386,7 @@ def calculer_estimation_fiscale_2025(
             raise ValueError("Dividendes avec autres placements ou prestations : hors périmètre 3C.")
         dividendes = consolider_dividendes_2025(dossier, profil_dividendes)
     valider_profil_interets_2025(profil_interets)
-    parcours_interets = not parcours_capital and not parcours_dividendes and (profil_interets != ProfilInterets2025() or detecter_interets_2025(dossier))
+    parcours_interets = not parcours_etranger and not parcours_capital and not parcours_dividendes and (profil_interets != ProfilInterets2025() or detecter_interets_2025(dossier))
     interets = Interets2025()
     if parcours_interets:
         if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or profil_pensions != ProfilPensions2025() or profil_retraits != ProfilRetraits2025() or profil_remplacement != ProfilRemplacement2025():
@@ -353,7 +407,7 @@ def calculer_estimation_fiscale_2025(
             raise ValueError("Retraits avec autres prestations ou pensions : hors périmètre.")
         retraits = consolider_retraits_2025(dossier, profil_retraits)
     valider_profil_pensions_2025(profil_pensions)
-    parcours_pensions = not parcours_capital and not parcours_dividendes and not parcours_interets and not parcours_retraits and (profil_pensions != ProfilPensions2025() or any(d.type_document in TYPES_PENSIONS for d in dossier.donnees_validees))
+    parcours_pensions = not parcours_etranger and not parcours_capital and not parcours_dividendes and not parcours_interets and not parcours_retraits and (profil_pensions != ProfilPensions2025() or any(d.type_document in TYPES_PENSIONS for d in dossier.donnees_validees))
     pensions = RevenusPensions2025()
     if parcours_pensions:
         if rqap_confirme or ae_confirme or rrq_rpc_confirme or psv_confirme:
@@ -373,7 +427,7 @@ def calculer_estimation_fiscale_2025(
         if ae_confirme or rqap_confirme:
             raise ValueError("RRQ/RPC avec AE/RQAP : profil combiné hors périmètre.")
         prestations_rrq_rpc = consolider_prestations_rrq_rpc_2025(dossier, rrq_rpc_confirme)
-    sans_emploi = (parcours_capital or parcours_dividendes or parcours_interets or parcours_remplacement or parcours_retraits or parcours_pensions or parcours_psv or parcours_rrq_rpc) and not any(d.type_document in {"T4", "RL-1"} for d in dossier.donnees_validees)
+    sans_emploi = (parcours_etranger or parcours_capital or parcours_dividendes or parcours_interets or parcours_remplacement or parcours_retraits or parcours_pensions or parcours_psv or parcours_rrq_rpc) and not any(d.type_document in {"T4", "RL-1"} for d in dossier.donnees_validees)
     base = base_sans_emploi_rrq_rpc_2025(dossier) if sans_emploi else consolider_base_fiscale_emploi_2025(dossier)
 
     cotisations_excedentaires_effectives = (
@@ -455,7 +509,9 @@ def calculer_estimation_fiscale_2025(
     )
     prestations_ae = PrestationsAe2025()
     prestations_rqap = PrestationsRqap2025()
-    if parcours_capital:
+    if parcours_etranger:
+        revenu = appliquer_placement_etranger_2025(revenu, placement_etranger)
+    elif parcours_capital:
         revenu = appliquer_capital_2025(revenu, capital)
     elif parcours_dividendes:
         revenu = appliquer_dividendes_2025(revenu, dividendes)
@@ -1066,6 +1122,9 @@ def calculer_estimation_fiscale_2025(
         montants_age_retraite_effectifs,
     )
     federal, quebec = appliquer_credits_dividendes_2025(federal, quebec, dividendes)
+    federal, quebec = appliquer_credit_impot_etranger_2025(
+        federal, quebec, credit_impot_etranger
+    )
     remboursements_cotisations = (
         calculer_remboursements_cotisations_2025(
             cotisations_excedentaires_effectives
@@ -1082,6 +1141,7 @@ def calculer_estimation_fiscale_2025(
         retraits=retraits,
         remplacement=remplacement,
         interets=interets,
+        placement_etranger=placement_etranger,
         dividendes=dividendes,
         capital=capital,
         prestations_psv=prestations_psv,
@@ -1115,6 +1175,10 @@ def calculer_estimation_fiscale_2025(
         profil_retraits=profil_retraits,
         profil_remplacement=profil_remplacement,
         profil_interets=profil_interets,
+        profil_placement_etranger=profil_placement_etranger,
+        placement_etranger=placement_etranger,
+        profil_credit_impot_etranger=profil_credit_impot_etranger,
+        credit_impot_etranger=credit_impot_etranger,
         profil_dividendes=profil_dividendes,
         profil_reports_pertes=profil_reports_pertes,
         reports_pertes=reports_pertes,
@@ -1219,6 +1283,12 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_capital_2025(estimation.capital, estimation.profil_capital, estimation.reports_pertes.present),
         *lignes_resume_dividendes_2025(estimation.dividendes, estimation.profil_dividendes),
         *lignes_resume_interets_2025(estimation.interets, estimation.profil_interets),
+        *lignes_resume_placement_etranger_2025(
+            estimation.placement_etranger, estimation.profil_placement_etranger
+        ),
+        *lignes_resume_credit_impot_etranger_2025(
+            estimation.credit_impot_etranger, estimation.profil_credit_impot_etranger
+        ),
         *lignes_resume_remplacement_2025(estimation.remplacement, estimation.profil_remplacement),
         *lignes_resume_retraits_2025(estimation.retraits, estimation.profil_retraits),
         *lignes_resume_pensions_2025(estimation.pensions, estimation.profil_pensions),

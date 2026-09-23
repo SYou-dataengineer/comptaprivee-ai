@@ -21,6 +21,7 @@ from decimal import Decimal
 from .tax_capital_gains_2025 import GainsCapital2025
 from .tax_dividend_income_2025 import Dividendes2025
 from .tax_interest_income_2025 import Interets2025
+from .tax_foreign_investment_2025 import PlacementEtranger2025
 from .tax_replacement_benefits_2025 import PrestationsRemplacement2025
 from .tax_rrsp_withdrawals_2025 import Retraits2025
 from .tax_pension_income_2025 import RevenusPensions2025
@@ -115,6 +116,7 @@ def calculer_rapprochement_fiscal_2025(
     capital: GainsCapital2025 = GainsCapital2025(),
     dividendes: Dividendes2025 = Dividendes2025(),
     interets: Interets2025 = Interets2025(),
+    placement_etranger: PlacementEtranger2025 = PlacementEtranger2025(),
     remplacement: PrestationsRemplacement2025 = PrestationsRemplacement2025(),
     retraits: Retraits2025 = Retraits2025(),
 ) -> RapprochementFiscal2025:
@@ -164,7 +166,7 @@ def calculer_rapprochement_fiscal_2025(
         + cotisation_assurance_medicaments
         + prestations_rqap.cotisation_fss
         + prestations_ae.cotisation_fss + prestations_ae.recuperation
-        + prestations_rrq_rpc.cotisation_fss + prestations_psv.recuperation + pensions.cotisation_fss + retraits.cotisation_fss + interets.cotisation_fss + dividendes.cotisation_fss + capital.cotisation_fss
+        + prestations_rrq_rpc.cotisation_fss + prestations_psv.recuperation + pensions.cotisation_fss + retraits.cotisation_fss + interets.cotisation_fss + placement_etranger.cotisation_fss + dividendes.cotisation_fss + capital.cotisation_fss
     )
 
     retenues_totales = arrondir_cent(

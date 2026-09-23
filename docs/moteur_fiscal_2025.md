@@ -816,7 +816,7 @@ dans cette étape; arrêt après son commit, son push et sa CI pour bilan.
 
 | Bloc | Périmètre à construire | Dépendances et garde-fous |
 | --- | --- | --- |
-| **3A — intérêts canadiens sur feuillets** | Une paire T5 13/RL-3 D, CAD, titulaire unique; 12100/130 et FSS | Extraction, validation des pièces et du profil, GUI, JSON, résumé, trace, PDF; seul bloc implémenté maintenant |
+| **3A — intérêts canadiens sur feuillets** | Une paire T5 13/RL-3 D, CAD, titulaire unique; 12100/130 et FSS | Extraction, validation des pièces et du profil, GUI, JSON, résumé, trace, PDF; implémenté |
 | 3B — intérêts sans feuillet et autres intérêts documentés | Relevés bancaires, impôt remboursé, CPG courus; T3/RL-16 après ventilation | Identifiants des sources, déduplication avec 3A, échéanciers, intérêts déjà déclarés; attribution et devises restent exclus jusqu'à couverture |
 | 3C — dividendes canadiens | Déterminés/autres; T5/RL-3 puis T3/RL-16; majorations, crédits fédéral/Québec | Ordre des crédits et abattement, revenu net majoré, FSS, refus TOSI/cas particuliers; conservation des revenus réels et imposables |
 | 3D — dispositions et distributions en capital | Annexe 3/G, T5008/RL-18, T3/RL-16 et T5/RL-3 | PBR prouvé, frais, historique, pertes apparentes, taux 2025; différencier revenu d'entreprise et capital, contrôler impôt minimum |
@@ -887,7 +887,7 @@ Suite complète finale : **2 461 tests réussis**, 8 avertissements de
 dépréciation existants, aucun test retiré ou désactivé. Le code bénéficiaire
 T5 23 est aussi distingué des revenus dans le parcours rente 2E; les
 scénarios avant/après 65 ans restent identiques et le code conjoint reste
-refusé. Les Blocs 3B à 3H restent non implémentés.
+refusé. Les Blocs 3B à 3G sont maintenant livrés; 3H reste non implémenté.
 
 ### Audit préalable du Bloc 3B — intérêts documentés, 2025
 
@@ -1243,3 +1243,63 @@ Suite complète finale : `python -m pytest -q`, **3 024 tests réussis**,
 Sous Windows, des initialisations Tcl/Tk intermittentes ont échoué lors
 des premières exécutions avec chemins forcés; l'exécution finale complète
 a réussi avec la découverte native, sans `TCL_LIBRARY` ni `TK_LIBRARY`.
+
+
+### Bloc 3G — placements et impôts étrangers 2025
+
+Audit et livraison sur le socle 3F `2b0a34d`. Le périmètre reste volontairement
+conservateur : **un seul pays étranger, un seul titulaire, revenu de placement
+non commercial, montants déjà convertis et validés en CAD**, avec une paire
+T5/RL-3 cohérente. Les cas multi-pays, comptes conjoints, pensions étrangères,
+revenus d'entreprise, gains en capital étrangers, conventions ou exemptions
+ambiguës et conversions implicites restent exclus.
+
+Le parcours reconnaît le revenu étranger brut T5 **case 15** et l'impôt étranger
+payé T5 **case 16**, avec contreparties Québec RL-3 **F/G**. Le revenu brut est
+ajouté une seule fois à la ligne fédérale **12100** et à la ligne Québec
+**130**. L'impôt étranger n'est jamais soustrait du revenu brut et n'est jamais
+traité comme une retenue canadienne.
+
+Les crédits pour impôt étranger suivent une approche de confirmation humaine :
+le moteur **ne reconstruit pas automatiquement** les formulaires complexes.
+La ligne fédérale **40500** doit provenir d'un **T2209 2025 vérifié** et la ligne
+Québec **409** d'un **TP-772 2025 vérifié**, avec références de source
+conservées. Les crédits sont non remboursables, plafonnés par l'impôt restant
+dans chaque juridiction; le crédit Québec est en plus borné par l'impôt
+étranger payé diminué du crédit fédéral confirmé.
+
+La cotisation au Fonds des services de santé Québec est recalculée à la ligne
+**446** sur le revenu de placement étranger de la ligne 130, selon le barème
+2025 déjà utilisé par les autres revenus de placement. Les obligations de
+déclaration de biens étrangers **T1135** et **TP-1079.8.BE** sont explicitement
+signalées et doivent être vérifiées séparément; elles ne sont ni déterminées
+ni produites automatiquement par le moteur.
+
+La chaîne locale 3G est intégrée de bout en bout : validation du profil,
+calcul 12100/130, FSS 446, crédits 40500/409, résumé, trace de calcul, rapport
+PDF, sauvegarde JSON, rechargement et formulaire GUI défilant. Le formulaire
+demande pays, source, devise, références T2209/TP-772, montants de crédits et
+confirmation des obligations de biens étrangers. Toute modification pertinente
+révoque les confirmations; appliquer un nouveau profil invalide l'estimation
+et bloque l'export de l'ancien PDF. Les anciens JSON sans profil 3G chargent
+des profils vides.
+
+Le parcours 3G initial est exclusif des autres placements et des parcours
+pensions/prestations couverts actuellement. En particulier, le T5 étranger
+a priorité sur le parcours T5 de rente lorsque les cases 15/16 et RL-3 F/G
+sélectionnent explicitement 3G. Les combinaisons avec intérêts canadiens,
+dividendes, gains en capital, frais de placement, reports de pertes, retraits,
+pensions ou prestations restent réservées au futur Bloc 3H.
+
+**Validation de livraison 3G : 70 nouveaux tests** (53 moteur/persistance/
+trace/PDF et 17 GUI). Les tests couvrent l'appariement T5/RL-3, garde-fous
+CAD/pays/titulaire, limites des crédits, FSS, sauvegarde/rechargement,
+révocation des confirmations, invalidation d'un PDF périmé et réouverture
+complète du dossier. Le formulaire a été contrôlé à 96/144/192 DPI avec
+fenêtres 600 × 400 et 1000 × 700.
+
+Contrôle de non-régression ciblé : **549 tests réussis**, 5 avertissements.
+Suite complète finale `python -m pytest -q` : **3 094 tests réussis**,
+8 avertissements de dépréciation existants, aucun échec, aucun test retiré
+ou désactivé (120,62 s en local). Les avertissements SWIG/PyMuPDF et
+`openpyxl` sont préexistants et non bloquants. Le Bloc 3H reste non commencé.

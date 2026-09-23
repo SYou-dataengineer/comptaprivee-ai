@@ -247,6 +247,9 @@ def construire_trace_calcul_fiscal_2025(
     if estimation.interets.present:
         formule_revenu_federal += " + intérêts directs 12100 + intérêts T3 13000"
         formule_revenu_quebec += " + intérêts 130"
+    if estimation.placement_etranger.present:
+        formule_revenu_federal += " + revenu étranger brut 12100"
+        formule_revenu_quebec += " + revenu étranger brut 130"
     if estimation.remplacement.present:
         formule_revenu_federal += " + prestations 14400/14500 (25000 déduit uniquement de l’imposable)"
         formule_revenu_quebec += " + prestations 147/148 (295 déduit uniquement de l’imposable)"
@@ -342,6 +345,9 @@ def construire_trace_calcul_fiscal_2025(
     if estimation.dividendes.present:
         formule_impot_federal += " - crédit dividendes 40425, plancher zéro avant abattement"
         formule_impot_quebec += " - crédit dividendes 415, plancher zéro"
+    if estimation.credit_impot_etranger.present:
+        formule_impot_federal += " - crédit impôt étranger 40500 confirmé via T2209"
+        formule_impot_quebec += " - crédit impôt étranger 409 confirmé via TP-772"
     formule_impot_total = (
         "Impôt fédéral après abattement + impôt Québec"
     )
@@ -355,6 +361,8 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_total += " + FSS dividendes 446 (montants réels)"
     if estimation.interets.present:
         formule_impot_total += " + FSS intérêts 446 (sans abattement)"
+    if estimation.placement_etranger.present:
+        formule_impot_total += " + FSS placement étranger 446"
     if estimation.retraits.present:
         formule_impot_total += " + FSS retraits 446"
     if pensions.present:
@@ -489,6 +497,59 @@ def construire_trace_calcul_fiscal_2025(
             final.retenues_totales,
         ),
     )
+
+    if estimation.placement_etranger.present:
+        p = estimation.placement_etranger
+        pc = estimation.profil_placement_etranger
+        c = estimation.credit_impot_etranger
+        cc = estimation.profil_credit_impot_etranger
+        for cible, section, libelle, source, formule, montant in (
+            (
+                "Revenu imposable fédéral",
+                "REVENU FÉDÉRAL",
+                "Placement étranger ligne 12100",
+                "T5 case 15 — " + pc.source,
+                "Revenu étranger brut validé, déjà en CAD",
+                p.revenu_brut_federal,
+            ),
+            (
+                "Revenu imposable Québec",
+                "REVENU QUÉBEC",
+                "Placement étranger ligne 130",
+                "RL-3 case F — " + pc.source,
+                "Revenu brut de placement à l'étranger validé",
+                p.revenu_brut_quebec,
+            ),
+            (
+                "Impôt fédéral de base",
+                "FÉDÉRAL",
+                "Crédit impôt étranger ligne 40500",
+                "T2209 — " + cc.source_t2209,
+                "Montant T2209 2025 confirmé; crédit non remboursable",
+                c.ligne_40500,
+            ),
+            (
+                "Impôt Québec préliminaire",
+                "QUÉBEC",
+                "Crédit impôt étranger ligne 409",
+                "TP-772 — " + cc.source_tp772,
+                "Montant TP-772 2025 confirmé; crédit non remboursable",
+                c.ligne_409,
+            ),
+            (
+                "Impôt total préliminaire",
+                "QUÉBEC",
+                "FSS placement étranger ligne 446",
+                "Annexe F 2025",
+                "Cotisation FSS calculée sur le revenu de placement ligne 130",
+                p.cotisation_fss,
+            ),
+        ):
+            lignes = _inserer_ligne_avant(
+                lignes,
+                cible,
+                _ligne(0, section, libelle, source, formule, montant),
+            )
 
     if rqap.present:
         for cible, section, libelle, source, formule, montant in (

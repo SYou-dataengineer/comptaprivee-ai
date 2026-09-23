@@ -12,6 +12,11 @@ from tkinter.scrolledtext import ScrolledText
 from .gui_capital_loss_carryovers_2025 import ouvrir_reports_pertes_2025
 from .tax_capital_loss_carryovers_2025 import ProfilReportsPertes2025
 from .gui_investment_expenses_2025 import ouvrir_frais_placement_2025
+from .gui_foreign_investment_2025 import ouvrir_placement_etranger_2025
+from .tax_foreign_investment_2025 import (
+    ProfilPlacementEtranger2025,
+    ProfilCreditImpotEtranger2025,
+)
 from .tax_investment_expenses_2025 import ProfilFraisPlacement2025
 from .gui_pension_splitting_2025 import ouvrir_fractionnement_2025
 
@@ -2487,6 +2492,8 @@ class ApplicationComptaPrivee(tk.Tk):
         capital_profil_courant = ProfilCapital2025()
         frais_profil_courant = ProfilFraisPlacement2025()
         pertes_profil_courant = ProfilReportsPertes2025()
+        placement_etranger_profil_courant = ProfilPlacementEtranger2025()
+        credit_etranger_profil_courant = ProfilCreditImpotEtranger2025()
         rapport_fiscal_a_reexporter = False
         aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
         aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
@@ -2940,6 +2947,62 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Button(formulaire.actions,text="Fermer",command=dialogue.destroy).pack(side="right")
             ttk.Button(formulaire.actions,text="Valider et appliquer",command=appliquer_interets).pack(side="right")
             organiser_boutons(formulaire.actions)
+
+        def ouvrir_etranger_2025() -> None:
+            dossier_apercu = self.dossier_fiscal_valide_courant
+
+            def appliquer_etranger(profil_placement, profil_credit):
+                nonlocal placement_etranger_profil_courant, credit_etranger_profil_courant
+                nonlocal interets_profil_courant, dividendes_profil_courant, capital_profil_courant
+                nonlocal frais_profil_courant, pertes_profil_courant
+                nonlocal remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant
+                nonlocal rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant
+                nonlocal derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+
+                if (
+                    dossier_apercu is None
+                    or dossier_apercu is not self.dossier_fiscal_valide_courant
+                ):
+                    raise ValueError(
+                        "Le dossier fiscal a changé; préparez-le puis rouvrez le formulaire 3G."
+                    )
+
+                calculer_estimation_fiscale_2025(
+                    dossier_apercu,
+                    profil_placement_etranger=profil_placement,
+                    profil_credit_impot_etranger=profil_credit,
+                )
+
+                placement_etranger_profil_courant = profil_placement
+                credit_etranger_profil_courant = profil_credit
+
+                interets_profil_courant = ProfilInterets2025()
+                dividendes_profil_courant = ProfilDividendes2025()
+                capital_profil_courant = ProfilCapital2025()
+                frais_profil_courant = ProfilFraisPlacement2025()
+                pertes_profil_courant = ProfilReportsPertes2025()
+                remplacement_profil_courant = ProfilRemplacement2025()
+                retraits_profil_courant = ProfilRetraits2025()
+                pensions_profil_courant = ProfilPensions2025()
+                rqap_confirme_courant = False
+                ae_confirme_courant = False
+                rrq_rpc_confirme_courant = False
+                psv_confirme_courant = False
+
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set(
+                    "Placement étranger 3G validé; recalculez l'estimation."
+                )
+
+            ouvrir_placement_etranger_2025(
+                fenetre,
+                placement_etranger_profil_courant,
+                credit_etranger_profil_courant,
+                dossier_apercu,
+                appliquer_etranger,
+            )
 
         def ouvrir_pertes_2025() -> None:
             dossier_apercu = self.dossier_fiscal_valide_courant
@@ -10379,7 +10442,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal aidant_30425_federal_courant
             nonlocal accessibilite_domiciliaire_federale_courante
             nonlocal achat_habitation_federal_courant
-            nonlocal pertes_profil_courant, frais_profil_courant, cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant
+            nonlocal pertes_profil_courant, frais_profil_courant, placement_etranger_profil_courant, credit_etranger_profil_courant, cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -10569,7 +10632,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                             accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                             achat_habitation_federal=achat_habitation_federal_courant,
-                            cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant, profil_retraits=retraits_profil_courant, profil_remplacement=remplacement_profil_courant, profil_interets=interets_profil_courant, profil_dividendes=dividendes_profil_courant, profil_capital=capital_profil_courant, profil_frais_placement=frais_profil_courant, profil_reports_pertes=pertes_profil_courant,
+                            cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant, profil_retraits=retraits_profil_courant, profil_remplacement=remplacement_profil_courant, profil_interets=interets_profil_courant, profil_dividendes=dividendes_profil_courant, profil_capital=capital_profil_courant, profil_frais_placement=frais_profil_courant, profil_reports_pertes=pertes_profil_courant, profil_placement_etranger=placement_etranger_profil_courant, profil_credit_impot_etranger=credit_etranger_profil_courant,
                             aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                             aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                             aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -10617,7 +10680,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                     accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                     achat_habitation_federal=achat_habitation_federal_courant,
-                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant, profil_retraits=retraits_profil_courant, profil_remplacement=remplacement_profil_courant, profil_interets=interets_profil_courant, profil_dividendes=dividendes_profil_courant, profil_capital=capital_profil_courant, profil_frais_placement=frais_profil_courant, profil_reports_pertes=pertes_profil_courant,
+                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant, profil_retraits=retraits_profil_courant, profil_remplacement=remplacement_profil_courant, profil_interets=interets_profil_courant, profil_dividendes=dividendes_profil_courant, profil_capital=capital_profil_courant, profil_frais_placement=frais_profil_courant, profil_reports_pertes=pertes_profil_courant, profil_placement_etranger=placement_etranger_profil_courant, profil_credit_impot_etranger=credit_etranger_profil_courant,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -10705,7 +10768,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal aidant_30425_federal_courant
             nonlocal accessibilite_domiciliaire_federale_courante
             nonlocal achat_habitation_federal_courant
-            nonlocal pertes_profil_courant, frais_profil_courant, cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant
+            nonlocal pertes_profil_courant, frais_profil_courant, placement_etranger_profil_courant, credit_etranger_profil_courant, cotisations_rpa_courantes, rqap_confirme_courant, ae_confirme_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, remplacement_profil_courant, retraits_profil_courant, pensions_profil_courant, psv_confirme_courant, rrq_rpc_confirme_courant
             nonlocal aidant_30450_federal_courant
             nonlocal aidant_enfant_federal_courant
             dossier = enregistrement.dossier
@@ -10802,6 +10865,12 @@ class ApplicationComptaPrivee(tk.Tk):
             capital_profil_courant = enregistrement.profil_capital
             frais_profil_courant = enregistrement.profil_frais_placement
             pertes_profil_courant = enregistrement.profil_reports_pertes
+            placement_etranger_profil_courant = (
+                enregistrement.profil_placement_etranger
+            )
+            credit_etranger_profil_courant = (
+                enregistrement.profil_credit_impot_etranger
+            )
             aidant_30450_federal_courant = (
                 enregistrement.aidant_autre_personne_charge_federal
             )
@@ -11079,7 +11148,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     personne_charge_admissible_federale=personne_charge_admissible_federale_courante,
                     accessibilite_domiciliaire_federale=accessibilite_domiciliaire_federale_courante,
                     achat_habitation_federal=achat_habitation_federal_courant,
-                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant, profil_retraits=retraits_profil_courant, profil_remplacement=remplacement_profil_courant, profil_interets=interets_profil_courant, profil_dividendes=dividendes_profil_courant, profil_capital=capital_profil_courant, profil_frais_placement=frais_profil_courant, profil_reports_pertes=pertes_profil_courant,
+                    cotisations_rpa=cotisations_rpa_courantes, rqap_confirme=rqap_confirme_courant, ae_confirme=ae_confirme_courant, rrq_rpc_confirme=rrq_rpc_confirme_courant, psv_confirme=psv_confirme_courant, profil_pensions=pensions_profil_courant, profil_retraits=retraits_profil_courant, profil_remplacement=remplacement_profil_courant, profil_interets=interets_profil_courant, profil_dividendes=dividendes_profil_courant, profil_capital=capital_profil_courant, profil_frais_placement=frais_profil_courant, profil_reports_pertes=pertes_profil_courant, profil_placement_etranger=placement_etranger_profil_courant, profil_credit_impot_etranger=credit_etranger_profil_courant,
                     aidant_autre_personne_charge_federal=aidant_30450_federal_courant,
                     aidant_conjoint_personne_charge_federal=aidant_30425_federal_courant,
                     aidant_enfant_federal=aidant_enfant_federal_courant,
@@ -11482,6 +11551,7 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_capital_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Frais de placement 2025 (3E)", command=ouvrir_frais_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Reports de pertes en capital 2025 (3F)", command=ouvrir_pertes_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Placements et impôts étrangers 2025 (3G)", command=ouvrir_etranger_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Dividendes canadiens 2025",
                    command=ouvrir_dividendes_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Intérêts canadiens 2025",
