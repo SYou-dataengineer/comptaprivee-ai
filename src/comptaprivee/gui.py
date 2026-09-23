@@ -198,7 +198,10 @@ from .tax_documented_interest_2025 import NATURES_INTERETS_DOCUMENTES
 from .tax_capital_gains_2025 import ProfilCapital2025, CHAMPS_CAPITAL, consolider_capital_2025
 from .tax_dividend_income_2025 import ProfilDividendes2025, consolider_dividendes_2025
 from .tax_interest_income_2025 import ProfilInterets2025, consolider_interets_2025
-from .tax_investment_combinations_2025 import consolider_interets_dividendes_2025
+from .tax_investment_combinations_2025 import (
+    consolider_interets_dividendes_2025,
+    consolider_interets_dividendes_capital_2025,
+)
 from .tax_replacement_benefits_2025 import ProfilRemplacement2025, NATURES_REMPLACEMENT, consolider_remplacement_2025
 from .tax_rrsp_withdrawals_2025 import ProfilRetraits2025, NATURES_RETRAITS, consolider_retraits_2025
 from .tax_pension_income_2025 import ProfilPensions2025, NATURES_PENSIONS, consolider_pensions_2025, lignes_resume_pensions_2025
@@ -3060,7 +3063,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 "Une vente 2025 d'un lot unique d'actions canadiennes cotées (SHS), acheté depuis 2000 et vendu entièrement. Une paire T5008/RL-18 distincte, CAD, titulaire unique; avec ou sans salaire ordinaire.",
                 "PBR indépendant documenté, jamais copié automatiquement de la case 20. T5008 21 brut - courtage = RL-18 21. Gain = brut - PBR - courtage - autres frais; aucune double déduction.",
                 "Inclusion 50 % vers 12700/139; FSS sur le gain imposable positif. Une perte ne réduit pas le salaire; reports réservés à 3F. Salaire brut + gain intégral limité à 177 882 $ pour exclure l'IMR non couvert.",
-                "Exclus : plusieurs lots/ventes, fonds, distributions T3/T5, réinvestissements, PBR complexe, étranger, compte conjoint, attribution, entreprise, options, dons, décès, crypto, immeubles, pertes antérieures non validées en 3F et autres placements/prestations combinés.",
+                "Si une combinaison 3H-A intérêts + dividendes est déjà confirmée, cette vente simple peut activer 3H-C. Sinon, exclus : plusieurs lots/ventes, fonds, distributions, réinvestissements, PBR complexe, étranger, compte conjoint, attribution, entreprise, options, dons, décès, crypto, immeubles, pertes antérieures non validées en 3F et autres placements/prestations combinés.",
             ]
             for i, texte in enumerate(textes):
                 ttk.Label(cadre,text=texte,wraplength=520,justify="left").grid(row=i,column=0,sticky="w",pady=8)
@@ -3083,26 +3086,43 @@ class ApplicationComptaPrivee(tk.Tk):
             dossier_apercu = self.dossier_fiscal_valide_courant
             def appliquer_capital():
                 nonlocal pertes_profil_courant, frais_profil_courant, retraits_profil_courant, remplacement_profil_courant, capital_profil_courant, dividendes_profil_courant, interets_profil_courant, pensions_profil_courant, rqap_confirme_courant, ae_confirme_courant, rrq_rpc_confirme_courant, psv_confirme_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                combinaison_3h_c_active = (
+                    interets_profil_courant.confirme
+                    and dividendes_profil_courant.confirme
+                )
                 try:
                     if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
                         raise ValueError("Le dossier a changé; préparez-le puis rouvrez le formulaire.")
                     profil = ProfilCapital2025(**{nom:var.get().strip() for nom,var in variables.items()},confirme=confirme.get(),pbr_confirme=pbr_confirme.get())
-                    consolider_capital_2025(dossier_apercu,profil)
+                    if combinaison_3h_c_active:
+                        consolider_interets_dividendes_capital_2025(
+                            dossier_apercu,
+                            interets_profil_courant,
+                            dividendes_profil_courant,
+                            profil,
+                        )
+                    else:
+                        consolider_capital_2025(dossier_apercu,profil)
                 except (ValueError,TypeError) as erreur:
                     messagebox.showerror("Capital invalide",str(erreur),parent=dialogue)
                     return
                 capital_profil_courant = profil
                 frais_profil_courant = replace(frais_profil_courant, confirme=False, report_confirme=False, empreinte='')
                 pertes_profil_courant = replace(pertes_profil_courant, confirme=False, historique_confirme=False, empreinte='')
-                dividendes_profil_courant = ProfilDividendes2025()
-                interets_profil_courant = ProfilInterets2025()
+                if not combinaison_3h_c_active:
+                    dividendes_profil_courant = ProfilDividendes2025()
+                    interets_profil_courant = ProfilInterets2025()
                 remplacement_profil_courant = ProfilRemplacement2025()
                 retraits_profil_courant = ProfilRetraits2025()
                 pensions_profil_courant = ProfilPensions2025()
                 rqap_confirme_courant = ae_confirme_courant = rrq_rpc_confirme_courant = psv_confirme_courant = False
                 derniere_estimation = dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
-                self.statut.set("Capital validé; recalculez l'estimation.")
+                self.statut.set(
+                    "Combinaison 3H-C validée; recalculez l'estimation."
+                    if combinaison_3h_c_active
+                    else "Capital validé; recalculez l'estimation."
+                )
                 dialogue.destroy()
             ttk.Button(formulaire.actions,text="Fermer",command=dialogue.destroy).pack(side="right")
             ttk.Button(formulaire.actions,text="Valider et appliquer",command=appliquer_capital).pack(side="right")

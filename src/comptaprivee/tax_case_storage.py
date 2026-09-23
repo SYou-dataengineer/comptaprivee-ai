@@ -94,7 +94,10 @@ from .tax_investment_expenses_2025 import ProfilFraisPlacement2025, valider_prof
 from .tax_capital_gains_2025 import ProfilCapital2025, valider_profil_capital_2025, consolider_capital_2025
 from .tax_dividend_income_2025 import ProfilDividendes2025, valider_profil_dividendes_2025, consolider_dividendes_2025
 from .tax_interest_income_2025 import ProfilInterets2025, valider_profil_interets_2025, consolider_interets_2025
-from .tax_investment_combinations_2025 import consolider_interets_dividendes_2025
+from .tax_investment_combinations_2025 import (
+    consolider_interets_dividendes_2025,
+    consolider_interets_dividendes_capital_2025,
+)
 from .tax_foreign_investment_2025 import (
     ProfilPlacementEtranger2025,
     ProfilCreditImpotEtranger2025,
@@ -2477,10 +2480,8 @@ def sauvegarder_dossier_fiscal(
     valider_profil_capital_2025(capital_effectif)
     if estimation and capital_effectif != estimation.profil_capital:
         raise ValueError("Le profil capital diffère de l’estimation.")
-    if capital_effectif.confirme:
-        if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or any(p and p != type(p)() for p in (profil_pensions, profil_retraits, profil_remplacement, profil_interets, profil_dividendes)):
-            raise ValueError("Capital avec autres placements/prestations : hors périmètre 3D.")
-        consolider_capital_2025(dossier, capital_effectif)
+    # Validation standalone ou combinée différée jusqu'à connaître
+    # les profils intérêts/dividendes effectifs.
     dividendes_effectif = profil_dividendes if profil_dividendes is not None else (estimation.profil_dividendes if estimation else ProfilDividendes2025())
     valider_profil_dividendes_2025(dividendes_effectif)
     if estimation and dividendes_effectif != estimation.profil_dividendes:
@@ -2552,24 +2553,47 @@ def sauvegarder_dossier_fiscal(
         raise ValueError("Le profil intérêts diffère de l’estimation.")
     if combinaison_3h_a:
         if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)):
-            raise ValueError("Combinaison intérêts + dividendes avec autre parcours : hors périmètre 3H-A.")
+            raise ValueError("Combinaison intérêts + dividendes avec autre parcours : hors périmètre 3H.")
         if any(
             p is not None and p != type(p)()
             for p in (
                 profil_pensions,
                 profil_retraits,
                 profil_remplacement,
-                profil_capital,
                 profil_reports_pertes,
                 profil_placement_etranger,
             )
         ):
-            raise ValueError("Combinaison intérêts + dividendes avec autre parcours : hors périmètre 3H-A/3H-B.")
-        consolider_interets_dividendes_2025(
-            dossier,
-            interets_effectif,
-            dividendes_effectif,
-        )
+            raise ValueError("Combinaison intérêts + dividendes avec autre parcours : hors périmètre 3H.")
+        if capital_effectif.confirme:
+            if frais_effectif != ProfilFraisPlacement2025():
+                raise ValueError(
+                    "Combinaison intérêts + dividendes + capital + frais : "
+                    "hors périmètre 3H-C."
+                )
+            consolider_interets_dividendes_capital_2025(
+                dossier,
+                interets_effectif,
+                dividendes_effectif,
+                capital_effectif,
+            )
+        else:
+            consolider_interets_dividendes_2025(
+                dossier,
+                interets_effectif,
+                dividendes_effectif,
+            )
+    elif capital_effectif.confirme:
+        if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or any(
+            p is not None and p != type(p)()
+            for p in (
+                profil_pensions,
+                profil_retraits,
+                profil_remplacement,
+            )
+        ) or interets_effectif != ProfilInterets2025() or dividendes_effectif != ProfilDividendes2025():
+            raise ValueError("Capital avec autres placements/prestations : hors périmètre 3D.")
+        consolider_capital_2025(dossier, capital_effectif)
     elif interets_effectif.confirme:
         if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or any(p and p.confirme for p in (profil_pensions, profil_retraits, profil_remplacement)):
             raise ValueError("Intérêts avec autres prestations : hors périmètre 3A.")
@@ -3038,12 +3062,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     )
     if combinaison_3h_a_chargee:
         if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc, pensions_profil.confirme, retraits_profil.confirme, remplacement_profil.confirme)):
-            raise ValueError("Combinaison intérêts + dividendes avec autre parcours : hors périmètre 3H-A.")
-        consolider_interets_dividendes_2025(
-            dossier,
-            interets_profil,
-            dividendes_profil,
-        )
+            raise ValueError("Combinaison intérêts + dividendes avec autre parcours : hors périmètre 3H.")
+        # Consolidation différée après lecture du profil capital afin de
+        # distinguer 3H-A/3H-B de 3H-C.
     else:
         if interets_profil.confirme:
             if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc, pensions_profil.confirme, retraits_profil.confirme, remplacement_profil.confirme)):
@@ -3058,7 +3079,21 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     except (TypeError, ValueError) as erreur:
         raise ValueError("Profil capital enregistré invalide.") from erreur
     valider_profil_capital_2025(capital_profil)
-    if capital_profil.confirme:
+    if combinaison_3h_a_chargee:
+        if capital_profil.confirme:
+            consolider_interets_dividendes_capital_2025(
+                dossier,
+                interets_profil,
+                dividendes_profil,
+                capital_profil,
+            )
+        else:
+            consolider_interets_dividendes_2025(
+                dossier,
+                interets_profil,
+                dividendes_profil,
+            )
+    elif capital_profil.confirme:
         if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc)) or any(p != type(p)() for p in (pensions_profil, retraits_profil, remplacement_profil, interets_profil, dividendes_profil)):
             raise ValueError("Capital avec autres placements/prestations : hors périmètre 3D.")
         consolider_capital_2025(dossier, capital_profil)
@@ -3067,6 +3102,11 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     except (TypeError, ValueError) as erreur:
         raise ValueError("Profil frais de placement enregistré invalide.") from erreur
     verifier_confirmation_frais_2025(frais_profil, dossier, interets_profil, dividendes_profil, capital_profil)
+    if combinaison_3h_a_chargee and capital_profil.confirme and frais_profil != ProfilFraisPlacement2025():
+        raise ValueError(
+            "Combinaison intérêts + dividendes + capital + frais : "
+            "hors périmètre 3H-C."
+        )
     try:
         pertes_profil = ProfilReportsPertes2025(**contenu.get("profil_reports_pertes", {}))
     except (TypeError, ValueError) as erreur:

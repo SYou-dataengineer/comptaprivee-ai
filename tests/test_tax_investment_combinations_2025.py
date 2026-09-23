@@ -559,3 +559,234 @@ def test_3h_a_resume_reste_inchange_sans_frais():
     assert "BLOC 3H-A" in resume
     assert "BLOC 3H-B" not in resume
     assert "20000.00 $" in resume
+# --- Bloc 3H-C : intérêts + dividendes + gain/perte en capital ---
+
+def dossier_3h_c(produit="6500", courtage="60", emploi=False):
+    from tests.test_tax_capital_gains_2025 import dossier_capital
+
+    base = dossier_combine(emploi=emploi)
+    cap = dossier_capital(produit=produit, courtage=courtage, emploi=emploi)
+    docs_existants = {p.resolve() for p in base.documents}
+    docs_capital = tuple(p for p in cap.documents if p.resolve() not in docs_existants)
+    donnees_capital = tuple(
+        d for d in cap.donnees_validees
+        if d.type_document in {"T5008", "RL-18"}
+    )
+    return replace(
+        base,
+        documents=base.documents + docs_capital,
+        donnees_validees=base.donnees_validees + donnees_capital,
+    )
+
+
+def test_3h_c_applique_interets_dividendes_et_capital():
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+    from tests.test_tax_capital_gains_2025 import profil_capital
+
+    d = dossier_3h_c()
+    e = calculer_estimation_fiscale_2025(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+    )
+
+    assert e.interets.present
+    assert e.dividendes.present
+    assert e.capital.present
+    assert e.capital.ligne_12700 == D("1220")
+    assert e.capital.ligne_139 == D("1220")
+    assert e.revenu.revenu_total_federal == D("23870")
+    assert e.revenu.revenu_total_quebec == D("23870")
+
+
+def test_3h_c_fss_globale_comptee_une_seule_fois():
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+    from tests.test_tax_capital_gains_2025 import profil_capital
+
+    e = calculer_estimation_fiscale_2025(
+        dossier_3h_c(),
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+    )
+
+    assert e.interets.cotisation_fss == D("30.90")
+    assert e.dividendes.cotisation_fss == D("0")
+    assert e.capital.cotisation_fss == D("0")
+    assert (
+        e.interets.cotisation_fss
+        + e.dividendes.cotisation_fss
+        + e.capital.cotisation_fss
+    ) == D("30.90")
+
+
+def test_3h_c_perte_capital_ne_reduit_pas_interets_ni_dividendes():
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+    from tests.test_tax_capital_gains_2025 import profil_capital
+
+    e = calculer_estimation_fiscale_2025(
+        dossier_3h_c(produit="3000"),
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+    )
+
+    assert e.capital.perte_nette_2025 == D("530")
+    assert e.capital.ligne_139 == D("0")
+    assert e.revenu.revenu_total_federal == D("22650")
+    assert e.revenu.revenu_total_quebec == D("22650")
+    assert e.interets.cotisation_fss == D("18.70")
+    assert e.dividendes.cotisation_fss == D("0")
+    assert e.capital.cotisation_fss == D("0")
+
+
+def test_3h_c_refuse_frais_placement_en_plus():
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+    from src.comptaprivee.tax_investment_expenses_2025 import ProfilFraisPlacement2025
+    from tests.test_tax_capital_gains_2025 import profil_capital
+
+    with pytest.raises(ValueError, match="3H-C"):
+        calculer_estimation_fiscale_2025(
+            dossier_3h_c(),
+            profil_interets=profil_interets(),
+            profil_dividendes=profil_dividendes(),
+            profil_capital=profil_capital(),
+            profil_frais_placement=ProfilFraisPlacement2025(gestion="1"),
+        )
+
+def test_3h_c_sauvegarde_et_rechargement_des_trois_profils(tmp_path):
+    from src.comptaprivee.tax_case_storage import (
+        charger_dossier_fiscal,
+        sauvegarder_dossier_fiscal,
+    )
+    from tests.test_tax_capital_gains_2025 import profil_capital
+
+    d = dossier_3h_c()
+    chemin = sauvegarder_dossier_fiscal(
+        d,
+        destination=tmp_path / "3h_c.json",
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+    )
+
+    charge = charger_dossier_fiscal(chemin)
+    assert charge.profil_interets == profil_interets()
+    assert charge.profil_dividendes == profil_dividendes()
+    assert charge.profil_capital == profil_capital()
+
+
+def test_3h_c_rechargement_recalcule_meme_resultat(tmp_path):
+    from src.comptaprivee.tax_case_storage import (
+        charger_dossier_fiscal,
+        sauvegarder_dossier_fiscal,
+    )
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+    from tests.test_tax_capital_gains_2025 import profil_capital
+
+    d = dossier_3h_c()
+    attendu = calculer_estimation_fiscale_2025(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+    )
+    chemin = sauvegarder_dossier_fiscal(
+        d,
+        destination=tmp_path / "3h_c_recalcul.json",
+        estimation=attendu,
+    )
+    charge = charger_dossier_fiscal(chemin)
+    obtenu = calculer_estimation_fiscale_2025(
+        charge.dossier,
+        profil_interets=charge.profil_interets,
+        profil_dividendes=charge.profil_dividendes,
+        profil_capital=charge.profil_capital,
+    )
+
+    assert obtenu.revenu == attendu.revenu
+    assert obtenu.capital == attendu.capital
+    assert obtenu.interets.cotisation_fss == attendu.interets.cotisation_fss
+
+
+def test_3h_c_stockage_refuse_frais_en_plus(tmp_path):
+    from src.comptaprivee.tax_case_storage import sauvegarder_dossier_fiscal
+    from src.comptaprivee.tax_investment_expenses_2025 import ProfilFraisPlacement2025
+    from tests.test_tax_capital_gains_2025 import profil_capital
+
+    with pytest.raises(ValueError, match="3H-C"):
+        sauvegarder_dossier_fiscal(
+            dossier_3h_c(),
+            destination=tmp_path / "3h_c_frais.json",
+            profil_interets=profil_interets(),
+            profil_dividendes=profil_dividendes(),
+            profil_capital=profil_capital(),
+            profil_frais_placement=ProfilFraisPlacement2025(gestion="1"),
+        )
+
+def test_3h_c_resume_trace_pdf_affichent_assiette_globale(tmp_path):
+    import fitz
+
+    from src.comptaprivee.tax_calculation_trace_2025 import (
+        construire_trace_calcul_fiscal_2025,
+    )
+    from src.comptaprivee.tax_estimation_2025 import (
+        calculer_estimation_fiscale_2025,
+        formater_estimation_fiscale_2025,
+    )
+    from src.comptaprivee.tax_report_pdf_2025 import exporter_rapport_fiscal_pdf_2025
+    from tests.test_tax_capital_gains_2025 import profil_capital
+
+    e = calculer_estimation_fiscale_2025(
+        dossier_3h_c(),
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+    )
+
+    resume = formater_estimation_fiscale_2025(e)
+    assert "BLOC 3H-C" in resume
+    assert "21220.00 $" in resume
+    assert "130 + 166 + 167 + 139" in resume
+    assert "30.90 $" in resume
+
+    trace = construire_trace_calcul_fiscal_2025(e)
+    ligne = next(
+        x for x in trace.lignes
+        if x.libelle == "FSS combinée 3H-C ligne 446"
+    )
+    assert ligne.montant == D("30.90")
+    assert "130 + 166 + 167 + 139" in ligne.formule
+    assert "perte 2025 non déductible" in ligne.formule
+
+    pdf = exporter_rapport_fiscal_pdf_2025(
+        e,
+        tmp_path / "rapport_3h_c.pdf",
+    )
+    with fitz.open(pdf) as doc:
+        texte = chr(10).join(page.get_text() for page in doc)
+
+    assert "BLOC 3H-C" in texte
+    assert "21 220,00" in texte or "21220.00" in texte
+    assert "30,90" in texte or "30.90" in texte
+
+
+def test_3h_c_perte_resume_garde_assiette_interets_dividendes():
+    from src.comptaprivee.tax_estimation_2025 import (
+        calculer_estimation_fiscale_2025,
+        formater_estimation_fiscale_2025,
+    )
+    from tests.test_tax_capital_gains_2025 import profil_capital
+
+    e = calculer_estimation_fiscale_2025(
+        dossier_3h_c(produit="3000"),
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+    )
+
+    resume = formater_estimation_fiscale_2025(e)
+    assert "BLOC 3H-C" in resume
+    assert "20000.00 $" in resume
+    assert "18.70 $" in resume

@@ -823,7 +823,7 @@ dans cette étape; arrêt après son commit, son push et sa CI pour bilan.
 | 3E — frais de placement et annexe N | 22100/231, 260/276, reports 252 | Utilisation des emprunts, frais admissibles, revenus de placement des blocs précédents, soldes distincts; aucune double déduction de frais de transaction |
 | 3F — reports de pertes en capital | 25300/290, T1A/TP-1012.A, TP-729, soldes historiques | 3D et 3E; taux d'origine, avis de cotisation, ordre d'utilisation, plafonds et non-double consommation |
 | 3G — placements et impôts étrangers | Revenus bruts/devises, T2209/40500, TP-772/409, déclarations de biens étrangers | Pays, convention, limites de crédit et déductions connexes; pas de conversion ou crédit implicites |
-| 3H — combinaisons contrôlées | 3H-A livré : intérêts + dividendes canadiens; 3H-B livré : intérêts + dividendes + frais de placement 3E | Assiette FSS globale après frais, déductions 22100/231, récupérations AE/PSV, crédits/annexe B/RAMQ recalculés; validation de chaque combinaison avant ouverture |
+| 3H — combinaisons contrôlées | 3H-A livré : intérêts + dividendes; 3H-B livré : intérêts + dividendes + frais; 3H-C livré : intérêts + dividendes + capital | Assiette FSS globale recalculée selon la combinaison; déductions/crédits et interactions propres validés avant ouverture |
 
 ### Contrat du premier sous-bloc 3A
 
@@ -1413,3 +1413,50 @@ non bloquants.
 
 Le Bloc 3H-B est donc livré. Les prochaines combinaisons 3H restent à ouvrir
 progressivement, avec validation explicite de leurs interactions propres.
+
+### Bloc 3H-C — intérêts + dividendes canadiens + capital 2025
+
+Le Bloc 3H-C prolonge la combinaison contrôlée 3H-A avec le parcours capital
+simple déjà validé en 3D : une paire T5/RL-3 contenant intérêts et dividendes
+canadiens, plus une vente unique d'actions canadiennes documentée par une paire
+T5008/RL-18 et un profil capital confirmé. Aucun nouveau schéma de stockage n'est
+introduit : les profils intérêts, dividendes et capital existants sont réutilisés.
+
+Le revenu total ajoute le gain imposable fédéral 12700 / Québec 139 au résultat
+des intérêts et dividendes. La FSS Québec est recalculée une seule fois sur
+**130 + 166 + 167 + 139**. La majoration des dividendes demeure exclue et la
+cotisation globale est portée uniquement par le résultat intérêts afin d'éviter
+tout double comptage. Le résultat dividendes et le résultat capital conservent
+donc une FSS nulle dans cette combinaison.
+
+Une perte en capital 2025 ne réduit ni les intérêts ni les dividendes courants.
+Dans ce cas, la ligne 139 demeure nulle et la perte nette calculée reste suivie
+séparément pour les mécanismes de reports; 3H-C n'ouvre pas automatiquement 3F.
+
+Cas synthétique validé : 10 000 $ d'intérêts, 10 000 $ de dividendes réels et
+une vente donnant un gain de 2 440 $, donc un gain imposable de 1 220 $, donnent
+une assiette FSS de **21 220 $** et une cotisation de **30,90 $**. Avec une vente
+produisant une perte nette de 530 $, la ligne 139 reste à zéro; l'assiette FSS
+demeure **20 000 $** et la cotisation **18,70 $**.
+
+Le stockage autorise maintenant la sauvegarde et le rechargement simultanés des
+trois profils. Le recalcul après rechargement reproduit le même revenu, le même
+capital et la même FSS. Le résumé écran, la trace de calcul et le PDF identifient
+explicitement le **Bloc 3H-C** et présentent la formule d'assiette globale.
+
+Dans l'interface, un profil capital validé peut prolonger une combinaison 3H-A
+déjà confirmée sans effacer les profils intérêts/dividendes. Toute modification
+du capital invalide l'estimation précédente et bloque l'export d'un PDF périmé.
+Les frais de placement 3E, reports de pertes 3F, placements étrangers 3G,
+pensions, retraits et prestations restent exclus de 3H-C à ce stade.
+
+**Validation de livraison 3H-C : 11 nouveaux tests** couvrant moteur, FSS globale,
+gain/perte en capital, refus des frais additionnels, sauvegarde/rechargement,
+recalcul, résumé, trace, PDF, GUI, persistance et invalidation. Contrôles ciblés
+successifs : 247, 266, 161 puis **168 tests réussis** selon les sous-ensembles.
+Suite complète finale `python -m pytest -q` : **3 141 tests réussis**, **8
+avertissements** de dépréciation existants, aucun échec ni erreur (103,31 s en
+local). Les avertissements SWIG/PyMuPDF et `openpyxl` restent non bloquants.
+
+Le Bloc 3H-C est donc livré localement et prêt pour commit après contrôle Git;
+les combinaisons 3H suivantes devront rester ouvertes progressivement.

@@ -1,6 +1,7 @@
 """Export PDF local du rapport d'estimation fiscale 2025."""
 
 from pathlib import Path
+from decimal import Decimal
 import re
 import textwrap
 import fitz
@@ -203,10 +204,12 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
             else estimation.interets.ligne_130
             + estimation.dividendes.ligne_166
             + estimation.dividendes.ligne_167
+            + (estimation.capital.ligne_139 if estimation.capital.present else Decimal("0"))
         ),
         cotisation_fss=estimation.interets.cotisation_fss,
         present=estimation.interets.present and estimation.dividendes.present,
         avec_frais=estimation.frais_placement.present,
+        avec_capital=estimation.capital.present,
     )))
     lignes.extend(lignes_resume_dividendes_2025(estimation.dividendes, estimation.profil_dividendes))
     lignes.extend(lignes_resume_interets_2025(estimation.interets, estimation.profil_interets))

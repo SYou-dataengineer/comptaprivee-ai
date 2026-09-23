@@ -1,6 +1,6 @@
 """Bloc 3H-A : combinaison contrôlée intérêts + dividendes canadiens 2025.
 
-Cette fondation est branchée au moteur global et sert aussi de base au Bloc 3H-B.
+Cette fondation est branchée au moteur global et sert aussi de base aux Blocs 3H-B et 3H-C.
 Elle consolide une paire T5/RL-3 contenant simultanément :
 - intérêts T5 13 / RL-3 D;
 - dividendes T5 10/11/12/24/25/26 et RL-3 A1/A2/B/C;
@@ -9,6 +9,11 @@ et calcule une seule assiette FSS globale sur les revenus de placement visés.
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_capital_gains_2025 import (
+    GainsCapital2025,
+    ProfilCapital2025,
+    consolider_capital_2025,
+)
 from .tax_dividend_income_2025 import (
     Dividendes2025,
     ProfilDividendes2025,
@@ -53,6 +58,16 @@ class CombinaisonInteretsDividendes2025:
     cotisation_fss: Decimal = ZERO
     present: bool = False
     avec_frais: bool = False
+    avec_capital: bool = False
+
+@dataclass(frozen=True)
+class CombinaisonPlacementsCanadiens2025:
+    interets: Interets2025 = Interets2025()
+    dividendes: Dividendes2025 = Dividendes2025()
+    capital: GainsCapital2025 = GainsCapital2025()
+    assiette_fss: Decimal = ZERO
+    cotisation_fss: Decimal = ZERO
+    present: bool = False
 
 
 def _dossier_filtre(
@@ -177,15 +192,82 @@ def consolider_interets_dividendes_2025(
         present=True,
     )
 
+def consolider_interets_dividendes_capital_2025(
+    dossier: DossierFiscalValide,
+    profil_interets: ProfilInterets2025,
+    profil_dividendes: ProfilDividendes2025,
+    profil_capital: ProfilCapital2025,
+) -> CombinaisonPlacementsCanadiens2025:
+    # Bloc 3H-C : intérêts + dividendes T5/RL-3 et une vente simple T5008/RL-18.
+    if dossier.annee_fiscale != 2025:
+        raise ValueError("Combinaison 3H-C : année 2025 requise.")
+    if dossier.province.casefold() not in {"québec", "quebec"}:
+        raise ValueError("Combinaison 3H-C : dossier Québec requis.")
+
+    autorises = {"T4", "RL-1", "T5", "RL-3", "T5008", "RL-18"}
+    if any(d.type_document not in autorises for d in dossier.donnees_validees):
+        raise ValueError(
+            "Combinaison 3H-C : autre placement, prestation ou feuillet hors périmètre."
+        )
+
+    dossier_interets_dividendes = _dossier_filtre(dossier, CASES_COMBINEES)
+    combinaison = consolider_interets_dividendes_2025(
+        dossier_interets_dividendes,
+        profil_interets,
+        profil_dividendes,
+    )
+
+    donnees_capital = tuple(
+        d
+        for d in dossier.donnees_validees
+        if d.type_document in {"T4", "RL-1", "T5008", "RL-18"}
+    )
+    documents_capital = {d.document.resolve() for d in donnees_capital}
+    dossier_capital = replace(
+        dossier,
+        documents=tuple(
+            p for p in dossier.documents if p.resolve() in documents_capital
+        ),
+        donnees_validees=donnees_capital,
+    )
+    capital = consolider_capital_2025(dossier_capital, profil_capital)
+    if not capital.present:
+        raise ValueError("Combinaison 3H-C : gain/perte en capital absent.")
+
+    assiette_fss = (
+        combinaison.interets.ligne_130
+        + combinaison.dividendes.ligne_166
+        + combinaison.dividendes.ligne_167
+        + capital.ligne_139
+    )
+    cotisation_fss = cotisation_fss_prestations_2025(assiette_fss)
+
+    interets = replace(combinaison.interets, cotisation_fss=cotisation_fss)
+    dividendes = replace(combinaison.dividendes, cotisation_fss=ZERO)
+    capital = replace(capital, cotisation_fss=ZERO)
+
+    return CombinaisonPlacementsCanadiens2025(
+        interets=interets,
+        dividendes=dividendes,
+        capital=capital,
+        assiette_fss=assiette_fss,
+        cotisation_fss=cotisation_fss,
+        present=True,
+    )
+
+
 def lignes_resume_interets_dividendes_2025(combinaison: CombinaisonInteretsDividendes2025) -> list[str]:
     if not combinaison.present:
         return []
-    bloc = "3H-B" if combinaison.avec_frais else "3H-A"
-    formule = (
-        "130 + 166 + 167 - 231; majoration exclue"
-        if combinaison.avec_frais
-        else "130 + 166 + 167; majoration exclue"
-    )
+    if combinaison.avec_capital:
+        bloc = "3H-C"
+        formule = "130 + 166 + 167 + 139; majoration exclue"
+    elif combinaison.avec_frais:
+        bloc = "3H-B"
+        formule = "130 + 166 + 167 - 231; majoration exclue"
+    else:
+        bloc = "3H-A"
+        formule = "130 + 166 + 167; majoration exclue"
     lignes = [
         "",
         f"COMBINAISON CONTRÔLÉE 2025 — BLOC {bloc}",
@@ -198,5 +280,10 @@ def lignes_resume_interets_dividendes_2025(combinaison: CombinaisonInteretsDivid
         lignes.append(
             "Frais de placement 3E validés : la ligne 231 réduit l'assiette FSS; "
             "le report 252 n'a aucun effet sur cette assiette."
+        )
+    if combinaison.avec_capital:
+        lignes.append(
+            "Gain en capital 3D validé : seule la ligne 139 positive entre dans "
+            "l'assiette FSS; une perte 2025 ne réduit pas les intérêts/dividendes."
         )
     return lignes
