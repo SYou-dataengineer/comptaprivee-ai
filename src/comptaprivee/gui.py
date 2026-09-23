@@ -3124,7 +3124,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 "Une même paire T5/RL-3 peut contenir simultanément des intérêts canadiens et des dividendes canadiens.",
                 "Intérêts : T5 13 = RL-3 D. Dividendes : T5 10/11/12/24/25/26 et RL-3 A1/A2/B/C.",
                 "La FSS Québec 446 est recalculée sur une assiette globale : intérêts ligne 130 + dividendes réels 166/167. La majoration des dividendes est exclue.",
-                "Ce premier périmètre 3H-A exclut les autres placements, frais 3E, reports 3F, étranger 3G, pensions, retraits et prestations.",
+                "Après validation de 3H-A, les frais de placement admissibles peuvent être validés séparément dans le Bloc 3E; leur présence active le parcours contrôlé 3H-B. Reports 3F, étranger 3G, pensions, retraits et prestations restent exclus.",
             ]
             for i, texte in enumerate(textes):
                 ttk.Label(cadre, text=texte, wraplength=560, justify="left").grid(

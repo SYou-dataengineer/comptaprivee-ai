@@ -2560,12 +2560,11 @@ def sauvegarder_dossier_fiscal(
                 profil_retraits,
                 profil_remplacement,
                 profil_capital,
-                profil_frais_placement,
                 profil_reports_pertes,
                 profil_placement_etranger,
             )
         ):
-            raise ValueError("Combinaison intérêts + dividendes avec autre parcours : hors périmètre 3H-A.")
+            raise ValueError("Combinaison intérêts + dividendes avec autre parcours : hors périmètre 3H-A/3H-B.")
         consolider_interets_dividendes_2025(
             dossier,
             interets_effectif,

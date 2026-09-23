@@ -1,6 +1,6 @@
 """Bloc 3H-A : combinaison contrôlée intérêts + dividendes canadiens 2025.
 
-Cette première fondation ne branche pas encore la combinaison au moteur global.
+Cette fondation est branchée au moteur global et sert aussi de base au Bloc 3H-B.
 Elle consolide une paire T5/RL-3 contenant simultanément :
 - intérêts T5 13 / RL-3 D;
 - dividendes T5 10/11/12/24/25/26 et RL-3 A1/A2/B/C;
@@ -52,6 +52,7 @@ class CombinaisonInteretsDividendes2025:
     assiette_fss: Decimal = ZERO
     cotisation_fss: Decimal = ZERO
     present: bool = False
+    avec_frais: bool = False
 
 
 def _dossier_filtre(
@@ -179,11 +180,23 @@ def consolider_interets_dividendes_2025(
 def lignes_resume_interets_dividendes_2025(combinaison: CombinaisonInteretsDividendes2025) -> list[str]:
     if not combinaison.present:
         return []
-    return [
+    bloc = "3H-B" if combinaison.avec_frais else "3H-A"
+    formule = (
+        "130 + 166 + 167 - 231; majoration exclue"
+        if combinaison.avec_frais
+        else "130 + 166 + 167; majoration exclue"
+    )
+    lignes = [
         "",
-        "COMBINAISON CONTRÔLÉE 2025 — BLOC 3H-A",
+        f"COMBINAISON CONTRÔLÉE 2025 — BLOC {bloc}",
         "Intérêts canadiens + dividendes canadiens validés sur la même paire T5/RL-3.",
-        f"Assiette FSS globale 446 : {combinaison.assiette_fss:.2f} $ (130 + 166 + 167; majoration exclue).",
+        f"Assiette FSS globale 446 : {combinaison.assiette_fss:.2f} $ ({formule}).",
         f"FSS globale 446 : {combinaison.cotisation_fss:.2f} $; comptée une seule fois.",
         "Les crédits dividendes 40425/415 restent appliqués séparément.",
     ]
+    if combinaison.avec_frais:
+        lignes.append(
+            "Frais de placement 3E validés : la ligne 231 réduit l'assiette FSS; "
+            "le report 252 n'a aucun effet sur cette assiette."
+        )
+    return lignes

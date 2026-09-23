@@ -823,7 +823,7 @@ dans cette étape; arrêt après son commit, son push et sa CI pour bilan.
 | 3E — frais de placement et annexe N | 22100/231, 260/276, reports 252 | Utilisation des emprunts, frais admissibles, revenus de placement des blocs précédents, soldes distincts; aucune double déduction de frais de transaction |
 | 3F — reports de pertes en capital | 25300/290, T1A/TP-1012.A, TP-729, soldes historiques | 3D et 3E; taux d'origine, avis de cotisation, ordre d'utilisation, plafonds et non-double consommation |
 | 3G — placements et impôts étrangers | Revenus bruts/devises, T2209/40500, TP-772/409, déclarations de biens étrangers | Pays, convention, limites de crédit et déductions connexes; pas de conversion ou crédit implicites |
-| 3H — combinaisons contrôlées | 3H-A livré : intérêts + dividendes canadiens sur une même paire T5/RL-3; autres combinaisons à ouvrir progressivement | Assiette FSS globale, récupérations AE/PSV, crédits/annexe B/RAMQ recalculés; validation de chaque combinaison avant ouverture |
+| 3H — combinaisons contrôlées | 3H-A livré : intérêts + dividendes canadiens; 3H-B livré : intérêts + dividendes + frais de placement 3E | Assiette FSS globale après frais, déductions 22100/231, récupérations AE/PSV, crédits/annexe B/RAMQ recalculés; validation de chaque combinaison avant ouverture |
 
 ### Contrat du premier sous-bloc 3A
 
@@ -1344,10 +1344,11 @@ des profils intérêts et dividendes confirmés est validée par le consolidateu
 historiques lorsqu'un seul profil est confirmé.
 
 Les autres combinaisons restent exclues de 3H-A : intérêts/dividendes avec
-gains ou pertes en capital, frais de placement, reports de pertes, placements
-étrangers, pensions, retraits ou prestations. Elles devront être ouvertes
-séparément avec leurs interactions propres, notamment FSS globale, récupérations
-AE/PSV, crédits, annexe B et RAMQ.
+gains ou pertes en capital, reports de pertes, placements étrangers, pensions,
+retraits ou prestations. Les frais de placement sont désormais ouverts
+séparément par le Bloc 3H-B ci-dessous; les autres combinaisons devront conserver
+leurs interactions propres, notamment FSS globale, récupérations AE/PSV, crédits,
+annexe B et RAMQ.
 
 La détection 3H-A est tolérante aux `Decimal` non finis (`NaN`, `sNaN`,
 `Infinity`) afin de ne pas lever `decimal.InvalidOperation` avant les
@@ -1364,3 +1365,51 @@ Les avertissements SWIG/PyMuPDF et `openpyxl` restent non bloquants.
 
 Le Bloc 3H n'est donc plus vide : **3H-A est livré**. Les prochaines
 combinaisons 3H devront rester incrémentales et être validées une par une.
+
+### Bloc 3H-B — intérêts + dividendes canadiens + frais de placement 2025
+
+Le Bloc 3H-B prolonge 3H-A sans créer un nouveau profil fiscal : les deux
+profils confirmés intérêts/dividendes sont combinés avec le profil existant
+des frais de placement 3E. Le périmètre reste volontairement étroit : aucune
+combinaison simultanée avec gains/pertes en capital, reports 3F, placements
+étrangers 3G, pensions, retraits ou prestations.
+
+Les déductions de frais conservent les règles validées en 3E : ligne fédérale
+**22100**, ligne Québec **231** et revenus de l’annexe N ligne 36 fondés sur
+les intérêts ligne 130 et les dividendes imposables ligne 128. Les frais de
+transaction demeurent exclus et les confirmations existantes restent liées
+au dossier et aux profils de placement par empreinte.
+
+Pour la FSS Québec, 3H-B recalcule une seule assiette finale : **ligne 130 +
+lignes 166 + 167 - ligne 231**. La majoration des dividendes n’entre pas dans
+cette assiette et le report de frais ligne 252 n’a aucun effet sur la FSS.
+La cotisation finale est portée une seule fois dans le résultat intérêts; le
+résultat dividendes conserve une cotisation nulle afin d’éviter tout double
+comptage dans le rapprochement.
+
+Cas synthétique validé : 10 000 $ d’intérêts, 10 000 $ de dividendes réels et
+1 500 $ de frais admissibles donnent une assiette FSS de **18 500 $** et une
+cotisation de **3,70 $**. Avec 1 870 $ de frais, l’assiette redescend au seuil
+de 18 130 $ et la cotisation FSS devient nulle.
+
+La persistance JSON réutilise les trois profils existants. Sauvegarde,
+rechargement et recalcul produisent le même résultat. Le résumé écran, la
+trace et le rapport PDF identifient explicitement le **Bloc 3H-B** et utilisent
+l’assiette FSS après frais. Le parcours 3H-A reste inchangé lorsqu’aucun frais
+de placement n’est confirmé.
+
+Dans l’interface, l’utilisateur valide d’abord « Intérêts + dividendes 2025
+(3H-A) », puis ouvre le formulaire « Frais de placement 2025 (3E) ». Lorsque
+ce profil est confirmé, le calcul bascule vers 3H-B. Toute modification des
+frais invalide l’estimation précédente et bloque l’export d’un PDF périmé.
+
+**Validation de livraison 3H-B : 10 nouveaux tests** couvrant moteur, FSS,
+refus du capital additionnel, sauvegarde/rechargement, recalcul, résumé, trace,
+PDF et GUI. Contrôle ciblé élargi : **215 tests réussis**, 5 avertissements.
+Suite complète finale `python -m pytest -q` : **3 130 tests réussis**,
+**8 avertissements** de dépréciation existants, aucun échec ni erreur
+(109,90 s en local). Les avertissements SWIG/PyMuPDF et `openpyxl` restent
+non bloquants.
+
+Le Bloc 3H-B est donc livré. Les prochaines combinaisons 3H restent à ouvrir
+progressivement, avec validation explicite de leurs interactions propres.

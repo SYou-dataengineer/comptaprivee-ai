@@ -391,7 +391,6 @@ def calculer_estimation_fiscale_2025(
         if (
             parcours_etranger
             or profil_capital != ProfilCapital2025()
-            or profil_frais_placement != ProfilFraisPlacement2025()
             or profil_reports_pertes != ProfilReportsPertes2025()
             or profil_pensions != ProfilPensions2025()
             or profil_retraits != ProfilRetraits2025()
@@ -626,12 +625,24 @@ def calculer_estimation_fiscale_2025(
         profil_frais_placement, revenu, interets, dividendes, capital, profil_interets)
     if frais_placement.present:
         # Une seule cotisation finale, réutilisée partout (résumé, trace, rapprochement).
-        if interets.present:
-            interets = replace(interets, cotisation_fss=frais_placement.cotisation_fss)
-        if dividendes.present:
-            dividendes = replace(dividendes, cotisation_fss=frais_placement.cotisation_fss)
-        if capital.present:
-            capital = replace(capital, cotisation_fss=frais_placement.cotisation_fss)
+        # En 3H-B, la FSS finale reste portée une seule fois par le résultat intérêts;
+        # la recopier aussi sur les dividendes la compterait deux fois.
+        if interets.present and dividendes.present and not capital.present:
+            interets = replace(
+                interets,
+                cotisation_fss=frais_placement.cotisation_fss,
+            )
+            dividendes = replace(
+                dividendes,
+                cotisation_fss=Decimal("0"),
+            )
+        else:
+            if interets.present:
+                interets = replace(interets, cotisation_fss=frais_placement.cotisation_fss)
+            if dividendes.present:
+                dividendes = replace(dividendes, cotisation_fss=frais_placement.cotisation_fss)
+            if capital.present:
+                capital = replace(capital, cotisation_fss=frais_placement.cotisation_fss)
 
     revenu, frais_placement, reports_pertes = appliquer_reports_pertes_2025(
         profil_reports_pertes, revenu, capital, frais_placement)
@@ -1347,9 +1358,16 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_interets_dividendes_2025(CombinaisonInteretsDividendes2025(
             interets=estimation.interets,
             dividendes=estimation.dividendes,
-            assiette_fss=estimation.interets.ligne_130 + estimation.dividendes.ligne_166 + estimation.dividendes.ligne_167,
+            assiette_fss=(
+                estimation.frais_placement.assiette_fss
+                if estimation.frais_placement.present
+                else estimation.interets.ligne_130
+                + estimation.dividendes.ligne_166
+                + estimation.dividendes.ligne_167
+            ),
             cotisation_fss=estimation.interets.cotisation_fss,
             present=estimation.interets.present and estimation.dividendes.present,
+            avec_frais=estimation.frais_placement.present,
         )),
         *lignes_resume_dividendes_2025(estimation.dividendes, estimation.profil_dividendes),
         *lignes_resume_interets_2025(estimation.interets, estimation.profil_interets),

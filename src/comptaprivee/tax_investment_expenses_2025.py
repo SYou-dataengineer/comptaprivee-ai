@@ -129,8 +129,13 @@ def calculer_frais_placement_2025(p, revenu, interets, dividendes, capital, prof
         return revenu, FraisPlacement2025()
     if not p.confirme:
         raise ValueError('Confirmez les frais de placement et le report Québec 3E.')
-    if sum((interets.present, dividendes.present, capital.present)) != 1:
-        raise ValueError('Frais 3E : un seul parcours de placement 3A à 3D validé requis.')
+    parcours_simples = sum((interets.present, dividendes.present, capital.present)) == 1
+    combinaison_3h_b = interets.present and dividendes.present and not capital.present
+    if not (parcours_simples or combinaison_3h_b):
+        raise ValueError(
+            'Frais 3E/3H-B : un seul parcours de placement, ou la combinaison '
+            'contrôlée intérêts + dividendes, est requis.'
+        )
     emprunt = montant_frais_2025(p.interets)
     if emprunt and (capital.present or (interets.present and profil_interets.nature == 'REMBOURSEMENT_IMPOT')):
         raise ValueError('Intérêts après vente ou liés au remboursement fiscal : hors périmètre 3E.')

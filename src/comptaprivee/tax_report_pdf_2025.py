@@ -197,9 +197,16 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_resume_interets_dividendes_2025(CombinaisonInteretsDividendes2025(
         interets=estimation.interets,
         dividendes=estimation.dividendes,
-        assiette_fss=estimation.interets.ligne_130 + estimation.dividendes.ligne_166 + estimation.dividendes.ligne_167,
+        assiette_fss=(
+            estimation.frais_placement.assiette_fss
+            if estimation.frais_placement.present
+            else estimation.interets.ligne_130
+            + estimation.dividendes.ligne_166
+            + estimation.dividendes.ligne_167
+        ),
         cotisation_fss=estimation.interets.cotisation_fss,
         present=estimation.interets.present and estimation.dividendes.present,
+        avec_frais=estimation.frais_placement.present,
     )))
     lignes.extend(lignes_resume_dividendes_2025(estimation.dividendes, estimation.profil_dividendes))
     lignes.extend(lignes_resume_interets_2025(estimation.interets, estimation.profil_interets))

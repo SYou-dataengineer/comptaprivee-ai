@@ -333,3 +333,229 @@ def test_detection_3h_a_deux_cases_interets_non_finies_ne_detecte_pas():
     d = modifier(dossier_combine(), "T5", "13", "sNaN")
     d = modifier(d, "RL-3", "D", "sNaN")
     assert detecter_interets_dividendes_2025(d) is False
+
+
+# --- Bloc 3H-B : intérêts + dividendes + frais de placement ---
+
+def profil_frais_3h_b(
+    dossier,
+    gestion="500",
+    interets="1000",
+    solde_quebec="0",
+    demande_252="0",
+    source_report="",
+):
+    from src.comptaprivee.tax_capital_gains_2025 import ProfilCapital2025
+    from src.comptaprivee.tax_investment_expenses_2025 import (
+        ProfilFraisPlacement2025,
+        empreinte_frais_placement_2025,
+    )
+
+    p = ProfilFraisPlacement2025(
+        gestion=gestion,
+        interets=interets,
+        source="Facture synthétique 3H-B F-2025-1, compte unique",
+        paiement="Paiements 2025 vérifiés, frais ventilés",
+        utilisation="Placements T5/RL-3 combinés productifs d'intérêts et dividendes",
+        solde_quebec=solde_quebec,
+        demande_252=demande_252,
+        source_report=source_report,
+        confirme=True,
+        report_confirme=True,
+    )
+    return replace(
+        p,
+        empreinte=empreinte_frais_placement_2025(
+            p,
+            dossier,
+            profil_interets(),
+            profil_dividendes(),
+            ProfilCapital2025(),
+        ),
+    )
+
+
+def test_3h_b_applique_frais_aux_deux_revenus():
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+
+    d = dossier_combine()
+    e = calculer_estimation_fiscale_2025(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_frais_placement=profil_frais_3h_b(d),
+    )
+
+    assert e.interets.present
+    assert e.dividendes.present
+    assert e.frais_placement.present
+    assert e.frais_placement.ligne_22100 == D("1500")
+    assert e.frais_placement.ligne_231 == D("1500")
+    assert e.frais_placement.revenus_n36 == D("22650")
+    assert e.revenu.revenu_total_federal == D("22650")
+    assert e.revenu.revenu_total_quebec == D("22650")
+    assert e.revenu.revenu_net_federal == D("21150")
+    assert e.revenu.revenu_net_quebec == D("21150")
+
+
+def test_3h_b_fss_globale_apres_frais_comptee_une_fois():
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+
+    d = dossier_combine()
+    e = calculer_estimation_fiscale_2025(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_frais_placement=profil_frais_3h_b(d),
+    )
+
+    assert e.frais_placement.assiette_fss == D("18500")
+    assert e.frais_placement.cotisation_fss == D("3.70")
+    assert e.interets.cotisation_fss == D("3.70")
+    assert e.dividendes.cotisation_fss == D("0")
+    assert (
+        e.interets.cotisation_fss + e.dividendes.cotisation_fss
+        == e.frais_placement.cotisation_fss
+    )
+
+
+def test_3h_b_frais_peuvent_ramener_assiette_fss_au_seuil():
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+
+    d = dossier_combine()
+    e = calculer_estimation_fiscale_2025(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_frais_placement=profil_frais_3h_b(
+            d,
+            gestion="1870",
+            interets="0",
+        ),
+    )
+
+    assert e.frais_placement.assiette_fss == D("18130")
+    assert e.frais_placement.cotisation_fss == D("0")
+    assert e.interets.cotisation_fss == D("0")
+    assert e.dividendes.cotisation_fss == D("0")
+
+
+def test_3h_b_refuse_toujours_capital_en_plus():
+    from src.comptaprivee.tax_capital_gains_2025 import ProfilCapital2025
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+
+    d = dossier_combine()
+    with pytest.raises(ValueError, match="3H-A|3H-B|hors périmètre"):
+        calculer_estimation_fiscale_2025(
+            d,
+            profil_interets=profil_interets(),
+            profil_dividendes=profil_dividendes(),
+            profil_frais_placement=profil_frais_3h_b(d),
+            profil_capital=replace(ProfilCapital2025(), confirme=True),
+        )
+
+
+def test_3h_b_sauvegarde_et_rechargement_des_trois_profils(tmp_path):
+    from src.comptaprivee.tax_case_storage import (
+        charger_dossier_fiscal,
+        sauvegarder_dossier_fiscal,
+    )
+
+    d = dossier_combine()
+    frais = profil_frais_3h_b(d)
+    chemin = sauvegarder_dossier_fiscal(
+        d,
+        destination=tmp_path / "3h_b.json",
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_frais_placement=frais,
+    )
+
+    charge = charger_dossier_fiscal(chemin)
+    assert charge.profil_interets == profil_interets()
+    assert charge.profil_dividendes == profil_dividendes()
+    assert charge.profil_frais_placement == frais
+
+
+def test_3h_b_rechargement_recalcule_meme_resultat(tmp_path):
+    from src.comptaprivee.tax_case_storage import (
+        charger_dossier_fiscal,
+        sauvegarder_dossier_fiscal,
+    )
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+
+    d = dossier_combine()
+    frais = profil_frais_3h_b(d)
+    attendu = calculer_estimation_fiscale_2025(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_frais_placement=frais,
+    )
+
+    chemin = sauvegarder_dossier_fiscal(
+        d,
+        destination=tmp_path / "3h_b_recalcul.json",
+        estimation=attendu,
+    )
+    charge = charger_dossier_fiscal(chemin)
+    obtenu = calculer_estimation_fiscale_2025(
+        charge.dossier,
+        profil_interets=charge.profil_interets,
+        profil_dividendes=charge.profil_dividendes,
+        profil_frais_placement=charge.profil_frais_placement,
+    )
+
+    assert obtenu.revenu == attendu.revenu
+    assert obtenu.frais_placement == attendu.frais_placement
+    assert obtenu.interets.cotisation_fss == D("3.70")
+    assert obtenu.dividendes.cotisation_fss == D("0")
+def test_3h_b_resume_trace_pdf_utilisent_assiette_apres_frais(tmp_path):
+    import fitz
+
+    from src.comptaprivee.tax_calculation_trace_2025 import construire_trace_calcul_fiscal_2025
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025, formater_estimation_fiscale_2025
+    from src.comptaprivee.tax_report_pdf_2025 import exporter_rapport_fiscal_pdf_2025
+
+    d = dossier_combine()
+    e = calculer_estimation_fiscale_2025(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_frais_placement=profil_frais_3h_b(d),
+    )
+
+    resume = formater_estimation_fiscale_2025(e)
+    assert "BLOC 3H-B" in resume
+    assert "18500.00 $" in resume
+    assert "130 + 166 + 167 - 231" in resume
+    assert "3.70 $" in resume
+
+    trace = construire_trace_calcul_fiscal_2025(e)
+    ligne = next(x for x in trace.lignes if x.libelle == "FSS combinée 3H-B ligne 446")
+    assert ligne.montant == D("3.70")
+    assert "130 + 166 + 167 - 231" in ligne.formule
+    assert "252 sans effet" in ligne.formule
+
+    pdf = exporter_rapport_fiscal_pdf_2025(e, tmp_path / "rapport_3h_b.pdf")
+    with fitz.open(pdf) as doc:
+        texte = chr(10).join(page.get_text() for page in doc)
+
+    assert "BLOC 3H-B" in texte
+    assert "18 500,00" in texte or "18500.00" in texte
+    assert "3,70" in texte or "3.70" in texte
+
+
+def test_3h_a_resume_reste_inchange_sans_frais():
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025, formater_estimation_fiscale_2025
+
+    e = calculer_estimation_fiscale_2025(
+        dossier_combine(),
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+    )
+
+    resume = formater_estimation_fiscale_2025(e)
+    assert "BLOC 3H-A" in resume
+    assert "BLOC 3H-B" not in resume
+    assert "20000.00 $" in resume
