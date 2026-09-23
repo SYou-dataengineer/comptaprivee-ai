@@ -259,7 +259,10 @@ def consolider_interets_dividendes_capital_2025(
 def lignes_resume_interets_dividendes_2025(combinaison: CombinaisonInteretsDividendes2025) -> list[str]:
     if not combinaison.present:
         return []
-    if combinaison.avec_capital:
+    if combinaison.avec_capital and combinaison.avec_frais:
+        bloc = "3H-D"
+        formule = "130 + 166 + 167 + 139 - 231; majoration exclue"
+    elif combinaison.avec_capital:
         bloc = "3H-C"
         formule = "130 + 166 + 167 + 139; majoration exclue"
     elif combinaison.avec_frais:
@@ -285,5 +288,10 @@ def lignes_resume_interets_dividendes_2025(combinaison: CombinaisonInteretsDivid
         lignes.append(
             "Gain en capital 3D validé : seule la ligne 139 positive entre dans "
             "l'assiette FSS; une perte 2025 ne réduit pas les intérêts/dividendes."
+        )
+    if combinaison.avec_capital and combinaison.avec_frais:
+        lignes.append(
+            "Bloc 3H-D : la ligne 231 réduit l'assiette FSS après ajout de la ligne "
+            "139; la ligne 252 reste sans effet sur cette assiette."
         )
     return lignes

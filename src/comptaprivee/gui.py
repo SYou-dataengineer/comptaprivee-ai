@@ -3045,7 +3045,16 @@ class ApplicationComptaPrivee(tk.Tk):
                 pertes_profil_courant = replace(pertes_profil_courant, confirme=False, historique_confirme=False, empreinte='')
                 derniere_estimation = dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
-                self.statut.set("Frais de placement validés; recalculez l'estimation et revalidez les crédits.")
+                combinaison_3h_d_active = (
+                    interets_profil_courant.confirme
+                    and dividendes_profil_courant.confirme
+                    and capital_profil_courant.confirme
+                )
+                self.statut.set(
+                    "Combinaison 3H-D validée; recalculez l'estimation et revalidez les crédits."
+                    if combinaison_3h_d_active
+                    else "Frais de placement validés; recalculez l'estimation et revalidez les crédits."
+                )
             ouvrir_frais_placement_2025(fenetre, frais_profil_courant, dossier_apercu,
                 profils_apercu, appliquer_frais, extraire_texte_document)
 

@@ -131,13 +131,23 @@ def calculer_frais_placement_2025(p, revenu, interets, dividendes, capital, prof
         raise ValueError('Confirmez les frais de placement et le report Québec 3E.')
     parcours_simples = sum((interets.present, dividendes.present, capital.present)) == 1
     combinaison_3h_b = interets.present and dividendes.present and not capital.present
-    if not (parcours_simples or combinaison_3h_b):
+    combinaison_3h_d = interets.present and dividendes.present and capital.present
+    if not (parcours_simples or combinaison_3h_b or combinaison_3h_d):
         raise ValueError(
-            'Frais 3E/3H-B : un seul parcours de placement, ou la combinaison '
-            'contrôlée intérêts + dividendes, est requis.'
+            'Frais 3E/3H-B/3H-D : un seul parcours de placement, ou une combinaison '
+            'contrôlée intérêts + dividendes, avec ou sans capital, est requis.'
         )
     emprunt = montant_frais_2025(p.interets)
-    if emprunt and (capital.present or (interets.present and profil_interets.nature == 'REMBOURSEMENT_IMPOT')):
+    if emprunt and combinaison_3h_d:
+        raise ValueError(
+            '3H-D : intérêts d’emprunt avec capital présents hors périmètre initial; '
+            'utilisez uniquement des frais de gestion/garde documentés.'
+        )
+    if emprunt and capital.present:
+        raise ValueError(
+            'Intérêts après vente ou liés au remboursement fiscal : hors périmètre 3E.'
+        )
+    if emprunt and interets.present and profil_interets.nature == 'REMBOURSEMENT_IMPOT':
         raise ValueError('Intérêts après vente ou liés au remboursement fiscal : hors périmètre 3E.')
     # Borne prudente avant toute déduction (IMR et frais partiellement réintégrés).
     if max(revenu.revenu_total_federal, revenu.revenu_total_quebec) + max(ZERO, capital.gain_perte) / 2 > Decimal('177882'):

@@ -823,7 +823,7 @@ dans cette étape; arrêt après son commit, son push et sa CI pour bilan.
 | 3E — frais de placement et annexe N | 22100/231, 260/276, reports 252 | Utilisation des emprunts, frais admissibles, revenus de placement des blocs précédents, soldes distincts; aucune double déduction de frais de transaction |
 | 3F — reports de pertes en capital | 25300/290, T1A/TP-1012.A, TP-729, soldes historiques | 3D et 3E; taux d'origine, avis de cotisation, ordre d'utilisation, plafonds et non-double consommation |
 | 3G — placements et impôts étrangers | Revenus bruts/devises, T2209/40500, TP-772/409, déclarations de biens étrangers | Pays, convention, limites de crédit et déductions connexes; pas de conversion ou crédit implicites |
-| 3H — combinaisons contrôlées | 3H-A livré : intérêts + dividendes; 3H-B livré : intérêts + dividendes + frais; 3H-C livré : intérêts + dividendes + capital | Assiette FSS globale recalculée selon la combinaison; déductions/crédits et interactions propres validés avant ouverture |
+| 3H — combinaisons contrôlées | 3H-A livré : intérêts + dividendes; 3H-B livré : intérêts + dividendes + frais; 3H-C livré : intérêts + dividendes + capital; 3H-D livré : intérêts + dividendes + capital + frais | Assiette FSS globale recalculée selon la combinaison; déductions/crédits et interactions propres validés avant ouverture |
 
 ### Contrat du premier sous-bloc 3A
 
@@ -1458,5 +1458,54 @@ Suite complète finale `python -m pytest -q` : **3 141 tests réussis**, **8
 avertissements** de dépréciation existants, aucun échec ni erreur (103,31 s en
 local). Les avertissements SWIG/PyMuPDF et `openpyxl` restent non bloquants.
 
-Le Bloc 3H-C est donc livré localement et prêt pour commit après contrôle Git;
-les combinaisons 3H suivantes devront rester ouvertes progressivement.
+Le Bloc 3H-C est livré et validé par la suite locale et le CI GitHub.
+Les combinaisons 3H suivantes restent ouvertes progressivement.
+
+### Bloc 3H-D — intérêts + dividendes + capital + frais de placement 2025
+
+Le Bloc 3H-D prolonge 3H-C avec le profil de frais de placement déjà couvert par
+3E. Il combine donc une paire T5/RL-3 validée pour intérêts et dividendes, une
+vente simple T5008/RL-18 validée en 3D, puis des frais de gestion/garde
+documentés. Aucun nouveau schéma de stockage n'est introduit : les quatre profils
+existants sont réutilisés.
+
+Le revenu total conserve les intérêts, les dividendes imposables et le gain
+imposable. Les déductions de frais restent appliquées aux lignes fédérale 22100
+et Québec 231. L'assiette FSS globale devient **130 + 166 + 167 + 139 - 231**.
+La majoration des dividendes demeure exclue et le report Québec 252 ne réduit
+pas cette assiette. La cotisation finale est portée uniquement par le résultat
+intérêts; dividendes et capital conservent une FSS nulle afin d'éviter tout
+double comptage.
+
+Le périmètre initial reste volontairement prudent : les intérêts d'emprunt sont
+refusés lorsqu'un parcours capital est présent. Seuls les frais de gestion/garde
+documentés sont ouverts dans 3H-D. Les reports de pertes 3F, placements
+étrangers 3G, pensions, retraits et prestations restent exclus de cette
+combinaison.
+
+Cas synthétique validé : 10 000 $ d'intérêts, 10 000 $ de dividendes réels,
+1 220 $ de gain imposable et 1 500 $ de frais donnent une assiette FSS de
+**19 720 $** et une cotisation de **15,90 $**. Avec une perte en capital, la
+ligne 139 reste nulle; les frais de 1 500 $ abaissent l'assiette de 20 000 $ à
+**18 500 $**, pour une FSS de **3,70 $**. La perte en capital ne réduit pas les
+intérêts ni les dividendes courants.
+
+La persistance JSON sauvegarde et recharge simultanément les quatre profils.
+Le recalcul après rechargement reproduit le même revenu, le même capital, les
+mêmes frais et la même FSS. Une empreinte de frais incohérente est refusée.
+Le résumé écran, la trace de calcul et le PDF identifient explicitement le
+**Bloc 3H-D** et affichent l'assiette après frais. Dans l'interface, le formulaire
+des frais signale le contexte 3H-D; toute modification des frais invalide
+l'estimation et bloque l'export d'un PDF périmé.
+
+**Validation de livraison 3H-D : 10 nouveaux tests nets** couvrant moteur,
+FSS globale, exclusion des intérêts d'emprunt avec capital, sauvegarde et
+rechargement, recalcul, empreinte des frais, résumé, trace, PDF, perte en
+capital, GUI, persistance et invalidation. Contrôles ciblés successifs :
+**255**, **274**, **282** puis **291 tests réussis**, avec 5 avertissements de
+dépréciation existants selon les sous-ensembles.
+
+Suite complète finale `python -m pytest -q` : **3 151 tests réussis**,
+**8 avertissements** de dépréciation existants, aucun échec ni erreur
+(**102,87 s** en local). Les avertissements SWIG/PyMuPDF et `openpyxl` restent
+non bloquants.

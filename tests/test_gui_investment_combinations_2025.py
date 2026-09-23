@@ -16,6 +16,7 @@ from tests.test_tax_investment_combinations_2025 import (
     profil_dividendes,
     profil_interets,
     profil_frais_3h_b,
+    profil_frais_3h_d,
 )
 from tests.test_tax_capital_gains_2025 import profil_capital
 
@@ -313,6 +314,95 @@ def test_gui_3h_c_persistance_pdf_et_invalidation(application, monkeypatch, tmp_
     if dialogue.getvar(capital.cget("variable")) == 0:
         capital.invoke()
 
+    bouton(dialogue, "Valider et appliquer").invoke()
+    assert not dialogue.winfo_exists(), app.messages_test
+
+    bouton(resultat, "Exporter le rapport fiscal en PDF").invoke()
+    assert app.messages_test[-1][0] == "Estimation périmée"
+    fiscal.destroy()
+
+def ouvrir_integration_3h_d(app):
+    d = dossier_3h_c()
+    frais = profil_frais_3h_d(d)
+    chemin = tax_case_storage.sauvegarder_dossier_fiscal(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+        profil_frais_placement=frais,
+    )
+    charge = tax_case_storage.charger_dossier_fiscal(chemin)
+    assert charge.profil_interets.confirme
+    assert charge.profil_dividendes.confirme
+    assert charge.profil_capital.confirme
+    assert charge.profil_frais_placement.confirme
+
+    app.ouvrir_agent_fiscal()
+    fiscal = derniere_fenetre(app)
+    bouton(fiscal, "Dossiers enregistrés").invoke()
+    liste = derniere_fenetre(fiscal)
+    bouton(liste, "Ouvrir le dossier").invoke()
+    return fiscal, frais
+
+
+def test_gui_3h_d_charge_frais_et_calcule_resume(application):
+    app = application
+    fiscal, frais = ouvrir_integration_3h_d(app)
+
+    bouton(fiscal, "Frais de placement 2025 (3E)").invoke()
+    dialogue = derniere_fenetre(fiscal)
+    assert "3H-D" in dialogue.title()
+    assert champ(dialogue, "gestion_frais_placement").get() == frais.gestion
+    assert champ(dialogue, "interets_frais_placement").get() == frais.interets
+    assert dialogue.getvar(
+        champ(dialogue, "confirmation_frais_placement").cget("variable")
+    ) == 1
+    bouton(dialogue, "Fermer").invoke()
+
+    bouton(fiscal, "Calculer l'estimation fiscale 2025").invoke()
+    resultat = derniere_fenetre(fiscal)
+    texte = next(
+        w for w in descendants(resultat) if isinstance(w, tk.Text)
+    ).get("1.0", "end")
+
+    assert "BLOC 3H-D" in texte
+    assert "19720.00 $" in texte
+    assert "15.90 $" in texte
+    fiscal.destroy()
+
+
+def test_gui_3h_d_pdf_persistance_et_invalidation(application, monkeypatch, tmp_path):
+    app = application
+    fiscal, _ = ouvrir_integration_3h_d(app)
+
+    bouton(fiscal, "Calculer l'estimation fiscale 2025").invoke()
+    resultat = derniere_fenetre(fiscal)
+
+    destination = tmp_path / "rapport_3h_d_gui.pdf"
+    monkeypatch.setattr(
+        gui.filedialog,
+        "asksaveasfilename",
+        lambda **kw: str(destination),
+    )
+    bouton(resultat, "Exporter le rapport fiscal en PDF").invoke()
+    assert destination.exists()
+
+    app.callbacks_test["sauvegarder_dossier_fiscal_local"]()
+    charge = tax_case_storage.charger_dossier_fiscal(
+        next((tmp_path / "dossiers").glob("*.json"))
+    )
+    assert charge.profil_interets.confirme
+    assert charge.profil_dividendes.confirme
+    assert charge.profil_capital.confirme
+    assert charge.profil_frais_placement.confirme
+
+    bouton(fiscal, "Frais de placement 2025 (3E)").invoke()
+    dialogue = derniere_fenetre(fiscal)
+    entree = champ(dialogue, "gestion_frais_placement")
+    entree.delete(0, "end")
+    entree.insert(0, "1400")
+    champ(dialogue, "confirmation_report_frais").invoke()
+    champ(dialogue, "confirmation_frais_placement").invoke()
     bouton(dialogue, "Valider et appliquer").invoke()
     assert not dialogue.winfo_exists(), app.messages_test
 

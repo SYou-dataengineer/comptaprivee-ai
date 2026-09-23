@@ -397,8 +397,15 @@ def calculer_estimation_fiscale_2025(
     if parcours_interets_dividendes:
         if parcours_3h_c:
             if (
+                profil_frais_placement != ProfilFraisPlacement2025()
+                and not detecter_capital_2025(dossier)
+            ):
+                raise ValueError(
+                    "Combinaison 3H-B avec profil capital sans feuillet capital : "
+                    "hors périmètre 3H-D."
+                )
+            if (
                 parcours_etranger
-                or profil_frais_placement != ProfilFraisPlacement2025()
                 or profil_reports_pertes != ProfilReportsPertes2025()
                 or profil_pensions != ProfilPensions2025()
                 or profil_retraits != ProfilRetraits2025()
@@ -664,9 +671,9 @@ def calculer_estimation_fiscale_2025(
         profil_frais_placement, revenu, interets, dividendes, capital, profil_interets)
     if frais_placement.present:
         # Une seule cotisation finale, réutilisée partout (résumé, trace, rapprochement).
-        # En 3H-B, la FSS finale reste portée une seule fois par le résultat intérêts;
-        # la recopier aussi sur les dividendes la compterait deux fois.
-        if interets.present and dividendes.present and not capital.present:
+        # En 3H-B et 3H-D, la FSS finale reste portée une seule fois par le résultat
+        # intérêts; dividendes et capital restent à zéro pour éviter tout double comptage.
+        if interets.present and dividendes.present:
             interets = replace(
                 interets,
                 cotisation_fss=frais_placement.cotisation_fss,
@@ -675,6 +682,11 @@ def calculer_estimation_fiscale_2025(
                 dividendes,
                 cotisation_fss=Decimal("0"),
             )
+            if capital.present:
+                capital = replace(
+                    capital,
+                    cotisation_fss=Decimal("0"),
+                )
         else:
             if interets.present:
                 interets = replace(interets, cotisation_fss=frais_placement.cotisation_fss)

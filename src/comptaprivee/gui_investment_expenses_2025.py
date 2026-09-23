@@ -13,7 +13,12 @@ from .tax_investment_expenses_2025 import (
 
 def ouvrir_frais_placement_2025(parent, profil, dossier, profils, appliquer, extraire_texte):
     dialogue = tk.Toplevel(parent)
-    dialogue.title('Frais de placement 2025 (3E)')
+    combinaison_3h_d = all(getattr(p, 'confirme', False) for p in profils)
+    dialogue.title(
+        'Frais de placement 2025 (3E / 3H-D)'
+        if combinaison_3h_d
+        else 'Frais de placement 2025 (3E)'
+    )
     dimensionner_fenetre(dialogue, 850, 700)
     dialogue.transient(parent)
     dialogue.grab_set()
@@ -21,8 +26,16 @@ def ouvrir_frais_placement_2025(parent, profil, dossier, profils, appliquer, ext
     cadre = formulaire.corps
     cadre.columnconfigure(0, weight=1)
     textes = (
-        'Frais de placement 2025 — Bloc 3E',
-        'Un parcours 3A à 3D validé, CAD, titulaire unique, placements non enregistrés. Gestion/garde et intérêts simples payés en 2025, admissibles dans les deux juridictions.',
+        'Frais de placement 2025 — Bloc 3E' + (' / combinaison 3H-D' if combinaison_3h_d else ''),
+        (
+            'Combinaison 3H-D détectée : intérêts + dividendes + capital déjà validés. '
+            'Seuls les frais de gestion/garde documentés sont ouverts dans ce parcours initial; '
+            'les intérêts d’emprunt avec capital restent exclus.'
+            if combinaison_3h_d
+            else
+            'Un parcours 3A à 3D validé, CAD, titulaire unique, placements non enregistrés. '
+            'Gestion/garde et intérêts simples payés en 2025, admissibles dans les deux juridictions.'
+        ),
         '22100 et 231 réduisent le revenu net. Annexe N : excédent des frais ajouté à 260. Report Québec 252 limité au solde vérifié et au surplus des revenus sur les frais. Aucun report fédéral.',
         'FSS recalculé après les frais 231; le report 252 ne réduit pas son assiette. Commissions, PBR et frais de disposition ne doivent jamais être déduits ici.',
         'Exclus : frais de conseil/juridiques/comptables, fonds/T3 intégrés, RL-1 L-4, régimes enregistrés, compte conjoint, étranger, emprunt mixte/refinancé/après vente, assurance vie, pertes antérieures, IMR antérieur et autres cas complexes. Revenus bruts ajustés limités à 177 882 $.',

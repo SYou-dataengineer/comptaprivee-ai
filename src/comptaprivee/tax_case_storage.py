@@ -2566,11 +2566,6 @@ def sauvegarder_dossier_fiscal(
         ):
             raise ValueError("Combinaison intérêts + dividendes avec autre parcours : hors périmètre 3H.")
         if capital_effectif.confirme:
-            if frais_effectif != ProfilFraisPlacement2025():
-                raise ValueError(
-                    "Combinaison intérêts + dividendes + capital + frais : "
-                    "hors périmètre 3H-C."
-                )
             consolider_interets_dividendes_capital_2025(
                 dossier,
                 interets_effectif,
@@ -3101,12 +3096,13 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         frais_profil = ProfilFraisPlacement2025(**contenu.get("profil_frais_placement", {}))
     except (TypeError, ValueError) as erreur:
         raise ValueError("Profil frais de placement enregistré invalide.") from erreur
-    verifier_confirmation_frais_2025(frais_profil, dossier, interets_profil, dividendes_profil, capital_profil)
-    if combinaison_3h_a_chargee and capital_profil.confirme and frais_profil != ProfilFraisPlacement2025():
-        raise ValueError(
-            "Combinaison intérêts + dividendes + capital + frais : "
-            "hors périmètre 3H-C."
-        )
+    verifier_confirmation_frais_2025(
+        frais_profil,
+        dossier,
+        interets_profil,
+        dividendes_profil,
+        capital_profil,
+    )
     try:
         pertes_profil = ProfilReportsPertes2025(**contenu.get("profil_reports_pertes", {}))
     except (TypeError, ValueError) as erreur:
