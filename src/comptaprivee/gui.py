@@ -198,6 +198,7 @@ from .tax_documented_interest_2025 import NATURES_INTERETS_DOCUMENTES
 from .tax_capital_gains_2025 import ProfilCapital2025, CHAMPS_CAPITAL, consolider_capital_2025
 from .tax_dividend_income_2025 import ProfilDividendes2025, consolider_dividendes_2025
 from .tax_interest_income_2025 import ProfilInterets2025, consolider_interets_2025
+from .tax_investment_combinations_2025 import consolider_interets_dividendes_2025
 from .tax_replacement_benefits_2025 import ProfilRemplacement2025, NATURES_REMPLACEMENT, consolider_remplacement_2025
 from .tax_rrsp_withdrawals_2025 import ProfilRetraits2025, NATURES_RETRAITS, consolider_retraits_2025
 from .tax_pension_income_2025 import ProfilPensions2025, NATURES_PENSIONS, consolider_pensions_2025, lignes_resume_pensions_2025
@@ -3105,6 +3106,120 @@ class ApplicationComptaPrivee(tk.Tk):
                 dialogue.destroy()
             ttk.Button(formulaire.actions,text="Fermer",command=dialogue.destroy).pack(side="right")
             ttk.Button(formulaire.actions,text="Valider et appliquer",command=appliquer_capital).pack(side="right")
+            organiser_boutons(formulaire.actions)
+
+        def ouvrir_interets_dividendes_3h_a_2025() -> None:
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Intérêts + dividendes 2025 — Bloc 3H-A")
+            dimensionner_fenetre(dialogue, 840, 700)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(0, weight=1)
+
+            textes = [
+                "Combinaison contrôlée 2025 — Bloc 3H-A",
+                "Une même paire T5/RL-3 peut contenir simultanément des intérêts canadiens et des dividendes canadiens.",
+                "Intérêts : T5 13 = RL-3 D. Dividendes : T5 10/11/12/24/25/26 et RL-3 A1/A2/B/C.",
+                "La FSS Québec 446 est recalculée sur une assiette globale : intérêts ligne 130 + dividendes réels 166/167. La majoration des dividendes est exclue.",
+                "Ce premier périmètre 3H-A exclut les autres placements, frais 3E, reports 3F, étranger 3G, pensions, retraits et prestations.",
+            ]
+            for i, texte in enumerate(textes):
+                ttk.Label(cadre, text=texte, wraplength=560, justify="left").grid(
+                    row=i, column=0, sticky="w", pady=8
+                )
+
+            source_interets = tk.StringVar(value=interets_profil_courant.source)
+            source_dividendes = tk.StringVar(value=dividendes_profil_courant.source)
+            confirme_interets = tk.BooleanVar(value=interets_profil_courant.confirme)
+            confirme_dividendes = tk.BooleanVar(value=dividendes_profil_courant.confirme)
+
+            ttk.Label(cadre, text="Justificatif des intérêts").grid(row=6, column=0, sticky="w")
+            ttk.Entry(cadre, name="source_interets_3h", textvariable=source_interets).grid(
+                row=7, column=0, sticky="ew", pady=6
+            )
+            tk.Checkbutton(
+                cadre,
+                name="confirmation_interets_3h",
+                variable=confirme_interets,
+                wraplength=560,
+                justify="left",
+                text="Je confirme la portion intérêts T5 13 / RL-3 D, en CAD, titulaire unique, après revue du feuillet complet.",
+            ).grid(row=8, column=0, sticky="w", pady=8)
+
+            ttk.Label(cadre, text="Justificatif des dividendes").grid(row=9, column=0, sticky="w")
+            ttk.Entry(cadre, name="source_dividendes_3h", textvariable=source_dividendes).grid(
+                row=10, column=0, sticky="ew", pady=6
+            )
+            tk.Checkbutton(
+                cadre,
+                name="confirmation_dividendes_3h",
+                variable=confirme_dividendes,
+                wraplength=560,
+                justify="left",
+                text="Je confirme la portion dividendes T5/RL-3, les majorations/crédits et l'absence de cas complexes.",
+            ).grid(row=11, column=0, sticky="w", pady=8)
+
+            def deconfirmer_combinaison(*_):
+                confirme_interets.set(False)
+                confirme_dividendes.set(False)
+
+            source_interets.trace_add("write", deconfirmer_combinaison)
+            source_dividendes.trace_add("write", deconfirmer_combinaison)
+
+            dossier_apercu = self.dossier_fiscal_valide_courant
+
+            def appliquer_combinaison():
+                nonlocal pertes_profil_courant, frais_profil_courant
+                nonlocal placement_etranger_profil_courant, credit_etranger_profil_courant
+                nonlocal retraits_profil_courant, remplacement_profil_courant
+                nonlocal capital_profil_courant, dividendes_profil_courant
+                nonlocal interets_profil_courant, pensions_profil_courant
+                nonlocal rqap_confirme_courant, ae_confirme_courant
+                nonlocal rrq_rpc_confirme_courant, psv_confirme_courant
+                nonlocal derniere_estimation, dernier_rapport_pdf
+                nonlocal rapport_fiscal_a_reexporter
+
+                try:
+                    if dossier_apercu is None or dossier_apercu is not self.dossier_fiscal_valide_courant:
+                        raise ValueError("Le dossier a changé; préparez-le puis rouvrez le formulaire 3H-A.")
+                    profil_i = ProfilInterets2025(
+                        source=source_interets.get().strip(),
+                        confirme=confirme_interets.get(),
+                    )
+                    profil_d = ProfilDividendes2025(
+                        source=source_dividendes.get().strip(),
+                        confirme=confirme_dividendes.get(),
+                    )
+                    consolider_interets_dividendes_2025(dossier_apercu, profil_i, profil_d)
+                except (ValueError, TypeError) as erreur:
+                    messagebox.showerror("Combinaison 3H-A invalide", str(erreur), parent=dialogue)
+                    return
+
+                interets_profil_courant = profil_i
+                dividendes_profil_courant = profil_d
+                capital_profil_courant = ProfilCapital2025()
+                frais_profil_courant = ProfilFraisPlacement2025()
+                pertes_profil_courant = ProfilReportsPertes2025()
+                placement_etranger_profil_courant = ProfilPlacementEtranger2025()
+                credit_etranger_profil_courant = ProfilCreditImpotEtranger2025()
+                remplacement_profil_courant = ProfilRemplacement2025()
+                retraits_profil_courant = ProfilRetraits2025()
+                pensions_profil_courant = ProfilPensions2025()
+                rqap_confirme_courant = False
+                ae_confirme_courant = False
+                rrq_rpc_confirme_courant = False
+                psv_confirme_courant = False
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Combinaison 3H-A validée; recalculez l'estimation.")
+                dialogue.destroy()
+
+            ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right")
+            ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer_combinaison).pack(side="right")
             organiser_boutons(formulaire.actions)
 
         def ouvrir_dividendes_2025() -> None:
@@ -11552,6 +11667,8 @@ class ApplicationComptaPrivee(tk.Tk):
         ttk.Button(zone_actions, text="Frais de placement 2025 (3E)", command=ouvrir_frais_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Reports de pertes en capital 2025 (3F)", command=ouvrir_pertes_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Placements et impôts étrangers 2025 (3G)", command=ouvrir_etranger_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Intérêts + dividendes 2025 (3H-A)",
+                   command=ouvrir_interets_dividendes_3h_a_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Dividendes canadiens 2025",
                    command=ouvrir_dividendes_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Intérêts canadiens 2025",

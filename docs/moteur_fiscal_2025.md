@@ -823,7 +823,7 @@ dans cette étape; arrêt après son commit, son push et sa CI pour bilan.
 | 3E — frais de placement et annexe N | 22100/231, 260/276, reports 252 | Utilisation des emprunts, frais admissibles, revenus de placement des blocs précédents, soldes distincts; aucune double déduction de frais de transaction |
 | 3F — reports de pertes en capital | 25300/290, T1A/TP-1012.A, TP-729, soldes historiques | 3D et 3E; taux d'origine, avis de cotisation, ordre d'utilisation, plafonds et non-double consommation |
 | 3G — placements et impôts étrangers | Revenus bruts/devises, T2209/40500, TP-772/409, déclarations de biens étrangers | Pays, convention, limites de crédit et déductions connexes; pas de conversion ou crédit implicites |
-| 3H — combinaisons contrôlées | Plusieurs sources, placements + retraite/remplacement | Assiette FSS globale, récupérations AE/PSV, crédits/annexe B/RAMQ recalculés; validation de chaque combinaison avant ouverture |
+| 3H — combinaisons contrôlées | 3H-A livré : intérêts + dividendes canadiens sur une même paire T5/RL-3; autres combinaisons à ouvrir progressivement | Assiette FSS globale, récupérations AE/PSV, crédits/annexe B/RAMQ recalculés; validation de chaque combinaison avant ouverture |
 
 ### Contrat du premier sous-bloc 3A
 
@@ -887,7 +887,7 @@ Suite complète finale : **2 461 tests réussis**, 8 avertissements de
 dépréciation existants, aucun test retiré ou désactivé. Le code bénéficiaire
 T5 23 est aussi distingué des revenus dans le parcours rente 2E; les
 scénarios avant/après 65 ans restent identiques et le code conjoint reste
-refusé. Les Blocs 3B à 3G sont maintenant livrés; 3H reste non implémenté.
+refusé. Les Blocs 3B à 3G sont maintenant livrés; 3H-A est maintenant livré et les autres combinaisons 3H restent à implémenter.
 
 ### Audit préalable du Bloc 3B — intérêts documentés, 2025
 
@@ -1302,4 +1302,65 @@ Contrôle de non-régression ciblé : **549 tests réussis**, 5 avertissements.
 Suite complète finale `python -m pytest -q` : **3 094 tests réussis**,
 8 avertissements de dépréciation existants, aucun échec, aucun test retiré
 ou désactivé (120,62 s en local). Les avertissements SWIG/PyMuPDF et
-`openpyxl` sont préexistants et non bloquants. Le Bloc 3H reste non commencé.
+`openpyxl` sont préexistants et non bloquants. Le Bloc 3G est clos; la
+première combinaison contrôlée est livrée dans 3H-A ci-dessous.
+
+
+### Bloc 3H-A — combinaison contrôlée intérêts + dividendes canadiens 2025
+
+Première ouverture du Bloc 3H sur le socle 3G `5ab4086`. Le périmètre reste
+volontairement étroit : **une même paire T5/RL-3**, un seul titulaire, montants
+CAD, avec intérêts canadiens T5 **13** / RL-3 **D** et dividendes canadiens
+T5 **10/11/12/24/25/26** / RL-3 **A1/A2/B/C**. Les deux profils doivent être
+confirmés explicitement; une simple présence de cases ne détourne pas les
+parcours historiques 3A ou 3C.
+
+Le moteur applique successivement les intérêts et les dividendes sans double
+compter le revenu. Les lignes fédérales **12100** et **12000/12010**, ainsi que
+les lignes Québec **130**, **128**, **166** et **167**, conservent les règles
+déjà validées dans 3A et 3C. Les crédits pour dividendes fédéral **40425** et
+Québec **415** restent appliqués séparément.
+
+La cotisation au Fonds des services de santé Québec est recalculée une seule
+fois sur une assiette globale du parcours combiné :
+**ligne 130 intérêts + lignes 166 + 167 dividendes réels**. La majoration des
+dividendes incluse à la ligne 128 est donc exclue de cette assiette. Le résultat
+global est porté une seule fois dans le rapprochement afin d'éviter toute
+double cotisation. Un cas synthétique de 10 000 $ d'intérêts et 10 000 $ de
+dividendes réels donne une assiette FSS de 20 000 $ et une cotisation de
+**18,70 $**, alors que chaque composante prise isolément demeure sous le seuil.
+
+La chaîne locale 3H-A est intégrée de bout en bout : détection prudente,
+consolidation, estimation, rapprochement, résumé, trace de calcul, rapport PDF,
+sauvegarde JSON, rechargement et formulaire GUI dédié
+« Intérêts + dividendes 2025 (3H-A) ». Modifier les sources du formulaire
+révoque les deux confirmations; appliquer une nouvelle combinaison invalide
+l'estimation et empêche l'export du PDF précédent.
+
+Le stockage conserve les deux profils existants plutôt que d'introduire un
+nouveau schéma JSON. À la sauvegarde et au rechargement, la présence simultanée
+des profils intérêts et dividendes confirmés est validée par le consolidateur
+3H-A. Les anciens dossiers 3A/3C continuent d'utiliser leurs garde-fous
+historiques lorsqu'un seul profil est confirmé.
+
+Les autres combinaisons restent exclues de 3H-A : intérêts/dividendes avec
+gains ou pertes en capital, frais de placement, reports de pertes, placements
+étrangers, pensions, retraits ou prestations. Elles devront être ouvertes
+séparément avec leurs interactions propres, notamment FSS globale, récupérations
+AE/PSV, crédits, annexe B et RAMQ.
+
+La détection 3H-A est tolérante aux `Decimal` non finis (`NaN`, `sNaN`,
+`Infinity`) afin de ne pas lever `decimal.InvalidOperation` avant les
+validateurs métiers responsables des montants invalides. Cette correction
+préserve les erreurs métier attendues dans les parcours RRQ/RPC, PSV et
+pensions.
+
+**Validation de livraison 3H-A : 26 nouveaux tests** (23 moteur/stockage/
+trace/PDF et 3 GUI). Contrôles ciblés : 36 tests GUI + stockage, 312 tests
+moteur/GUI élargis et **247 tests GUI** exécutés ensemble. Suite complète
+finale `python -m pytest -q` : **3 120 tests réussis**, 8 avertissements de
+dépréciation existants, aucun échec et aucune erreur (108,56 s en local).
+Les avertissements SWIG/PyMuPDF et `openpyxl` restent non bloquants.
+
+Le Bloc 3H n'est donc plus vide : **3H-A est livré**. Les prochaines
+combinaisons 3H devront rester incrémentales et être validées une par une.

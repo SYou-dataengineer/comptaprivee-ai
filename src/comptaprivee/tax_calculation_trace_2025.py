@@ -1441,6 +1441,20 @@ def construire_trace_calcul_fiscal_2025(
             lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"DIVIDENDES", "Dividendes " + code, estimation.profil_dividendes.source, "Réel 166/167; imposable 12000/128; 12010 inclus dans 12000; crédits non remboursables distincts du revenu", getattr(r, "ligne_" + code)))
         lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"QUÉBEC", "FSS dividendes 446", "Annexe F 2025", ("Assiette = réels 166 + 167 - frais 231; majoration exclue; sans abattement" if estimation.frais_placement.present else "Assiette = réels 166 + 167; majoration exclue; sans abattement"), r.cotisation_fss))
 
+    if estimation.interets.present and estimation.dividendes.present:
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Impôt total préliminaire",
+            _ligne(
+                0,
+                "COMBINAISON 3H-A",
+                "FSS combinée 3H-A ligne 446",
+                "Annexe F 2025",
+                "Assiette globale = 130 + 166 + 167; majoration exclue; cotisation portée une seule fois",
+                estimation.interets.cotisation_fss,
+            ),
+        )
+
     if estimation.frais_placement.present:
         r = estimation.frais_placement
         for libelle, valeur, formule in (

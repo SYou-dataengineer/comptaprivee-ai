@@ -94,6 +94,7 @@ from .tax_investment_expenses_2025 import ProfilFraisPlacement2025, valider_prof
 from .tax_capital_gains_2025 import ProfilCapital2025, valider_profil_capital_2025, consolider_capital_2025
 from .tax_dividend_income_2025 import ProfilDividendes2025, valider_profil_dividendes_2025, consolider_dividendes_2025
 from .tax_interest_income_2025 import ProfilInterets2025, valider_profil_interets_2025, consolider_interets_2025
+from .tax_investment_combinations_2025 import consolider_interets_dividendes_2025
 from .tax_foreign_investment_2025 import (
     ProfilPlacementEtranger2025,
     ProfilCreditImpotEtranger2025,
@@ -2484,7 +2485,20 @@ def sauvegarder_dossier_fiscal(
     valider_profil_dividendes_2025(dividendes_effectif)
     if estimation and dividendes_effectif != estimation.profil_dividendes:
         raise ValueError("Le profil dividendes diffère de l’estimation.")
-    if dividendes_effectif.confirme:
+    interets_effectif_preliminaire = (
+        profil_interets
+        if profil_interets is not None
+        else (
+            estimation.profil_interets
+            if estimation is not None
+            else ProfilInterets2025()
+        )
+    )
+    combinaison_3h_a = (
+        dividendes_effectif.confirme
+        and interets_effectif_preliminaire.confirme
+    )
+    if dividendes_effectif.confirme and not combinaison_3h_a:
         if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or any(p and p != type(p)() for p in (profil_pensions, profil_retraits, profil_remplacement, profil_interets)):
             raise ValueError("Dividendes avec autres placements/prestations : hors périmètre 3C.")
         consolider_dividendes_2025(dossier, dividendes_effectif)
@@ -2532,11 +2546,32 @@ def sauvegarder_dossier_fiscal(
             "sans profil de placement étranger."
         )
 
-    interets_effectif = profil_interets if profil_interets is not None else (estimation.profil_interets if estimation else ProfilInterets2025())
+    interets_effectif = interets_effectif_preliminaire
     valider_profil_interets_2025(interets_effectif)
     if estimation and interets_effectif != estimation.profil_interets:
         raise ValueError("Le profil intérêts diffère de l’estimation.")
-    if interets_effectif.confirme:
+    if combinaison_3h_a:
+        if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)):
+            raise ValueError("Combinaison intérêts + dividendes avec autre parcours : hors périmètre 3H-A.")
+        if any(
+            p is not None and p != type(p)()
+            for p in (
+                profil_pensions,
+                profil_retraits,
+                profil_remplacement,
+                profil_capital,
+                profil_frais_placement,
+                profil_reports_pertes,
+                profil_placement_etranger,
+            )
+        ):
+            raise ValueError("Combinaison intérêts + dividendes avec autre parcours : hors périmètre 3H-A.")
+        consolider_interets_dividendes_2025(
+            dossier,
+            interets_effectif,
+            dividendes_effectif,
+        )
+    elif interets_effectif.confirme:
         if any((rqap_confirme, ae_confirme, rrq_rpc_confirme, psv_confirme)) or any(p and p.confirme for p in (profil_pensions, profil_retraits, profil_remplacement)):
             raise ValueError("Intérêts avec autres prestations : hors périmètre 3A.")
         consolider_interets_2025(dossier, interets_effectif)
@@ -2993,19 +3028,32 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     except (TypeError, ValueError) as erreur:
         raise ValueError("Profil intérêts enregistré invalide.") from erreur
     valider_profil_interets_2025(interets_profil)
-    if interets_profil.confirme:
-        if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc, pensions_profil.confirme, retraits_profil.confirme, remplacement_profil.confirme)):
-            raise ValueError("Intérêts avec autres prestations : hors périmètre 3A.")
-        consolider_interets_2025(dossier, interets_profil)
+    combinaison_3h_a_chargee = interets_profil.confirme
     try:
         dividendes_profil = ProfilDividendes2025(**contenu.get("profil_dividendes", {}))
     except (TypeError, ValueError) as erreur:
         raise ValueError("Profil dividendes enregistré invalide.") from erreur
     valider_profil_dividendes_2025(dividendes_profil)
-    if dividendes_profil.confirme:
-        if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc)) or any(p != type(p)() for p in (pensions_profil, retraits_profil, remplacement_profil, interets_profil)):
-            raise ValueError("Dividendes avec autres placements/prestations : hors périmètre 3C.")
-        consolider_dividendes_2025(dossier, dividendes_profil)
+    combinaison_3h_a_chargee = (
+        combinaison_3h_a_chargee and dividendes_profil.confirme
+    )
+    if combinaison_3h_a_chargee:
+        if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc, pensions_profil.confirme, retraits_profil.confirme, remplacement_profil.confirme)):
+            raise ValueError("Combinaison intérêts + dividendes avec autre parcours : hors périmètre 3H-A.")
+        consolider_interets_dividendes_2025(
+            dossier,
+            interets_profil,
+            dividendes_profil,
+        )
+    else:
+        if interets_profil.confirme:
+            if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc, pensions_profil.confirme, retraits_profil.confirme, remplacement_profil.confirme)):
+                raise ValueError("Intérêts avec autres prestations : hors périmètre 3A.")
+            consolider_interets_2025(dossier, interets_profil)
+        if dividendes_profil.confirme:
+            if any((confirme_psv, confirme, confirme_ae, confirme_rrq_rpc)) or any(p != type(p)() for p in (pensions_profil, retraits_profil, remplacement_profil, interets_profil)):
+                raise ValueError("Dividendes avec autres placements/prestations : hors périmètre 3C.")
+            consolider_dividendes_2025(dossier, dividendes_profil)
     try:
         capital_profil = ProfilCapital2025(**contenu.get("profil_capital", {}))
     except (TypeError, ValueError) as erreur:
