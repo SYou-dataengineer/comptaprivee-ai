@@ -18,16 +18,21 @@ def ouvrir_reports_pertes_2025(
     profils_combinaison=(),
 ):
     dialogue = tk.Toplevel(parent)
-    combinaison_3h_e = (
+    combinaison_3h_base = (
         len(profils_combinaison) == 2
         and all(getattr(p, 'confirme', False) for p in profils_combinaison)
         and getattr(capital, 'confirme', False)
-        and frais == type(frais)()
     )
+    combinaison_3h_f = combinaison_3h_base and frais != type(frais)()
+    combinaison_3h_e = combinaison_3h_base and frais == type(frais)()
     dialogue.title(
-        'Reports de pertes en capital 2025 (3F / 3H-E)'
-        if combinaison_3h_e
-        else 'Reports de pertes en capital 2025 (3F)'
+        'Reports de pertes en capital 2025 (3F / 3H-F)'
+        if combinaison_3h_f
+        else (
+            'Reports de pertes en capital 2025 (3F / 3H-E)'
+            if combinaison_3h_e
+            else 'Reports de pertes en capital 2025 (3F)'
+        )
     )
     dimensionner_fenetre(dialogue, 850, 700)
     dialogue.transient(parent)
@@ -37,16 +42,26 @@ def ouvrir_reports_pertes_2025(
     cadre.columnconfigure(0, weight=1)
     textes = (
         (
-            'Reports de pertes en capital 2025 — Bloc 3F / combinaison 3H-E'
-            if combinaison_3h_e
-            else 'Reports de pertes en capital 2025 — Bloc 3F'
+            'Reports de pertes en capital 2025 — Bloc 3F / combinaison 3H-F'
+            if combinaison_3h_f
+            else (
+                'Reports de pertes en capital 2025 — Bloc 3F / combinaison 3H-E'
+                if combinaison_3h_e
+                else 'Reports de pertes en capital 2025 — Bloc 3F'
+            )
         ),
         (
-            'Combinaison 3H-E active : intérêts + dividendes + capital + reports de pertes. '
-            'Les reports 25300/290 réduisent uniquement le revenu imposable et ne modifient '
-            'ni le revenu total/net ni la FSS.'
-            if combinaison_3h_e
-            else 'Vente 3D validée, avec ou sans emploi et frais 3E. Pertes ordinaires 2004–2024 : soldes NETS au taux 50 %, séparés ARC/Québec, après toutes utilisations. Ne pas saisir des pertes brutes ni diviser encore par deux.'
+            'Combinaison 3H-F active : intérêts + dividendes + capital + frais + reports. '
+            'La ligne 231 réduit le revenu net et l’assiette FSS; 25300/290 réduisent '
+            'le revenu imposable; 252/276 restent des interactions distinctes de l’annexe N.'
+            if combinaison_3h_f
+            else (
+                'Combinaison 3H-E active : intérêts + dividendes + capital + reports de pertes. '
+                'Les reports 25300/290 réduisent uniquement le revenu imposable et ne modifient '
+                'ni le revenu total/net ni la FSS.'
+                if combinaison_3h_e
+                else 'Vente 3D validée, avec ou sans emploi et frais 3E. Pertes ordinaires 2004–2024 : soldes NETS au taux 50 %, séparés ARC/Québec, après toutes utilisations. Ne pas saisir des pertes brutes ni diviser encore par deux.'
+            )
         ),
         'Exemple de registre : 2018;1000;800 | 2024;500;600. Année, solde fédéral, solde Québec. Les plus anciennes pertes sont utilisées automatiquement en premier dans chaque juridiction. Vide seulement si aucun solde.',
         '25300 et 290 limités aux gains imposables 12700/139 et aux soldes. Seul le revenu imposable change : revenu net, revenu total, retenues et FSS restent inchangés. Annexe N : 276 peut réintégrer une partie de 290; une demande 252 excessive sera refusée.',

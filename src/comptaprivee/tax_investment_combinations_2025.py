@@ -260,7 +260,13 @@ def consolider_interets_dividendes_capital_2025(
 def lignes_resume_interets_dividendes_2025(combinaison: CombinaisonInteretsDividendes2025) -> list[str]:
     if not combinaison.present:
         return []
-    if combinaison.avec_capital and combinaison.avec_frais:
+    if combinaison.avec_capital and combinaison.avec_frais and combinaison.avec_reports:
+        bloc = "3H-F"
+        formule = (
+            "130 + 166 + 167 + 139 - 231; "
+            "reports 25300/290 et 252/276 sans effet FSS"
+        )
+    elif combinaison.avec_capital and combinaison.avec_frais:
         bloc = "3H-D"
         formule = "130 + 166 + 167 + 139 - 231; majoration exclue"
     elif combinaison.avec_capital and combinaison.avec_reports:
@@ -293,12 +299,19 @@ def lignes_resume_interets_dividendes_2025(combinaison: CombinaisonInteretsDivid
             "Gain en capital 3D validé : seule la ligne 139 positive entre dans "
             "l'assiette FSS; une perte 2025 ne réduit pas les intérêts/dividendes."
         )
-    if combinaison.avec_capital and combinaison.avec_frais:
+    if combinaison.avec_capital and combinaison.avec_frais and combinaison.avec_reports:
+        lignes.append(
+            "Bloc 3H-F : la ligne 231 réduit le revenu net et l'assiette FSS; "
+            "les reports 25300/290 réduisent seulement le revenu imposable. "
+            "Les lignes 252/276 de l'annexe N restent distinctes et n'ajoutent "
+            "aucune seconde réduction de FSS."
+        )
+    elif combinaison.avec_capital and combinaison.avec_frais:
         lignes.append(
             "Bloc 3H-D : la ligne 231 réduit l'assiette FSS après ajout de la ligne "
             "139; la ligne 252 reste sans effet sur cette assiette."
         )
-    if combinaison.avec_capital and combinaison.avec_reports:
+    if combinaison.avec_capital and combinaison.avec_reports and not combinaison.avec_frais:
         lignes.append(
             "Bloc 3H-E : les reports 25300/290 réduisent seulement le revenu "
             "imposable; ils ne modifient ni le revenu total/net ni l'assiette FSS."

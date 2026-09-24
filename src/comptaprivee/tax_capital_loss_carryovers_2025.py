@@ -117,7 +117,7 @@ def appliquer_reports_pertes_2025(p, revenu, capital, frais):
         raise ValueError('25300 dépasse le gain imposable 12700 ou le solde fédéral.')
     if qc > min(capital.ligne_139, sum((r.ouverture_quebec for r in ouverture), ZERO)):
         raise ValueError('290 dépasse le gain imposable 139 ou le solde Québec.')
-    n36 = capital.ligne_139
+    n36 = frais.revenus_n36 if frais.present else capital.ligne_139
     rajustement = max(ZERO, qc - max(ZERO, n36 - frais.ligne_231))
     if frais.ligne_252 > max(ZERO, n36 - frais.ligne_231 - qc):
         raise ValueError('Report 252 excessif après pertes N52; revalidez la demande 3E, sans double utilisation.')

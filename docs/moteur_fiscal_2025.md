@@ -823,7 +823,7 @@ dans cette étape; arrêt après son commit, son push et sa CI pour bilan.
 | 3E — frais de placement et annexe N | 22100/231, 260/276, reports 252 | Utilisation des emprunts, frais admissibles, revenus de placement des blocs précédents, soldes distincts; aucune double déduction de frais de transaction |
 | 3F — reports de pertes en capital | 25300/290, T1A/TP-1012.A, TP-729, soldes historiques | 3D et 3E; taux d'origine, avis de cotisation, ordre d'utilisation, plafonds et non-double consommation |
 | 3G — placements et impôts étrangers | Revenus bruts/devises, T2209/40500, TP-772/409, déclarations de biens étrangers | Pays, convention, limites de crédit et déductions connexes; pas de conversion ou crédit implicites |
-| 3H — combinaisons contrôlées | 3H-A livré : intérêts + dividendes; 3H-B livré : intérêts + dividendes + frais; 3H-C livré : intérêts + dividendes + capital; 3H-D livré : intérêts + dividendes + capital + frais; 3H-E livré : intérêts + dividendes + capital + reports de pertes | Assiette FSS globale recalculée selon la combinaison; déductions/crédits et interactions propres validés avant ouverture |
+| 3H — combinaisons contrôlées | 3H-A livré : intérêts + dividendes; 3H-B livré : intérêts + dividendes + frais; 3H-C livré : intérêts + dividendes + capital; 3H-D livré : intérêts + dividendes + capital + frais; 3H-E livré : intérêts + dividendes + capital + reports de pertes; 3H-F livré : intérêts + dividendes + capital + frais + reports de pertes | Assiette FSS globale recalculée selon la combinaison; déductions/crédits et interactions propres validés avant ouverture |
 
 ### Contrat du premier sous-bloc 3A
 
@@ -1558,4 +1558,59 @@ dépréciation existants selon les sous-ensembles.
 Suite complète finale `python -m pytest -q` : **3 163 tests réussis**,
 **8 avertissements** de dépréciation existants, aucun échec ni erreur
 (**101,82 s** en local). Les avertissements SWIG/PyMuPDF et `openpyxl` restent
+non bloquants.
+
+
+### Bloc 3H-F — intérêts + dividendes + capital + frais + reports de pertes 2025
+
+Le Bloc 3H-F réunit les parcours déjà validés 3H-D et 3H-E : intérêts et
+dividendes canadiens sur une paire T5/RL-3, une vente simple T5008/RL-18,
+des frais de placement 3E et des reports de pertes en capital 3F. Aucun nouveau
+schéma de stockage n'est ajouté; les profils existants sont combinés et leurs
+empreintes restent vérifiées.
+
+Le périmètre initial conserve seulement les frais de gestion/garde documentés
+lorsqu'un gain ou une perte en capital est présent. Les intérêts d'emprunt avec
+capital restent refusés. Les placements étrangers, pensions, retraits,
+prestations et autres parcours combinés restent exclus.
+
+L'ordre de calcul est contrôlé : les revenus de placement alimentent d'abord le
+revenu, puis la ligne 231 réduit le revenu net Québec et l'assiette FSS. Les
+reports 25300/290 réduisent ensuite le revenu imposable seulement. Les lignes
+252 et 276 de l'annexe N restent distinctes afin d'éviter toute double
+utilisation d'un report. Pour 3H-F, le rajustement 276 s'appuie sur le revenu
+de placement N36 global de la combinaison, et non sur la seule ligne 139 du
+capital.
+
+Cas synthétique principal : 10 000 $ d'intérêts, 10 000 $ de dividendes réels,
+1 220 $ de gain imposable, 1 500 $ de frais de gestion, puis des reports de
+1 000 $ au fédéral et 800 $ au Québec. Le revenu total reste **23 870 $**,
+le revenu net devient **22 370 $** dans les deux juridictions, puis le revenu
+imposable devient **21 370 $** au fédéral et **21 570 $** au Québec.
+L'assiette FSS reste **19 720 $** et la cotisation **15,90 $**; les reports
+25300/290 et les mouvements 252/276 n'ajoutent aucune seconde réduction de FSS.
+
+Un scénario annexe N avec solde Québec de frais, ligne 252 et ligne 290 vérifie
+que les deux mécanismes restent séparés. Un scénario de frais très élevés
+vérifie aussi le rajustement 276 calculé sur le N36 global et l'absence de
+revenu imposable Québec négatif. Une demande 252 excessive après prise en
+compte de la perte 290 reste refusée.
+
+La persistance JSON sauvegarde et recharge les cinq profils de la combinaison
+(intérêts, dividendes, capital, frais et reports), puis reproduit le même
+revenu, les mêmes frais, les mêmes reports et la même FSS au recalcul. Le
+résumé écran, la trace de calcul et le PDF identifient explicitement le
+**Bloc 3H-F**. Dans l'interface, le formulaire 3F reconnaît le contexte 3H-F;
+toute modification des reports invalide l'estimation et le PDF antérieurs.
+Une modification des frais révoque les confirmations de reports afin de forcer
+leur revalidation avec la nouvelle annexe N.
+
+**Validation de livraison 3H-F : 9 nouveaux tests nets** depuis 3H-E. Les
+contrôles ciblés ont atteint **361 tests réussis**, puis **414 tests réussis**;
+le lot GUI élargi a atteint **328 tests réussis**, chaque fois avec
+**5 avertissements** de dépréciation existants.
+
+Suite complète finale `python -m pytest -q` : **3 172 tests réussis**,
+**8 avertissements** de dépréciation existants, aucun échec ni erreur
+(**104,98 s** en local). Les avertissements SWIG/PyMuPDF et `openpyxl` restent
 non bloquants.

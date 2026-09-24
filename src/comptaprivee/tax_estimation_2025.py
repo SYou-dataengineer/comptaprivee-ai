@@ -405,14 +405,6 @@ def calculer_estimation_fiscale_2025(
                     "hors périmètre 3H-D."
                 )
             if (
-                profil_reports_pertes != ProfilReportsPertes2025()
-                and profil_frais_placement != ProfilFraisPlacement2025()
-            ):
-                raise ValueError(
-                    "Combinaison intérêts + dividendes + capital + frais + reports : "
-                    "hors périmètre 3H-F."
-                )
-            if (
                 parcours_etranger
                 or profil_pensions != ProfilPensions2025()
                 or profil_retraits != ProfilRetraits2025()

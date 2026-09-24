@@ -3042,16 +3042,27 @@ class ApplicationComptaPrivee(tk.Tk):
                 pertes_profil_courant = profil
                 derniere_estimation = dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
-                combinaison_3h_e_active = (
+                combinaison_3h_base_active = (
                     interets_profil_courant.confirme
                     and dividendes_profil_courant.confirme
                     and capital_profil_courant.confirme
+                )
+                combinaison_3h_f_active = (
+                    combinaison_3h_base_active
+                    and frais_profil_courant != ProfilFraisPlacement2025()
+                )
+                combinaison_3h_e_active = (
+                    combinaison_3h_base_active
                     and frais_profil_courant == ProfilFraisPlacement2025()
                 )
                 self.statut.set(
-                    "Combinaison 3H-E validée; recalculez l'estimation et revalidez les crédits."
-                    if combinaison_3h_e_active
-                    else "Reports de pertes validés; recalculez l'estimation."
+                    "Combinaison 3H-F validée; recalculez l'estimation et revalidez les crédits."
+                    if combinaison_3h_f_active
+                    else (
+                        "Combinaison 3H-E validée; recalculez l'estimation et revalidez les crédits."
+                        if combinaison_3h_e_active
+                        else "Reports de pertes validés; recalculez l'estimation."
+                    )
                 )
             ouvrir_reports_pertes_2025(
                 fenetre,

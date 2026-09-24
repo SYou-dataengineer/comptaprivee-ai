@@ -1442,7 +1442,18 @@ def construire_trace_calcul_fiscal_2025(
         lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"QUÉBEC", "FSS dividendes 446", "Annexe F 2025", ("Assiette = réels 166 + 167 - frais 231; majoration exclue; sans abattement" if estimation.frais_placement.present else "Assiette = réels 166 + 167; majoration exclue; sans abattement"), r.cotisation_fss))
 
     if estimation.interets.present and estimation.dividendes.present:
-        if estimation.capital.present and estimation.frais_placement.present:
+        if (
+            estimation.capital.present
+            and estimation.frais_placement.present
+            and estimation.reports_pertes.present
+        ):
+            bloc_combinaison = "3H-F"
+            formule_combinaison = (
+                "Assiette globale = 130 + 166 + 167 + 139 - 231; majoration exclue; "
+                "reports 25300/290 et annexe N 252/276 sans effet FSS; "
+                "cotisation portée une seule fois"
+            )
+        elif estimation.capital.present and estimation.frais_placement.present:
             bloc_combinaison = "3H-D"
             formule_combinaison = (
                 "Assiette globale = 130 + 166 + 167 + 139 - 231; majoration exclue; "

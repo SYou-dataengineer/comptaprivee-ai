@@ -2570,11 +2570,6 @@ def sauvegarder_dossier_fiscal(
                     "Combinaison intérêts + dividendes + reports sans capital : "
                     "hors périmètre 3H-E."
                 )
-            if frais_effectif != ProfilFraisPlacement2025():
-                raise ValueError(
-                    "Combinaison intérêts + dividendes + capital + frais + reports : "
-                    "hors périmètre 3H-F."
-                )
         if capital_effectif.confirme:
             consolider_interets_dividendes_capital_2025(
                 dossier,

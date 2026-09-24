@@ -140,7 +140,7 @@ def calculer_frais_placement_2025(p, revenu, interets, dividendes, capital, prof
     emprunt = montant_frais_2025(p.interets)
     if emprunt and combinaison_3h_d:
         raise ValueError(
-            '3H-D : intérêts d’emprunt avec capital présents hors périmètre initial; '
+            '3H-D/3H-F : intérêts d’emprunt avec capital présents hors périmètre initial; '
             'utilisez uniquement des frais de gestion/garde documentés.'
         )
     if emprunt and capital.present:
