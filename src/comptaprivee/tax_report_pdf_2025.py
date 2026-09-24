@@ -210,6 +210,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
         present=estimation.interets.present and estimation.dividendes.present,
         avec_frais=estimation.frais_placement.present,
         avec_capital=estimation.capital.present,
+        avec_reports=estimation.reports_pertes.present,
     )))
     lignes.extend(lignes_resume_dividendes_2025(estimation.dividendes, estimation.profil_dividendes))
     lignes.extend(lignes_resume_interets_2025(estimation.interets, estimation.profil_interets))

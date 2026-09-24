@@ -3010,24 +3010,58 @@ class ApplicationComptaPrivee(tk.Tk):
 
         def ouvrir_pertes_2025() -> None:
             dossier_apercu = self.dossier_fiscal_valide_courant
-            profils_apercu = (capital_profil_courant, frais_profil_courant)
+            profils_apercu = (
+                interets_profil_courant,
+                dividendes_profil_courant,
+                capital_profil_courant,
+                frais_profil_courant,
+            )
             def appliquer_pertes(profil):
                 nonlocal pertes_profil_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
-                if dossier_apercu is not self.dossier_fiscal_valide_courant or profils_apercu != (capital_profil_courant, frais_profil_courant):
-                    raise ValueError("Le dossier, la vente ou les frais ont changé; rouvrez le formulaire 3F.")
+                if dossier_apercu is not self.dossier_fiscal_valide_courant or profils_apercu != (
+                    interets_profil_courant,
+                    dividendes_profil_courant,
+                    capital_profil_courant,
+                    frais_profil_courant,
+                ):
+                    raise ValueError("Le dossier ou les placements ont changé; rouvrez le formulaire 3F.")
                 if not profil.confirme:
                     raise ValueError("Confirmez les reports de pertes et leur historique.")
-                calculer_estimation_fiscale_2025(dossier_apercu, profil_reports_pertes=profil,
-                    profil_capital=capital_profil_courant, profil_frais_placement=frais_profil_courant,
-                    ajustement_reer=ajustement_reer_courant, cotisations_rpa=cotisations_rpa_courantes,
+                calculer_estimation_fiscale_2025(
+                    dossier_apercu,
+                    profil_reports_pertes=profil,
+                    profil_interets=interets_profil_courant,
+                    profil_dividendes=dividendes_profil_courant,
+                    profil_capital=capital_profil_courant,
+                    profil_frais_placement=frais_profil_courant,
+                    ajustement_reer=ajustement_reer_courant,
+                    cotisations_rpa=cotisations_rpa_courantes,
                     cotisations_syndicales=cotisations_syndicales_courantes,
-                    cotisations_excedentaires=cotisations_excedentaires_courantes)
+                    cotisations_excedentaires=cotisations_excedentaires_courantes,
+                )
                 pertes_profil_courant = profil
                 derniere_estimation = dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
-                self.statut.set("Reports de pertes validés; recalculez l'estimation.")
-            ouvrir_reports_pertes_2025(fenetre, pertes_profil_courant, dossier_apercu,
-                capital_profil_courant, frais_profil_courant, appliquer_pertes)
+                combinaison_3h_e_active = (
+                    interets_profil_courant.confirme
+                    and dividendes_profil_courant.confirme
+                    and capital_profil_courant.confirme
+                    and frais_profil_courant == ProfilFraisPlacement2025()
+                )
+                self.statut.set(
+                    "Combinaison 3H-E validée; recalculez l'estimation et revalidez les crédits."
+                    if combinaison_3h_e_active
+                    else "Reports de pertes validés; recalculez l'estimation."
+                )
+            ouvrir_reports_pertes_2025(
+                fenetre,
+                pertes_profil_courant,
+                dossier_apercu,
+                capital_profil_courant,
+                frais_profil_courant,
+                appliquer_pertes,
+                (interets_profil_courant, dividendes_profil_courant),
+            )
 
         def ouvrir_frais_2025() -> None:
             dossier_apercu = self.dossier_fiscal_valide_courant

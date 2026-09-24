@@ -19,6 +19,7 @@ from tests.test_tax_investment_combinations_2025 import (
     profil_frais_3h_d,
 )
 from tests.test_tax_capital_gains_2025 import profil_capital
+from tests.test_tax_capital_loss_carryovers_2025 import profil_pertes
 
 
 def ouvrir_integration_3h_a(app):
@@ -403,6 +404,104 @@ def test_gui_3h_d_pdf_persistance_et_invalidation(application, monkeypatch, tmp_
     entree.insert(0, "1400")
     champ(dialogue, "confirmation_report_frais").invoke()
     champ(dialogue, "confirmation_frais_placement").invoke()
+    bouton(dialogue, "Valider et appliquer").invoke()
+    assert not dialogue.winfo_exists(), app.messages_test
+
+    bouton(resultat, "Exporter le rapport fiscal en PDF").invoke()
+    assert app.messages_test[-1][0] == "Estimation périmée"
+    fiscal.destroy()
+
+def ouvrir_integration_3h_e(app):
+    d = dossier_3h_c()
+    pertes = profil_pertes(
+        d,
+        demande_federale="1000",
+        demande_quebec="800",
+    )
+    chemin = tax_case_storage.sauvegarder_dossier_fiscal(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+        profil_reports_pertes=pertes,
+    )
+    charge = tax_case_storage.charger_dossier_fiscal(chemin)
+    assert charge.profil_interets.confirme
+    assert charge.profil_dividendes.confirme
+    assert charge.profil_capital.confirme
+    assert charge.profil_reports_pertes.confirme
+
+    app.ouvrir_agent_fiscal()
+    fiscal = derniere_fenetre(app)
+    bouton(fiscal, "Dossiers enregistrés").invoke()
+    liste = derniere_fenetre(fiscal)
+    bouton(liste, "Ouvrir le dossier").invoke()
+    return fiscal, pertes
+
+
+def test_gui_3h_e_charge_reports_et_calcule_resume(application):
+    app = application
+    fiscal, pertes = ouvrir_integration_3h_e(app)
+
+    bouton(fiscal, "Reports de pertes en capital 2025 (3F)").invoke()
+    dialogue = derniere_fenetre(fiscal)
+    assert "3H-E" in dialogue.title()
+    assert champ(dialogue, "demande_federale_reports_pertes").get() == pertes.demande_federale
+    assert champ(dialogue, "demande_quebec_reports_pertes").get() == pertes.demande_quebec
+    assert dialogue.getvar(
+        champ(dialogue, "confirmation_reports_pertes").cget("variable")
+    ) == 1
+    bouton(dialogue, "Fermer").invoke()
+
+    bouton(fiscal, "Calculer l'estimation fiscale 2025").invoke()
+    resultat = derniere_fenetre(fiscal)
+    texte = next(
+        w for w in descendants(resultat) if isinstance(w, tk.Text)
+    ).get("1.0", "end")
+
+    assert "BLOC 3H-E" in texte
+    assert "30.90 $" in texte
+    fiscal.destroy()
+
+
+def test_gui_3h_e_pdf_persistance_et_invalidation(application, monkeypatch, tmp_path):
+    app = application
+    fiscal, _ = ouvrir_integration_3h_e(app)
+
+    bouton(fiscal, "Calculer l'estimation fiscale 2025").invoke()
+    resultat = derniere_fenetre(fiscal)
+
+    destination = tmp_path / "rapport_3h_e_gui.pdf"
+    monkeypatch.setattr(
+        gui.filedialog,
+        "asksaveasfilename",
+        lambda **kw: str(destination),
+    )
+    bouton(resultat, "Exporter le rapport fiscal en PDF").invoke()
+    assert destination.exists()
+
+    app.callbacks_test["sauvegarder_dossier_fiscal_local"]()
+    charge = tax_case_storage.charger_dossier_fiscal(
+        next((tmp_path / "dossiers").glob("*.json"))
+    )
+    assert charge.profil_interets.confirme
+    assert charge.profil_dividendes.confirme
+    assert charge.profil_capital.confirme
+    assert charge.profil_reports_pertes.confirme
+
+    bouton(fiscal, "Reports de pertes en capital 2025 (3F)").invoke()
+    dialogue = derniere_fenetre(fiscal)
+    entree = champ(dialogue, "demande_federale_reports_pertes")
+    entree.delete(0, "end")
+    entree.insert(0, "900")
+
+    historique = champ(dialogue, "confirmation_historique_pertes")
+    confirmation = champ(dialogue, "confirmation_reports_pertes")
+    if dialogue.getvar(historique.cget("variable")) == 0:
+        historique.invoke()
+    if dialogue.getvar(confirmation.cget("variable")) == 0:
+        confirmation.invoke()
+
     bouton(dialogue, "Valider et appliquer").invoke()
     assert not dialogue.winfo_exists(), app.messages_test
 

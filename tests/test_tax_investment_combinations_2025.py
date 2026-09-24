@@ -1063,3 +1063,307 @@ def test_3h_d_perte_capital_et_frais_ne_reduisent_pas_autres_revenus():
     assert "BLOC 3H-D" in resume
     assert "18500.00 $" in resume
     assert "3.70 $" in resume
+
+# --- Bloc 3H-E : intérêts + dividendes + capital + reports de pertes ---
+
+def test_3h_e_applique_reports_sans_modifier_total_net_ou_fss():
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+    from tests.test_tax_capital_gains_2025 import profil_capital
+    from tests.test_tax_capital_loss_carryovers_2025 import profil_pertes
+
+    d = dossier_3h_c()
+    pertes = profil_pertes(
+        d,
+        demande_federale="1000",
+        demande_quebec="800",
+    )
+    e = calculer_estimation_fiscale_2025(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+        profil_reports_pertes=pertes,
+    )
+
+    assert e.reports_pertes.present
+    assert e.reports_pertes.ligne_25300 == D("1000")
+    assert e.reports_pertes.ligne_290 == D("800")
+    assert e.revenu.revenu_total_federal == D("23870")
+    assert e.revenu.revenu_total_quebec == D("23870")
+    assert e.revenu.revenu_net_federal == D("23870")
+    assert e.revenu.revenu_net_quebec == D("23870")
+    assert e.revenu.revenu_imposable_federal == D("22870")
+    assert e.revenu.revenu_imposable_quebec == D("23070")
+    assert e.interets.cotisation_fss == D("30.90")
+    assert e.dividendes.cotisation_fss == D("0")
+    assert e.capital.cotisation_fss == D("0")
+
+
+def test_3h_e_plafond_reports_reste_lie_au_gain_capital():
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+    from tests.test_tax_capital_gains_2025 import profil_capital
+    from tests.test_tax_capital_loss_carryovers_2025 import profil_pertes
+
+    d = dossier_3h_c()
+    pertes = profil_pertes(
+        d,
+        demande_federale="1220.01",
+        demande_quebec="0",
+    )
+
+    with pytest.raises(ValueError, match="25300 dépasse"):
+        calculer_estimation_fiscale_2025(
+            d,
+            profil_interets=profil_interets(),
+            profil_dividendes=profil_dividendes(),
+            profil_capital=profil_capital(),
+            profil_reports_pertes=pertes,
+        )
+
+
+def test_3h_e_refuse_encore_frais_et_reports_ensemble():
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+    from tests.test_tax_capital_gains_2025 import profil_capital
+    from tests.test_tax_capital_loss_carryovers_2025 import profil_pertes
+
+    d = dossier_3h_c()
+    frais = profil_frais_3h_d(d)
+    pertes = profil_pertes(
+        d,
+        frais=frais,
+        demande_federale="1000",
+        demande_quebec="800",
+    )
+
+    with pytest.raises(ValueError, match="3H-F"):
+        calculer_estimation_fiscale_2025(
+            d,
+            profil_interets=profil_interets(),
+            profil_dividendes=profil_dividendes(),
+            profil_capital=profil_capital(),
+            profil_frais_placement=frais,
+            profil_reports_pertes=pertes,
+        )
+
+def test_3h_e_stockage_recharge_cinq_profils_et_recalcule(tmp_path):
+    from src.comptaprivee.tax_case_storage import (
+        charger_dossier_fiscal,
+        sauvegarder_dossier_fiscal,
+    )
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+    from src.comptaprivee.tax_investment_expenses_2025 import ProfilFraisPlacement2025
+    from tests.test_tax_capital_gains_2025 import profil_capital
+    from tests.test_tax_capital_loss_carryovers_2025 import profil_pertes
+
+    d = dossier_3h_c()
+    pertes = profil_pertes(
+        d,
+        demande_federale="1000",
+        demande_quebec="800",
+    )
+    attendu = calculer_estimation_fiscale_2025(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+        profil_reports_pertes=pertes,
+    )
+    chemin = sauvegarder_dossier_fiscal(
+        d,
+        destination=tmp_path / "3h_e.json",
+        estimation=attendu,
+    )
+
+    charge = charger_dossier_fiscal(chemin)
+    assert charge.profil_interets == profil_interets()
+    assert charge.profil_dividendes == profil_dividendes()
+    assert charge.profil_capital == profil_capital()
+    assert charge.profil_frais_placement == ProfilFraisPlacement2025()
+    assert charge.profil_reports_pertes == pertes
+
+    obtenu = calculer_estimation_fiscale_2025(
+        charge.dossier,
+        profil_interets=charge.profil_interets,
+        profil_dividendes=charge.profil_dividendes,
+        profil_capital=charge.profil_capital,
+        profil_frais_placement=charge.profil_frais_placement,
+        profil_reports_pertes=charge.profil_reports_pertes,
+    )
+    assert obtenu.revenu == attendu.revenu
+    assert obtenu.reports_pertes == attendu.reports_pertes
+    assert obtenu.interets.cotisation_fss == attendu.interets.cotisation_fss
+
+
+def test_3h_e_stockage_direct_accepte_reports_confirmes(tmp_path):
+    from src.comptaprivee.tax_case_storage import (
+        charger_dossier_fiscal,
+        sauvegarder_dossier_fiscal,
+    )
+    from tests.test_tax_capital_gains_2025 import profil_capital
+    from tests.test_tax_capital_loss_carryovers_2025 import profil_pertes
+
+    d = dossier_3h_c()
+    pertes = profil_pertes(
+        d,
+        demande_federale="1000",
+        demande_quebec="800",
+    )
+    chemin = sauvegarder_dossier_fiscal(
+        d,
+        destination=tmp_path / "3h_e_direct.json",
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+        profil_reports_pertes=pertes,
+    )
+    charge = charger_dossier_fiscal(chemin)
+    assert charge.profil_reports_pertes == pertes
+
+
+def test_3h_e_stockage_refuse_reports_sans_capital(tmp_path):
+    from src.comptaprivee.tax_case_storage import sauvegarder_dossier_fiscal
+    from tests.test_tax_capital_loss_carryovers_2025 import profil_pertes
+
+    d = dossier_combine()
+    pertes = profil_pertes(
+        d,
+        demande_federale="0",
+        demande_quebec="0",
+    )
+    with pytest.raises(ValueError, match="3H-E"):
+        sauvegarder_dossier_fiscal(
+            d,
+            destination=tmp_path / "3h_e_sans_capital.json",
+            profil_interets=profil_interets(),
+            profil_dividendes=profil_dividendes(),
+            profil_reports_pertes=pertes,
+        )
+
+
+def test_3h_e_stockage_refuse_frais_et_reports_ensemble(tmp_path):
+    from src.comptaprivee.tax_case_storage import sauvegarder_dossier_fiscal
+    from tests.test_tax_capital_gains_2025 import profil_capital
+    from tests.test_tax_capital_loss_carryovers_2025 import profil_pertes
+
+    d = dossier_3h_c()
+    frais = profil_frais_3h_d(d)
+    pertes = profil_pertes(
+        d,
+        frais=frais,
+        demande_federale="1000",
+        demande_quebec="800",
+    )
+    with pytest.raises(ValueError, match="3H-F"):
+        sauvegarder_dossier_fiscal(
+            d,
+            destination=tmp_path / "3h_f_reserve.json",
+            profil_interets=profil_interets(),
+            profil_dividendes=profil_dividendes(),
+            profil_capital=profil_capital(),
+            profil_frais_placement=frais,
+            profil_reports_pertes=pertes,
+        )
+
+
+def test_3h_e_rechargement_refuse_empreinte_reports_alteree(tmp_path):
+    from src.comptaprivee.tax_case_storage import (
+        charger_dossier_fiscal,
+        sauvegarder_dossier_fiscal,
+    )
+    from tests.test_tax_capital_gains_2025 import profil_capital
+    from tests.test_tax_capital_loss_carryovers_2025 import profil_pertes
+
+    d = dossier_3h_c()
+    pertes = profil_pertes(
+        d,
+        demande_federale="1000",
+        demande_quebec="800",
+    )
+    chemin = sauvegarder_dossier_fiscal(
+        d,
+        destination=tmp_path / "3h_e_empreinte.json",
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+        profil_reports_pertes=pertes,
+    )
+
+    contenu = chemin.read_text(encoding="utf-8")
+    contenu = contenu.replace(pertes.empreinte, "0" * len(pertes.empreinte), 1)
+    chemin.write_text(contenu, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Confirmation reports de pertes périmée"):
+        charger_dossier_fiscal(chemin)
+
+def test_3h_e_resume_et_trace_identifient_bloc_sans_modifier_fss():
+    from src.comptaprivee.tax_calculation_trace_2025 import construire_trace_calcul_fiscal_2025
+    from src.comptaprivee.tax_estimation_2025 import (
+        calculer_estimation_fiscale_2025,
+        formater_estimation_fiscale_2025,
+    )
+    from tests.test_tax_capital_gains_2025 import profil_capital
+    from tests.test_tax_capital_loss_carryovers_2025 import profil_pertes
+
+    d = dossier_3h_c()
+    pertes = profil_pertes(
+        d,
+        demande_federale="1000",
+        demande_quebec="800",
+    )
+    e = calculer_estimation_fiscale_2025(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+        profil_reports_pertes=pertes,
+    )
+
+    resume = formater_estimation_fiscale_2025(e)
+    assert "BLOC 3H-E" in resume
+    assert "reports 25300/290 sans effet FSS" in resume
+    assert "30.90 $" in resume
+    assert e.revenu.revenu_imposable_federal == D("22870")
+    assert e.revenu.revenu_imposable_quebec == D("23070")
+
+    trace = construire_trace_calcul_fiscal_2025(e)
+    ligne = next(
+        x for x in trace.lignes
+        if x.libelle == "FSS combinée 3H-E ligne 446"
+    )
+    assert ligne.montant == D("30.90")
+    assert "reports 25300/290 sans effet" in ligne.formule
+
+
+def test_3h_e_pdf_identifie_bloc_et_reports(tmp_path):
+    import fitz
+
+    from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_2025
+    from src.comptaprivee.tax_report_pdf_2025 import exporter_rapport_fiscal_pdf_2025
+    from tests.test_tax_capital_gains_2025 import profil_capital
+    from tests.test_tax_capital_loss_carryovers_2025 import profil_pertes
+
+    d = dossier_3h_c()
+    pertes = profil_pertes(
+        d,
+        demande_federale="1000",
+        demande_quebec="800",
+    )
+    e = calculer_estimation_fiscale_2025(
+        d,
+        profil_interets=profil_interets(),
+        profil_dividendes=profil_dividendes(),
+        profil_capital=profil_capital(),
+        profil_reports_pertes=pertes,
+    )
+
+    pdf = exporter_rapport_fiscal_pdf_2025(
+        e,
+        tmp_path / "rapport_3h_e.pdf",
+    )
+    with fitz.open(pdf) as doc:
+        texte = chr(10).join(page.get_text() for page in doc)
+
+    assert "BLOC 3H-E" in texte
+    assert "25300" in texte
+    assert "290" in texte
+    assert "30,90" in texte or "30.90" in texte

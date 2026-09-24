@@ -8,9 +8,27 @@ from .tax_capital_loss_carryovers_2025 import (
 )
 
 
-def ouvrir_reports_pertes_2025(parent, profil, dossier, capital, frais, appliquer):
+def ouvrir_reports_pertes_2025(
+    parent,
+    profil,
+    dossier,
+    capital,
+    frais,
+    appliquer,
+    profils_combinaison=(),
+):
     dialogue = tk.Toplevel(parent)
-    dialogue.title('Reports de pertes en capital 2025 (3F)')
+    combinaison_3h_e = (
+        len(profils_combinaison) == 2
+        and all(getattr(p, 'confirme', False) for p in profils_combinaison)
+        and getattr(capital, 'confirme', False)
+        and frais == type(frais)()
+    )
+    dialogue.title(
+        'Reports de pertes en capital 2025 (3F / 3H-E)'
+        if combinaison_3h_e
+        else 'Reports de pertes en capital 2025 (3F)'
+    )
     dimensionner_fenetre(dialogue, 850, 700)
     dialogue.transient(parent)
     dialogue.grab_set()
@@ -18,8 +36,18 @@ def ouvrir_reports_pertes_2025(parent, profil, dossier, capital, frais, applique
     cadre = formulaire.corps
     cadre.columnconfigure(0, weight=1)
     textes = (
-        'Reports de pertes en capital 2025 — Bloc 3F',
-        'Vente 3D validée, avec ou sans emploi et frais 3E. Pertes ordinaires 2004–2024 : soldes NETS au taux 50 %, séparés ARC/Québec, après toutes utilisations. Ne pas saisir des pertes brutes ni diviser encore par deux.',
+        (
+            'Reports de pertes en capital 2025 — Bloc 3F / combinaison 3H-E'
+            if combinaison_3h_e
+            else 'Reports de pertes en capital 2025 — Bloc 3F'
+        ),
+        (
+            'Combinaison 3H-E active : intérêts + dividendes + capital + reports de pertes. '
+            'Les reports 25300/290 réduisent uniquement le revenu imposable et ne modifient '
+            'ni le revenu total/net ni la FSS.'
+            if combinaison_3h_e
+            else 'Vente 3D validée, avec ou sans emploi et frais 3E. Pertes ordinaires 2004–2024 : soldes NETS au taux 50 %, séparés ARC/Québec, après toutes utilisations. Ne pas saisir des pertes brutes ni diviser encore par deux.'
+        ),
         'Exemple de registre : 2018;1000;800 | 2024;500;600. Année, solde fédéral, solde Québec. Les plus anciennes pertes sont utilisées automatiquement en premier dans chaque juridiction. Vide seulement si aucun solde.',
         '25300 et 290 limités aux gains imposables 12700/139 et aux soldes. Seul le revenu imposable change : revenu net, revenu total, retenues et FSS restent inchangés. Annexe N : 276 peut réintégrer une partie de 290; une demande 252 excessive sera refusée.',
         'Perte 2025 tirée exclusivement du calcul 3D : ajout unique au registre futur, à rapprocher des avis. Aucun report rétrospectif ni formulaire officiel transmis.',

@@ -76,4 +76,4 @@ def test_gui_relit_dans_calcul_et_stockage():
     assert texte.count(
         "cotisations_excedentaires="
         "cotisations_excedentaires_courantes,"
-    ) == 3
+    ) == 4

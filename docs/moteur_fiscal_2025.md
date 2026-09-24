@@ -823,7 +823,7 @@ dans cette étape; arrêt après son commit, son push et sa CI pour bilan.
 | 3E — frais de placement et annexe N | 22100/231, 260/276, reports 252 | Utilisation des emprunts, frais admissibles, revenus de placement des blocs précédents, soldes distincts; aucune double déduction de frais de transaction |
 | 3F — reports de pertes en capital | 25300/290, T1A/TP-1012.A, TP-729, soldes historiques | 3D et 3E; taux d'origine, avis de cotisation, ordre d'utilisation, plafonds et non-double consommation |
 | 3G — placements et impôts étrangers | Revenus bruts/devises, T2209/40500, TP-772/409, déclarations de biens étrangers | Pays, convention, limites de crédit et déductions connexes; pas de conversion ou crédit implicites |
-| 3H — combinaisons contrôlées | 3H-A livré : intérêts + dividendes; 3H-B livré : intérêts + dividendes + frais; 3H-C livré : intérêts + dividendes + capital; 3H-D livré : intérêts + dividendes + capital + frais | Assiette FSS globale recalculée selon la combinaison; déductions/crédits et interactions propres validés avant ouverture |
+| 3H — combinaisons contrôlées | 3H-A livré : intérêts + dividendes; 3H-B livré : intérêts + dividendes + frais; 3H-C livré : intérêts + dividendes + capital; 3H-D livré : intérêts + dividendes + capital + frais; 3H-E livré : intérêts + dividendes + capital + reports de pertes | Assiette FSS globale recalculée selon la combinaison; déductions/crédits et interactions propres validés avant ouverture |
 
 ### Contrat du premier sous-bloc 3A
 
@@ -1508,4 +1508,54 @@ dépréciation existants selon les sous-ensembles.
 Suite complète finale `python -m pytest -q` : **3 151 tests réussis**,
 **8 avertissements** de dépréciation existants, aucun échec ni erreur
 (**102,87 s** en local). Les avertissements SWIG/PyMuPDF et `openpyxl` restent
+non bloquants.
+
+
+### Bloc 3H-E — intérêts + dividendes + capital + reports de pertes 2025
+
+Le Bloc 3H-E prolonge 3H-C avec le profil de reports de pertes en capital déjà
+couvert par 3F. Il combine une paire T5/RL-3 validée pour intérêts et
+dividendes, une vente simple T5008/RL-18 validée en 3D, puis des soldes de
+pertes antérieures confirmés. Aucun nouveau schéma de stockage n'est introduit :
+les profils existants intérêts, dividendes, capital et reports sont réutilisés;
+le profil de frais doit rester vide dans ce bloc.
+
+Les reports fédéraux 25300 et Québec 290 réduisent uniquement le revenu
+imposable, dans les plafonds et soldes déjà contrôlés par 3F. Ils ne modifient
+ni le revenu total, ni le revenu net, ni l'assiette FSS. L'assiette FSS globale
+reste donc **130 + 166 + 167 + 139**, avec exclusion de la majoration des
+dividendes. La cotisation finale reste portée une seule fois par le résultat
+intérêts; dividendes et capital conservent une FSS nulle.
+
+Cas synthétique validé : 10 000 $ d'intérêts, 10 000 $ de dividendes réels et
+1 220 $ de gain imposable donnent un revenu total/net de **23 870 $**. Une
+demande de reports de **1 000 $** au fédéral et **800 $** au Québec ramène le
+revenu imposable à **22 870 $** et **23 070 $** respectivement, sans modifier
+l'assiette FSS de **21 220 $** ni la cotisation de **30,90 $**. Une demande
+supérieure au gain admissible demeure refusée par les plafonds de 3F.
+
+Le périmètre reste volontairement contrôlé : les frais de placement combinés
+aux reports sont réservés au futur Bloc **3H-F** afin d'isoler les interactions
+des lignes 231, 252, 276 et 290 de l'annexe N. Les placements étrangers 3G,
+pensions, retraits, prestations et autres parcours combinés restent exclus de
+3H-E.
+
+La persistance JSON sauvegarde et recharge les profils intérêts, dividendes,
+capital et reports, puis reproduit le même revenu, les mêmes reports et la même
+FSS au recalcul. Une empreinte de reports altérée est refusée. Le résumé écran,
+la trace de calcul et le PDF identifient explicitement le **Bloc 3H-E** et
+indiquent que 25300/290 n'ont aucun effet sur la FSS. Dans l'interface, le
+formulaire 3F reconnaît le contexte 3H-E; toute modification des reports
+invalide l'estimation précédente et bloque l'export d'un PDF périmé.
+
+**Validation de livraison 3H-E : 12 nouveaux tests nets** couvrant moteur,
+plafonds des reports, FSS inchangée, exclusion frais + reports, sauvegarde et
+rechargement, recalcul, empreinte des reports, résumé, trace, PDF, GUI,
+persistance et invalidation. Les contrôles ciblés ont atteint successivement
+**237**, **258**, **266** puis **290 tests réussis**, avec 5 avertissements de
+dépréciation existants selon les sous-ensembles.
+
+Suite complète finale `python -m pytest -q` : **3 163 tests réussis**,
+**8 avertissements** de dépréciation existants, aucun échec ni erreur
+(**101,82 s** en local). Les avertissements SWIG/PyMuPDF et `openpyxl` restent
 non bloquants.

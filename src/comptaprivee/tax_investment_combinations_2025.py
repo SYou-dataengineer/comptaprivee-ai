@@ -59,6 +59,7 @@ class CombinaisonInteretsDividendes2025:
     present: bool = False
     avec_frais: bool = False
     avec_capital: bool = False
+    avec_reports: bool = False
 
 @dataclass(frozen=True)
 class CombinaisonPlacementsCanadiens2025:
@@ -262,6 +263,9 @@ def lignes_resume_interets_dividendes_2025(combinaison: CombinaisonInteretsDivid
     if combinaison.avec_capital and combinaison.avec_frais:
         bloc = "3H-D"
         formule = "130 + 166 + 167 + 139 - 231; majoration exclue"
+    elif combinaison.avec_capital and combinaison.avec_reports:
+        bloc = "3H-E"
+        formule = "130 + 166 + 167 + 139; reports 25300/290 sans effet FSS"
     elif combinaison.avec_capital:
         bloc = "3H-C"
         formule = "130 + 166 + 167 + 139; majoration exclue"
@@ -293,5 +297,10 @@ def lignes_resume_interets_dividendes_2025(combinaison: CombinaisonInteretsDivid
         lignes.append(
             "Bloc 3H-D : la ligne 231 réduit l'assiette FSS après ajout de la ligne "
             "139; la ligne 252 reste sans effet sur cette assiette."
+        )
+    if combinaison.avec_capital and combinaison.avec_reports:
+        lignes.append(
+            "Bloc 3H-E : les reports 25300/290 réduisent seulement le revenu "
+            "imposable; ils ne modifient ni le revenu total/net ni l'assiette FSS."
         )
     return lignes

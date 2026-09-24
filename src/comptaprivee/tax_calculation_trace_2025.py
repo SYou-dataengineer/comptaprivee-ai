@@ -1449,6 +1449,13 @@ def construire_trace_calcul_fiscal_2025(
                 "252 sans effet; perte 2025 non déductible des autres revenus; "
                 "cotisation portée une seule fois"
             )
+        elif estimation.capital.present and estimation.reports_pertes.present:
+            bloc_combinaison = "3H-E"
+            formule_combinaison = (
+                "Assiette globale = 130 + 166 + 167 + 139; majoration exclue; "
+                "reports 25300/290 sans effet sur revenu total/net et FSS; "
+                "cotisation portée une seule fois"
+            )
         elif estimation.capital.present:
             bloc_combinaison = "3H-C"
             formule_combinaison = (
