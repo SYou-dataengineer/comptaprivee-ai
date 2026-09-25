@@ -265,3 +265,97 @@ def test_stockage_celiapp_invalide_est_refuse_au_rechargement(tmp_path):
 
     with pytest.raises(ValueError, match="cotisations directes"):
         charger_dossier_fiscal(p)
+
+# --- Priorité 4B : persistance frais de garde fédéraux ---
+
+from src.comptaprivee.tax_child_care_2025 import FraisGardeFederaux2025
+
+
+def _frais_garde_4b_stockage():
+    return FraisGardeFederaux2025(
+        frais_admissibles_payes=Decimal("6000"),
+        revenu_gagne_t778=Decimal("52000"),
+        nombre_enfants_moins_7_sans_dtc=1,
+        nombre_enfants_7_a_16_ou_infirmes_sans_dtc=0,
+        nombre_enfants_dtc=0,
+        source="T778 2025 / reçus de garde",
+        valide_par_comptable=True,
+        services_fournis_en_2025_confirmes=True,
+        frais_pour_gagner_revenu_confirmes=True,
+        recus_confirmes=True,
+        demandeur_seul_ou_revenu_inferieur_confirme=True,
+    )
+
+
+def test_stockage_frais_garde_4b_roundtrip_direct(tmp_path):
+    profil = _frais_garde_4b_stockage()
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        frais_garde_federaux=profil,
+        destination=tmp_path / "d.json",
+    )
+    assert charger_dossier_fiscal(p).frais_garde_federaux == profil
+
+
+def test_stockage_frais_garde_4b_depuis_estimation(tmp_path):
+    d = _dossier()
+    profil = _frais_garde_4b_stockage()
+    estimation = calculer_estimation_fiscale_2025(
+        d,
+        frais_garde_federaux=profil,
+    )
+    p = sauvegarder_dossier_fiscal(
+        d,
+        estimation=estimation,
+        destination=tmp_path / "d.json",
+    )
+    charge = charger_dossier_fiscal(p)
+    assert charge.frais_garde_federaux == profil
+    assert charge.estimation is not None
+
+
+def test_stockage_frais_garde_4b_refuse_profil_different_estimation(tmp_path):
+    d = _dossier()
+    profil = _frais_garde_4b_stockage()
+    estimation = calculer_estimation_fiscale_2025(
+        d,
+        frais_garde_federaux=profil,
+    )
+    autre = replace(profil, frais_admissibles_payes=Decimal("5000"))
+    with pytest.raises(ValueError, match="frais de garde fédéraux diffèrent"):
+        sauvegarder_dossier_fiscal(
+            d,
+            estimation=estimation,
+            frais_garde_federaux=autre,
+            destination=tmp_path / "d.json",
+        )
+
+
+def test_stockage_ancien_json_sans_frais_garde_4b_reste_compatible(tmp_path):
+    p = sauvegarder_dossier_fiscal(_dossier(), destination=tmp_path / "d.json")
+    brut = json.loads(p.read_text(encoding="utf-8"))
+    brut.pop("frais_garde_federaux", None)
+    p.write_text(json.dumps(brut, ensure_ascii=False, indent=2), encoding="utf-8")
+    assert charger_dossier_fiscal(p).frais_garde_federaux == FraisGardeFederaux2025()
+
+
+def test_stockage_frais_garde_4b_invalide_est_refuse_au_rechargement(tmp_path):
+    p = sauvegarder_dossier_fiscal(_dossier(), destination=tmp_path / "d.json")
+    brut = json.loads(p.read_text(encoding="utf-8"))
+    brut["frais_garde_federaux"] = {
+        "frais_admissibles_payes": "6000",
+        "revenu_gagne_t778": "52000",
+        "nombre_enfants_moins_7_sans_dtc": 1,
+        "nombre_enfants_7_a_16_ou_infirmes_sans_dtc": 0,
+        "nombre_enfants_dtc": 0,
+        "source": "T778 2025",
+        "valide_par_comptable": True,
+        "services_fournis_en_2025_confirmes": True,
+        "frais_pour_gagner_revenu_confirmes": True,
+        "recus_confirmes": True,
+        "demandeur_seul_ou_revenu_inferieur_confirme": True,
+        "garde_partagee": True,
+    }
+    p.write_text(json.dumps(brut, ensure_ascii=False, indent=2), encoding="utf-8")
+    with pytest.raises(ValueError, match="hors périmètre 4B"):
+        charger_dossier_fiscal(p)

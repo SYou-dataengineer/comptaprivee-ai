@@ -153,6 +153,11 @@ from .tax_fhsa_2025 import (
     DeductionCeliapp2025,
     valider_deduction_celiapp_2025,
 )
+from .tax_child_care_2025 import (
+    FraisGardeFederaux2025,
+    deduction_frais_garde_federale_2025,
+    valider_frais_garde_federaux_2025,
+)
 from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
@@ -2471,6 +2476,7 @@ class ApplicationComptaPrivee(tk.Tk):
         dernier_rapport_pdf: Path | None = None
         ajustement_reer_courant = AjustementReer2025()
         deduction_celiapp_courante = DeductionCeliapp2025()
+        frais_garde_federaux_courants = FraisGardeFederaux2025()
         cotisations_syndicales_courantes = (
             CotisationsSyndicalesProfessionnelles2025()
         )
@@ -2506,6 +2512,274 @@ class ApplicationComptaPrivee(tk.Tk):
         rapport_fiscal_a_reexporter = False
         aidant_30450_federal_courant = AidantNaturelAutrePersonneChargeFederal2025()
         aidant_enfant_federal_courant = AidantNaturelEnfantMoins18Federal2025()
+        # --- Priorité 4B : GUI frais de garde fédéraux ---
+
+        def mettre_a_jour_bouton_frais_garde() -> None:
+            deduction = deduction_frais_garde_federale_2025(
+                frais_garde_federaux_courants
+            )
+            bouton_frais_garde_4b.configure(
+                text=(
+                    "Frais de garde 2025 (4B) — "
+                    + formater_montant_estimation(deduction)
+                    if deduction > Decimal("0")
+                    else "Frais de garde 2025 (4B)"
+                )
+            )
+
+        def ouvrir_frais_garde_4b_2025() -> None:
+            nonlocal frais_garde_federaux_courants
+            nonlocal derniere_estimation, dernier_rapport_pdf
+            nonlocal rapport_fiscal_a_reexporter
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Frais de garde fédéraux 2025 — Bloc 4B — ComptaPrivée AI"
+            )
+            dimensionner_fenetre(dialogue, 860, 760)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Frais de garde fédéraux 2025 — Bloc 4B",
+                font=("Segoe UI", 16, "bold"),
+            ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil simple T778 / ligne 21400. "
+                    "La déduction est fédérale seulement. "
+                    "Les parties C/D et situations avancées restent exclues."
+                ),
+                foreground="#166534",
+                wraplength=760,
+                justify="left",
+            ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 12))
+
+            def montant_texte(valeur: Decimal) -> str:
+                return "" if valeur == Decimal("0") else format(valeur, "f")
+
+            def entier_texte(valeur: int) -> str:
+                return "" if valeur == 0 else str(valeur)
+
+            frais_var = tk.StringVar(
+                value=montant_texte(
+                    frais_garde_federaux_courants.frais_admissibles_payes
+                )
+            )
+            revenu_var = tk.StringVar(
+                value=montant_texte(
+                    frais_garde_federaux_courants.revenu_gagne_t778
+                )
+            )
+            moins_7_var = tk.StringVar(
+                value=entier_texte(
+                    frais_garde_federaux_courants.nombre_enfants_moins_7_sans_dtc
+                )
+            )
+            sept_16_var = tk.StringVar(
+                value=entier_texte(
+                    frais_garde_federaux_courants.nombre_enfants_7_a_16_ou_infirmes_sans_dtc
+                )
+            )
+            dtc_var = tk.StringVar(
+                value=entier_texte(
+                    frais_garde_federaux_courants.nombre_enfants_dtc
+                )
+            )
+            source_var = tk.StringVar(
+                value=frais_garde_federaux_courants.source
+            )
+
+            comptable_var = tk.BooleanVar(
+                value=frais_garde_federaux_courants.valide_par_comptable
+            )
+            services_var = tk.BooleanVar(
+                value=frais_garde_federaux_courants.services_fournis_en_2025_confirmes
+            )
+            gagner_revenu_var = tk.BooleanVar(
+                value=frais_garde_federaux_courants.frais_pour_gagner_revenu_confirmes
+            )
+            recus_var = tk.BooleanVar(
+                value=frais_garde_federaux_courants.recus_confirmes
+            )
+            demandeur_var = tk.BooleanVar(
+                value=frais_garde_federaux_courants.demandeur_seul_ou_revenu_inferieur_confirme
+            )
+
+            champs = (
+                ("Frais admissibles payés en 2025 :", "frais_garde_payes_4b", frais_var),
+                ("Revenu gagné T778 :", "revenu_gagne_t778_4b", revenu_var),
+                ("Enfants < 7 ans sans DTC :", "enfants_moins_7_4b", moins_7_var),
+                ("Enfants 7 à 16 ans / infirmes sans DTC :", "enfants_7_16_4b", sept_16_var),
+                ("Enfants admissibles au DTC :", "enfants_dtc_4b", dtc_var),
+                ("Source / reçus / T778 :", "source_frais_garde_4b", source_var),
+            )
+            for row, (libelle, nom, variable) in enumerate(champs, start=2):
+                ttk.Label(cadre, text=libelle).grid(
+                    row=row, column=0, sticky="w", pady=5
+                )
+                ttk.Entry(
+                    cadre, name=nom, textvariable=variable
+                ).grid(
+                    row=row, column=1, sticky="ew", padx=(12, 0), pady=5
+                )
+
+            confirmations = (
+                ("confirmation_frais_garde_comptable_4b", comptable_var,
+                 "Je confirme la validation comptable des frais de garde."),
+                ("confirmation_services_2025_4b", services_var,
+                 "Je confirme que les services ont été fournis en 2025."),
+                ("confirmation_gagner_revenu_4b", gagner_revenu_var,
+                 "Je confirme que les frais ont permis de gagner un revenu."),
+                ("confirmation_recus_frais_garde_4b", recus_var,
+                 "Je confirme que les reçus sont disponibles et vérifiés."),
+                ("confirmation_demandeur_frais_garde_4b", demandeur_var,
+                 "Je confirme que le demandeur est seul à soutenir l'enfant ou a le revenu net le moins élevé."),
+            )
+            for row, (nom, variable, texte) in enumerate(confirmations, start=8):
+                tk.Checkbutton(
+                    cadre,
+                    name=nom,
+                    variable=variable,
+                    text=texte,
+                    wraplength=760,
+                    anchor="w",
+                    justify="left",
+                ).grid(
+                    row=row, column=0, columnspan=2, sticky="w", pady=3
+                )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "⚠ Hors périmètre 4B : parties C/D, camp avec hébergement, "
+                    "garde partagée, répartition entre contribuables ou "
+                    "demande par la personne au revenu supérieur."
+                ),
+                foreground="#92400e",
+                wraplength=760,
+                justify="left",
+            ).grid(
+                row=13, column=0, columnspan=2, sticky="w", pady=(8, 12)
+            )
+
+            def revoquer_confirmations(*_args) -> None:
+                comptable_var.set(False)
+                services_var.set(False)
+                gagner_revenu_var.set(False)
+                recus_var.set(False)
+                demandeur_var.set(False)
+
+            for variable in (
+                frais_var, revenu_var, moins_7_var,
+                sept_16_var, dtc_var, source_var,
+            ):
+                variable.trace_add("write", revoquer_confirmations)
+
+            def decimal_depuis_champ(texte: str, libelle: str) -> Decimal:
+                nettoye = (
+                    texte.strip()
+                    .replace("\u00a0", "")
+                    .replace(" ", "")
+                    .replace(",", ".")
+                    .replace("$", "")
+                )
+                if not nettoye:
+                    return Decimal("0")
+                try:
+                    valeur = Decimal(nettoye)
+                except (InvalidOperation, ValueError) as erreur:
+                    raise ValueError(f"{libelle} : montant invalide.") from erreur
+                if not valeur.is_finite():
+                    raise ValueError(f"{libelle} : montant non fini.")
+                return valeur
+
+            def entier_depuis_champ(texte: str, libelle: str) -> int:
+                nettoye = texte.strip()
+                if not nettoye:
+                    return 0
+                try:
+                    return int(nettoye)
+                except (TypeError, ValueError) as erreur:
+                    raise ValueError(
+                        f"{libelle} : nombre entier invalide."
+                    ) from erreur
+
+            def effacer() -> None:
+                for variable in (
+                    frais_var, revenu_var, moins_7_var,
+                    sept_16_var, dtc_var, source_var,
+                ):
+                    variable.set("")
+                revoquer_confirmations()
+
+            def appliquer() -> None:
+                nonlocal frais_garde_federaux_courants
+                nonlocal derniere_estimation, dernier_rapport_pdf
+                nonlocal rapport_fiscal_a_reexporter
+
+                try:
+                    profil = FraisGardeFederaux2025(
+                        frais_admissibles_payes=decimal_depuis_champ(
+                            frais_var.get(), "Frais admissibles payés"
+                        ),
+                        revenu_gagne_t778=decimal_depuis_champ(
+                            revenu_var.get(), "Revenu gagné T778"
+                        ),
+                        nombre_enfants_moins_7_sans_dtc=entier_depuis_champ(
+                            moins_7_var.get(), "Enfants de moins de 7 ans"
+                        ),
+                        nombre_enfants_7_a_16_ou_infirmes_sans_dtc=entier_depuis_champ(
+                            sept_16_var.get(), "Enfants 7 à 16 ans / infirmes"
+                        ),
+                        nombre_enfants_dtc=entier_depuis_champ(
+                            dtc_var.get(), "Enfants DTC"
+                        ),
+                        source=source_var.get().strip(),
+                        valide_par_comptable=comptable_var.get(),
+                        services_fournis_en_2025_confirmes=services_var.get(),
+                        frais_pour_gagner_revenu_confirmes=gagner_revenu_var.get(),
+                        recus_confirmes=recus_var.get(),
+                        demandeur_seul_ou_revenu_inferieur_confirme=demandeur_var.get(),
+                    )
+                    profil = valider_frais_garde_federaux_2025(profil)
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Frais de garde invalides",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                frais_garde_federaux_courants = profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                mettre_a_jour_bouton_frais_garde()
+                self.statut.set(
+                    "Frais de garde 4B validés; recalculez l'estimation."
+                )
+                dialogue.destroy()
+
+            ttk.Button(
+                formulaire.actions, text="Effacer", command=effacer
+            ).pack(side="left")
+            ttk.Button(
+                formulaire.actions, text="Valider et appliquer", command=appliquer
+            ).pack(side="right")
+            ttk.Button(
+                formulaire.actions, text="Fermer", command=dialogue.destroy
+            ).pack(side="right", padx=(0, 8))
+            organiser_boutons(formulaire.actions)
+
+
         def mettre_a_jour_bouton_ajustements() -> None:
             morceaux = []
 
@@ -3049,6 +3323,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     profil_frais_placement=frais_profil_courant,
                     ajustement_reer=ajustement_reer_courant,
                     deduction_celiapp=deduction_celiapp_courante,
+                    frais_garde_federaux=frais_garde_federaux_courants,
                     cotisations_rpa=cotisations_rpa_courantes,
                     cotisations_syndicales=cotisations_syndicales_courantes,
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
@@ -10132,6 +10407,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
                 mettre_a_jour_bouton_ajustements()
+                mettre_a_jour_bouton_frais_garde()
 
                 self.statut.set(
                     "Ajustements fiscaux 2025 mis à jour"
@@ -10938,6 +11214,7 @@ class ApplicationComptaPrivee(tk.Tk):
             derniere_estimation = None
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
+            mettre_a_jour_bouton_frais_garde()
             statut_dossier.set(dossier.statut)
             mettre_a_jour_etat_dossier_valide()
             self.statut.set(
@@ -11052,6 +11329,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             dossier_valide,
                             ajustement_reer=ajustement_reer_courant,
                     deduction_celiapp=deduction_celiapp_courante,
+                    frais_garde_federaux=frais_garde_federaux_courants,
                             cotisations_syndicales=(
                                 cotisations_syndicales_courantes
                             ),
@@ -11103,6 +11381,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     estimation=estimation_a_sauvegarder,
                     ajustement_reer=ajustement_reer_courant,
                     deduction_celiapp=deduction_celiapp_courante,
+                    frais_garde_federaux=frais_garde_federaux_courants,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -11189,6 +11468,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
+            nonlocal frais_garde_federaux_courants
             nonlocal rapport_fiscal_a_reexporter
             nonlocal derniere_estimation, dernier_rapport_pdf
             nonlocal ajustement_reer_courant
@@ -11250,6 +11530,9 @@ class ApplicationComptaPrivee(tk.Tk):
             rapport_fiscal_a_reexporter = dernier_rapport_pdf is None
             ajustement_reer_courant = enregistrement.ajustement_reer
             deduction_celiapp_courante = enregistrement.deduction_celiapp
+            frais_garde_federaux_courants = (
+                enregistrement.frais_garde_federaux
+            )
             cotisations_syndicales_courantes = (
                 enregistrement.cotisations_syndicales
             )
@@ -11319,6 +11602,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             aidant_enfant_federal_courant = enregistrement.aidant_enfant_federal
             mettre_a_jour_bouton_ajustements()
+            mettre_a_jour_bouton_frais_garde()
             rafraichir_documents()
             statut_dossier.set("Validé — dossier rouvert localement")
             mettre_a_jour_etat_dossier_valide()
@@ -11573,6 +11857,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     dossier_valide,
                     ajustement_reer=ajustement_reer_courant,
                     deduction_celiapp=deduction_celiapp_courante,
+                    frais_garde_federaux=frais_garde_federaux_courants,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -12016,6 +12301,16 @@ class ApplicationComptaPrivee(tk.Tk):
         ttk.Button(zone_actions, text="Cotisations RPA 2025",
                    command=ouvrir_cotisations_rpa_2025).pack(side="left", padx=4)
 
+        bouton_frais_garde_4b = ttk.Button(
+            zone_actions,
+            text="Frais de garde 2025 (4B)",
+            command=ouvrir_frais_garde_4b_2025,
+        )
+        bouton_frais_garde_4b.pack(
+            side="left",
+            padx=(8, 0),
+        )
+
         bouton_ajustements_fiscaux = ttk.Button(
             zone_actions,
             text="Ajustements fiscaux",
@@ -12057,6 +12352,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
         organiser_boutons(zone_actions)
         mettre_a_jour_bouton_ajustements()
+        mettre_a_jour_bouton_frais_garde()
         mettre_a_jour_etat_dossier_valide()
         champ_client.focus_set()
 

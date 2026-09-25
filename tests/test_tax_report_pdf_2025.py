@@ -122,3 +122,60 @@ def test_pdf_celiapp_4a_contient_deduction_et_lignes(tmp_path):
     assert "215" in texte
     assert "5000.00 $" in texte
     assert "Annexe 15 / relevé CELIAPP 2025" in texte
+
+# --- Priorité 4B : PDF frais de garde fédéraux ---
+
+from src.comptaprivee.tax_child_care_2025 import FraisGardeFederaux2025
+
+
+def _estimation_frais_garde_4b():
+    base = _estimation()
+    return calculer_estimation_fiscale_2025(
+        base.dossier,
+        frais_garde_federaux=FraisGardeFederaux2025(
+            frais_admissibles_payes=Decimal("6000"),
+            revenu_gagne_t778=Decimal("52000"),
+            nombre_enfants_moins_7_sans_dtc=1,
+            nombre_enfants_7_a_16_ou_infirmes_sans_dtc=0,
+            nombre_enfants_dtc=0,
+            source="T778 2025 / reçus de garde",
+            valide_par_comptable=True,
+            services_fournis_en_2025_confirmes=True,
+            frais_pour_gagner_revenu_confirmes=True,
+            recus_confirmes=True,
+            demandeur_seul_ou_revenu_inferieur_confirme=True,
+        ),
+    )
+
+
+def test_pdf_frais_garde_4b_contient_t778_ligne_21400(tmp_path):
+    path = exporter_rapport_fiscal_pdf_2025(
+        _estimation_frais_garde_4b(),
+        tmp_path / "rapport_frais_garde_4b.pdf",
+    )
+    texte = _texte(path).replace("\xa0", " ")
+
+    assert "FRAIS DE GARDE 2025 VALIDÉS" in texte
+    assert "BLOC 4B" in texte
+    assert "T778" in texte
+    assert "21400" in texte
+    assert "6000.00 $" in texte
+    assert "T778 2025 / reçus de garde" in texte
+
+
+def test_pdf_frais_garde_4b_reste_federal_seulement(tmp_path):
+    estimation = _estimation_frais_garde_4b()
+
+    assert estimation.revenu.revenu_net_federal == Decimal("45515.00")
+    assert estimation.revenu.revenu_net_quebec == Decimal("50095.00")
+
+    path = exporter_rapport_fiscal_pdf_2025(
+        estimation,
+        tmp_path / "rapport_frais_garde_4b_federal.pdf",
+    )
+    texte = _texte(path).replace("\xa0", " ")
+
+    assert "Revenu net fédéral" in texte
+    assert "45 515,00 $" in texte
+    assert "Revenu net Québec" in texte
+    assert "50 095,00 $" in texte

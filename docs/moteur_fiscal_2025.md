@@ -1670,3 +1670,59 @@ Le bloc doit suivre les mêmes garde-fous que les déductions déjà intégrées
 
 Aucune transmission fiscale n'est ajoutée : ComptaPrivée AI reste un moteur
 local d'estimation et de préparation.
+
+### Bloc 4B proposé — frais de garde fédéraux, T778 / ligne 21400
+
+Le sous-bloc 4B couvre la déduction fédérale 2025 pour frais de garde
+d'enfants. Le calcul s'appuie sur le formulaire T778 et le montant admissible
+est reporté à la ligne 21400 de la déclaration fédérale. Ce bloc ne crée pas
+le crédit d'impôt québécois pour frais de garde : ce crédit remboursable sera
+traité séparément dans la priorité consacrée aux crédits Québec.
+
+Périmètre initial volontairement limité :
+
+- services de garde réellement fournis en 2025 et frais payés/documentés;
+- contribuable seul à soutenir l'enfant, ou contribuable qui est la personne
+  au revenu net le moins élevé du couple;
+- aucune demande par la personne au revenu net le plus élevé;
+- aucune situation spéciale des parties C ou D du T778 (études, incapacité,
+  séparation admissible, détention ou autre exception permettant au conjoint
+  au revenu plus élevé de demander tout ou partie de la déduction);
+- enfants classés dans les trois catégories de plafond annuel du T778 :
+  8 000 $, 5 000 $ ou 11 000 $ selon l'âge et l'admissibilité au crédit
+  d'impôt pour personnes handicapées;
+- limite de base calculée comme le moindre des frais admissibles payés, du
+  total des plafonds annuels applicables aux enfants et des deux tiers du
+  revenu gagné du demandeur;
+- aucun report de frais inutilisés à une année ultérieure;
+- reçus et source de validation conservés localement;
+- déduction appliquée uniquement au revenu net et au revenu imposable
+  fédéraux; aucun effet automatique sur le revenu net ou imposable Québec.
+
+Les camps avec hébergement, pensionnats, situations de garde partagée,
+demandes réparties entre deux contribuables, demandes par le conjoint au
+revenu supérieur, décès et parties C/D du T778 sont réservés à un sous-bloc
+ultérieur.
+
+### Contrat technique visé pour 4B
+
+Le bloc 4B devra respecter les garde-fous suivants :
+
+1. profil immuable dédié avec frais admissibles, revenu gagné, nombre
+   d'enfants par catégorie de plafond, source et confirmations;
+2. validation stricte des montants finis/non négatifs et des nombres
+   d'enfants entiers/non négatifs;
+3. calcul déterministe du plafond enfants, de la limite des deux tiers du
+   revenu gagné et de la déduction ligne 21400;
+4. application unique de la ligne 21400 au revenu net/imposable fédéral sans
+   modifier le revenu total, les retenues, les revenus de placement ni les
+   montants Québec;
+5. persistance JSON rétrocompatible;
+6. résumé, trace de calcul et PDF indiquant explicitement T778 / ligne 21400;
+7. formulaire GUI local avec révocation des confirmations dès qu'un champ
+   pertinent change et invalidation de l'estimation/PDF antérieurs;
+8. tests moteur, limites, arrondis, persistance, recalcul, trace/PDF et GUI
+   avant ouverture du sous-bloc 4C.
+
+Aucune transmission fiscale n'est ajoutée. Le montant demeure une estimation
+locale à valider à partir du T778 et des pièces justificatives.

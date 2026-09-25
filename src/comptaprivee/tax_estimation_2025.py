@@ -30,6 +30,11 @@ from .tax_fhsa_2025 import (
     appliquer_deduction_celiapp_2025,
     lignes_resume_celiapp_2025,
 )
+from .tax_child_care_2025 import (
+    FraisGardeFederaux2025,
+    appliquer_frais_garde_federaux_2025,
+    lignes_resume_frais_garde_federaux_2025,
+)
 from .tax_contribution_overpayments_2025 import (
     CotisationsExcedentaires2025,
     calculer_remboursements_cotisations_2025,
@@ -232,6 +237,7 @@ class EstimationFiscale2025:
     rapprochement: RapprochementFiscal2025
     ajustement_reer: AjustementReer2025
     deduction_celiapp: DeductionCeliapp2025
+    frais_garde_federaux: FraisGardeFederaux2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
@@ -284,6 +290,7 @@ def calculer_estimation_fiscale_2025(
     dossier: DossierFiscalValide,
     ajustement_reer: AjustementReer2025 | None = None,
     deduction_celiapp: DeductionCeliapp2025 | None = None,
+    frais_garde_federaux: FraisGardeFederaux2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
@@ -670,6 +677,16 @@ def calculer_estimation_fiscale_2025(
     revenu = appliquer_deduction_celiapp_2025(
         revenu,
         deduction_celiapp_effective,
+    )
+
+    frais_garde_federaux_effectifs = (
+        frais_garde_federaux
+        if frais_garde_federaux is not None
+        else FraisGardeFederaux2025()
+    )
+    revenu = appliquer_frais_garde_federaux_2025(
+        revenu,
+        frais_garde_federaux_effectifs,
     )
 
     cotisations_effectives = (
@@ -1348,6 +1365,7 @@ def calculer_estimation_fiscale_2025(
         rapprochement=rapprochement,
         ajustement_reer=ajustement_reer_effectif,
         deduction_celiapp=deduction_celiapp_effective,
+        frais_garde_federaux=frais_garde_federaux_effectifs,
         cotisations_syndicales=cotisations_effectives,
         dons_bienfaisance=dons_effectifs,
         frais_medicaux=frais_medicaux_effectifs,
@@ -1456,6 +1474,9 @@ def formater_estimation_fiscale_2025(
         *([f"Revenu total fédéral : {formater_montant_estimation(revenu.revenu_total_federal)}",
            f"Revenu total Québec : {formater_montant_estimation(revenu.revenu_total_quebec)}"] if estimation.prestations_rqap.present or estimation.prestations_ae.present or estimation.prestations_rrq_rpc.present or estimation.prestations_psv.present or estimation.pensions.present or estimation.retraits.present or estimation.interets.present or estimation.dividendes.present or estimation.capital.present else []),
         *lignes_resume_celiapp_2025(estimation.deduction_celiapp),
+        *lignes_resume_frais_garde_federaux_2025(
+            estimation.frais_garde_federaux
+        ),
         *(
             [
                 "",

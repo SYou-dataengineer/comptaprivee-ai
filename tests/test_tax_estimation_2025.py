@@ -430,3 +430,155 @@ def test_trace_celiapp_4a_est_avant_revenu_imposable_federal():
     assert libelles.index("Déduction CELIAPP 4A validée") < libelles.index(
         "Revenu imposable fédéral"
     )
+
+# --- Priorité 4B : intégration estimation frais de garde fédéraux ---
+
+from src.comptaprivee.tax_child_care_2025 import FraisGardeFederaux2025
+
+
+def _frais_garde_6000():
+    return FraisGardeFederaux2025(
+        frais_admissibles_payes=Decimal("6000"),
+        revenu_gagne_t778=Decimal("52000"),
+        nombre_enfants_moins_7_sans_dtc=1,
+        nombre_enfants_7_a_16_ou_infirmes_sans_dtc=0,
+        nombre_enfants_dtc=0,
+        source="T778 2025 / reçus de garde",
+        valide_par_comptable=True,
+        services_fournis_en_2025_confirmes=True,
+        frais_pour_gagner_revenu_confirmes=True,
+        recus_confirmes=True,
+        demandeur_seul_ou_revenu_inferieur_confirme=True,
+    )
+
+
+def test_pipeline_sans_frais_garde_4b_reste_identique():
+    e = calculer_estimation_fiscale_2025(_dossier_52000())
+    assert e.frais_garde_federaux == FraisGardeFederaux2025()
+    assert e.revenu.revenu_net_federal == Decimal("51515.00")
+    assert e.revenu.revenu_net_quebec == Decimal("50095.00")
+    assert e.rapprochement.remboursement_estime == Decimal("5611.05")
+
+
+def test_pipeline_frais_garde_6000_reduit_federal_seulement():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        frais_garde_federaux=_frais_garde_6000(),
+    )
+
+    assert e.frais_garde_federaux.frais_admissibles_payes == Decimal("6000")
+    assert e.revenu.revenu_total_federal == Decimal("52000")
+    assert e.revenu.revenu_net_federal == Decimal("45515.00")
+    assert e.revenu.revenu_imposable_federal == Decimal("45515.00")
+
+    assert e.revenu.revenu_total_quebec == Decimal("52000")
+    assert e.revenu.revenu_net_quebec == Decimal("50095.00")
+    assert e.revenu.revenu_imposable_quebec == Decimal("50095.00")
+
+
+def test_pipeline_frais_garde_4b_recalcule_impot_federal():
+    base = calculer_estimation_fiscale_2025(_dossier_52000())
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        frais_garde_federaux=_frais_garde_6000(),
+    )
+
+    assert e.federal.impot_federal_de_base < base.federal.impot_federal_de_base
+    assert (
+        e.rapprochement.remboursement_estime
+        > base.rapprochement.remboursement_estime
+    )
+
+
+def test_resume_affiche_frais_garde_4b_t778_21400():
+    texte = formater_estimation_fiscale_2025(
+        calculer_estimation_fiscale_2025(
+            _dossier_52000(),
+            frais_garde_federaux=_frais_garde_6000(),
+        )
+    )
+
+    assert "FRAIS DE GARDE 2025 VALIDÉS — BLOC 4B" in texte
+    assert "T778" in texte
+    assert "ligne 21400" in texte
+    assert "6000.00 $" in texte
+    assert "T778 2025 / reçus de garde" in texte
+
+
+def test_pipeline_celiapp_et_frais_garde_se_combinent_sans_doubler_quebec():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        deduction_celiapp=_celiapp_5000(),
+        frais_garde_federaux=_frais_garde_6000(),
+    )
+
+    assert e.revenu.revenu_net_federal == Decimal("40515.00")
+    assert e.revenu.revenu_imposable_federal == Decimal("40515.00")
+
+    assert e.revenu.revenu_net_quebec == Decimal("45095.00")
+    assert e.revenu.revenu_imposable_quebec == Decimal("45095.00")
+
+# --- Priorité 4B : trace frais de garde fédéraux ---
+
+
+def test_trace_frais_garde_4b_ajoute_ligne_t778_21400():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        frais_garde_federaux=_frais_garde_6000(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    ligne = next(
+        x for x in trace.lignes
+        if x.libelle
+        == "Frais de garde fédéraux 4B — T778 / ligne 21400"
+    )
+
+    assert ligne.montant == Decimal("6000")
+    assert "T778" in ligne.source
+    assert "21400" in ligne.source
+    assert "T778 2025 / reçus de garde" in ligne.source
+    assert "frais admissibles payés" in ligne.formule
+    assert "plafond selon enfants" in ligne.formule
+    assert "2/3 du revenu gagné" in ligne.formule
+
+
+def test_trace_frais_garde_4b_est_avant_revenu_imposable_federal():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        frais_garde_federaux=_frais_garde_6000(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    libelles = [x.libelle for x in trace.lignes]
+    assert libelles.index(
+        "Frais de garde fédéraux 4B — T778 / ligne 21400"
+    ) < libelles.index("Revenu imposable fédéral")
+
+
+def test_trace_frais_garde_4b_ne_cree_aucune_deduction_quebec():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        frais_garde_federaux=_frais_garde_6000(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    ligne_federal = next(
+        x for x in trace.lignes
+        if x.libelle
+        == "Frais de garde fédéraux 4B — T778 / ligne 21400"
+    )
+    assert ligne_federal.section == "REVENU FÉDÉRAL"
+
+    lignes_quebec_garde = [
+        x for x in trace.lignes
+        if "garde" in x.libelle.lower()
+        and x.section == "REVENU QUÉBEC"
+    ]
+    assert lignes_quebec_garde == []
+
+    revenu_qc = next(
+        x for x in trace.lignes
+        if x.libelle == "Revenu imposable Québec"
+    )
+    assert "frais de garde" not in revenu_qc.formule.lower()

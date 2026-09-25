@@ -90,6 +90,11 @@ from .tax_tuition_2025 import (
     credit_federal_frais_scolarite_2025,
     credit_quebec_frais_scolarite_2025,
 )
+from .tax_child_care_2025 import (
+    deduction_frais_garde_federale_2025,
+    limite_deux_tiers_revenu_gagne_2025,
+    plafond_enfants_frais_garde_2025,
+)
 from .tax_estimation_2025 import (
     EstimationFiscale2025,
     formater_montant_estimation,
@@ -158,6 +163,7 @@ def construire_trace_calcul_fiscal_2025(
     final = estimation.rapprochement
     ajustement_reer = estimation.ajustement_reer
     deduction_celiapp = estimation.deduction_celiapp
+    frais_garde_federaux = estimation.frais_garde_federaux
     cotisations = estimation.cotisations_syndicales
     dons = estimation.dons_bienfaisance
     frais_medicaux = estimation.frais_medicaux
@@ -220,6 +226,14 @@ def construire_trace_calcul_fiscal_2025(
     if deduction_celiapp.deduction > Decimal("0"):
         formule_revenu_federal += " - déduction CELIAPP 20805"
         formule_revenu_quebec += " - déduction CELIAPP 215"
+
+    deduction_frais_garde = deduction_frais_garde_federale_2025(
+        frais_garde_federaux
+    )
+    if deduction_frais_garde > Decimal("0"):
+        formule_revenu_federal += (
+            " - frais de garde T778 / ligne 21400"
+        )
 
     if cotisations.montant_federal_admissible > Decimal("0"):
         formule_revenu_federal += (
@@ -611,6 +625,41 @@ def construire_trace_calcul_fiscal_2025(
                     "et aux droits de déduction confirmés"
                 ),
                 deduction_celiapp.deduction,
+            ),
+        )
+
+    if deduction_frais_garde > Decimal("0"):
+        plafond_garde = plafond_enfants_frais_garde_2025(
+            frais_garde_federaux
+        )
+        limite_deux_tiers_garde = limite_deux_tiers_revenu_gagne_2025(
+            frais_garde_federaux
+        )
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable fédéral",
+            _ligne(
+                0,
+                "REVENU FÉDÉRAL",
+                "Frais de garde fédéraux 4B — T778 / ligne 21400",
+                (
+                    "ARC T778 / ligne 21400 — "
+                    + frais_garde_federaux.source
+                    + " — validation comptable"
+                ),
+                (
+                    "Minimum de : frais admissibles payés "
+                    + formater_montant_estimation(
+                        frais_garde_federaux.frais_admissibles_payes
+                    )
+                    + "; plafond selon enfants "
+                    + formater_montant_estimation(plafond_garde)
+                    + "; 2/3 du revenu gagné "
+                    + formater_montant_estimation(limite_deux_tiers_garde)
+                    + ". Déduction retenue : "
+                    + formater_montant_estimation(deduction_frais_garde)
+                ),
+                deduction_frais_garde,
             ),
         )
 

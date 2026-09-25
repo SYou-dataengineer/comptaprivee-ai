@@ -18,6 +18,10 @@ from .tax_fhsa_2025 import (
     DeductionCeliapp2025,
     valider_deduction_celiapp_2025,
 )
+from .tax_child_care_2025 import (
+    FraisGardeFederaux2025,
+    valider_frais_garde_federaux_2025,
+)
 from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
@@ -149,6 +153,7 @@ class DossierFiscalEnregistre:
     documents_manquants: tuple[Path, ...]
     ajustement_reer: AjustementReer2025
     deduction_celiapp: DeductionCeliapp2025
+    frais_garde_federaux: FraisGardeFederaux2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
@@ -365,6 +370,79 @@ def _deduction_celiapp_depuis_dict(
         excedent_2025=bool(valeur.get("excedent_2025", False)),
     )
     return valider_deduction_celiapp_2025(profil)
+
+
+def _frais_garde_federaux_vers_dict(
+    profil: FraisGardeFederaux2025 | None,
+):
+    if profil is None:
+        profil = FraisGardeFederaux2025()
+    profil = valider_frais_garde_federaux_2025(profil)
+    return {
+        "frais_admissibles_payes": _decimal_texte(profil.frais_admissibles_payes),
+        "revenu_gagne_t778": _decimal_texte(profil.revenu_gagne_t778),
+        "nombre_enfants_moins_7_sans_dtc": int(profil.nombre_enfants_moins_7_sans_dtc),
+        "nombre_enfants_7_a_16_ou_infirmes_sans_dtc": int(profil.nombre_enfants_7_a_16_ou_infirmes_sans_dtc),
+        "nombre_enfants_dtc": int(profil.nombre_enfants_dtc),
+        "source": profil.source,
+        "valide_par_comptable": bool(profil.valide_par_comptable),
+        "services_fournis_en_2025_confirmes": bool(profil.services_fournis_en_2025_confirmes),
+        "frais_pour_gagner_revenu_confirmes": bool(profil.frais_pour_gagner_revenu_confirmes),
+        "recus_confirmes": bool(profil.recus_confirmes),
+        "demandeur_seul_ou_revenu_inferieur_confirme": bool(profil.demandeur_seul_ou_revenu_inferieur_confirme),
+        "partie_c_requise": bool(profil.partie_c_requise),
+        "partie_d_requise": bool(profil.partie_d_requise),
+        "camp_avec_hebergement": bool(profil.camp_avec_hebergement),
+        "garde_partagee": bool(profil.garde_partagee),
+        "repartition_entre_contribuables": bool(profil.repartition_entre_contribuables),
+        "demandeur_revenu_superieur": bool(profil.demandeur_revenu_superieur),
+    }
+
+
+def _frais_garde_federaux_depuis_dict(valeur: Any) -> FraisGardeFederaux2025:
+    if valeur is None:
+        return FraisGardeFederaux2025()
+    if not isinstance(valeur, dict):
+        raise ValueError("Les frais de garde fédéraux enregistrés sont invalides.")
+
+    autorises = set(FraisGardeFederaux2025.__dataclass_fields__)
+    inconnus = set(valeur) - autorises
+    if inconnus:
+        raise ValueError("Champs frais de garde fédéraux inconnus : " + ", ".join(sorted(inconnus)))
+
+    try:
+        moins_7 = int(valeur.get("nombre_enfants_moins_7_sans_dtc", 0))
+        sept_16 = int(valeur.get("nombre_enfants_7_a_16_ou_infirmes_sans_dtc", 0))
+        dtc = int(valeur.get("nombre_enfants_dtc", 0))
+    except (TypeError, ValueError) as erreur:
+        raise ValueError("Le nombre d'enfants des frais de garde est invalide.") from erreur
+
+    profil = FraisGardeFederaux2025(
+        frais_admissibles_payes=_decimal_depuis_json(
+            valeur.get("frais_admissibles_payes", "0"),
+            "frais_garde_federaux.frais_admissibles_payes",
+        ),
+        revenu_gagne_t778=_decimal_depuis_json(
+            valeur.get("revenu_gagne_t778", "0"),
+            "frais_garde_federaux.revenu_gagne_t778",
+        ),
+        nombre_enfants_moins_7_sans_dtc=moins_7,
+        nombre_enfants_7_a_16_ou_infirmes_sans_dtc=sept_16,
+        nombre_enfants_dtc=dtc,
+        source=str(valeur.get("source", "")),
+        valide_par_comptable=bool(valeur.get("valide_par_comptable", False)),
+        services_fournis_en_2025_confirmes=bool(valeur.get("services_fournis_en_2025_confirmes", False)),
+        frais_pour_gagner_revenu_confirmes=bool(valeur.get("frais_pour_gagner_revenu_confirmes", False)),
+        recus_confirmes=bool(valeur.get("recus_confirmes", False)),
+        demandeur_seul_ou_revenu_inferieur_confirme=bool(valeur.get("demandeur_seul_ou_revenu_inferieur_confirme", False)),
+        partie_c_requise=bool(valeur.get("partie_c_requise", False)),
+        partie_d_requise=bool(valeur.get("partie_d_requise", False)),
+        camp_avec_hebergement=bool(valeur.get("camp_avec_hebergement", False)),
+        garde_partagee=bool(valeur.get("garde_partagee", False)),
+        repartition_entre_contribuables=bool(valeur.get("repartition_entre_contribuables", False)),
+        demandeur_revenu_superieur=bool(valeur.get("demandeur_revenu_superieur", False)),
+    )
+    return valider_frais_garde_federaux_2025(profil)
 
 
 def _cotisations_syndicales_vers_dict(
@@ -2505,6 +2583,7 @@ def sauvegarder_dossier_fiscal(
     estimation: EstimationFiscale2025 | None = None,
     ajustement_reer: AjustementReer2025 | None = None,
     deduction_celiapp: DeductionCeliapp2025 | None = None,
+    frais_garde_federaux: FraisGardeFederaux2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
@@ -2570,6 +2649,26 @@ def sauvegarder_dossier_fiscal(
     ):
         raise ValueError(
             "La déduction CELIAPP diffère de l'estimation."
+        )
+
+    frais_garde_effectifs = (
+        frais_garde_federaux
+        if frais_garde_federaux is not None
+        else (
+            estimation.frais_garde_federaux
+            if estimation is not None
+            else FraisGardeFederaux2025()
+        )
+    )
+    frais_garde_effectifs = valider_frais_garde_federaux_2025(
+        frais_garde_effectifs
+    )
+    if (
+        estimation is not None
+        and frais_garde_effectifs != estimation.frais_garde_federaux
+    ):
+        raise ValueError(
+            "Les frais de garde fédéraux diffèrent de l'estimation."
         )
 
     pertes_effectif = profil_reports_pertes if profil_reports_pertes is not None else (estimation.profil_reports_pertes if estimation else ProfilReportsPertes2025())
@@ -2831,6 +2930,9 @@ def sauvegarder_dossier_fiscal(
         "deduction_celiapp": _deduction_celiapp_vers_dict(
             celiapp_effectif
         ),
+        "frais_garde_federaux": _frais_garde_federaux_vers_dict(
+            frais_garde_effectifs
+        ),
         "cotisations_syndicales": _cotisations_syndicales_vers_dict(
             cotisations_syndicales
         ),
@@ -3003,6 +3105,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     )
     deduction_celiapp = _deduction_celiapp_depuis_dict(
         contenu.get("deduction_celiapp")
+    )
+    frais_garde_federaux = _frais_garde_federaux_depuis_dict(
+        contenu.get("frais_garde_federaux")
     )
     cotisations_syndicales = _cotisations_syndicales_depuis_dict(
         contenu.get("cotisations_syndicales")
@@ -3246,6 +3351,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         documents_manquants=manquants,
         ajustement_reer=ajustement_reer,
         deduction_celiapp=deduction_celiapp,
+        frais_garde_federaux=frais_garde_federaux,
         cotisations_syndicales=cotisations_syndicales,
         dons_bienfaisance=dons_bienfaisance,
         frais_medicaux=frais_medicaux,
