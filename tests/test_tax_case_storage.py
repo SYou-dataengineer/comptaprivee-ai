@@ -162,3 +162,106 @@ def test_chemin_recharge_independant_du_dossier_courant(
         / "exports"
         / "rapport_test.pdf"
     )
+
+# --- Priorité 4A : persistance CELIAPP ---
+
+from src.comptaprivee.tax_fhsa_2025 import DeductionCeliapp2025
+
+
+def _celiapp_4a_stockage():
+    return DeductionCeliapp2025(
+        deduction=Decimal("5000"),
+        cotisations_directes_2025=Decimal("6000"),
+        droits_deduction_confirmes=Decimal("8000"),
+        source_droits="Annexe 15 / relevé CELIAPP 2025",
+        valide_par_comptable=True,
+        titulaire_confirme=True,
+        residence_canada_quebec_annee_complete=True,
+    )
+
+
+def test_stockage_celiapp_4a_roundtrip_direct(tmp_path):
+    profil = _celiapp_4a_stockage()
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        deduction_celiapp=profil,
+        destination=tmp_path / "d.json",
+    )
+    charge = charger_dossier_fiscal(p)
+    assert charge.deduction_celiapp == profil
+
+
+def test_stockage_celiapp_4a_depuis_estimation(tmp_path):
+    d = _dossier()
+    profil = _celiapp_4a_stockage()
+    estimation = calculer_estimation_fiscale_2025(
+        d,
+        deduction_celiapp=profil,
+    )
+    p = sauvegarder_dossier_fiscal(
+        d,
+        estimation=estimation,
+        destination=tmp_path / "d.json",
+    )
+    charge = charger_dossier_fiscal(p)
+    assert charge.deduction_celiapp == profil
+    assert charge.estimation is not None
+
+
+def test_stockage_celiapp_4a_refuse_profil_different_estimation(tmp_path):
+    d = _dossier()
+    estimation = calculer_estimation_fiscale_2025(
+        d,
+        deduction_celiapp=_celiapp_4a_stockage(),
+    )
+    autre = replace(
+        _celiapp_4a_stockage(),
+        deduction=Decimal("4000"),
+    )
+    with pytest.raises(ValueError, match="CELIAPP diffère"):
+        sauvegarder_dossier_fiscal(
+            d,
+            estimation=estimation,
+            deduction_celiapp=autre,
+            destination=tmp_path / "d.json",
+        )
+
+
+def test_stockage_ancien_json_sans_celiapp_reste_compatible(tmp_path):
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        destination=tmp_path / "d.json",
+    )
+    brut = json.loads(p.read_text(encoding="utf-8"))
+    brut.pop("deduction_celiapp", None)
+    p.write_text(
+        json.dumps(brut, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    charge = charger_dossier_fiscal(p)
+    assert charge.deduction_celiapp == DeductionCeliapp2025()
+
+
+def test_stockage_celiapp_invalide_est_refuse_au_rechargement(tmp_path):
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        destination=tmp_path / "d.json",
+    )
+    brut = json.loads(p.read_text(encoding="utf-8"))
+    brut["deduction_celiapp"] = {
+        "deduction": "5000",
+        "cotisations_directes_2025": "1000",
+        "droits_deduction_confirmes": "8000",
+        "source_droits": "Annexe 15",
+        "valide_par_comptable": True,
+        "titulaire_confirme": True,
+        "residence_canada_quebec_annee_complete": True,
+    }
+    p.write_text(
+        json.dumps(brut, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="cotisations directes"):
+        charger_dossier_fiscal(p)

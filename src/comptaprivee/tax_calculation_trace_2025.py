@@ -157,6 +157,7 @@ def construire_trace_calcul_fiscal_2025(
     quebec = estimation.quebec
     final = estimation.rapprochement
     ajustement_reer = estimation.ajustement_reer
+    deduction_celiapp = estimation.deduction_celiapp
     cotisations = estimation.cotisations_syndicales
     dons = estimation.dons_bienfaisance
     frais_medicaux = estimation.frais_medicaux
@@ -215,6 +216,10 @@ def construire_trace_calcul_fiscal_2025(
     if ajustement_reer.deduction_reer > Decimal("0"):
         formule_revenu_federal += " - déduction REER validée"
         formule_revenu_quebec += " - déduction REER validée"
+
+    if deduction_celiapp.deduction > Decimal("0"):
+        formule_revenu_federal += " - déduction CELIAPP 20805"
+        formule_revenu_quebec += " - déduction CELIAPP 215"
 
     if cotisations.montant_federal_admissible > Decimal("0"):
         formule_revenu_federal += (
@@ -585,6 +590,27 @@ def construire_trace_calcul_fiscal_2025(
                 "ARC ligne 20800 / Revenu Québec ligne 214 — validation comptable",
                 "Montant réclamé limité au plafond individuel REER confirmé",
                 ajustement_reer.deduction_reer,
+            ),
+        )
+
+    if deduction_celiapp.deduction > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable fédéral",
+            _ligne(
+                0,
+                "REVENU FÉDÉRAL",
+                "Déduction CELIAPP 4A validée",
+                (
+                    "ARC annexe 15 / ligne 20805; "
+                    "Revenu Québec ligne 215 — "
+                    + deduction_celiapp.source_droits
+                ),
+                (
+                    "Montant réclamé limité aux cotisations directes 2025 "
+                    "et aux droits de déduction confirmés"
+                ),
+                deduction_celiapp.deduction,
             ),
         )
 

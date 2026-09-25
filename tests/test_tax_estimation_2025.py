@@ -314,3 +314,119 @@ def test_trace_reer_conserve_une_numerotation_continue():
     assert [ligne.ordre for ligne in trace.lignes] == list(
         range(1, 19)
     )
+
+# --- Priorité 4A : intégration estimation CELIAPP ---
+
+from src.comptaprivee.tax_fhsa_2025 import DeductionCeliapp2025
+
+
+def _celiapp_5000():
+    return DeductionCeliapp2025(
+        deduction=Decimal("5000"),
+        cotisations_directes_2025=Decimal("6000"),
+        droits_deduction_confirmes=Decimal("8000"),
+        source_droits="Annexe 15 / relevé CELIAPP 2025",
+        valide_par_comptable=True,
+        titulaire_confirme=True,
+        residence_canada_quebec_annee_complete=True,
+    )
+
+
+def test_pipeline_sans_celiapp_reste_identique():
+    e = calculer_estimation_fiscale_2025(_dossier_52000())
+    assert e.deduction_celiapp == DeductionCeliapp2025()
+    assert e.rapprochement.remboursement_estime == Decimal("5611.05")
+
+
+def test_pipeline_celiapp_5000_reduit_revenus_net_et_imposable():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        deduction_celiapp=_celiapp_5000(),
+    )
+    assert e.revenu.revenu_total_federal == Decimal("52000")
+    assert e.revenu.revenu_total_quebec == Decimal("52000")
+    assert e.revenu.revenu_net_federal == Decimal("46515.00")
+    assert e.revenu.revenu_imposable_federal == Decimal("46515.00")
+    assert e.revenu.revenu_net_quebec == Decimal("45095.00")
+    assert e.revenu.revenu_imposable_quebec == Decimal("45095.00")
+
+
+def test_pipeline_celiapp_5000_recalcule_impots_comme_deduction_net():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        deduction_celiapp=_celiapp_5000(),
+    )
+    assert e.federal.impot_federal_de_base == Decimal("3676.90")
+    assert e.quebec.impot_quebec_preliminaire == Decimal("3713.36")
+    assert e.rapprochement.remboursement_estime == Decimal("6916.43")
+
+
+def test_resume_affiche_celiapp_4a_20805_215():
+    texte = formater_estimation_fiscale_2025(
+        calculer_estimation_fiscale_2025(
+            _dossier_52000(),
+            deduction_celiapp=_celiapp_5000(),
+        )
+    )
+    assert "CELIAPP 2025 VALIDÉ — BLOC 4A" in texte
+    assert "ligne 20805" in texte
+    assert "ligne 215" in texte
+    assert "5000.00 $" in texte
+    assert "Annexe 15 / relevé CELIAPP 2025" in texte
+
+
+def test_pipeline_reer_et_celiapp_sadditionnent_sans_modifier_revenu_total():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        ajustement_reer=_reer_5000(),
+        deduction_celiapp=_celiapp_5000(),
+    )
+    assert e.revenu.revenu_total_federal == Decimal("52000")
+    assert e.revenu.revenu_total_quebec == Decimal("52000")
+    assert e.revenu.revenu_net_federal == Decimal("41515.00")
+    assert e.revenu.revenu_net_quebec == Decimal("40095.00")
+
+# --- Priorité 4A : trace CELIAPP ---
+
+def test_trace_celiapp_4a_ajoute_etape_20805_215():
+    from src.comptaprivee.tax_calculation_trace_2025 import (
+        construire_trace_calcul_fiscal_2025,
+        formater_trace_calcul_fiscal_2025,
+    )
+
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        deduction_celiapp=_celiapp_5000(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    ligne = next(
+        x for x in trace.lignes
+        if x.libelle == "Déduction CELIAPP 4A validée"
+    )
+    assert ligne.montant == Decimal("5000")
+    assert "20805" in ligne.source
+    assert "215" in ligne.source
+    assert "Annexe 15 / relevé CELIAPP 2025" in ligne.source
+
+    texte = formater_trace_calcul_fiscal_2025(trace)
+    assert "Déduction CELIAPP 4A validée" in texte
+    assert "20805" in texte
+    assert "215" in texte
+
+
+def test_trace_celiapp_4a_est_avant_revenu_imposable_federal():
+    from src.comptaprivee.tax_calculation_trace_2025 import (
+        construire_trace_calcul_fiscal_2025,
+    )
+
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        deduction_celiapp=_celiapp_5000(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    libelles = [x.libelle for x in trace.lignes]
+    assert libelles.index("Déduction CELIAPP 4A validée") < libelles.index(
+        "Revenu imposable fédéral"
+    )

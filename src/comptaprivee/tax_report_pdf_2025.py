@@ -26,6 +26,7 @@ from .tax_cpp_qpp_benefits_2025 import lignes_resume_rrq_rpc_2025
 from .tax_employment_insurance_2025 import lignes_resume_ae_2025
 from .tax_parental_benefits_2025 import lignes_resume_rqap_2025
 from .tax_rpp_2025 import lignes_resume_rpa_2025
+from .tax_fhsa_2025 import lignes_resume_celiapp_2025
 
 from .tax_estimation_2025 import (
     EstimationFiscale2025,
@@ -188,6 +189,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     ]
 
     lignes.extend(lignes_resume_rpa_2025(estimation.cotisations_rpa))
+    lignes.extend(lignes_resume_celiapp_2025(estimation.deduction_celiapp))
     lignes.extend(lignes_resume_rqap_2025(estimation.prestations_rqap))
     lignes.extend(lignes_resume_ae_2025(estimation.prestations_ae))
     lignes.extend(lignes_resume_rrq_rpc_2025(estimation.prestations_rrq_rpc))

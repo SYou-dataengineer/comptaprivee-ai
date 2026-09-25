@@ -149,6 +149,10 @@ from .tax_adjustments_2025 import (
     AjustementReer2025,
     creer_ajustement_reer_depuis_champs_2025,
 )
+from .tax_fhsa_2025 import (
+    DeductionCeliapp2025,
+    valider_deduction_celiapp_2025,
+)
 from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
@@ -2466,6 +2470,7 @@ class ApplicationComptaPrivee(tk.Tk):
         derniere_estimation = None
         dernier_rapport_pdf: Path | None = None
         ajustement_reer_courant = AjustementReer2025()
+        deduction_celiapp_courante = DeductionCeliapp2025()
         cotisations_syndicales_courantes = (
             CotisationsSyndicalesProfessionnelles2025()
         )
@@ -2509,6 +2514,14 @@ class ApplicationComptaPrivee(tk.Tk):
                     "REER "
                     + formater_montant_estimation(
                         ajustement_reer_courant.deduction_reer
+                    )
+                )
+
+            if deduction_celiapp_courante.deduction > Decimal("0"):
+                morceaux.append(
+                    "CELIAPP "
+                    + formater_montant_estimation(
+                        deduction_celiapp_courante.deduction
                     )
                 )
 
@@ -3035,6 +3048,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     profil_capital=capital_profil_courant,
                     profil_frais_placement=frais_profil_courant,
                     ajustement_reer=ajustement_reer_courant,
+                    deduction_celiapp=deduction_celiapp_courante,
                     cotisations_rpa=cotisations_rpa_courantes,
                     cotisations_syndicales=cotisations_syndicales_courantes,
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
@@ -9219,6 +9233,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
         def ouvrir_ajustements_fiscaux_2025() -> None:
             nonlocal ajustement_reer_courant
+            nonlocal deduction_celiapp_courante
             nonlocal cotisations_syndicales_courantes
             nonlocal dons_bienfaisance_courants
             nonlocal derniere_estimation, dernier_rapport_pdf
@@ -9243,7 +9258,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Label(
                 cadre,
                 text=(
-                    "REER/RPAC/RVER, cotisations et dons — "
+                    "REER/RPAC/RVER, CELIAPP, cotisations et dons — "
                     "validation comptable obligatoire."
                 ),
                 foreground="#166534",
@@ -9757,6 +9772,198 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=(6, 12),
             )
 
+            ttk.Separator(
+                cadre,
+                orient="horizontal",
+            ).grid(
+                row=29,
+                column=0,
+                columnspan=2,
+                sticky="ew",
+                pady=(0, 12),
+            )
+
+            ttk.Label(
+                cadre,
+                text="CELIAPP 2025 — Bloc 4A",
+                font=("Segoe UI", 11, "bold"),
+            ).grid(row=30, column=0, columnspan=2, sticky="w")
+
+            celiapp_deduction_var = tk.StringVar(
+                value=(
+                    ""
+                    if deduction_celiapp_courante.deduction == Decimal("0")
+                    else str(deduction_celiapp_courante.deduction)
+                )
+            )
+            celiapp_cotisations_var = tk.StringVar(
+                value=(
+                    ""
+                    if (
+                        deduction_celiapp_courante
+                        .cotisations_directes_2025
+                        == Decimal("0")
+                    )
+                    else str(
+                        deduction_celiapp_courante
+                        .cotisations_directes_2025
+                    )
+                )
+            )
+            celiapp_droits_var = tk.StringVar(
+                value=(
+                    ""
+                    if (
+                        deduction_celiapp_courante
+                        .droits_deduction_confirmes
+                        == Decimal("0")
+                    )
+                    else str(
+                        deduction_celiapp_courante
+                        .droits_deduction_confirmes
+                    )
+                )
+            )
+            celiapp_source_var = tk.StringVar(
+                value=deduction_celiapp_courante.source_droits
+            )
+            celiapp_validation_var = tk.BooleanVar(
+                value=deduction_celiapp_courante.valide_par_comptable
+            )
+            celiapp_titulaire_var = tk.BooleanVar(
+                value=deduction_celiapp_courante.titulaire_confirme
+            )
+            celiapp_residence_var = tk.BooleanVar(
+                value=(
+                    deduction_celiapp_courante
+                    .residence_canada_quebec_annee_complete
+                )
+            )
+
+            ttk.Label(
+                cadre,
+                text="Déduction CELIAPP — ligne 20805 / 215 :",
+            ).grid(row=31, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                name="deduction_celiapp",
+                textvariable=celiapp_deduction_var,
+            ).grid(
+                row=31, column=1, sticky="ew",
+                padx=(12, 0), pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Cotisations directes 2025 :",
+            ).grid(row=32, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                name="cotisations_celiapp_2025",
+                textvariable=celiapp_cotisations_var,
+            ).grid(
+                row=32, column=1, sticky="ew",
+                padx=(12, 0), pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Droits de déduction confirmés :",
+            ).grid(row=33, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                name="droits_celiapp_confirmes",
+                textvariable=celiapp_droits_var,
+            ).grid(
+                row=33, column=1, sticky="ew",
+                padx=(12, 0), pady=5,
+            )
+
+            ttk.Label(
+                cadre,
+                text="Source — annexe 15 / relevé CELIAPP :",
+            ).grid(row=34, column=0, sticky="w", pady=5)
+            ttk.Entry(
+                cadre,
+                name="source_celiapp",
+                textvariable=celiapp_source_var,
+            ).grid(
+                row=34, column=1, sticky="ew",
+                padx=(12, 0), pady=5,
+            )
+
+            tk.Checkbutton(
+                cadre,
+                name="confirmation_celiapp_comptable",
+                variable=celiapp_validation_var,
+                text="Je confirme la validation comptable de la déduction CELIAPP.",
+                wraplength=790,
+                anchor="w",
+                justify="left",
+            ).grid(
+                row=35, column=0, columnspan=2,
+                sticky="w", pady=3,
+            )
+
+            tk.Checkbutton(
+                cadre,
+                name="confirmation_celiapp_titulaire",
+                variable=celiapp_titulaire_var,
+                text="Je confirme que le CELIAPP appartient au contribuable.",
+                wraplength=790,
+                anchor="w",
+                justify="left",
+            ).grid(
+                row=36, column=0, columnspan=2,
+                sticky="w", pady=3,
+            )
+
+            tk.Checkbutton(
+                cadre,
+                name="confirmation_celiapp_residence",
+                variable=celiapp_residence_var,
+                text=(
+                    "Je confirme la résidence Canada et Québec pendant "
+                    "toute l'année 2025."
+                ),
+                wraplength=790,
+                anchor="w",
+                justify="left",
+            ).grid(
+                row=37, column=0, columnspan=2,
+                sticky="w", pady=3,
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "⚠ Bloc 4A : cotisations directes 2025 seulement. "
+                    "Reports antérieurs, transferts REER, retraits et "
+                    "excédents CELIAPP sont hors périmètre."
+                ),
+                foreground="#92400e",
+                wraplength=790,
+            ).grid(
+                row=38, column=0, columnspan=2,
+                sticky="w", pady=(6, 12),
+            )
+
+            def revoquer_confirmation_celiapp(*_args) -> None:
+                celiapp_validation_var.set(False)
+                celiapp_titulaire_var.set(False)
+                celiapp_residence_var.set(False)
+
+            for variable in (
+                celiapp_deduction_var,
+                celiapp_cotisations_var,
+                celiapp_droits_var,
+                celiapp_source_var,
+            ):
+                variable.trace_add(
+                    "write",
+                    revoquer_confirmation_celiapp,
+                )
+
             def decimal_depuis_champ(
                 texte: str,
                 libelle: str,
@@ -9788,6 +9995,14 @@ class ApplicationComptaPrivee(tk.Tk):
                 source_var.set("")
                 validation_reer_var.set(False)
 
+                celiapp_deduction_var.set("")
+                celiapp_cotisations_var.set("")
+                celiapp_droits_var.set("")
+                celiapp_source_var.set("")
+                celiapp_validation_var.set(False)
+                celiapp_titulaire_var.set(False)
+                celiapp_residence_var.set(False)
+
                 cot_fed_var.set("")
                 source_fed_var.set("")
                 cot_qc_var.set("")
@@ -9808,9 +10023,11 @@ class ApplicationComptaPrivee(tk.Tk):
 
             def appliquer() -> None:
                 nonlocal ajustement_reer_courant
+                nonlocal deduction_celiapp_courante
                 nonlocal cotisations_syndicales_courantes
                 nonlocal dons_bienfaisance_courants
                 nonlocal derniere_estimation, dernier_rapport_pdf
+                nonlocal rapport_fiscal_a_reexporter
 
                 try:
                     nouvel_ajustement = (
@@ -9820,6 +10037,30 @@ class ApplicationComptaPrivee(tk.Tk):
                             source_var.get(),
                             validation_reer_var.get(),
                         )
+                    )
+
+                    nouveau_celiapp = DeductionCeliapp2025(
+                        deduction=decimal_depuis_champ(
+                            celiapp_deduction_var.get(),
+                            "Déduction CELIAPP",
+                        ),
+                        cotisations_directes_2025=decimal_depuis_champ(
+                            celiapp_cotisations_var.get(),
+                            "Cotisations directes CELIAPP 2025",
+                        ),
+                        droits_deduction_confirmes=decimal_depuis_champ(
+                            celiapp_droits_var.get(),
+                            "Droits de déduction CELIAPP confirmés",
+                        ),
+                        source_droits=celiapp_source_var.get().strip(),
+                        valide_par_comptable=celiapp_validation_var.get(),
+                        titulaire_confirme=celiapp_titulaire_var.get(),
+                        residence_canada_quebec_annee_complete=(
+                            celiapp_residence_var.get()
+                        ),
+                    )
+                    nouveau_celiapp = valider_deduction_celiapp_2025(
+                        nouveau_celiapp
                     )
 
                     nouvelles_cotisations = (
@@ -9883,11 +10124,13 @@ class ApplicationComptaPrivee(tk.Tk):
                     return
 
                 ajustement_reer_courant = nouvel_ajustement
+                deduction_celiapp_courante = nouveau_celiapp
                 cotisations_syndicales_courantes = nouvelles_cotisations
                 dons_bienfaisance_courants = nouveaux_dons
 
                 derniere_estimation = None
                 dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
                 mettre_a_jour_bouton_ajustements()
 
                 self.statut.set(
@@ -9900,6 +10143,10 @@ class ApplicationComptaPrivee(tk.Tk):
                         "REER : "
                         + formater_montant_estimation(
                             nouvel_ajustement.deduction_reer
+                        )
+                        + "\nCELIAPP : "
+                        + formater_montant_estimation(
+                            nouveau_celiapp.deduction
                         )
                         + "\nCotisations fédérales : "
                         + formater_montant_estimation(
@@ -10616,6 +10863,7 @@ class ApplicationComptaPrivee(tk.Tk):
         def initialiser_dossier_fiscal() -> None:
             nonlocal rapport_fiscal_a_reexporter
             nonlocal ajustement_reer_courant
+            nonlocal deduction_celiapp_courante
             nonlocal cotisations_syndicales_courantes
             nonlocal dons_bienfaisance_courants
             nonlocal frais_medicaux_courants
@@ -10803,6 +11051,7 @@ class ApplicationComptaPrivee(tk.Tk):
                         calculer_estimation_fiscale_2025(
                             dossier_valide,
                             ajustement_reer=ajustement_reer_courant,
+                    deduction_celiapp=deduction_celiapp_courante,
                             cotisations_syndicales=(
                                 cotisations_syndicales_courantes
                             ),
@@ -10853,6 +11102,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     dossier_valide,
                     estimation=estimation_a_sauvegarder,
                     ajustement_reer=ajustement_reer_courant,
+                    deduction_celiapp=deduction_celiapp_courante,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -10999,6 +11249,7 @@ class ApplicationComptaPrivee(tk.Tk):
             dernier_rapport_pdf = enregistrement.rapport_pdf
             rapport_fiscal_a_reexporter = dernier_rapport_pdf is None
             ajustement_reer_courant = enregistrement.ajustement_reer
+            deduction_celiapp_courante = enregistrement.deduction_celiapp
             cotisations_syndicales_courantes = (
                 enregistrement.cotisations_syndicales
             )
@@ -11321,6 +11572,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 estimation = calculer_estimation_fiscale_2025(
                     dossier_valide,
                     ajustement_reer=ajustement_reer_courant,
+                    deduction_celiapp=deduction_celiapp_courante,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),

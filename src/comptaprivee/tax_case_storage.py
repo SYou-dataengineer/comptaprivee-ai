@@ -14,6 +14,10 @@ from .tax_adjustments_2025 import (
     AjustementReer2025,
     valider_ajustement_reer_2025,
 )
+from .tax_fhsa_2025 import (
+    DeductionCeliapp2025,
+    valider_deduction_celiapp_2025,
+)
 from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
@@ -144,6 +148,7 @@ class DossierFiscalEnregistre:
     rapport_pdf: Path | None
     documents_manquants: tuple[Path, ...]
     ajustement_reer: AjustementReer2025
+    deduction_celiapp: DeductionCeliapp2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
@@ -281,6 +286,85 @@ def _ajustement_reer_depuis_dict(valeur: Any) -> AjustementReer2025:
         ),
     )
     return valider_ajustement_reer_2025(ajustement)
+
+
+def _deduction_celiapp_vers_dict(
+    profil: DeductionCeliapp2025 | None,
+):
+    if profil is None:
+        profil = DeductionCeliapp2025()
+
+    profil = valider_deduction_celiapp_2025(profil)
+    return {
+        "deduction": _decimal_texte(profil.deduction),
+        "cotisations_directes_2025": _decimal_texte(
+            profil.cotisations_directes_2025
+        ),
+        "droits_deduction_confirmes": _decimal_texte(
+            profil.droits_deduction_confirmes
+        ),
+        "source_droits": profil.source_droits,
+        "valide_par_comptable": bool(profil.valide_par_comptable),
+        "titulaire_confirme": bool(profil.titulaire_confirme),
+        "residence_canada_quebec_annee_complete": bool(
+            profil.residence_canada_quebec_annee_complete
+        ),
+        "inclut_cotisations_inutilisees_anterieures": bool(
+            profil.inclut_cotisations_inutilisees_anterieures
+        ),
+        "inclut_transfert_reer": bool(profil.inclut_transfert_reer),
+        "retrait_2025": bool(profil.retrait_2025),
+        "excedent_2025": bool(profil.excedent_2025),
+    }
+
+
+def _deduction_celiapp_depuis_dict(
+    valeur: Any,
+) -> DeductionCeliapp2025:
+    if valeur is None:
+        return DeductionCeliapp2025()
+    if not isinstance(valeur, dict):
+        raise ValueError("La déduction CELIAPP enregistrée est invalide.")
+
+    profil = DeductionCeliapp2025(
+        deduction=_decimal_depuis_json(
+            valeur.get("deduction", "0"),
+            "deduction_celiapp.deduction",
+        ),
+        cotisations_directes_2025=_decimal_depuis_json(
+            valeur.get("cotisations_directes_2025", "0"),
+            "deduction_celiapp.cotisations_directes_2025",
+        ),
+        droits_deduction_confirmes=_decimal_depuis_json(
+            valeur.get("droits_deduction_confirmes", "0"),
+            "deduction_celiapp.droits_deduction_confirmes",
+        ),
+        source_droits=str(valeur.get("source_droits", "")),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        titulaire_confirme=bool(
+            valeur.get("titulaire_confirme", False)
+        ),
+        residence_canada_quebec_annee_complete=bool(
+            valeur.get(
+                "residence_canada_quebec_annee_complete",
+                False,
+            )
+        ),
+        inclut_cotisations_inutilisees_anterieures=bool(
+            valeur.get(
+                "inclut_cotisations_inutilisees_anterieures",
+                False,
+            )
+        ),
+        inclut_transfert_reer=bool(
+            valeur.get("inclut_transfert_reer", False)
+        ),
+        retrait_2025=bool(valeur.get("retrait_2025", False)),
+        excedent_2025=bool(valeur.get("excedent_2025", False)),
+    )
+    return valider_deduction_celiapp_2025(profil)
 
 
 def _cotisations_syndicales_vers_dict(
@@ -2420,6 +2504,7 @@ def sauvegarder_dossier_fiscal(
     *,
     estimation: EstimationFiscale2025 | None = None,
     ajustement_reer: AjustementReer2025 | None = None,
+    deduction_celiapp: DeductionCeliapp2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
@@ -2469,6 +2554,24 @@ def sauvegarder_dossier_fiscal(
     psv_confirme: bool | None = None,
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    celiapp_effectif = (
+        deduction_celiapp
+        if deduction_celiapp is not None
+        else (
+            estimation.deduction_celiapp
+            if estimation is not None
+            else DeductionCeliapp2025()
+        )
+    )
+    celiapp_effectif = valider_deduction_celiapp_2025(celiapp_effectif)
+    if (
+        estimation is not None
+        and celiapp_effectif != estimation.deduction_celiapp
+    ):
+        raise ValueError(
+            "La déduction CELIAPP diffère de l'estimation."
+        )
+
     pertes_effectif = profil_reports_pertes if profil_reports_pertes is not None else (estimation.profil_reports_pertes if estimation else ProfilReportsPertes2025())
     if estimation and pertes_effectif != estimation.profil_reports_pertes:
         raise ValueError("Le profil reports de pertes diffère de l'estimation.")
@@ -2725,6 +2828,9 @@ def sauvegarder_dossier_fiscal(
         "ajustement_reer": _ajustement_reer_vers_dict(
             ajustement_reer
         ),
+        "deduction_celiapp": _deduction_celiapp_vers_dict(
+            celiapp_effectif
+        ),
         "cotisations_syndicales": _cotisations_syndicales_vers_dict(
             cotisations_syndicales
         ),
@@ -2894,6 +3000,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
 
     ajustement_reer = _ajustement_reer_depuis_dict(
         contenu.get("ajustement_reer")
+    )
+    deduction_celiapp = _deduction_celiapp_depuis_dict(
+        contenu.get("deduction_celiapp")
     )
     cotisations_syndicales = _cotisations_syndicales_depuis_dict(
         contenu.get("cotisations_syndicales")
@@ -3136,6 +3245,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         rapport_pdf=rapport,
         documents_manquants=manquants,
         ajustement_reer=ajustement_reer,
+        deduction_celiapp=deduction_celiapp,
         cotisations_syndicales=cotisations_syndicales,
         dons_bienfaisance=dons_bienfaisance,
         frais_medicaux=frais_medicaux,

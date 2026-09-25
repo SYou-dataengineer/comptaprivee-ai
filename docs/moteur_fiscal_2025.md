@@ -1614,3 +1614,59 @@ Suite complète finale `python -m pytest -q` : **3 172 tests réussis**,
 **8 avertissements** de dépréciation existants, aucun échec ni erreur
 (**104,98 s** en local). Les avertissements SWIG/PyMuPDF et `openpyxl` restent
 non bloquants.
+
+## Priorité 4 — audit et découpage des déductions restantes 2025
+
+Audit initial après la livraison de 3H-F sur le socle
+`89b8a5666b74afdd0bc7d015e2b8edbb94c3f6c1` (3 172 tests locaux, CI verte).
+La Priorité 4 sera livrée par sous-blocs indépendants. Le premier sous-bloc
+retenu est **4A — CELIAPP simple**, avant frais de garde, emploi/T2200,
+déménagement, pension alimentaire et autres déductions.
+
+### Bloc 4A proposé — CELIAPP simple, ligne 20805 / ligne 215
+
+Le sous-bloc initial couvre uniquement une déduction CELIAPP 2025 simple et
+documentée. Le montant fédéral est celui de la ligne 20805 calculée à
+l'annexe 15 fédérale. Pour le Québec, la ligne 215 reprend le montant déduit à
+la ligne fédérale 20805.
+
+Périmètre initial volontairement limité :
+
+- particulier résident du Canada et du Québec pendant toute l'année 2025;
+- CELIAPP ouvert et détenu par le contribuable;
+- cotisations directes en argent effectuées du 1er janvier au 31 décembre 2025;
+- aucune cotisation inutilisée d'une année antérieure réclamée dans ce premier
+  sous-bloc;
+- aucun transfert REER vers CELIAPP;
+- aucun retrait admissible, retrait imposable, retrait désigné ou transfert
+  désigné en 2025;
+- aucun excédent CELIAPP ni impôt mensuel sur excédent;
+- montant de déduction 2025 confirmé à partir de l'annexe 15 / des pièces du
+  contribuable, avec source conservée localement;
+- déduction appliquée au revenu net et imposable fédéral et Québec, sans
+  modifier le revenu total, les retenues ou les revenus de placement.
+
+Les cas de cotisations inutilisées reportées, transferts REER→CELIAPP,
+retraits admissibles, retraits imposables (notamment ligne 12905), retraits
+désignés, excédents, décès, non-résidence ou situations multi-années seront
+refusés explicitement dans 4A et réservés à un sous-bloc ultérieur.
+
+### Contrat technique visé pour 4A
+
+Le bloc doit suivre les mêmes garde-fous que les déductions déjà intégrées :
+
+1. profil immuable dédié avec montant demandé, montant disponible confirmé,
+   source et confirmations d'absence des cas exclus;
+2. validation stricte des montants finis, non négatifs et du plafond confirmé;
+3. application unique de la déduction sur les revenus net/imposable fédéral
+   et Québec;
+4. persistance JSON rétrocompatible sans migration de schéma obligatoire;
+5. résumé, trace de calcul et PDF indiquant explicitement les lignes
+   **20805 / 215**;
+6. formulaire GUI local avec révocation de confirmation dès qu'un champ change;
+7. invalidation de l'estimation et de l'ancien PDF après modification;
+8. tests moteur, limites, persistance, recalcul, trace/PDF et GUI avant
+   ouverture d'un sous-bloc 4B.
+
+Aucune transmission fiscale n'est ajoutée : ComptaPrivée AI reste un moteur
+local d'estimation et de préparation.

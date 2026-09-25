@@ -25,6 +25,11 @@ from .tax_adjustments_2025 import (
     AjustementReer2025,
     appliquer_ajustement_reer_2025,
 )
+from .tax_fhsa_2025 import (
+    DeductionCeliapp2025,
+    appliquer_deduction_celiapp_2025,
+    lignes_resume_celiapp_2025,
+)
 from .tax_contribution_overpayments_2025 import (
     CotisationsExcedentaires2025,
     calculer_remboursements_cotisations_2025,
@@ -226,6 +231,7 @@ class EstimationFiscale2025:
     quebec: ImpotQuebecPreliminaire2025
     rapprochement: RapprochementFiscal2025
     ajustement_reer: AjustementReer2025
+    deduction_celiapp: DeductionCeliapp2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
@@ -277,6 +283,7 @@ class EstimationFiscale2025:
 def calculer_estimation_fiscale_2025(
     dossier: DossierFiscalValide,
     ajustement_reer: AjustementReer2025 | None = None,
+    deduction_celiapp: DeductionCeliapp2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
@@ -653,6 +660,16 @@ def calculer_estimation_fiscale_2025(
     revenu = appliquer_ajustement_reer_2025(
         revenu,
         ajustement_reer_effectif,
+    )
+
+    deduction_celiapp_effective = (
+        deduction_celiapp
+        if deduction_celiapp is not None
+        else DeductionCeliapp2025()
+    )
+    revenu = appliquer_deduction_celiapp_2025(
+        revenu,
+        deduction_celiapp_effective,
     )
 
     cotisations_effectives = (
@@ -1330,6 +1347,7 @@ def calculer_estimation_fiscale_2025(
         quebec=quebec,
         rapprochement=rapprochement,
         ajustement_reer=ajustement_reer_effectif,
+        deduction_celiapp=deduction_celiapp_effective,
         cotisations_syndicales=cotisations_effectives,
         dons_bienfaisance=dons_effectifs,
         frais_medicaux=frais_medicaux_effectifs,
@@ -1437,6 +1455,7 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_rrq_rpc_2025(estimation.prestations_rrq_rpc),
         *([f"Revenu total fédéral : {formater_montant_estimation(revenu.revenu_total_federal)}",
            f"Revenu total Québec : {formater_montant_estimation(revenu.revenu_total_quebec)}"] if estimation.prestations_rqap.present or estimation.prestations_ae.present or estimation.prestations_rrq_rpc.present or estimation.prestations_psv.present or estimation.pensions.present or estimation.retraits.present or estimation.interets.present or estimation.dividendes.present or estimation.capital.present else []),
+        *lignes_resume_celiapp_2025(estimation.deduction_celiapp),
         *(
             [
                 "",

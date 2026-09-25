@@ -87,3 +87,38 @@ def test_pdf_metadonnees(tmp_path):
         assert doc.metadata["author"] == "ComptaPrivée AI"
     finally:
         doc.close()
+
+# --- Priorité 4A : PDF CELIAPP ---
+
+from src.comptaprivee.tax_fhsa_2025 import DeductionCeliapp2025
+
+
+def _estimation_celiapp():
+    base = _estimation()
+    return calculer_estimation_fiscale_2025(
+        base.dossier,
+        deduction_celiapp=DeductionCeliapp2025(
+            deduction=Decimal("5000"),
+            cotisations_directes_2025=Decimal("6000"),
+            droits_deduction_confirmes=Decimal("8000"),
+            source_droits="Annexe 15 / relevé CELIAPP 2025",
+            valide_par_comptable=True,
+            titulaire_confirme=True,
+            residence_canada_quebec_annee_complete=True,
+        ),
+    )
+
+
+def test_pdf_celiapp_4a_contient_deduction_et_lignes(tmp_path):
+    path = exporter_rapport_fiscal_pdf_2025(
+        _estimation_celiapp(),
+        tmp_path / "rapport_celiapp.pdf",
+    )
+    texte = _texte(path).replace("\xa0", " ")
+
+    assert "CELIAPP 2025 VALIDÉ" in texte
+    assert "BLOC 4A" in texte
+    assert "20805" in texte
+    assert "215" in texte
+    assert "5000.00 $" in texte
+    assert "Annexe 15 / relevé CELIAPP 2025" in texte
