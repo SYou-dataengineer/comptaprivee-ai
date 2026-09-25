@@ -164,6 +164,7 @@ def construire_trace_calcul_fiscal_2025(
     ajustement_reer = estimation.ajustement_reer
     deduction_celiapp = estimation.deduction_celiapp
     frais_garde_federaux = estimation.frais_garde_federaux
+    depenses_emploi = estimation.depenses_emploi
     cotisations = estimation.cotisations_syndicales
     dons = estimation.dons_bienfaisance
     frais_medicaux = estimation.frais_medicaux
@@ -233,6 +234,15 @@ def construire_trace_calcul_fiscal_2025(
     if deduction_frais_garde > Decimal("0"):
         formule_revenu_federal += (
             " - frais de garde T778 / ligne 21400"
+        )
+
+    if depenses_emploi.deduction_federale_t777 > Decimal("0"):
+        formule_revenu_federal += (
+            " - dépenses d'emploi T777 / ligne 22900"
+        )
+    if depenses_emploi.deduction_quebec_tp59 > Decimal("0"):
+        formule_revenu_quebec += (
+            " - dépenses d'emploi TP-59 / ligne 207 code 07"
         )
 
     if cotisations.montant_federal_admissible > Decimal("0"):
@@ -660,6 +670,48 @@ def construire_trace_calcul_fiscal_2025(
                     + formater_montant_estimation(deduction_frais_garde)
                 ),
                 deduction_frais_garde,
+            ),
+        )
+
+    if depenses_emploi.deduction_federale_t777 > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable fédéral",
+            _ligne(
+                0,
+                "REVENU FÉDÉRAL",
+                "Dépenses d'emploi 4C — T777 / ligne 22900",
+                (
+                    "ARC T2200 + T777 / ligne 22900 — "
+                    + depenses_emploi.source_federale
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant T777 validé, dépenses exigées par le contrat "
+                    "et non remboursées"
+                ),
+                depenses_emploi.deduction_federale_t777,
+            ),
+        )
+
+    if depenses_emploi.deduction_quebec_tp59 > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable Québec",
+            _ligne(
+                0,
+                "REVENU QUÉBEC",
+                "Dépenses d'emploi 4C — TP-59 / ligne 207 code 07",
+                (
+                    "Revenu Québec TP-64.3 + TP-59 / ligne 207 code 07 — "
+                    + depenses_emploi.source_quebec
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant TP-59 validé, dépenses exigées par le contrat "
+                    "et non remboursées"
+                ),
+                depenses_emploi.deduction_quebec_tp59,
             ),
         )
 

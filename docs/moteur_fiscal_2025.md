@@ -1726,3 +1726,44 @@ Le bloc 4B devra respecter les garde-fous suivants :
 
 Aucune transmission fiscale n'est ajoutée. Le montant demeure une estimation
 locale à valider à partir du T778 et des pièces justificatives.
+
+
+### Bloc 4C livré — dépenses d'emploi simples, T2200/T777 et TP-64.3/TP-59
+
+Le bloc 4C couvre un profil volontairement limité d'employé salarié ordinaire
+qui réclame des dépenses d'emploi 2025 déjà établies et validées à partir des
+formulaires applicables.
+
+Périmètre livré :
+
+- fédéral : montant T777 reporté à la ligne 22900;
+- Québec : montant TP-59 reporté à la ligne 207, code 07;
+- T2200 confirmé lorsqu'une déduction fédérale est réclamée;
+- TP-64.3 confirmé lorsqu'une déduction Québec est réclamée;
+- dépenses exigées par le contrat de travail et non remboursées;
+- montants fédéral et Québec conservés séparément;
+- validation comptable et sources conservées localement;
+- application aux revenus net et imposable de la juridiction correspondante,
+  sans modifier le revenu total, les retenues ni les autres profils fiscaux.
+
+Les situations suivantes sont explicitement hors périmètre 4C simple :
+employé à commission, véhicule ou DPA/CCA, voyages-repas-logement,
+bureau à domicile, outils et autres profils spécialisés. Elles nécessitent
+un futur traitement avancé des dépenses d'emploi.
+
+Contrat technique livré :
+
+1. profil immuable `DepensesEmploi2025` avec montants, sources et confirmations;
+2. validation stricte des montants finis et non négatifs;
+3. moteur séparé fédéral/Québec;
+4. intégration dans `EstimationFiscale2025`;
+5. trace de calcul identifiant T777 / ligne 22900 et TP-59 / ligne 207 code 07;
+6. persistance JSON rétrocompatible, avec refus d'une divergence entre le
+   profil explicite et celui de l'estimation;
+7. formulaire GUI dédié avec révocation automatique des confirmations après
+   toute modification pertinente;
+8. rapport PDF avec montants et sources validées;
+9. tests moteur, estimation, trace, stockage, GUI et PDF.
+
+Validation ciblée finale avant suite complète : **130 tests réussis**,
+avec **5 avertissements de dépréciation existants** non bloquants.

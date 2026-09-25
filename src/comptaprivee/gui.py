@@ -158,6 +158,10 @@ from .tax_child_care_2025 import (
     deduction_frais_garde_federale_2025,
     valider_frais_garde_federaux_2025,
 )
+from .tax_employment_expenses_2025 import (
+    DepensesEmploi2025,
+    valider_depenses_emploi_2025,
+)
 from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
@@ -2477,6 +2481,7 @@ class ApplicationComptaPrivee(tk.Tk):
         ajustement_reer_courant = AjustementReer2025()
         deduction_celiapp_courante = DeductionCeliapp2025()
         frais_garde_federaux_courants = FraisGardeFederaux2025()
+        depenses_emploi_courantes = DepensesEmploi2025()
         cotisations_syndicales_courantes = (
             CotisationsSyndicalesProfessionnelles2025()
         )
@@ -2763,6 +2768,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
                 mettre_a_jour_bouton_frais_garde()
+                mettre_a_jour_bouton_depenses_emploi()
                 self.statut.set(
                     "Frais de garde 4B validés; recalculez l'estimation."
                 )
@@ -2776,6 +2782,270 @@ class ApplicationComptaPrivee(tk.Tk):
             ).pack(side="right")
             ttk.Button(
                 formulaire.actions, text="Fermer", command=dialogue.destroy
+            ).pack(side="right", padx=(0, 8))
+            organiser_boutons(formulaire.actions)
+
+
+        # --- Priorité 4C : GUI dépenses d'emploi ---
+
+        def mettre_a_jour_bouton_depenses_emploi() -> None:
+            fed = depenses_emploi_courantes.deduction_federale_t777
+            qc = depenses_emploi_courantes.deduction_quebec_tp59
+            if fed > Decimal("0") or qc > Decimal("0"):
+                bouton_depenses_emploi_4c.configure(
+                    text=(
+                        "Dépenses d'emploi 2025 (4C) — F "
+                        + formater_montant_estimation(fed)
+                        + " / QC "
+                        + formater_montant_estimation(qc)
+                    )
+                )
+            else:
+                bouton_depenses_emploi_4c.configure(
+                    text="Dépenses d'emploi 2025 (4C)"
+                )
+
+        def ouvrir_depenses_emploi_4c_2025() -> None:
+            nonlocal depenses_emploi_courantes
+            nonlocal derniere_estimation, dernier_rapport_pdf
+            nonlocal rapport_fiscal_a_reexporter
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Dépenses d'emploi 2025 — Bloc 4C — ComptaPrivée AI"
+            )
+            dimensionner_fenetre(dialogue, 900, 800)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Dépenses d'emploi 2025 — Bloc 4C",
+                font=("Segoe UI", 16, "bold"),
+            ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil simple d'employé salarié : "
+                    "T2200/T777 — ligne fédérale 22900 et "
+                    "TP-64.3/TP-59 — ligne Québec 207 code 07."
+                ),
+                foreground="#166534",
+                wraplength=790,
+                justify="left",
+            ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 12))
+
+            def montant_texte(valeur: Decimal) -> str:
+                return "" if valeur == Decimal("0") else format(valeur, "f")
+
+            fed_var = tk.StringVar(
+                value=montant_texte(
+                    depenses_emploi_courantes.deduction_federale_t777
+                )
+            )
+            qc_var = tk.StringVar(
+                value=montant_texte(
+                    depenses_emploi_courantes.deduction_quebec_tp59
+                )
+            )
+            source_fed_var = tk.StringVar(
+                value=depenses_emploi_courantes.source_federale
+            )
+            source_qc_var = tk.StringVar(
+                value=depenses_emploi_courantes.source_quebec
+            )
+
+            comptable_var = tk.BooleanVar(
+                value=depenses_emploi_courantes.valide_par_comptable
+            )
+            salarie_var = tk.BooleanVar(
+                value=depenses_emploi_courantes.salarie_ordinaire_confirme
+            )
+            contrat_var = tk.BooleanVar(
+                value=depenses_emploi_courantes.contrat_exige_depenses_confirme
+            )
+            non_remboursees_var = tk.BooleanVar(
+                value=depenses_emploi_courantes.non_remboursees_confirme
+            )
+            t2200_var = tk.BooleanVar(
+                value=depenses_emploi_courantes.t2200_confirme
+            )
+            t777_var = tk.BooleanVar(
+                value=depenses_emploi_courantes.t777_confirme
+            )
+            tp643_var = tk.BooleanVar(
+                value=depenses_emploi_courantes.tp_64_3_confirme
+            )
+            tp59_var = tk.BooleanVar(
+                value=depenses_emploi_courantes.tp_59_confirme
+            )
+
+            champs = (
+                ("Déduction fédérale T777 — ligne 22900 :", "deduction_federale_4c", fed_var),
+                ("Source fédérale T2200/T777 :", "source_federale_4c", source_fed_var),
+                ("Déduction Québec TP-59 — ligne 207 code 07 :", "deduction_quebec_4c", qc_var),
+                ("Source Québec TP-64.3/TP-59 :", "source_quebec_4c", source_qc_var),
+            )
+            for row, (libelle, nom, variable) in enumerate(champs, start=2):
+                ttk.Label(cadre, text=libelle).grid(
+                    row=row, column=0, sticky="w", pady=5
+                )
+                ttk.Entry(
+                    cadre, name=nom, textvariable=variable
+                ).grid(
+                    row=row, column=1, sticky="ew",
+                    padx=(12, 0), pady=5,
+                )
+
+            confirmations = (
+                ("confirmation_comptable_depenses_emploi_4c", comptable_var,
+                 "Je confirme la validation comptable des dépenses."),
+                ("confirmation_salarie_ordinaire_4c", salarie_var,
+                 "Je confirme qu'il s'agit d'un employé salarié ordinaire."),
+                ("confirmation_contrat_depenses_4c", contrat_var,
+                 "Je confirme que le contrat exige ces dépenses."),
+                ("confirmation_non_remboursees_4c", non_remboursees_var,
+                 "Je confirme que les dépenses n'ont pas été remboursées."),
+                ("confirmation_t2200_4c", t2200_var,
+                 "Je confirme le T2200 pour la déduction fédérale."),
+                ("confirmation_t777_4c", t777_var,
+                 "Je confirme le T777 2025 et la ligne 22900."),
+                ("confirmation_tp643_4c", tp643_var,
+                 "Je confirme le TP-64.3 pour la déduction Québec."),
+                ("confirmation_tp59_4c", tp59_var,
+                 "Je confirme le TP-59 2025 et la ligne 207 code 07."),
+            )
+            for row, (nom, variable, texte) in enumerate(
+                confirmations, start=6
+            ):
+                tk.Checkbutton(
+                    cadre,
+                    name=nom,
+                    variable=variable,
+                    text=texte,
+                    wraplength=790,
+                    anchor="w",
+                    justify="left",
+                ).grid(
+                    row=row, column=0, columnspan=2,
+                    sticky="w", pady=3,
+                )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "⚠ Hors périmètre 4C simple : employé à commission, "
+                    "véhicule/CCA, voyages-repas-logement, bureau à domicile, "
+                    "outils et autres profils spécialisés."
+                ),
+                foreground="#92400e",
+                wraplength=790,
+                justify="left",
+            ).grid(
+                row=14, column=0, columnspan=2,
+                sticky="w", pady=(8, 12),
+            )
+
+            def revoquer_confirmations(*_args) -> None:
+                for variable in (
+                    comptable_var, salarie_var, contrat_var,
+                    non_remboursees_var, t2200_var, t777_var,
+                    tp643_var, tp59_var,
+                ):
+                    variable.set(False)
+
+            for variable in (
+                fed_var, qc_var, source_fed_var, source_qc_var,
+            ):
+                variable.trace_add("write", revoquer_confirmations)
+
+            def decimal_depuis_champ(texte: str, libelle: str) -> Decimal:
+                nettoye = (
+                    texte.strip()
+                    .replace("\u00a0", "")
+                    .replace(" ", "")
+                    .replace(",", ".")
+                    .replace("$", "")
+                )
+                if not nettoye:
+                    return Decimal("0")
+                try:
+                    valeur = Decimal(nettoye)
+                except (InvalidOperation, ValueError) as erreur:
+                    raise ValueError(
+                        f"{libelle} : montant invalide."
+                    ) from erreur
+                if not valeur.is_finite():
+                    raise ValueError(f"{libelle} : montant non fini.")
+                return valeur
+
+            def effacer() -> None:
+                for variable in (
+                    fed_var, qc_var, source_fed_var, source_qc_var,
+                ):
+                    variable.set("")
+                revoquer_confirmations()
+
+            def appliquer() -> None:
+                nonlocal depenses_emploi_courantes
+                nonlocal derniere_estimation, dernier_rapport_pdf
+                nonlocal rapport_fiscal_a_reexporter
+
+                try:
+                    profil = DepensesEmploi2025(
+                        deduction_federale_t777=decimal_depuis_champ(
+                            fed_var.get(), "Déduction fédérale T777"
+                        ),
+                        deduction_quebec_tp59=decimal_depuis_champ(
+                            qc_var.get(), "Déduction Québec TP-59"
+                        ),
+                        source_federale=source_fed_var.get().strip(),
+                        source_quebec=source_qc_var.get().strip(),
+                        valide_par_comptable=comptable_var.get(),
+                        salarie_ordinaire_confirme=salarie_var.get(),
+                        contrat_exige_depenses_confirme=contrat_var.get(),
+                        non_remboursees_confirme=non_remboursees_var.get(),
+                        t2200_confirme=t2200_var.get(),
+                        t777_confirme=t777_var.get(),
+                        tp_64_3_confirme=tp643_var.get(),
+                        tp_59_confirme=tp59_var.get(),
+                    )
+                    profil = valider_depenses_emploi_2025(profil)
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Dépenses d'emploi invalides",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                depenses_emploi_courantes = profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                mettre_a_jour_bouton_depenses_emploi()
+                self.statut.set(
+                    "Dépenses d'emploi 4C validées; recalculez l'estimation."
+                )
+                dialogue.destroy()
+
+            ttk.Button(
+                formulaire.actions, text="Effacer", command=effacer
+            ).pack(side="left")
+            ttk.Button(
+                formulaire.actions,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right")
+            ttk.Button(
+                formulaire.actions,
+                text="Fermer",
+                command=dialogue.destroy,
             ).pack(side="right", padx=(0, 8))
             organiser_boutons(formulaire.actions)
 
@@ -3324,6 +3594,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     ajustement_reer=ajustement_reer_courant,
                     deduction_celiapp=deduction_celiapp_courante,
                     frais_garde_federaux=frais_garde_federaux_courants,
+                    depenses_emploi=depenses_emploi_courantes,
                     cotisations_rpa=cotisations_rpa_courantes,
                     cotisations_syndicales=cotisations_syndicales_courantes,
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
@@ -10408,6 +10679,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 rapport_fiscal_a_reexporter = True
                 mettre_a_jour_bouton_ajustements()
                 mettre_a_jour_bouton_frais_garde()
+                mettre_a_jour_bouton_depenses_emploi()
 
                 self.statut.set(
                     "Ajustements fiscaux 2025 mis à jour"
@@ -11215,6 +11487,7 @@ class ApplicationComptaPrivee(tk.Tk):
             dernier_rapport_pdf = None
             mettre_a_jour_bouton_ajustements()
             mettre_a_jour_bouton_frais_garde()
+            mettre_a_jour_bouton_depenses_emploi()
             statut_dossier.set(dossier.statut)
             mettre_a_jour_etat_dossier_valide()
             self.statut.set(
@@ -11330,6 +11603,7 @@ class ApplicationComptaPrivee(tk.Tk):
                             ajustement_reer=ajustement_reer_courant,
                     deduction_celiapp=deduction_celiapp_courante,
                     frais_garde_federaux=frais_garde_federaux_courants,
+                    depenses_emploi=depenses_emploi_courantes,
                             cotisations_syndicales=(
                                 cotisations_syndicales_courantes
                             ),
@@ -11382,6 +11656,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     ajustement_reer=ajustement_reer_courant,
                     deduction_celiapp=deduction_celiapp_courante,
                     frais_garde_federaux=frais_garde_federaux_courants,
+                    depenses_emploi=depenses_emploi_courantes,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -11469,6 +11744,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
             nonlocal frais_garde_federaux_courants
+            nonlocal depenses_emploi_courantes
             nonlocal rapport_fiscal_a_reexporter
             nonlocal derniere_estimation, dernier_rapport_pdf
             nonlocal ajustement_reer_courant
@@ -11532,6 +11808,9 @@ class ApplicationComptaPrivee(tk.Tk):
             deduction_celiapp_courante = enregistrement.deduction_celiapp
             frais_garde_federaux_courants = (
                 enregistrement.frais_garde_federaux
+            )
+            depenses_emploi_courantes = (
+                enregistrement.depenses_emploi
             )
             cotisations_syndicales_courantes = (
                 enregistrement.cotisations_syndicales
@@ -11603,6 +11882,7 @@ class ApplicationComptaPrivee(tk.Tk):
             aidant_enfant_federal_courant = enregistrement.aidant_enfant_federal
             mettre_a_jour_bouton_ajustements()
             mettre_a_jour_bouton_frais_garde()
+            mettre_a_jour_bouton_depenses_emploi()
             rafraichir_documents()
             statut_dossier.set("Validé — dossier rouvert localement")
             mettre_a_jour_etat_dossier_valide()
@@ -11858,6 +12138,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     ajustement_reer=ajustement_reer_courant,
                     deduction_celiapp=deduction_celiapp_courante,
                     frais_garde_federaux=frais_garde_federaux_courants,
+                    depenses_emploi=depenses_emploi_courantes,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -12311,6 +12592,16 @@ class ApplicationComptaPrivee(tk.Tk):
             padx=(8, 0),
         )
 
+        bouton_depenses_emploi_4c = ttk.Button(
+            zone_actions,
+            text="Dépenses d'emploi 2025 (4C)",
+            command=ouvrir_depenses_emploi_4c_2025,
+        )
+        bouton_depenses_emploi_4c.pack(
+            side="left",
+            padx=(8, 0),
+        )
+
         bouton_ajustements_fiscaux = ttk.Button(
             zone_actions,
             text="Ajustements fiscaux",
@@ -12353,6 +12644,7 @@ class ApplicationComptaPrivee(tk.Tk):
         organiser_boutons(zone_actions)
         mettre_a_jour_bouton_ajustements()
         mettre_a_jour_bouton_frais_garde()
+        mettre_a_jour_bouton_depenses_emploi()
         mettre_a_jour_etat_dossier_valide()
         champ_client.focus_set()
 

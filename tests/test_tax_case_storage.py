@@ -359,3 +359,127 @@ def test_stockage_frais_garde_4b_invalide_est_refuse_au_rechargement(tmp_path):
     p.write_text(json.dumps(brut, ensure_ascii=False, indent=2), encoding="utf-8")
     with pytest.raises(ValueError, match="hors périmètre 4B"):
         charger_dossier_fiscal(p)
+
+# --- Priorité 4C : persistance dépenses d'emploi ---
+
+from src.comptaprivee.tax_employment_expenses_2025 import DepensesEmploi2025
+
+
+def _depenses_emploi_4c_stockage():
+    return DepensesEmploi2025(
+        deduction_federale_t777=Decimal("1200"),
+        deduction_quebec_tp59=Decimal("1000"),
+        source_federale="T2200 + T777 2025",
+        source_quebec="TP-64.3 + TP-59 2025",
+        valide_par_comptable=True,
+        salarie_ordinaire_confirme=True,
+        contrat_exige_depenses_confirme=True,
+        non_remboursees_confirme=True,
+        t2200_confirme=True,
+        t777_confirme=True,
+        tp_64_3_confirme=True,
+        tp_59_confirme=True,
+    )
+
+
+def test_stockage_depenses_emploi_4c_roundtrip_direct(tmp_path):
+    profil = _depenses_emploi_4c_stockage()
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        depenses_emploi=profil,
+        destination=tmp_path / "d.json",
+    )
+    assert charger_dossier_fiscal(p).depenses_emploi == profil
+
+
+def test_stockage_depenses_emploi_4c_depuis_estimation(tmp_path):
+    d = _dossier()
+    profil = _depenses_emploi_4c_stockage()
+    estimation = calculer_estimation_fiscale_2025(
+        d,
+        depenses_emploi=profil,
+    )
+    p = sauvegarder_dossier_fiscal(
+        d,
+        estimation=estimation,
+        destination=tmp_path / "d.json",
+    )
+    charge = charger_dossier_fiscal(p)
+
+    assert charge.depenses_emploi == profil
+    assert charge.estimation is not None
+
+
+def test_stockage_depenses_emploi_4c_refuse_profil_different_estimation(
+    tmp_path,
+):
+    d = _dossier()
+    profil = _depenses_emploi_4c_stockage()
+    estimation = calculer_estimation_fiscale_2025(
+        d,
+        depenses_emploi=profil,
+    )
+    autre = replace(
+        profil,
+        deduction_federale_t777=Decimal("900"),
+    )
+
+    with pytest.raises(ValueError, match="dépenses d'emploi diffèrent"):
+        sauvegarder_dossier_fiscal(
+            d,
+            estimation=estimation,
+            depenses_emploi=autre,
+            destination=tmp_path / "d.json",
+        )
+
+
+def test_stockage_ancien_json_sans_depenses_emploi_4c_reste_compatible(
+    tmp_path,
+):
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        destination=tmp_path / "d.json",
+    )
+    brut = json.loads(p.read_text(encoding="utf-8"))
+    brut.pop("depenses_emploi", None)
+    p.write_text(
+        json.dumps(brut, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    assert (
+        charger_dossier_fiscal(p).depenses_emploi
+        == DepensesEmploi2025()
+    )
+
+
+def test_stockage_depenses_emploi_4c_invalide_est_refuse_au_rechargement(
+    tmp_path,
+):
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        destination=tmp_path / "d.json",
+    )
+    brut = json.loads(p.read_text(encoding="utf-8"))
+    brut["depenses_emploi"] = {
+        "deduction_federale_t777": "1200",
+        "deduction_quebec_tp59": "1000",
+        "source_federale": "T2200 + T777 2025",
+        "source_quebec": "TP-64.3 + TP-59 2025",
+        "valide_par_comptable": True,
+        "salarie_ordinaire_confirme": True,
+        "contrat_exige_depenses_confirme": True,
+        "non_remboursees_confirme": True,
+        "t2200_confirme": True,
+        "t777_confirme": True,
+        "tp_64_3_confirme": True,
+        "tp_59_confirme": True,
+        "employe_a_commission": True,
+    }
+    p.write_text(
+        json.dumps(brut, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="hors périmètre 4C"):
+        charger_dossier_fiscal(p)

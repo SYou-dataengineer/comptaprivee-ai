@@ -179,3 +179,65 @@ def test_pdf_frais_garde_4b_reste_federal_seulement(tmp_path):
     assert "45 515,00 $" in texte
     assert "Revenu net Québec" in texte
     assert "50 095,00 $" in texte
+
+# --- Priorité 4C : PDF dépenses d'emploi ---
+
+from src.comptaprivee.tax_employment_expenses_2025 import DepensesEmploi2025
+
+
+def _estimation_depenses_emploi_4c():
+    base = _estimation()
+    return calculer_estimation_fiscale_2025(
+        base.dossier,
+        depenses_emploi=DepensesEmploi2025(
+            deduction_federale_t777=Decimal("1200"),
+            deduction_quebec_tp59=Decimal("1000"),
+            source_federale="T2200 + T777 2025",
+            source_quebec="TP-64.3 + TP-59 2025",
+            valide_par_comptable=True,
+            salarie_ordinaire_confirme=True,
+            contrat_exige_depenses_confirme=True,
+            non_remboursees_confirme=True,
+            t2200_confirme=True,
+            t777_confirme=True,
+            tp_64_3_confirme=True,
+            tp_59_confirme=True,
+        ),
+    )
+
+
+def test_pdf_depenses_emploi_4c_contient_lignes_et_sources(tmp_path):
+    path = exporter_rapport_fiscal_pdf_2025(
+        _estimation_depenses_emploi_4c(),
+        tmp_path / "rapport_depenses_emploi_4c.pdf",
+    )
+    texte = _texte(path).replace("\xa0", " ")
+
+    assert "DÉPENSES D'EMPLOI 2025 VALIDÉES" in texte
+    assert "BLOC 4C" in texte
+    assert "T777" in texte
+    assert "ligne 22900" in texte
+    assert "1200.00 $" in texte
+    assert "T2200 + T777 2025" in texte
+    assert "TP-59" in texte
+    assert "ligne 207, code 07" in texte
+    assert "1000.00 $" in texte
+    assert "TP-64.3 + TP-59 2025" in texte
+
+
+def test_pdf_depenses_emploi_4c_reduit_federal_et_quebec(tmp_path):
+    estimation = _estimation_depenses_emploi_4c()
+
+    assert estimation.revenu.revenu_net_federal == Decimal("50315.00")
+    assert estimation.revenu.revenu_net_quebec == Decimal("49095.00")
+
+    path = exporter_rapport_fiscal_pdf_2025(
+        estimation,
+        tmp_path / "rapport_depenses_emploi_4c_revenus.pdf",
+    )
+    texte = _texte(path).replace("\xa0", " ")
+
+    assert "Revenu net fédéral" in texte
+    assert "50 315,00 $" in texte
+    assert "Revenu net Québec" in texte
+    assert "49 095,00 $" in texte

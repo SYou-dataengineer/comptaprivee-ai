@@ -582,3 +582,158 @@ def test_trace_frais_garde_4b_ne_cree_aucune_deduction_quebec():
         if x.libelle == "Revenu imposable Québec"
     )
     assert "frais de garde" not in revenu_qc.formule.lower()
+
+# --- Priorité 4C : intégration estimation dépenses d'emploi ---
+
+from src.comptaprivee.tax_employment_expenses_2025 import DepensesEmploi2025
+
+
+def _depenses_emploi_4c(federal="1200", quebec="1000"):
+    return DepensesEmploi2025(
+        deduction_federale_t777=Decimal(federal),
+        deduction_quebec_tp59=Decimal(quebec),
+        source_federale="T2200 + T777 2025",
+        source_quebec="TP-64.3 + TP-59 2025",
+        valide_par_comptable=True,
+        salarie_ordinaire_confirme=True,
+        contrat_exige_depenses_confirme=True,
+        non_remboursees_confirme=True,
+        t2200_confirme=True,
+        t777_confirme=True,
+        tp_64_3_confirme=True,
+        tp_59_confirme=True,
+    )
+
+
+def test_pipeline_sans_depenses_emploi_4c_reste_identique():
+    e = calculer_estimation_fiscale_2025(_dossier_52000())
+    assert e.depenses_emploi == DepensesEmploi2025()
+    assert e.revenu.revenu_net_federal == Decimal("51515.00")
+    assert e.revenu.revenu_net_quebec == Decimal("50095.00")
+    assert e.rapprochement.remboursement_estime == Decimal("5611.05")
+
+
+def test_pipeline_depenses_emploi_4c_reduit_chaque_juridiction_separement():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        depenses_emploi=_depenses_emploi_4c(),
+    )
+    assert e.depenses_emploi.deduction_federale_t777 == Decimal("1200")
+    assert e.depenses_emploi.deduction_quebec_tp59 == Decimal("1000")
+    assert e.revenu.revenu_total_federal == Decimal("52000")
+    assert e.revenu.revenu_net_federal == Decimal("50315.00")
+    assert e.revenu.revenu_imposable_federal == Decimal("50315.00")
+    assert e.revenu.revenu_total_quebec == Decimal("52000")
+    assert e.revenu.revenu_net_quebec == Decimal("49095.00")
+    assert e.revenu.revenu_imposable_quebec == Decimal("49095.00")
+
+
+def test_pipeline_depenses_emploi_4c_recalcule_les_impots():
+    base = calculer_estimation_fiscale_2025(_dossier_52000())
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        depenses_emploi=_depenses_emploi_4c(),
+    )
+    assert e.federal.impot_federal_de_base < base.federal.impot_federal_de_base
+    assert e.quebec.impot_quebec_preliminaire < base.quebec.impot_quebec_preliminaire
+    assert e.rapprochement.remboursement_estime > base.rapprochement.remboursement_estime
+
+
+def test_resume_affiche_depenses_emploi_4c():
+    texte = formater_estimation_fiscale_2025(
+        calculer_estimation_fiscale_2025(
+            _dossier_52000(),
+            depenses_emploi=_depenses_emploi_4c(),
+        )
+    )
+    assert "DÉPENSES D'EMPLOI 2025 VALIDÉES — BLOC 4C" in texte
+    assert "T777" in texte
+    assert "ligne 22900" in texte
+    assert "TP-59" in texte
+    assert "ligne 207, code 07" in texte
+    assert "1200.00 $" in texte
+    assert "1000.00 $" in texte
+
+
+def test_pipeline_4a_4b_4c_se_combinent_sans_modifier_revenu_total():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        deduction_celiapp=_celiapp_5000(),
+        frais_garde_federaux=_frais_garde_6000(),
+        depenses_emploi=_depenses_emploi_4c(),
+    )
+    assert e.revenu.revenu_total_federal == Decimal("52000")
+    assert e.revenu.revenu_total_quebec == Decimal("52000")
+    assert e.revenu.revenu_net_federal == Decimal("39315.00")
+    assert e.revenu.revenu_imposable_federal == Decimal("39315.00")
+    assert e.revenu.revenu_net_quebec == Decimal("44095.00")
+    assert e.revenu.revenu_imposable_quebec == Decimal("44095.00")
+
+# --- Priorité 4C : trace dépenses d'emploi ---
+
+
+def test_trace_depenses_emploi_4c_ajoute_lignes_federal_et_quebec():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        depenses_emploi=_depenses_emploi_4c(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    federal = next(
+        x for x in trace.lignes
+        if x.libelle == "Dépenses d'emploi 4C — T777 / ligne 22900"
+    )
+    quebec = next(
+        x for x in trace.lignes
+        if x.libelle
+        == "Dépenses d'emploi 4C — TP-59 / ligne 207 code 07"
+    )
+
+    assert federal.section == "REVENU FÉDÉRAL"
+    assert federal.montant == Decimal("1200")
+    assert "T2200" in federal.source
+    assert "T777" in federal.source
+    assert "22900" in federal.source
+    assert "T2200 + T777 2025" in federal.source
+
+    assert quebec.section == "REVENU QUÉBEC"
+    assert quebec.montant == Decimal("1000")
+    assert "TP-64.3" in quebec.source
+    assert "TP-59" in quebec.source
+    assert "207 code 07" in quebec.source
+    assert "TP-64.3 + TP-59 2025" in quebec.source
+
+
+def test_trace_depenses_emploi_4c_est_avant_revenus_imposables():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        depenses_emploi=_depenses_emploi_4c(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+    libelles = [x.libelle for x in trace.lignes]
+
+    assert libelles.index(
+        "Dépenses d'emploi 4C — T777 / ligne 22900"
+    ) < libelles.index("Revenu imposable fédéral")
+
+    assert libelles.index(
+        "Dépenses d'emploi 4C — TP-59 / ligne 207 code 07"
+    ) < libelles.index("Revenu imposable Québec")
+
+
+def test_trace_depenses_emploi_4c_formules_revenus_identifient_les_lignes():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        depenses_emploi=_depenses_emploi_4c(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    revenu_federal = next(
+        x for x in trace.lignes if x.libelle == "Revenu imposable fédéral"
+    )
+    revenu_quebec = next(
+        x for x in trace.lignes if x.libelle == "Revenu imposable Québec"
+    )
+
+    assert "T777 / ligne 22900" in revenu_federal.formule
+    assert "TP-59 / ligne 207 code 07" in revenu_quebec.formule

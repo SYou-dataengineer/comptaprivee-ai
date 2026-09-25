@@ -22,6 +22,10 @@ from .tax_child_care_2025 import (
     FraisGardeFederaux2025,
     valider_frais_garde_federaux_2025,
 )
+from .tax_employment_expenses_2025 import (
+    DepensesEmploi2025,
+    valider_depenses_emploi_2025,
+)
 from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
@@ -154,6 +158,7 @@ class DossierFiscalEnregistre:
     ajustement_reer: AjustementReer2025
     deduction_celiapp: DeductionCeliapp2025
     frais_garde_federaux: FraisGardeFederaux2025
+    depenses_emploi: DepensesEmploi2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
@@ -443,6 +448,104 @@ def _frais_garde_federaux_depuis_dict(valeur: Any) -> FraisGardeFederaux2025:
         demandeur_revenu_superieur=bool(valeur.get("demandeur_revenu_superieur", False)),
     )
     return valider_frais_garde_federaux_2025(profil)
+
+
+def _depenses_emploi_vers_dict(
+    profil: DepensesEmploi2025 | None,
+):
+    if profil is None:
+        profil = DepensesEmploi2025()
+
+    profil = valider_depenses_emploi_2025(profil)
+    return {
+        "deduction_federale_t777": _decimal_texte(
+            profil.deduction_federale_t777
+        ),
+        "deduction_quebec_tp59": _decimal_texte(
+            profil.deduction_quebec_tp59
+        ),
+        "source_federale": profil.source_federale,
+        "source_quebec": profil.source_quebec,
+        "valide_par_comptable": bool(profil.valide_par_comptable),
+        "salarie_ordinaire_confirme": bool(
+            profil.salarie_ordinaire_confirme
+        ),
+        "contrat_exige_depenses_confirme": bool(
+            profil.contrat_exige_depenses_confirme
+        ),
+        "non_remboursees_confirme": bool(
+            profil.non_remboursees_confirme
+        ),
+        "t2200_confirme": bool(profil.t2200_confirme),
+        "t777_confirme": bool(profil.t777_confirme),
+        "tp_64_3_confirme": bool(profil.tp_64_3_confirme),
+        "tp_59_confirme": bool(profil.tp_59_confirme),
+        "employe_a_commission": bool(profil.employe_a_commission),
+        "vehicule_ou_cca": bool(profil.vehicule_ou_cca),
+        "voyage_repas_logement": bool(profil.voyage_repas_logement),
+        "bureau_a_domicile": bool(profil.bureau_a_domicile),
+        "outils_ou_profil_specialise": bool(
+            profil.outils_ou_profil_specialise
+        ),
+    }
+
+
+def _depenses_emploi_depuis_dict(valeur: Any) -> DepensesEmploi2025:
+    if valeur is None:
+        return DepensesEmploi2025()
+    if not isinstance(valeur, dict):
+        raise ValueError("Les dépenses d'emploi enregistrées sont invalides.")
+
+    autorises = set(DepensesEmploi2025.__dataclass_fields__)
+    inconnus = set(valeur) - autorises
+    if inconnus:
+        raise ValueError(
+            "Champs dépenses d'emploi inconnus : "
+            + ", ".join(sorted(inconnus))
+        )
+
+    profil = DepensesEmploi2025(
+        deduction_federale_t777=_decimal_depuis_json(
+            valeur.get("deduction_federale_t777", "0"),
+            "depenses_emploi.deduction_federale_t777",
+        ),
+        deduction_quebec_tp59=_decimal_depuis_json(
+            valeur.get("deduction_quebec_tp59", "0"),
+            "depenses_emploi.deduction_quebec_tp59",
+        ),
+        source_federale=str(valeur.get("source_federale", "")),
+        source_quebec=str(valeur.get("source_quebec", "")),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        salarie_ordinaire_confirme=bool(
+            valeur.get("salarie_ordinaire_confirme", False)
+        ),
+        contrat_exige_depenses_confirme=bool(
+            valeur.get("contrat_exige_depenses_confirme", False)
+        ),
+        non_remboursees_confirme=bool(
+            valeur.get("non_remboursees_confirme", False)
+        ),
+        t2200_confirme=bool(valeur.get("t2200_confirme", False)),
+        t777_confirme=bool(valeur.get("t777_confirme", False)),
+        tp_64_3_confirme=bool(valeur.get("tp_64_3_confirme", False)),
+        tp_59_confirme=bool(valeur.get("tp_59_confirme", False)),
+        employe_a_commission=bool(
+            valeur.get("employe_a_commission", False)
+        ),
+        vehicule_ou_cca=bool(valeur.get("vehicule_ou_cca", False)),
+        voyage_repas_logement=bool(
+            valeur.get("voyage_repas_logement", False)
+        ),
+        bureau_a_domicile=bool(
+            valeur.get("bureau_a_domicile", False)
+        ),
+        outils_ou_profil_specialise=bool(
+            valeur.get("outils_ou_profil_specialise", False)
+        ),
+    )
+    return valider_depenses_emploi_2025(profil)
 
 
 def _cotisations_syndicales_vers_dict(
@@ -2584,6 +2687,7 @@ def sauvegarder_dossier_fiscal(
     ajustement_reer: AjustementReer2025 | None = None,
     deduction_celiapp: DeductionCeliapp2025 | None = None,
     frais_garde_federaux: FraisGardeFederaux2025 | None = None,
+    depenses_emploi: DepensesEmploi2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
@@ -2669,6 +2773,26 @@ def sauvegarder_dossier_fiscal(
     ):
         raise ValueError(
             "Les frais de garde fédéraux diffèrent de l'estimation."
+        )
+
+    depenses_emploi_effectives = (
+        depenses_emploi
+        if depenses_emploi is not None
+        else (
+            estimation.depenses_emploi
+            if estimation is not None
+            else DepensesEmploi2025()
+        )
+    )
+    depenses_emploi_effectives = valider_depenses_emploi_2025(
+        depenses_emploi_effectives
+    )
+    if (
+        estimation is not None
+        and depenses_emploi_effectives != estimation.depenses_emploi
+    ):
+        raise ValueError(
+            "Les dépenses d'emploi diffèrent de l'estimation."
         )
 
     pertes_effectif = profil_reports_pertes if profil_reports_pertes is not None else (estimation.profil_reports_pertes if estimation else ProfilReportsPertes2025())
@@ -2933,6 +3057,9 @@ def sauvegarder_dossier_fiscal(
         "frais_garde_federaux": _frais_garde_federaux_vers_dict(
             frais_garde_effectifs
         ),
+        "depenses_emploi": _depenses_emploi_vers_dict(
+            depenses_emploi_effectives
+        ),
         "cotisations_syndicales": _cotisations_syndicales_vers_dict(
             cotisations_syndicales
         ),
@@ -3108,6 +3235,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     )
     frais_garde_federaux = _frais_garde_federaux_depuis_dict(
         contenu.get("frais_garde_federaux")
+    )
+    depenses_emploi = _depenses_emploi_depuis_dict(
+        contenu.get("depenses_emploi")
     )
     cotisations_syndicales = _cotisations_syndicales_depuis_dict(
         contenu.get("cotisations_syndicales")
@@ -3352,6 +3482,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         ajustement_reer=ajustement_reer,
         deduction_celiapp=deduction_celiapp,
         frais_garde_federaux=frais_garde_federaux,
+        depenses_emploi=depenses_emploi,
         cotisations_syndicales=cotisations_syndicales,
         dons_bienfaisance=dons_bienfaisance,
         frais_medicaux=frais_medicaux,

@@ -30,6 +30,9 @@ from .tax_fhsa_2025 import lignes_resume_celiapp_2025
 from .tax_child_care_2025 import (
     lignes_resume_frais_garde_federaux_2025,
 )
+from .tax_employment_expenses_2025 import (
+    lignes_resume_depenses_emploi_2025,
+)
 
 from .tax_estimation_2025 import (
     EstimationFiscale2025,
@@ -196,6 +199,11 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(
         lignes_resume_frais_garde_federaux_2025(
             estimation.frais_garde_federaux
+        )
+    )
+    lignes.extend(
+        lignes_resume_depenses_emploi_2025(
+            estimation.depenses_emploi
         )
     )
     lignes.extend(lignes_resume_rqap_2025(estimation.prestations_rqap))
