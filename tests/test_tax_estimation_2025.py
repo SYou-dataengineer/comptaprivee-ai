@@ -737,3 +737,158 @@ def test_trace_depenses_emploi_4c_formules_revenus_identifient_les_lignes():
 
     assert "T777 / ligne 22900" in revenu_federal.formule
     assert "TP-59 / ligne 207 code 07" in revenu_quebec.formule
+
+
+# --- Priorité 4D : intégration estimation frais de déménagement ---
+
+from src.comptaprivee.tax_moving_expenses_2025 import FraisDemenagement2025
+
+
+def _frais_demenagement_4d(federal="2200", quebec="1800"):
+    return FraisDemenagement2025(
+        deduction_federale_t1m=Decimal(federal),
+        deduction_quebec_tp348=Decimal(quebec),
+        source_federale="T1-M 2025 validé",
+        source_quebec="TP-348 2025 validé",
+        valide_par_comptable=True,
+        salarie_ordinaire_confirme=True,
+        demenagement_pour_emploi_confirme=True,
+        rapprochement_40km_confirme=True,
+        demenagement_interieur_canada_confirme=True,
+        remboursements_employeur_pris_en_compte_confirme=True,
+        t1m_confirme=True,
+        tp348_confirme=True,
+    )
+
+
+def test_pipeline_sans_frais_demenagement_4d_reste_identique():
+    e = calculer_estimation_fiscale_2025(_dossier_52000())
+    assert e.frais_demenagement == FraisDemenagement2025()
+    assert e.revenu.revenu_net_federal == Decimal("51515.00")
+    assert e.revenu.revenu_net_quebec == Decimal("50095.00")
+    assert e.rapprochement.remboursement_estime == Decimal("5611.05")
+
+
+def test_pipeline_frais_demenagement_4d_reduit_chaque_juridiction():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        frais_demenagement=_frais_demenagement_4d(),
+    )
+    assert e.frais_demenagement.deduction_federale_t1m == Decimal("2200")
+    assert e.frais_demenagement.deduction_quebec_tp348 == Decimal("1800")
+    assert e.revenu.revenu_total_federal == Decimal("52000")
+    assert e.revenu.revenu_net_federal == Decimal("49315.00")
+    assert e.revenu.revenu_imposable_federal == Decimal("49315.00")
+    assert e.revenu.revenu_total_quebec == Decimal("52000")
+    assert e.revenu.revenu_net_quebec == Decimal("48295.00")
+    assert e.revenu.revenu_imposable_quebec == Decimal("48295.00")
+
+
+def test_pipeline_frais_demenagement_4d_recalcule_les_impots():
+    base = calculer_estimation_fiscale_2025(_dossier_52000())
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        frais_demenagement=_frais_demenagement_4d(),
+    )
+    assert e.federal.impot_federal_de_base < base.federal.impot_federal_de_base
+    assert e.quebec.impot_quebec_preliminaire < base.quebec.impot_quebec_preliminaire
+    assert e.rapprochement.remboursement_estime > base.rapprochement.remboursement_estime
+
+
+def test_resume_affiche_frais_demenagement_4d():
+    texte = formater_estimation_fiscale_2025(
+        calculer_estimation_fiscale_2025(
+            _dossier_52000(),
+            frais_demenagement=_frais_demenagement_4d(),
+        )
+    )
+    assert "FRAIS DE DÉMÉNAGEMENT 2025 VALIDÉS — BLOC 4D" in texte
+    assert "T1-M" in texte
+    assert "ligne 21900" in texte
+    assert "TP-348" in texte
+    assert "ligne 228" in texte
+    assert "2200.00 $" in texte
+    assert "1800.00 $" in texte
+
+
+def test_pipeline_4a_4b_4c_4d_se_combinent_sans_modifier_revenu_total():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        deduction_celiapp=_celiapp_5000(),
+        frais_garde_federaux=_frais_garde_6000(),
+        depenses_emploi=_depenses_emploi_4c(),
+        frais_demenagement=_frais_demenagement_4d(),
+    )
+    assert e.revenu.revenu_total_federal == Decimal("52000")
+    assert e.revenu.revenu_total_quebec == Decimal("52000")
+    assert e.revenu.revenu_net_federal == Decimal("37115.00")
+    assert e.revenu.revenu_imposable_federal == Decimal("37115.00")
+    assert e.revenu.revenu_net_quebec == Decimal("42295.00")
+    assert e.revenu.revenu_imposable_quebec == Decimal("42295.00")
+
+
+# --- Priorité 4D : trace frais de déménagement ---
+
+
+def test_trace_frais_demenagement_4d_ajoute_lignes_federal_et_quebec():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        frais_demenagement=_frais_demenagement_4d(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    federal = next(
+        x for x in trace.lignes
+        if x.libelle == "Frais de déménagement 4D — T1-M / ligne 21900"
+    )
+    quebec = next(
+        x for x in trace.lignes
+        if x.libelle == "Frais de déménagement 4D — TP-348 / ligne 228"
+    )
+
+    assert federal.section == "REVENU FÉDÉRAL"
+    assert federal.montant == Decimal("2200")
+    assert "T1-M" in federal.source
+    assert "21900" in federal.source
+    assert "T1-M 2025 validé" in federal.source
+
+    assert quebec.section == "REVENU QUÉBEC"
+    assert quebec.montant == Decimal("1800")
+    assert "TP-348" in quebec.source
+    assert "ligne 228" in quebec.source
+    assert "TP-348 2025 validé" in quebec.source
+
+
+def test_trace_frais_demenagement_4d_est_avant_revenus_imposables():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        frais_demenagement=_frais_demenagement_4d(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+    libelles = [x.libelle for x in trace.lignes]
+
+    assert libelles.index(
+        "Frais de déménagement 4D — T1-M / ligne 21900"
+    ) < libelles.index("Revenu imposable fédéral")
+
+    assert libelles.index(
+        "Frais de déménagement 4D — TP-348 / ligne 228"
+    ) < libelles.index("Revenu imposable Québec")
+
+
+def test_trace_frais_demenagement_4d_formules_revenus_identifient_les_lignes():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        frais_demenagement=_frais_demenagement_4d(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    revenu_federal = next(
+        x for x in trace.lignes if x.libelle == "Revenu imposable fédéral"
+    )
+    revenu_quebec = next(
+        x for x in trace.lignes if x.libelle == "Revenu imposable Québec"
+    )
+
+    assert "T1-M / ligne 21900" in revenu_federal.formule
+    assert "TP-348 / ligne 228" in revenu_quebec.formule

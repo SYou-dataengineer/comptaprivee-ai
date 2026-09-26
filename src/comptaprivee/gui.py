@@ -162,6 +162,10 @@ from .tax_employment_expenses_2025 import (
     DepensesEmploi2025,
     valider_depenses_emploi_2025,
 )
+from .tax_moving_expenses_2025 import (
+    FraisDemenagement2025,
+    valider_frais_demenagement_2025,
+)
 from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
@@ -2482,6 +2486,7 @@ class ApplicationComptaPrivee(tk.Tk):
         deduction_celiapp_courante = DeductionCeliapp2025()
         frais_garde_federaux_courants = FraisGardeFederaux2025()
         depenses_emploi_courantes = DepensesEmploi2025()
+        frais_demenagement_courants = FraisDemenagement2025()
         cotisations_syndicales_courantes = (
             CotisationsSyndicalesProfessionnelles2025()
         )
@@ -2769,6 +2774,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 rapport_fiscal_a_reexporter = True
                 mettre_a_jour_bouton_frais_garde()
                 mettre_a_jour_bouton_depenses_emploi()
+                mettre_a_jour_bouton_frais_demenagement()
                 self.statut.set(
                     "Frais de garde 4B validés; recalculez l'estimation."
                 )
@@ -3029,6 +3035,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
                 mettre_a_jour_bouton_depenses_emploi()
+                mettre_a_jour_bouton_frais_demenagement()
                 self.statut.set(
                     "Dépenses d'emploi 4C validées; recalculez l'estimation."
                 )
@@ -3036,6 +3043,347 @@ class ApplicationComptaPrivee(tk.Tk):
 
             ttk.Button(
                 formulaire.actions, text="Effacer", command=effacer
+            ).pack(side="left")
+            ttk.Button(
+                formulaire.actions,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right")
+            ttk.Button(
+                formulaire.actions,
+                text="Fermer",
+                command=dialogue.destroy,
+            ).pack(side="right", padx=(0, 8))
+            organiser_boutons(formulaire.actions)
+
+
+
+        # --- Priorité 4D : GUI frais de déménagement ---
+
+        def mettre_a_jour_bouton_frais_demenagement() -> None:
+            fed = frais_demenagement_courants.deduction_federale_t1m
+            qc = frais_demenagement_courants.deduction_quebec_tp348
+            if fed > Decimal("0") or qc > Decimal("0"):
+                bouton_frais_demenagement_4d.configure(
+                    text=(
+                        "Frais de déménagement 2025 (4D) — F "
+                        + formater_montant_estimation(fed)
+                        + " / QC "
+                        + formater_montant_estimation(qc)
+                    )
+                )
+            else:
+                bouton_frais_demenagement_4d.configure(
+                    text="Frais de déménagement 2025 (4D)"
+                )
+
+        def ouvrir_frais_demenagement_4d_2025() -> None:
+            nonlocal frais_demenagement_courants
+            nonlocal derniere_estimation, dernier_rapport_pdf
+            nonlocal rapport_fiscal_a_reexporter
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Frais de déménagement 2025 — Bloc 4D — ComptaPrivée AI"
+            )
+            dimensionner_fenetre(dialogue, 900, 800)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Frais de déménagement 2025 — Bloc 4D",
+                font=("Segoe UI", 16, "bold"),
+            ).grid(
+                row=0, column=0, columnspan=2,
+                sticky="w", pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil simple d'employé salarié : T1-M / ligne fédérale "
+                    "21900 et TP-348 / ligne Québec 228. Le déménagement "
+                    "pour emploi, la règle des 40 km et les remboursements "
+                    "de l'employeur doivent être confirmés."
+                ),
+                foreground="#166534",
+                wraplength=790,
+                justify="left",
+            ).grid(
+                row=1, column=0, columnspan=2,
+                sticky="w", pady=(0, 12),
+            )
+
+            def montant_texte(valeur: Decimal) -> str:
+                return "" if valeur == Decimal("0") else format(valeur, "f")
+
+            fed_var = tk.StringVar(
+                value=montant_texte(
+                    frais_demenagement_courants.deduction_federale_t1m
+                )
+            )
+            qc_var = tk.StringVar(
+                value=montant_texte(
+                    frais_demenagement_courants.deduction_quebec_tp348
+                )
+            )
+            source_fed_var = tk.StringVar(
+                value=frais_demenagement_courants.source_federale
+            )
+            source_qc_var = tk.StringVar(
+                value=frais_demenagement_courants.source_quebec
+            )
+
+            comptable_var = tk.BooleanVar(
+                value=frais_demenagement_courants.valide_par_comptable
+            )
+            salarie_var = tk.BooleanVar(
+                value=frais_demenagement_courants.salarie_ordinaire_confirme
+            )
+            emploi_var = tk.BooleanVar(
+                value=(
+                    frais_demenagement_courants
+                    .demenagement_pour_emploi_confirme
+                )
+            )
+            km40_var = tk.BooleanVar(
+                value=frais_demenagement_courants.rapprochement_40km_confirme
+            )
+            canada_var = tk.BooleanVar(
+                value=(
+                    frais_demenagement_courants
+                    .demenagement_interieur_canada_confirme
+                )
+            )
+            remboursements_var = tk.BooleanVar(
+                value=(
+                    frais_demenagement_courants
+                    .remboursements_employeur_pris_en_compte_confirme
+                )
+            )
+            t1m_var = tk.BooleanVar(
+                value=frais_demenagement_courants.t1m_confirme
+            )
+            tp348_var = tk.BooleanVar(
+                value=frais_demenagement_courants.tp348_confirme
+            )
+
+            champs = (
+                (
+                    "Déduction fédérale T1-M — ligne 21900 :",
+                    "deduction_federale_4d",
+                    fed_var,
+                ),
+                (
+                    "Source fédérale T1-M :",
+                    "source_federale_4d",
+                    source_fed_var,
+                ),
+                (
+                    "Déduction Québec TP-348 — ligne 228 :",
+                    "deduction_quebec_4d",
+                    qc_var,
+                ),
+                (
+                    "Source Québec TP-348 :",
+                    "source_quebec_4d",
+                    source_qc_var,
+                ),
+            )
+            for row, (libelle, nom, variable) in enumerate(
+                champs, start=2
+            ):
+                ttk.Label(cadre, text=libelle).grid(
+                    row=row, column=0, sticky="w", pady=5
+                )
+                ttk.Entry(
+                    cadre, name=nom, textvariable=variable
+                ).grid(
+                    row=row, column=1, sticky="ew",
+                    padx=(12, 0), pady=5,
+                )
+
+            confirmations = (
+                (
+                    "confirmation_comptable_frais_demenagement_4d",
+                    comptable_var,
+                    "Je confirme la validation comptable des frais.",
+                ),
+                (
+                    "confirmation_salarie_ordinaire_4d",
+                    salarie_var,
+                    "Je confirme qu'il s'agit d'un employé salarié ordinaire.",
+                ),
+                (
+                    "confirmation_demenagement_emploi_4d",
+                    emploi_var,
+                    "Je confirme que le déménagement a été effectué pour occuper un emploi à un nouveau lieu de travail.",
+                ),
+                (
+                    "confirmation_40km_4d",
+                    km40_var,
+                    "Je confirme que le nouveau domicile est au moins 40 km plus près du nouveau lieu de travail.",
+                ),
+                (
+                    "confirmation_interieur_canada_4d",
+                    canada_var,
+                    "Je confirme que le déménagement est à l'intérieur du Canada.",
+                ),
+                (
+                    "confirmation_remboursements_employeur_4d",
+                    remboursements_var,
+                    "Je confirme que les remboursements ou allocations de l'employeur sont déjà pris en compte.",
+                ),
+                (
+                    "confirmation_t1m_4d",
+                    t1m_var,
+                    "Je confirme le T1-M 2025 et la ligne 21900.",
+                ),
+                (
+                    "confirmation_tp348_4d",
+                    tp348_var,
+                    "Je confirme le TP-348 2025 et la ligne 228.",
+                ),
+            )
+            for row, (nom, variable, texte) in enumerate(
+                confirmations, start=6
+            ):
+                tk.Checkbutton(
+                    cadre,
+                    name=nom,
+                    variable=variable,
+                    text=texte,
+                    wraplength=790,
+                    anchor="w",
+                    justify="left",
+                ).grid(
+                    row=row, column=0, columnspan=2,
+                    sticky="w", pady=3,
+                )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "⚠ Hors périmètre 4D simple : travail autonome, "
+                    "étudiant à temps plein, déménagement international, "
+                    "report de frais d'années antérieures et plusieurs "
+                    "déménagements admissibles."
+                ),
+                foreground="#92400e",
+                wraplength=790,
+                justify="left",
+            ).grid(
+                row=14, column=0, columnspan=2,
+                sticky="w", pady=(8, 12),
+            )
+
+            def revoquer_confirmations(*_args) -> None:
+                for variable in (
+                    comptable_var,
+                    salarie_var,
+                    emploi_var,
+                    km40_var,
+                    canada_var,
+                    remboursements_var,
+                    t1m_var,
+                    tp348_var,
+                ):
+                    variable.set(False)
+
+            for variable in (
+                fed_var, qc_var, source_fed_var, source_qc_var,
+            ):
+                variable.trace_add("write", revoquer_confirmations)
+
+            def decimal_depuis_champ(
+                texte: str,
+                libelle: str,
+            ) -> Decimal:
+                nettoye = (
+                    texte.strip()
+                    .replace("\u00a0", "")
+                    .replace(" ", "")
+                    .replace(",", ".")
+                    .replace("$", "")
+                )
+                if not nettoye:
+                    return Decimal("0")
+                try:
+                    valeur = Decimal(nettoye)
+                except (InvalidOperation, ValueError) as erreur:
+                    raise ValueError(
+                        f"{libelle} : montant invalide."
+                    ) from erreur
+                if not valeur.is_finite():
+                    raise ValueError(
+                        f"{libelle} : montant non fini."
+                    )
+                return valeur
+
+            def effacer() -> None:
+                for variable in (
+                    fed_var, qc_var, source_fed_var, source_qc_var,
+                ):
+                    variable.set("")
+                revoquer_confirmations()
+
+            def appliquer() -> None:
+                nonlocal frais_demenagement_courants
+                nonlocal derniere_estimation, dernier_rapport_pdf
+                nonlocal rapport_fiscal_a_reexporter
+
+                try:
+                    profil = FraisDemenagement2025(
+                        deduction_federale_t1m=decimal_depuis_champ(
+                            fed_var.get(),
+                            "Déduction fédérale T1-M",
+                        ),
+                        deduction_quebec_tp348=decimal_depuis_champ(
+                            qc_var.get(),
+                            "Déduction Québec TP-348",
+                        ),
+                        source_federale=source_fed_var.get().strip(),
+                        source_quebec=source_qc_var.get().strip(),
+                        valide_par_comptable=comptable_var.get(),
+                        salarie_ordinaire_confirme=salarie_var.get(),
+                        demenagement_pour_emploi_confirme=emploi_var.get(),
+                        rapprochement_40km_confirme=km40_var.get(),
+                        demenagement_interieur_canada_confirme=canada_var.get(),
+                        remboursements_employeur_pris_en_compte_confirme=(
+                            remboursements_var.get()
+                        ),
+                        t1m_confirme=t1m_var.get(),
+                        tp348_confirme=tp348_var.get(),
+                    )
+                    profil = valider_frais_demenagement_2025(profil)
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Frais de déménagement invalides",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                frais_demenagement_courants = profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                mettre_a_jour_bouton_frais_demenagement()
+                self.statut.set(
+                    "Frais de déménagement 4D validés; "
+                    "recalculez l'estimation."
+                )
+                dialogue.destroy()
+
+            ttk.Button(
+                formulaire.actions,
+                text="Effacer",
+                command=effacer,
             ).pack(side="left")
             ttk.Button(
                 formulaire.actions,
@@ -3595,6 +3943,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     deduction_celiapp=deduction_celiapp_courante,
                     frais_garde_federaux=frais_garde_federaux_courants,
                     depenses_emploi=depenses_emploi_courantes,
+                    frais_demenagement=frais_demenagement_courants,
                     cotisations_rpa=cotisations_rpa_courantes,
                     cotisations_syndicales=cotisations_syndicales_courantes,
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
@@ -10681,6 +11030,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 mettre_a_jour_bouton_frais_garde()
                 mettre_a_jour_bouton_depenses_emploi()
 
+                mettre_a_jour_bouton_frais_demenagement()
                 self.statut.set(
                     "Ajustements fiscaux 2025 mis à jour"
                 )
@@ -11488,6 +11838,7 @@ class ApplicationComptaPrivee(tk.Tk):
             mettre_a_jour_bouton_ajustements()
             mettre_a_jour_bouton_frais_garde()
             mettre_a_jour_bouton_depenses_emploi()
+            mettre_a_jour_bouton_frais_demenagement()
             statut_dossier.set(dossier.statut)
             mettre_a_jour_etat_dossier_valide()
             self.statut.set(
@@ -11604,6 +11955,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     deduction_celiapp=deduction_celiapp_courante,
                     frais_garde_federaux=frais_garde_federaux_courants,
                     depenses_emploi=depenses_emploi_courantes,
+                    frais_demenagement=frais_demenagement_courants,
                             cotisations_syndicales=(
                                 cotisations_syndicales_courantes
                             ),
@@ -11657,6 +12009,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     deduction_celiapp=deduction_celiapp_courante,
                     frais_garde_federaux=frais_garde_federaux_courants,
                     depenses_emploi=depenses_emploi_courantes,
+                    frais_demenagement=frais_demenagement_courants,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -11745,6 +12098,7 @@ class ApplicationComptaPrivee(tk.Tk):
         def charger_enregistrement_dans_interface(enregistrement) -> None:
             nonlocal frais_garde_federaux_courants
             nonlocal depenses_emploi_courantes
+            nonlocal frais_demenagement_courants
             nonlocal rapport_fiscal_a_reexporter
             nonlocal derniere_estimation, dernier_rapport_pdf
             nonlocal ajustement_reer_courant
@@ -11811,6 +12165,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             depenses_emploi_courantes = (
                 enregistrement.depenses_emploi
+            )
+            frais_demenagement_courants = (
+                enregistrement.frais_demenagement
             )
             cotisations_syndicales_courantes = (
                 enregistrement.cotisations_syndicales
@@ -11883,6 +12240,7 @@ class ApplicationComptaPrivee(tk.Tk):
             mettre_a_jour_bouton_ajustements()
             mettre_a_jour_bouton_frais_garde()
             mettre_a_jour_bouton_depenses_emploi()
+            mettre_a_jour_bouton_frais_demenagement()
             rafraichir_documents()
             statut_dossier.set("Validé — dossier rouvert localement")
             mettre_a_jour_etat_dossier_valide()
@@ -12139,6 +12497,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     deduction_celiapp=deduction_celiapp_courante,
                     frais_garde_federaux=frais_garde_federaux_courants,
                     depenses_emploi=depenses_emploi_courantes,
+                    frais_demenagement=frais_demenagement_courants,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -12602,6 +12961,16 @@ class ApplicationComptaPrivee(tk.Tk):
             padx=(8, 0),
         )
 
+        bouton_frais_demenagement_4d = ttk.Button(
+            zone_actions,
+            text="Frais de déménagement 2025 (4D)",
+            command=ouvrir_frais_demenagement_4d_2025,
+        )
+        bouton_frais_demenagement_4d.pack(
+            side="left",
+            padx=(8, 0),
+        )
+
         bouton_ajustements_fiscaux = ttk.Button(
             zone_actions,
             text="Ajustements fiscaux",
@@ -12645,6 +13014,7 @@ class ApplicationComptaPrivee(tk.Tk):
         mettre_a_jour_bouton_ajustements()
         mettre_a_jour_bouton_frais_garde()
         mettre_a_jour_bouton_depenses_emploi()
+        mettre_a_jour_bouton_frais_demenagement()
         mettre_a_jour_etat_dossier_valide()
         champ_client.focus_set()
 

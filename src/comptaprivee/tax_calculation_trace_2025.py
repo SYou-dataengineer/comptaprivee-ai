@@ -165,6 +165,7 @@ def construire_trace_calcul_fiscal_2025(
     deduction_celiapp = estimation.deduction_celiapp
     frais_garde_federaux = estimation.frais_garde_federaux
     depenses_emploi = estimation.depenses_emploi
+    frais_demenagement = estimation.frais_demenagement
     cotisations = estimation.cotisations_syndicales
     dons = estimation.dons_bienfaisance
     frais_medicaux = estimation.frais_medicaux
@@ -243,6 +244,15 @@ def construire_trace_calcul_fiscal_2025(
     if depenses_emploi.deduction_quebec_tp59 > Decimal("0"):
         formule_revenu_quebec += (
             " - dépenses d'emploi TP-59 / ligne 207 code 07"
+        )
+
+    if frais_demenagement.deduction_federale_t1m > Decimal("0"):
+        formule_revenu_federal += (
+            " - frais de déménagement T1-M / ligne 21900"
+        )
+    if frais_demenagement.deduction_quebec_tp348 > Decimal("0"):
+        formule_revenu_quebec += (
+            " - frais de déménagement TP-348 / ligne 228"
         )
 
     if cotisations.montant_federal_admissible > Decimal("0"):
@@ -712,6 +722,50 @@ def construire_trace_calcul_fiscal_2025(
                     "et non remboursées"
                 ),
                 depenses_emploi.deduction_quebec_tp59,
+            ),
+        )
+
+    if frais_demenagement.deduction_federale_t1m > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable fédéral",
+            _ligne(
+                0,
+                "REVENU FÉDÉRAL",
+                "Frais de déménagement 4D — T1-M / ligne 21900",
+                (
+                    "ARC T1-M / ligne 21900 — "
+                    + frais_demenagement.source_federale
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant T1-M validé; déménagement pour emploi, "
+                    "règle des 40 km confirmée et remboursements "
+                    "employeur déjà pris en compte"
+                ),
+                frais_demenagement.deduction_federale_t1m,
+            ),
+        )
+
+    if frais_demenagement.deduction_quebec_tp348 > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable Québec",
+            _ligne(
+                0,
+                "REVENU QUÉBEC",
+                "Frais de déménagement 4D — TP-348 / ligne 228",
+                (
+                    "Revenu Québec TP-348 / ligne 228 — "
+                    + frais_demenagement.source_quebec
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant TP-348 validé; déménagement pour emploi, "
+                    "règle des 40 km confirmée et remboursements "
+                    "employeur déjà pris en compte"
+                ),
+                frais_demenagement.deduction_quebec_tp348,
             ),
         )
 

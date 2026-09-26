@@ -40,6 +40,11 @@ from .tax_employment_expenses_2025 import (
     appliquer_depenses_emploi_2025,
     lignes_resume_depenses_emploi_2025,
 )
+from .tax_moving_expenses_2025 import (
+    FraisDemenagement2025,
+    appliquer_frais_demenagement_2025,
+    lignes_resume_frais_demenagement_2025,
+)
 from .tax_contribution_overpayments_2025 import (
     CotisationsExcedentaires2025,
     calculer_remboursements_cotisations_2025,
@@ -244,6 +249,7 @@ class EstimationFiscale2025:
     deduction_celiapp: DeductionCeliapp2025
     frais_garde_federaux: FraisGardeFederaux2025
     depenses_emploi: DepensesEmploi2025
+    frais_demenagement: FraisDemenagement2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
@@ -298,6 +304,7 @@ def calculer_estimation_fiscale_2025(
     deduction_celiapp: DeductionCeliapp2025 | None = None,
     frais_garde_federaux: FraisGardeFederaux2025 | None = None,
     depenses_emploi: DepensesEmploi2025 | None = None,
+    frais_demenagement: FraisDemenagement2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
@@ -704,6 +711,16 @@ def calculer_estimation_fiscale_2025(
     revenu = appliquer_depenses_emploi_2025(
         revenu,
         depenses_emploi_effectives,
+    )
+
+    frais_demenagement_effectifs = (
+        frais_demenagement
+        if frais_demenagement is not None
+        else FraisDemenagement2025()
+    )
+    revenu = appliquer_frais_demenagement_2025(
+        revenu,
+        frais_demenagement_effectifs,
     )
 
     cotisations_effectives = (
@@ -1384,6 +1401,7 @@ def calculer_estimation_fiscale_2025(
         deduction_celiapp=deduction_celiapp_effective,
         frais_garde_federaux=frais_garde_federaux_effectifs,
         depenses_emploi=depenses_emploi_effectives,
+        frais_demenagement=frais_demenagement_effectifs,
         cotisations_syndicales=cotisations_effectives,
         dons_bienfaisance=dons_effectifs,
         frais_medicaux=frais_medicaux_effectifs,
@@ -1497,6 +1515,9 @@ def formater_estimation_fiscale_2025(
         ),
         *lignes_resume_depenses_emploi_2025(
             estimation.depenses_emploi
+        ),
+        *lignes_resume_frais_demenagement_2025(
+            estimation.frais_demenagement
         ),
         *(
             [

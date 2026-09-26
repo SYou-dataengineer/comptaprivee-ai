@@ -483,3 +483,124 @@ def test_stockage_depenses_emploi_4c_invalide_est_refuse_au_rechargement(
 
     with pytest.raises(ValueError, match="hors périmètre 4C"):
         charger_dossier_fiscal(p)
+
+
+# --- Priorité 4D : persistance frais de déménagement ---
+
+from src.comptaprivee.tax_moving_expenses_2025 import FraisDemenagement2025
+
+
+def _frais_demenagement_4d_stockage():
+    return FraisDemenagement2025(
+        deduction_federale_t1m=Decimal("2200"),
+        deduction_quebec_tp348=Decimal("1800"),
+        source_federale="T1-M 2025 validé",
+        source_quebec="TP-348 2025 validé",
+        valide_par_comptable=True,
+        salarie_ordinaire_confirme=True,
+        demenagement_pour_emploi_confirme=True,
+        rapprochement_40km_confirme=True,
+        demenagement_interieur_canada_confirme=True,
+        remboursements_employeur_pris_en_compte_confirme=True,
+        t1m_confirme=True,
+        tp348_confirme=True,
+    )
+
+
+def test_stockage_frais_demenagement_4d_roundtrip_direct(tmp_path):
+    profil = _frais_demenagement_4d_stockage()
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        frais_demenagement=profil,
+        destination=tmp_path / "d.json",
+    )
+    assert charger_dossier_fiscal(p).frais_demenagement == profil
+
+
+def test_stockage_frais_demenagement_4d_depuis_estimation(tmp_path):
+    d = _dossier()
+    profil = _frais_demenagement_4d_stockage()
+    estimation = calculer_estimation_fiscale_2025(
+        d,
+        frais_demenagement=profil,
+    )
+    p = sauvegarder_dossier_fiscal(
+        d,
+        estimation=estimation,
+        destination=tmp_path / "d.json",
+    )
+    charge = charger_dossier_fiscal(p)
+    assert charge.frais_demenagement == profil
+    assert charge.estimation is not None
+
+
+def test_stockage_frais_demenagement_4d_refuse_profil_different_estimation(
+    tmp_path,
+):
+    d = _dossier()
+    profil = _frais_demenagement_4d_stockage()
+    estimation = calculer_estimation_fiscale_2025(
+        d,
+        frais_demenagement=profil,
+    )
+    autre = replace(
+        profil,
+        deduction_federale_t1m=Decimal("1700"),
+    )
+    with pytest.raises(ValueError, match="frais de déménagement diffèrent"):
+        sauvegarder_dossier_fiscal(
+            d,
+            estimation=estimation,
+            frais_demenagement=autre,
+            destination=tmp_path / "d.json",
+        )
+
+
+def test_stockage_ancien_json_sans_frais_demenagement_4d_reste_compatible(
+    tmp_path,
+):
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        destination=tmp_path / "d.json",
+    )
+    brut = json.loads(p.read_text(encoding="utf-8"))
+    brut.pop("frais_demenagement", None)
+    p.write_text(
+        json.dumps(brut, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    assert (
+        charger_dossier_fiscal(p).frais_demenagement
+        == FraisDemenagement2025()
+    )
+
+
+def test_stockage_frais_demenagement_4d_invalide_est_refuse_au_rechargement(
+    tmp_path,
+):
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        destination=tmp_path / "d.json",
+    )
+    brut = json.loads(p.read_text(encoding="utf-8"))
+    brut["frais_demenagement"] = {
+        "deduction_federale_t1m": "2200",
+        "deduction_quebec_tp348": "1800",
+        "source_federale": "T1-M 2025 validé",
+        "source_quebec": "TP-348 2025 validé",
+        "valide_par_comptable": True,
+        "salarie_ordinaire_confirme": True,
+        "demenagement_pour_emploi_confirme": True,
+        "rapprochement_40km_confirme": True,
+        "demenagement_interieur_canada_confirme": True,
+        "remboursements_employeur_pris_en_compte_confirme": True,
+        "t1m_confirme": True,
+        "tp348_confirme": True,
+        "demenagement_international": True,
+    }
+    p.write_text(
+        json.dumps(brut, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="hors périmètre 4D"):
+        charger_dossier_fiscal(p)

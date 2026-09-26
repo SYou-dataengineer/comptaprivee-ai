@@ -26,6 +26,10 @@ from .tax_employment_expenses_2025 import (
     DepensesEmploi2025,
     valider_depenses_emploi_2025,
 )
+from .tax_moving_expenses_2025 import (
+    FraisDemenagement2025,
+    valider_frais_demenagement_2025,
+)
 from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
@@ -159,6 +163,7 @@ class DossierFiscalEnregistre:
     deduction_celiapp: DeductionCeliapp2025
     frais_garde_federaux: FraisGardeFederaux2025
     depenses_emploi: DepensesEmploi2025
+    frais_demenagement: FraisDemenagement2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
@@ -546,6 +551,125 @@ def _depenses_emploi_depuis_dict(valeur: Any) -> DepensesEmploi2025:
         ),
     )
     return valider_depenses_emploi_2025(profil)
+
+
+def _frais_demenagement_vers_dict(
+    profil: FraisDemenagement2025 | None,
+):
+    if profil is None:
+        profil = FraisDemenagement2025()
+
+    profil = valider_frais_demenagement_2025(profil)
+    return {
+        "deduction_federale_t1m": _decimal_texte(
+            profil.deduction_federale_t1m
+        ),
+        "deduction_quebec_tp348": _decimal_texte(
+            profil.deduction_quebec_tp348
+        ),
+        "source_federale": profil.source_federale,
+        "source_quebec": profil.source_quebec,
+        "valide_par_comptable": bool(profil.valide_par_comptable),
+        "salarie_ordinaire_confirme": bool(
+            profil.salarie_ordinaire_confirme
+        ),
+        "demenagement_pour_emploi_confirme": bool(
+            profil.demenagement_pour_emploi_confirme
+        ),
+        "rapprochement_40km_confirme": bool(
+            profil.rapprochement_40km_confirme
+        ),
+        "demenagement_interieur_canada_confirme": bool(
+            profil.demenagement_interieur_canada_confirme
+        ),
+        "remboursements_employeur_pris_en_compte_confirme": bool(
+            profil.remboursements_employeur_pris_en_compte_confirme
+        ),
+        "t1m_confirme": bool(profil.t1m_confirme),
+        "tp348_confirme": bool(profil.tp348_confirme),
+        "travailleur_autonome": bool(profil.travailleur_autonome),
+        "etudiant_temps_plein": bool(profil.etudiant_temps_plein),
+        "demenagement_international": bool(
+            profil.demenagement_international
+        ),
+        "report_annees_anterieures": bool(
+            profil.report_annees_anterieures
+        ),
+        "plusieurs_demenagements_admissibles": bool(
+            profil.plusieurs_demenagements_admissibles
+        ),
+    }
+
+
+def _frais_demenagement_depuis_dict(
+    valeur: Any,
+) -> FraisDemenagement2025:
+    if valeur is None:
+        return FraisDemenagement2025()
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Les frais de déménagement enregistrés sont invalides."
+        )
+
+    autorises = set(FraisDemenagement2025.__dataclass_fields__)
+    inconnus = set(valeur) - autorises
+    if inconnus:
+        raise ValueError(
+            "Champs frais de déménagement inconnus : "
+            + ", ".join(sorted(inconnus))
+        )
+
+    profil = FraisDemenagement2025(
+        deduction_federale_t1m=_decimal_depuis_json(
+            valeur.get("deduction_federale_t1m", "0"),
+            "frais_demenagement.deduction_federale_t1m",
+        ),
+        deduction_quebec_tp348=_decimal_depuis_json(
+            valeur.get("deduction_quebec_tp348", "0"),
+            "frais_demenagement.deduction_quebec_tp348",
+        ),
+        source_federale=str(valeur.get("source_federale", "")),
+        source_quebec=str(valeur.get("source_quebec", "")),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        salarie_ordinaire_confirme=bool(
+            valeur.get("salarie_ordinaire_confirme", False)
+        ),
+        demenagement_pour_emploi_confirme=bool(
+            valeur.get("demenagement_pour_emploi_confirme", False)
+        ),
+        rapprochement_40km_confirme=bool(
+            valeur.get("rapprochement_40km_confirme", False)
+        ),
+        demenagement_interieur_canada_confirme=bool(
+            valeur.get("demenagement_interieur_canada_confirme", False)
+        ),
+        remboursements_employeur_pris_en_compte_confirme=bool(
+            valeur.get(
+                "remboursements_employeur_pris_en_compte_confirme",
+                False,
+            )
+        ),
+        t1m_confirme=bool(valeur.get("t1m_confirme", False)),
+        tp348_confirme=bool(valeur.get("tp348_confirme", False)),
+        travailleur_autonome=bool(
+            valeur.get("travailleur_autonome", False)
+        ),
+        etudiant_temps_plein=bool(
+            valeur.get("etudiant_temps_plein", False)
+        ),
+        demenagement_international=bool(
+            valeur.get("demenagement_international", False)
+        ),
+        report_annees_anterieures=bool(
+            valeur.get("report_annees_anterieures", False)
+        ),
+        plusieurs_demenagements_admissibles=bool(
+            valeur.get("plusieurs_demenagements_admissibles", False)
+        ),
+    )
+    return valider_frais_demenagement_2025(profil)
 
 
 def _cotisations_syndicales_vers_dict(
@@ -2688,6 +2812,7 @@ def sauvegarder_dossier_fiscal(
     deduction_celiapp: DeductionCeliapp2025 | None = None,
     frais_garde_federaux: FraisGardeFederaux2025 | None = None,
     depenses_emploi: DepensesEmploi2025 | None = None,
+    frais_demenagement: FraisDemenagement2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
@@ -2793,6 +2918,26 @@ def sauvegarder_dossier_fiscal(
     ):
         raise ValueError(
             "Les dépenses d'emploi diffèrent de l'estimation."
+        )
+
+    frais_demenagement_effectifs = (
+        frais_demenagement
+        if frais_demenagement is not None
+        else (
+            estimation.frais_demenagement
+            if estimation is not None
+            else FraisDemenagement2025()
+        )
+    )
+    frais_demenagement_effectifs = valider_frais_demenagement_2025(
+        frais_demenagement_effectifs
+    )
+    if (
+        estimation is not None
+        and frais_demenagement_effectifs != estimation.frais_demenagement
+    ):
+        raise ValueError(
+            "Les frais de déménagement diffèrent de l'estimation."
         )
 
     pertes_effectif = profil_reports_pertes if profil_reports_pertes is not None else (estimation.profil_reports_pertes if estimation else ProfilReportsPertes2025())
@@ -3060,6 +3205,9 @@ def sauvegarder_dossier_fiscal(
         "depenses_emploi": _depenses_emploi_vers_dict(
             depenses_emploi_effectives
         ),
+        "frais_demenagement": _frais_demenagement_vers_dict(
+            frais_demenagement_effectifs
+        ),
         "cotisations_syndicales": _cotisations_syndicales_vers_dict(
             cotisations_syndicales
         ),
@@ -3238,6 +3386,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     )
     depenses_emploi = _depenses_emploi_depuis_dict(
         contenu.get("depenses_emploi")
+    )
+    frais_demenagement = _frais_demenagement_depuis_dict(
+        contenu.get("frais_demenagement")
     )
     cotisations_syndicales = _cotisations_syndicales_depuis_dict(
         contenu.get("cotisations_syndicales")
@@ -3483,6 +3634,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         deduction_celiapp=deduction_celiapp,
         frais_garde_federaux=frais_garde_federaux,
         depenses_emploi=depenses_emploi,
+        frais_demenagement=frais_demenagement,
         cotisations_syndicales=cotisations_syndicales,
         dons_bienfaisance=dons_bienfaisance,
         frais_medicaux=frais_medicaux,

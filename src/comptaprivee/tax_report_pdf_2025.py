@@ -33,6 +33,9 @@ from .tax_child_care_2025 import (
 from .tax_employment_expenses_2025 import (
     lignes_resume_depenses_emploi_2025,
 )
+from .tax_moving_expenses_2025 import (
+    lignes_resume_frais_demenagement_2025,
+)
 
 from .tax_estimation_2025 import (
     EstimationFiscale2025,
@@ -204,6 +207,11 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(
         lignes_resume_depenses_emploi_2025(
             estimation.depenses_emploi
+        )
+    )
+    lignes.extend(
+        lignes_resume_frais_demenagement_2025(
+            estimation.frais_demenagement
         )
     )
     lignes.extend(lignes_resume_rqap_2025(estimation.prestations_rqap))

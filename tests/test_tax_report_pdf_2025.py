@@ -241,3 +241,66 @@ def test_pdf_depenses_emploi_4c_reduit_federal_et_quebec(tmp_path):
     assert "50 315,00 $" in texte
     assert "Revenu net Québec" in texte
     assert "49 095,00 $" in texte
+
+
+# --- Priorité 4D : PDF frais de déménagement ---
+
+from src.comptaprivee.tax_moving_expenses_2025 import FraisDemenagement2025
+
+
+def _estimation_frais_demenagement_4d():
+    base = _estimation()
+    return calculer_estimation_fiscale_2025(
+        base.dossier,
+        frais_demenagement=FraisDemenagement2025(
+            deduction_federale_t1m=Decimal("2200"),
+            deduction_quebec_tp348=Decimal("1800"),
+            source_federale="T1-M 2025 validé",
+            source_quebec="TP-348 2025 validé",
+            valide_par_comptable=True,
+            salarie_ordinaire_confirme=True,
+            demenagement_pour_emploi_confirme=True,
+            rapprochement_40km_confirme=True,
+            demenagement_interieur_canada_confirme=True,
+            remboursements_employeur_pris_en_compte_confirme=True,
+            t1m_confirme=True,
+            tp348_confirme=True,
+        ),
+    )
+
+
+def test_pdf_frais_demenagement_4d_contient_lignes_et_sources(tmp_path):
+    path = exporter_rapport_fiscal_pdf_2025(
+        _estimation_frais_demenagement_4d(),
+        tmp_path / "rapport_frais_demenagement_4d.pdf",
+    )
+    texte = _texte(path).replace("\xa0", " ")
+
+    assert "FRAIS DE DÉMÉNAGEMENT 2025 VALIDÉS" in texte
+    assert "BLOC 4D" in texte
+    assert "T1-M" in texte
+    assert "ligne 21900" in texte
+    assert "2200.00 $" in texte
+    assert "T1-M 2025 validé" in texte
+    assert "TP-348" in texte
+    assert "ligne 228" in texte
+    assert "1800.00 $" in texte
+    assert "TP-348 2025 validé" in texte
+
+
+def test_pdf_frais_demenagement_4d_reduit_federal_et_quebec(tmp_path):
+    estimation = _estimation_frais_demenagement_4d()
+
+    assert estimation.revenu.revenu_net_federal == Decimal("49315.00")
+    assert estimation.revenu.revenu_net_quebec == Decimal("48295.00")
+
+    path = exporter_rapport_fiscal_pdf_2025(
+        estimation,
+        tmp_path / "rapport_frais_demenagement_4d_revenus.pdf",
+    )
+    texte = _texte(path).replace("\xa0", " ")
+
+    assert "Revenu net fédéral" in texte
+    assert "49 315,00 $" in texte
+    assert "Revenu net Québec" in texte
+    assert "48 295,00 $" in texte

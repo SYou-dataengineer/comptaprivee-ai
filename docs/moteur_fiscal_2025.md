@@ -1767,3 +1767,45 @@ Contrat technique livré :
 
 Validation ciblée finale avant suite complète : **130 tests réussis**,
 avec **5 avertissements de dépréciation existants** non bloquants.
+
+
+### Bloc 4D livré — frais de déménagement simples, T1-M / ligne 21900 et TP-348 / ligne 228
+
+Le bloc 4D couvre un profil volontairement limité d'employé salarié ordinaire
+qui réclame des frais de déménagement 2025 déjà établis et validés sur les
+formulaires applicables.
+
+Périmètre livré :
+
+- fédéral : montant T1-M reporté à la ligne 21900;
+- Québec : montant TP-348 reporté à la ligne 228;
+- déménagement effectué pour occuper un emploi à un nouveau lieu de travail;
+- nouveau domicile confirmé au moins 40 km plus près du nouveau lieu de travail;
+- déménagement à l'intérieur du Canada;
+- remboursements ou allocations de l'employeur déjà pris en compte;
+- montants fédéral et Québec conservés séparément;
+- validation comptable et sources conservées localement;
+- application aux revenus net et imposable de la juridiction correspondante,
+  sans modifier le revenu total ni les retenues.
+
+Les situations suivantes sont explicitement hors périmètre 4D simple :
+travail autonome, étudiant à temps plein, déménagement international,
+report de frais d'années antérieures et plusieurs déménagements admissibles.
+Elles nécessitent un futur traitement avancé des frais de déménagement.
+
+Contrat technique livré :
+
+1. profil immuable `FraisDemenagement2025` avec montants, sources et confirmations;
+2. validation stricte des montants finis et non négatifs;
+3. moteur séparé fédéral/Québec;
+4. intégration dans `EstimationFiscale2025` après 4C;
+5. trace de calcul identifiant T1-M / ligne 21900 et TP-348 / ligne 228;
+6. persistance JSON rétrocompatible, avec refus d'une divergence entre le
+   profil explicite et celui de l'estimation;
+7. formulaire GUI dédié avec révocation automatique des confirmations après
+   toute modification pertinente;
+8. rapport PDF avec montants et sources validées;
+9. tests moteur, estimation, trace, stockage, GUI et PDF.
+
+Validation ciblée finale avant suite complète : **145 tests réussis**,
+avec **5 avertissements de dépréciation existants** non bloquants.
