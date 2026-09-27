@@ -892,3 +892,185 @@ def test_trace_frais_demenagement_4d_formules_revenus_identifient_les_lignes():
 
     assert "T1-M / ligne 21900" in revenu_federal.formule
     assert "TP-348 / ligne 228" in revenu_quebec.formule
+
+
+# --- Priorité 4E : intégration estimation pension alimentaire payée ---
+
+from src.comptaprivee.tax_support_payments_2025 import (
+    PensionAlimentairePayee2025,
+)
+from src.comptaprivee.tax_federal_spouse_2025 import (
+    MontantConjointFederal2025,
+)
+
+
+def _pension_alimentaire_4e(
+    total="6000",
+    federal="6000",
+    quebec="6000",
+):
+    return PensionAlimentairePayee2025(
+        total_paye_federal_21999=Decimal(total),
+        deduction_federale_22000=Decimal(federal),
+        deduction_quebec_225=Decimal(quebec),
+        source_federale="Ordonnance + paiements 2025",
+        source_quebec="Ordonnance + paiements 2025",
+        valide_par_comptable=True,
+        ordonnance_ou_entente_ecrite_confirmee=True,
+        paiement_periodique_conjoint_ex_conjoint_confirme=True,
+        vie_separee_au_moment_paiement_confirmee=True,
+        enregistrement_arc_confirme=True,
+        montant_federal_confirme=True,
+        montant_quebec_confirme=True,
+        aucun_credit_personnel_lie_confirme=True,
+    )
+
+
+def test_pipeline_sans_pension_alimentaire_4e_reste_identique():
+    e = calculer_estimation_fiscale_2025(_dossier_52000())
+    assert e.pension_alimentaire_payee == PensionAlimentairePayee2025()
+    assert e.revenu.revenu_net_federal == Decimal("51515.00")
+    assert e.revenu.revenu_net_quebec == Decimal("50095.00")
+
+
+def test_pipeline_pension_alimentaire_4e_reduit_chaque_juridiction():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        pension_alimentaire_payee=_pension_alimentaire_4e(),
+    )
+    assert (
+        e.pension_alimentaire_payee.total_paye_federal_21999
+        == Decimal("6000")
+    )
+    assert e.revenu.revenu_total_federal == Decimal("52000")
+    assert e.revenu.revenu_total_quebec == Decimal("52000")
+    assert e.revenu.revenu_net_federal == Decimal("45515.00")
+    assert e.revenu.revenu_imposable_federal == Decimal("45515.00")
+    assert e.revenu.revenu_net_quebec == Decimal("44095.00")
+    assert e.revenu.revenu_imposable_quebec == Decimal("44095.00")
+
+
+def test_pipeline_pension_alimentaire_4e_recalcule_les_impots():
+    base = calculer_estimation_fiscale_2025(_dossier_52000())
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        pension_alimentaire_payee=_pension_alimentaire_4e(),
+    )
+    assert e.federal.impot_federal_de_base < base.federal.impot_federal_de_base
+    assert e.quebec.impot_quebec_preliminaire < base.quebec.impot_quebec_preliminaire
+    assert e.rapprochement.remboursement_estime > base.rapprochement.remboursement_estime
+
+
+def test_resume_affiche_pension_alimentaire_4e():
+    texte = formater_estimation_fiscale_2025(
+        calculer_estimation_fiscale_2025(
+            _dossier_52000(),
+            pension_alimentaire_payee=_pension_alimentaire_4e(),
+        )
+    )
+    assert "PENSION ALIMENTAIRE PAYÉE 2025 VALIDÉE — BLOC 4E" in texte
+    assert "ligne 21999" in texte
+    assert "ligne 22000" in texte
+    assert "ligne 225" in texte
+    assert "6000.00 $" in texte
+
+
+def test_pipeline_4e_refuse_credit_conjoint_30300_actif():
+    with pytest.raises(ValueError, match="30300/30400/30425/30450/30500"):
+        calculer_estimation_fiscale_2025(
+            _dossier_52000(),
+            pension_alimentaire_payee=_pension_alimentaire_4e(),
+            montant_conjoint_federal=MontantConjointFederal2025(
+                reclamer_montant=True
+            ),
+        )
+
+
+def test_pipeline_4a_4b_4c_4d_4e_se_combinent_sans_modifier_revenu_total():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        deduction_celiapp=_celiapp_5000(),
+        frais_garde_federaux=_frais_garde_6000(),
+        depenses_emploi=_depenses_emploi_4c(),
+        frais_demenagement=_frais_demenagement_4d(),
+        pension_alimentaire_payee=_pension_alimentaire_4e(),
+    )
+    assert e.revenu.revenu_total_federal == Decimal("52000")
+    assert e.revenu.revenu_total_quebec == Decimal("52000")
+    assert e.revenu.revenu_net_federal == Decimal("31115.00")
+    assert e.revenu.revenu_imposable_federal == Decimal("31115.00")
+    assert e.revenu.revenu_net_quebec == Decimal("36295.00")
+    assert e.revenu.revenu_imposable_quebec == Decimal("36295.00")
+
+
+# --- Priorité 4E : trace pension alimentaire payée ---
+
+
+def test_trace_pension_alimentaire_4e_ajoute_21999_22000_225():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        pension_alimentaire_payee=_pension_alimentaire_4e(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    total = next(
+        x for x in trace.lignes
+        if x.libelle == "Pension alimentaire 4E — total payé ligne 21999"
+    )
+    federal = next(
+        x for x in trace.lignes
+        if x.libelle == "Pension alimentaire 4E — déduction ligne 22000"
+    )
+    quebec = next(
+        x for x in trace.lignes
+        if x.libelle == "Pension alimentaire 4E — déduction ligne 225"
+    )
+
+    assert total.section == "INFORMATION FÉDÉRALE"
+    assert total.montant == Decimal("6000")
+    assert "21999/22000" in total.source
+
+    assert federal.section == "REVENU FÉDÉRAL"
+    assert federal.montant == Decimal("6000")
+    assert "Ordonnance + paiements 2025" in federal.source
+
+    assert quebec.section == "REVENU QUÉBEC"
+    assert quebec.montant == Decimal("6000")
+    assert "ligne 225" in quebec.source
+
+
+def test_trace_pension_alimentaire_4e_est_avant_revenus_imposables():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        pension_alimentaire_payee=_pension_alimentaire_4e(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+    libelles = [x.libelle for x in trace.lignes]
+
+    assert libelles.index(
+        "Pension alimentaire 4E — total payé ligne 21999"
+    ) < libelles.index("Revenu imposable fédéral")
+    assert libelles.index(
+        "Pension alimentaire 4E — déduction ligne 22000"
+    ) < libelles.index("Revenu imposable fédéral")
+    assert libelles.index(
+        "Pension alimentaire 4E — déduction ligne 225"
+    ) < libelles.index("Revenu imposable Québec")
+
+
+def test_trace_pension_alimentaire_4e_formules_identifient_deductions():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        pension_alimentaire_payee=_pension_alimentaire_4e(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    revenu_federal = next(
+        x for x in trace.lignes if x.libelle == "Revenu imposable fédéral"
+    )
+    revenu_quebec = next(
+        x for x in trace.lignes if x.libelle == "Revenu imposable Québec"
+    )
+
+    assert "pension alimentaire déductible / ligne 22000" in revenu_federal.formule
+    assert "pension alimentaire déductible / ligne 225" in revenu_quebec.formule

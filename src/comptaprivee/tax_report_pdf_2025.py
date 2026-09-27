@@ -36,6 +36,9 @@ from .tax_employment_expenses_2025 import (
 from .tax_moving_expenses_2025 import (
     lignes_resume_frais_demenagement_2025,
 )
+from .tax_support_payments_2025 import (
+    lignes_resume_pension_alimentaire_payee_2025,
+)
 
 from .tax_estimation_2025 import (
     EstimationFiscale2025,
@@ -212,6 +215,11 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(
         lignes_resume_frais_demenagement_2025(
             estimation.frais_demenagement
+        )
+    )
+    lignes.extend(
+        lignes_resume_pension_alimentaire_payee_2025(
+            estimation.pension_alimentaire_payee
         )
     )
     lignes.extend(lignes_resume_rqap_2025(estimation.prestations_rqap))

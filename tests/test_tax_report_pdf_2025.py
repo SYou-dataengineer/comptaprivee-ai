@@ -304,3 +304,66 @@ def test_pdf_frais_demenagement_4d_reduit_federal_et_quebec(tmp_path):
     assert "49 315,00 $" in texte
     assert "Revenu net Québec" in texte
     assert "48 295,00 $" in texte
+
+
+# --- Priorité 4E : PDF pension alimentaire payée ---
+
+from src.comptaprivee.tax_support_payments_2025 import (
+    PensionAlimentairePayee2025,
+)
+
+
+def _estimation_pension_alimentaire_4e():
+    base = _estimation()
+    return calculer_estimation_fiscale_2025(
+        base.dossier,
+        pension_alimentaire_payee=PensionAlimentairePayee2025(
+            total_paye_federal_21999=Decimal("6000"),
+            deduction_federale_22000=Decimal("6000"),
+            deduction_quebec_225=Decimal("6000"),
+            source_federale="Ordonnance + paiements 2025",
+            source_quebec="Ordonnance + paiements 2025",
+            valide_par_comptable=True,
+            ordonnance_ou_entente_ecrite_confirmee=True,
+            paiement_periodique_conjoint_ex_conjoint_confirme=True,
+            vie_separee_au_moment_paiement_confirmee=True,
+            enregistrement_arc_confirme=True,
+            montant_federal_confirme=True,
+            montant_quebec_confirme=True,
+            aucun_credit_personnel_lie_confirme=True,
+        ),
+    )
+
+
+def test_pdf_pension_alimentaire_4e_contient_lignes_et_sources(tmp_path):
+    path = exporter_rapport_fiscal_pdf_2025(
+        _estimation_pension_alimentaire_4e(),
+        tmp_path / "rapport_pension_alimentaire_4e.pdf",
+    )
+    texte = _texte(path).replace("\xa0", " ")
+
+    assert "PENSION ALIMENTAIRE PAYÉE 2025 VALIDÉE" in texte
+    assert "BLOC 4E" in texte
+    assert "ligne 21999" in texte
+    assert "ligne 22000" in texte
+    assert "ligne 225" in texte
+    assert "6000.00 $" in texte
+    assert "Ordonnance + paiements 2025" in texte
+
+
+def test_pdf_pension_alimentaire_4e_reduit_federal_et_quebec(tmp_path):
+    estimation = _estimation_pension_alimentaire_4e()
+
+    assert estimation.revenu.revenu_net_federal == Decimal("45515.00")
+    assert estimation.revenu.revenu_net_quebec == Decimal("44095.00")
+
+    path = exporter_rapport_fiscal_pdf_2025(
+        estimation,
+        tmp_path / "rapport_pension_alimentaire_4e_revenus.pdf",
+    )
+    texte = _texte(path).replace("\xa0", " ")
+
+    assert "Revenu net fédéral" in texte
+    assert "45 515,00 $" in texte
+    assert "Revenu net Québec" in texte
+    assert "44 095,00 $" in texte

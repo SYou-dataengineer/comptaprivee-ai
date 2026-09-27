@@ -30,6 +30,10 @@ from .tax_moving_expenses_2025 import (
     FraisDemenagement2025,
     valider_frais_demenagement_2025,
 )
+from .tax_support_payments_2025 import (
+    PensionAlimentairePayee2025,
+    valider_pension_alimentaire_payee_2025,
+)
 from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
@@ -164,6 +168,7 @@ class DossierFiscalEnregistre:
     frais_garde_federaux: FraisGardeFederaux2025
     depenses_emploi: DepensesEmploi2025
     frais_demenagement: FraisDemenagement2025
+    pension_alimentaire_payee: PensionAlimentairePayee2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
@@ -670,6 +675,162 @@ def _frais_demenagement_depuis_dict(
         ),
     )
     return valider_frais_demenagement_2025(profil)
+
+
+
+def _pension_alimentaire_payee_vers_dict(
+    profil: PensionAlimentairePayee2025 | None,
+):
+    if profil is None:
+        profil = PensionAlimentairePayee2025()
+
+    profil = valider_pension_alimentaire_payee_2025(profil)
+    return {
+        "total_paye_federal_21999": _decimal_texte(
+            profil.total_paye_federal_21999
+        ),
+        "deduction_federale_22000": _decimal_texte(
+            profil.deduction_federale_22000
+        ),
+        "deduction_quebec_225": _decimal_texte(
+            profil.deduction_quebec_225
+        ),
+        "source_federale": profil.source_federale,
+        "source_quebec": profil.source_quebec,
+        "valide_par_comptable": bool(profil.valide_par_comptable),
+        "ordonnance_ou_entente_ecrite_confirmee": bool(
+            profil.ordonnance_ou_entente_ecrite_confirmee
+        ),
+        "paiement_periodique_conjoint_ex_conjoint_confirme": bool(
+            profil.paiement_periodique_conjoint_ex_conjoint_confirme
+        ),
+        "vie_separee_au_moment_paiement_confirmee": bool(
+            profil.vie_separee_au_moment_paiement_confirmee
+        ),
+        "enregistrement_arc_confirme": bool(
+            profil.enregistrement_arc_confirme
+        ),
+        "montant_federal_confirme": bool(
+            profil.montant_federal_confirme
+        ),
+        "montant_quebec_confirme": bool(
+            profil.montant_quebec_confirme
+        ),
+        "aucun_credit_personnel_lie_confirme": bool(
+            profil.aucun_credit_personnel_lie_confirme
+        ),
+        "pension_enfant": bool(profil.pension_enfant),
+        "regime_avant_mai_1997_ou_t1157": bool(
+            profil.regime_avant_mai_1997_ou_t1157
+        ),
+        "arrerages_ou_retroactif": bool(
+            profil.arrerages_ou_retroactif
+        ),
+        "paiement_forfaitaire": bool(profil.paiement_forfaitaire),
+        "remboursement_pension": bool(profil.remboursement_pension),
+        "frais_juridiques_ou_comptables": bool(
+            profil.frais_juridiques_ou_comptables
+        ),
+        "plusieurs_beneficiaires": bool(
+            profil.plusieurs_beneficiaires
+        ),
+        "annee_changement_etat_civil_avec_choix_credit": bool(
+            profil.annee_changement_etat_civil_avec_choix_credit
+        ),
+    }
+
+
+def _pension_alimentaire_payee_depuis_dict(
+    valeur: Any,
+) -> PensionAlimentairePayee2025:
+    if valeur is None:
+        return PensionAlimentairePayee2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "La pension alimentaire enregistrée est invalide."
+        )
+
+    autorises = set(PensionAlimentairePayee2025.__dataclass_fields__)
+    inconnus = set(valeur) - autorises
+    if inconnus:
+        raise ValueError(
+            "Champs pension alimentaire inconnus : "
+            + ", ".join(sorted(inconnus))
+        )
+
+    profil = PensionAlimentairePayee2025(
+        total_paye_federal_21999=_decimal_depuis_json(
+            valeur.get("total_paye_federal_21999", "0"),
+            "pension_alimentaire_payee.total_paye_federal_21999",
+        ),
+        deduction_federale_22000=_decimal_depuis_json(
+            valeur.get("deduction_federale_22000", "0"),
+            "pension_alimentaire_payee.deduction_federale_22000",
+        ),
+        deduction_quebec_225=_decimal_depuis_json(
+            valeur.get("deduction_quebec_225", "0"),
+            "pension_alimentaire_payee.deduction_quebec_225",
+        ),
+        source_federale=str(valeur.get("source_federale", "")),
+        source_quebec=str(valeur.get("source_quebec", "")),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        ordonnance_ou_entente_ecrite_confirmee=bool(
+            valeur.get("ordonnance_ou_entente_ecrite_confirmee", False)
+        ),
+        paiement_periodique_conjoint_ex_conjoint_confirme=bool(
+            valeur.get(
+                "paiement_periodique_conjoint_ex_conjoint_confirme",
+                False,
+            )
+        ),
+        vie_separee_au_moment_paiement_confirmee=bool(
+            valeur.get(
+                "vie_separee_au_moment_paiement_confirmee",
+                False,
+            )
+        ),
+        enregistrement_arc_confirme=bool(
+            valeur.get("enregistrement_arc_confirme", False)
+        ),
+        montant_federal_confirme=bool(
+            valeur.get("montant_federal_confirme", False)
+        ),
+        montant_quebec_confirme=bool(
+            valeur.get("montant_quebec_confirme", False)
+        ),
+        aucun_credit_personnel_lie_confirme=bool(
+            valeur.get("aucun_credit_personnel_lie_confirme", False)
+        ),
+        pension_enfant=bool(valeur.get("pension_enfant", False)),
+        regime_avant_mai_1997_ou_t1157=bool(
+            valeur.get("regime_avant_mai_1997_ou_t1157", False)
+        ),
+        arrerages_ou_retroactif=bool(
+            valeur.get("arrerages_ou_retroactif", False)
+        ),
+        paiement_forfaitaire=bool(
+            valeur.get("paiement_forfaitaire", False)
+        ),
+        remboursement_pension=bool(
+            valeur.get("remboursement_pension", False)
+        ),
+        frais_juridiques_ou_comptables=bool(
+            valeur.get("frais_juridiques_ou_comptables", False)
+        ),
+        plusieurs_beneficiaires=bool(
+            valeur.get("plusieurs_beneficiaires", False)
+        ),
+        annee_changement_etat_civil_avec_choix_credit=bool(
+            valeur.get(
+                "annee_changement_etat_civil_avec_choix_credit",
+                False,
+            )
+        ),
+    )
+    return valider_pension_alimentaire_payee_2025(profil)
 
 
 def _cotisations_syndicales_vers_dict(
@@ -2813,6 +2974,7 @@ def sauvegarder_dossier_fiscal(
     frais_garde_federaux: FraisGardeFederaux2025 | None = None,
     depenses_emploi: DepensesEmploi2025 | None = None,
     frais_demenagement: FraisDemenagement2025 | None = None,
+    pension_alimentaire_payee: PensionAlimentairePayee2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
@@ -2938,6 +3100,29 @@ def sauvegarder_dossier_fiscal(
     ):
         raise ValueError(
             "Les frais de déménagement diffèrent de l'estimation."
+        )
+
+    pension_alimentaire_effective = (
+        pension_alimentaire_payee
+        if pension_alimentaire_payee is not None
+        else (
+            estimation.pension_alimentaire_payee
+            if estimation is not None
+            else PensionAlimentairePayee2025()
+        )
+    )
+    pension_alimentaire_effective = (
+        valider_pension_alimentaire_payee_2025(
+            pension_alimentaire_effective
+        )
+    )
+    if (
+        estimation is not None
+        and pension_alimentaire_effective
+        != estimation.pension_alimentaire_payee
+    ):
+        raise ValueError(
+            "La pension alimentaire diffère de l'estimation."
         )
 
     pertes_effectif = profil_reports_pertes if profil_reports_pertes is not None else (estimation.profil_reports_pertes if estimation else ProfilReportsPertes2025())
@@ -3208,6 +3393,9 @@ def sauvegarder_dossier_fiscal(
         "frais_demenagement": _frais_demenagement_vers_dict(
             frais_demenagement_effectifs
         ),
+        "pension_alimentaire_payee": _pension_alimentaire_payee_vers_dict(
+            pension_alimentaire_effective
+        ),
         "cotisations_syndicales": _cotisations_syndicales_vers_dict(
             cotisations_syndicales
         ),
@@ -3389,6 +3577,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     )
     frais_demenagement = _frais_demenagement_depuis_dict(
         contenu.get("frais_demenagement")
+    )
+    pension_alimentaire_payee = _pension_alimentaire_payee_depuis_dict(
+        contenu.get("pension_alimentaire_payee")
     )
     cotisations_syndicales = _cotisations_syndicales_depuis_dict(
         contenu.get("cotisations_syndicales")
@@ -3635,6 +3826,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         frais_garde_federaux=frais_garde_federaux,
         depenses_emploi=depenses_emploi,
         frais_demenagement=frais_demenagement,
+        pension_alimentaire_payee=pension_alimentaire_payee,
         cotisations_syndicales=cotisations_syndicales,
         dons_bienfaisance=dons_bienfaisance,
         frais_medicaux=frais_medicaux,

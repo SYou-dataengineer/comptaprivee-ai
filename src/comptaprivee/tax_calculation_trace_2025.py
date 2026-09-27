@@ -166,6 +166,7 @@ def construire_trace_calcul_fiscal_2025(
     frais_garde_federaux = estimation.frais_garde_federaux
     depenses_emploi = estimation.depenses_emploi
     frais_demenagement = estimation.frais_demenagement
+    pension_alimentaire = estimation.pension_alimentaire_payee
     cotisations = estimation.cotisations_syndicales
     dons = estimation.dons_bienfaisance
     frais_medicaux = estimation.frais_medicaux
@@ -253,6 +254,15 @@ def construire_trace_calcul_fiscal_2025(
     if frais_demenagement.deduction_quebec_tp348 > Decimal("0"):
         formule_revenu_quebec += (
             " - frais de déménagement TP-348 / ligne 228"
+        )
+
+    if pension_alimentaire.deduction_federale_22000 > Decimal("0"):
+        formule_revenu_federal += (
+            " - pension alimentaire déductible / ligne 22000"
+        )
+    if pension_alimentaire.deduction_quebec_225 > Decimal("0"):
+        formule_revenu_quebec += (
+            " - pension alimentaire déductible / ligne 225"
         )
 
     if cotisations.montant_federal_admissible > Decimal("0"):
@@ -766,6 +776,69 @@ def construire_trace_calcul_fiscal_2025(
                     "employeur déjà pris en compte"
                 ),
                 frais_demenagement.deduction_quebec_tp348,
+            ),
+        )
+
+    if pension_alimentaire.total_paye_federal_21999 > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable fédéral",
+            _ligne(
+                0,
+                "INFORMATION FÉDÉRALE",
+                "Pension alimentaire 4E — total payé ligne 21999",
+                (
+                    "ARC lignes 21999/22000 — "
+                    + pension_alimentaire.source_federale
+                    + " — validation comptable"
+                ),
+                (
+                    "Total payé déclaré à la ligne 21999; "
+                    "montant informationnel distinct de la déduction 22000"
+                ),
+                pension_alimentaire.total_paye_federal_21999,
+            ),
+        )
+
+    if pension_alimentaire.deduction_federale_22000 > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable fédéral",
+            _ligne(
+                0,
+                "REVENU FÉDÉRAL",
+                "Pension alimentaire 4E — déduction ligne 22000",
+                (
+                    "ARC lignes 21999/22000 — "
+                    + pension_alimentaire.source_federale
+                    + " — validation comptable"
+                ),
+                (
+                    "Partie déductible fédérale validée; ordonnance ou "
+                    "entente écrite et séparation confirmées"
+                ),
+                pension_alimentaire.deduction_federale_22000,
+            ),
+        )
+
+    if pension_alimentaire.deduction_quebec_225 > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable Québec",
+            _ligne(
+                0,
+                "REVENU QUÉBEC",
+                "Pension alimentaire 4E — déduction ligne 225",
+                (
+                    "Revenu Québec ligne 225 — "
+                    + pension_alimentaire.source_quebec
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant Québec déductible validé; cas d'arrérages, "
+                    "rétroactifs et anciens régimes exclus du Bloc 4E simple"
+                ),
+                pension_alimentaire.deduction_quebec_225,
             ),
         )
 

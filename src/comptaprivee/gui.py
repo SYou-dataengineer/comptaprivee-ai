@@ -166,6 +166,10 @@ from .tax_moving_expenses_2025 import (
     FraisDemenagement2025,
     valider_frais_demenagement_2025,
 )
+from .tax_support_payments_2025 import (
+    PensionAlimentairePayee2025,
+    valider_pension_alimentaire_payee_2025,
+)
 from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
@@ -2487,6 +2491,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_garde_federaux_courants = FraisGardeFederaux2025()
         depenses_emploi_courantes = DepensesEmploi2025()
         frais_demenagement_courants = FraisDemenagement2025()
+        pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
         cotisations_syndicales_courantes = (
             CotisationsSyndicalesProfessionnelles2025()
         )
@@ -2775,6 +2780,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 mettre_a_jour_bouton_frais_garde()
                 mettre_a_jour_bouton_depenses_emploi()
                 mettre_a_jour_bouton_frais_demenagement()
+                mettre_a_jour_bouton_pension_alimentaire()
                 self.statut.set(
                     "Frais de garde 4B validés; recalculez l'estimation."
                 )
@@ -3036,6 +3042,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 rapport_fiscal_a_reexporter = True
                 mettre_a_jour_bouton_depenses_emploi()
                 mettre_a_jour_bouton_frais_demenagement()
+                mettre_a_jour_bouton_pension_alimentaire()
                 self.statut.set(
                     "Dépenses d'emploi 4C validées; recalculez l'estimation."
                 )
@@ -3374,9 +3381,360 @@ class ApplicationComptaPrivee(tk.Tk):
                 dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
                 mettre_a_jour_bouton_frais_demenagement()
+                mettre_a_jour_bouton_pension_alimentaire()
                 self.statut.set(
                     "Frais de déménagement 4D validés; "
                     "recalculez l'estimation."
+                )
+                dialogue.destroy()
+
+            ttk.Button(
+                formulaire.actions,
+                text="Effacer",
+                command=effacer,
+            ).pack(side="left")
+            ttk.Button(
+                formulaire.actions,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right")
+            ttk.Button(
+                formulaire.actions,
+                text="Fermer",
+                command=dialogue.destroy,
+            ).pack(side="right", padx=(0, 8))
+            organiser_boutons(formulaire.actions)
+
+
+
+        # --- Priorité 4E : GUI pension alimentaire payée ---
+
+        def mettre_a_jour_bouton_pension_alimentaire() -> None:
+            total = pension_alimentaire_payee_courante.total_paye_federal_21999
+            fed = pension_alimentaire_payee_courante.deduction_federale_22000
+            qc = pension_alimentaire_payee_courante.deduction_quebec_225
+            if total > Decimal("0") or fed > Decimal("0") or qc > Decimal("0"):
+                bouton_pension_alimentaire_4e.configure(
+                    text=(
+                        "Pension alimentaire 2025 (4E) — 21999 "
+                        + formater_montant_estimation(total)
+                        + " / F "
+                        + formater_montant_estimation(fed)
+                        + " / QC "
+                        + formater_montant_estimation(qc)
+                    )
+                )
+            else:
+                bouton_pension_alimentaire_4e.configure(
+                    text="Pension alimentaire 2025 (4E)"
+                )
+
+        def ouvrir_pension_alimentaire_4e_2025() -> None:
+            nonlocal pension_alimentaire_payee_courante
+            nonlocal derniere_estimation, dernier_rapport_pdf
+            nonlocal rapport_fiscal_a_reexporter
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Pension alimentaire payée 2025 — Bloc 4E — ComptaPrivée AI"
+            )
+            dimensionner_fenetre(dialogue, 920, 860)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Pension alimentaire payée 2025 — Bloc 4E",
+                font=("Segoe UI", 16, "bold"),
+            ).grid(
+                row=0, column=0, columnspan=2,
+                sticky="w", pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil simple : pension périodique versée à un conjoint "
+                    "ou ex-conjoint, ordonnance ou entente écrite, vie séparée, "
+                    "montants déjà établis et validés. Ligne 21999 = total payé; "
+                    "ligne 22000 = partie fédérale déductible; ligne Québec 225 "
+                    "= déduction Québec."
+                ),
+                foreground="#166534",
+                wraplength=810,
+                justify="left",
+            ).grid(
+                row=1, column=0, columnspan=2,
+                sticky="w", pady=(0, 12),
+            )
+
+            def montant_texte(valeur: Decimal) -> str:
+                return "" if valeur == Decimal("0") else format(valeur, "f")
+
+            total_var = tk.StringVar(
+                value=montant_texte(
+                    pension_alimentaire_payee_courante.total_paye_federal_21999
+                )
+            )
+            fed_var = tk.StringVar(
+                value=montant_texte(
+                    pension_alimentaire_payee_courante.deduction_federale_22000
+                )
+            )
+            qc_var = tk.StringVar(
+                value=montant_texte(
+                    pension_alimentaire_payee_courante.deduction_quebec_225
+                )
+            )
+            source_fed_var = tk.StringVar(
+                value=pension_alimentaire_payee_courante.source_federale
+            )
+            source_qc_var = tk.StringVar(
+                value=pension_alimentaire_payee_courante.source_quebec
+            )
+
+            comptable_var = tk.BooleanVar(
+                value=pension_alimentaire_payee_courante.valide_par_comptable
+            )
+            ordonnance_var = tk.BooleanVar(
+                value=(
+                    pension_alimentaire_payee_courante
+                    .ordonnance_ou_entente_ecrite_confirmee
+                )
+            )
+            periodique_var = tk.BooleanVar(
+                value=(
+                    pension_alimentaire_payee_courante
+                    .paiement_periodique_conjoint_ex_conjoint_confirme
+                )
+            )
+            separee_var = tk.BooleanVar(
+                value=(
+                    pension_alimentaire_payee_courante
+                    .vie_separee_au_moment_paiement_confirmee
+                )
+            )
+            arc_var = tk.BooleanVar(
+                value=(
+                    pension_alimentaire_payee_courante
+                    .enregistrement_arc_confirme
+                )
+            )
+            federal_var = tk.BooleanVar(
+                value=(
+                    pension_alimentaire_payee_courante
+                    .montant_federal_confirme
+                )
+            )
+            quebec_var = tk.BooleanVar(
+                value=(
+                    pension_alimentaire_payee_courante
+                    .montant_quebec_confirme
+                )
+            )
+            credits_var = tk.BooleanVar(
+                value=(
+                    pension_alimentaire_payee_courante
+                    .aucun_credit_personnel_lie_confirme
+                )
+            )
+
+            champs = (
+                ("Total payé fédéral — ligne 21999 :", "total_paye_21999_4e", total_var),
+                ("Déduction fédérale — ligne 22000 :", "deduction_federale_22000_4e", fed_var),
+                ("Source fédérale :", "source_federale_4e", source_fed_var),
+                ("Déduction Québec — ligne 225 :", "deduction_quebec_225_4e", qc_var),
+                ("Source Québec :", "source_quebec_4e", source_qc_var),
+            )
+            for row, (libelle, nom, variable) in enumerate(champs, start=2):
+                ttk.Label(cadre, text=libelle).grid(
+                    row=row, column=0, sticky="w", pady=5
+                )
+                ttk.Entry(
+                    cadre, name=nom, textvariable=variable
+                ).grid(
+                    row=row, column=1, sticky="ew",
+                    padx=(12, 0), pady=5,
+                )
+
+            confirmations = (
+                (
+                    "confirmation_comptable_pension_4e",
+                    comptable_var,
+                    "Je confirme la validation comptable de la pension.",
+                ),
+                (
+                    "confirmation_ordonnance_entente_4e",
+                    ordonnance_var,
+                    "Je confirme une ordonnance d'un tribunal ou une entente écrite.",
+                ),
+                (
+                    "confirmation_paiement_periodique_conjoint_4e",
+                    periodique_var,
+                    "Je confirme une pension périodique versée à un conjoint ou ex-conjoint.",
+                ),
+                (
+                    "confirmation_vie_separee_4e",
+                    separee_var,
+                    "Je confirme que le payeur et le bénéficiaire vivaient séparés au moment du paiement.",
+                ),
+                (
+                    "confirmation_enregistrement_arc_4e",
+                    arc_var,
+                    "Je confirme l'enregistrement ARC requis pour le dossier fédéral.",
+                ),
+                (
+                    "confirmation_montant_federal_4e",
+                    federal_var,
+                    "Je confirme les montants des lignes fédérales 21999 et 22000.",
+                ),
+                (
+                    "confirmation_montant_quebec_4e",
+                    quebec_var,
+                    "Je confirme le montant de la ligne Québec 225.",
+                ),
+                (
+                    "confirmation_aucun_credit_personnel_lie_4e",
+                    credits_var,
+                    "Je confirme qu'aucun crédit fédéral lié 30300/30400/30425/30450/30500 n'est réclamé avec ce profil simple.",
+                ),
+            )
+            for row, (nom, variable, texte) in enumerate(
+                confirmations, start=7
+            ):
+                tk.Checkbutton(
+                    cadre,
+                    name=nom,
+                    variable=variable,
+                    text=texte,
+                    wraplength=810,
+                    anchor="w",
+                    justify="left",
+                ).grid(
+                    row=row, column=0, columnspan=2,
+                    sticky="w", pady=3,
+                )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "⚠ Hors périmètre 4E simple : pension pour enfant, "
+                    "ancien régime/T1157, arrérages ou rétroactifs, paiement "
+                    "forfaitaire, remboursement de pension, frais juridiques "
+                    "ou comptables, plusieurs bénéficiaires, ou année de "
+                    "changement d'état civil nécessitant un choix de crédit."
+                ),
+                foreground="#92400e",
+                wraplength=810,
+                justify="left",
+            ).grid(
+                row=15, column=0, columnspan=2,
+                sticky="w", pady=(8, 12),
+            )
+
+            def revoquer_confirmations(*_args) -> None:
+                for variable in (
+                    comptable_var,
+                    ordonnance_var,
+                    periodique_var,
+                    separee_var,
+                    arc_var,
+                    federal_var,
+                    quebec_var,
+                    credits_var,
+                ):
+                    variable.set(False)
+
+            for variable in (
+                total_var, fed_var, qc_var, source_fed_var, source_qc_var,
+            ):
+                variable.trace_add("write", revoquer_confirmations)
+
+            def decimal_depuis_champ(
+                texte: str,
+                libelle: str,
+            ) -> Decimal:
+                nettoye = (
+                    texte.strip()
+                    .replace("\u00a0", "")
+                    .replace(" ", "")
+                    .replace(",", ".")
+                    .replace("$", "")
+                )
+                if not nettoye:
+                    return Decimal("0")
+                try:
+                    valeur = Decimal(nettoye)
+                except (InvalidOperation, ValueError) as erreur:
+                    raise ValueError(
+                        f"{libelle} : montant invalide."
+                    ) from erreur
+                if not valeur.is_finite():
+                    raise ValueError(
+                        f"{libelle} : montant non fini."
+                    )
+                return valeur
+
+            def effacer() -> None:
+                for variable in (
+                    total_var, fed_var, qc_var, source_fed_var, source_qc_var,
+                ):
+                    variable.set("")
+                revoquer_confirmations()
+
+            def appliquer() -> None:
+                nonlocal pension_alimentaire_payee_courante
+                nonlocal derniere_estimation, dernier_rapport_pdf
+                nonlocal rapport_fiscal_a_reexporter
+
+                try:
+                    profil = PensionAlimentairePayee2025(
+                        total_paye_federal_21999=decimal_depuis_champ(
+                            total_var.get(), "Total payé fédéral ligne 21999"
+                        ),
+                        deduction_federale_22000=decimal_depuis_champ(
+                            fed_var.get(), "Déduction fédérale ligne 22000"
+                        ),
+                        deduction_quebec_225=decimal_depuis_champ(
+                            qc_var.get(), "Déduction Québec ligne 225"
+                        ),
+                        source_federale=source_fed_var.get().strip(),
+                        source_quebec=source_qc_var.get().strip(),
+                        valide_par_comptable=comptable_var.get(),
+                        ordonnance_ou_entente_ecrite_confirmee=(
+                            ordonnance_var.get()
+                        ),
+                        paiement_periodique_conjoint_ex_conjoint_confirme=(
+                            periodique_var.get()
+                        ),
+                        vie_separee_au_moment_paiement_confirmee=(
+                            separee_var.get()
+                        ),
+                        enregistrement_arc_confirme=arc_var.get(),
+                        montant_federal_confirme=federal_var.get(),
+                        montant_quebec_confirme=quebec_var.get(),
+                        aucun_credit_personnel_lie_confirme=credits_var.get(),
+                    )
+                    profil = valider_pension_alimentaire_payee_2025(profil)
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Pension alimentaire invalide",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                pension_alimentaire_payee_courante = profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                mettre_a_jour_bouton_pension_alimentaire()
+                self.statut.set(
+                    "Pension alimentaire 4E validée; recalculez l'estimation."
                 )
                 dialogue.destroy()
 
@@ -3944,6 +4302,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_garde_federaux=frais_garde_federaux_courants,
                     depenses_emploi=depenses_emploi_courantes,
                     frais_demenagement=frais_demenagement_courants,
+                    pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     cotisations_rpa=cotisations_rpa_courantes,
                     cotisations_syndicales=cotisations_syndicales_courantes,
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
@@ -11031,6 +11390,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 mettre_a_jour_bouton_depenses_emploi()
 
                 mettre_a_jour_bouton_frais_demenagement()
+                mettre_a_jour_bouton_pension_alimentaire()
                 self.statut.set(
                     "Ajustements fiscaux 2025 mis à jour"
                 )
@@ -11839,6 +12199,7 @@ class ApplicationComptaPrivee(tk.Tk):
             mettre_a_jour_bouton_frais_garde()
             mettre_a_jour_bouton_depenses_emploi()
             mettre_a_jour_bouton_frais_demenagement()
+            mettre_a_jour_bouton_pension_alimentaire()
             statut_dossier.set(dossier.statut)
             mettre_a_jour_etat_dossier_valide()
             self.statut.set(
@@ -11956,6 +12317,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_garde_federaux=frais_garde_federaux_courants,
                     depenses_emploi=depenses_emploi_courantes,
                     frais_demenagement=frais_demenagement_courants,
+                    pension_alimentaire_payee=pension_alimentaire_payee_courante,
                             cotisations_syndicales=(
                                 cotisations_syndicales_courantes
                             ),
@@ -12010,6 +12372,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_garde_federaux=frais_garde_federaux_courants,
                     depenses_emploi=depenses_emploi_courantes,
                     frais_demenagement=frais_demenagement_courants,
+                    pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -12099,6 +12462,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal frais_garde_federaux_courants
             nonlocal depenses_emploi_courantes
             nonlocal frais_demenagement_courants
+            nonlocal pension_alimentaire_payee_courante
             nonlocal rapport_fiscal_a_reexporter
             nonlocal derniere_estimation, dernier_rapport_pdf
             nonlocal ajustement_reer_courant
@@ -12168,6 +12532,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             frais_demenagement_courants = (
                 enregistrement.frais_demenagement
+            )
+            pension_alimentaire_payee_courante = (
+                enregistrement.pension_alimentaire_payee
             )
             cotisations_syndicales_courantes = (
                 enregistrement.cotisations_syndicales
@@ -12241,6 +12608,7 @@ class ApplicationComptaPrivee(tk.Tk):
             mettre_a_jour_bouton_frais_garde()
             mettre_a_jour_bouton_depenses_emploi()
             mettre_a_jour_bouton_frais_demenagement()
+            mettre_a_jour_bouton_pension_alimentaire()
             rafraichir_documents()
             statut_dossier.set("Validé — dossier rouvert localement")
             mettre_a_jour_etat_dossier_valide()
@@ -12498,6 +12866,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_garde_federaux=frais_garde_federaux_courants,
                     depenses_emploi=depenses_emploi_courantes,
                     frais_demenagement=frais_demenagement_courants,
+                    pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -12971,6 +13340,16 @@ class ApplicationComptaPrivee(tk.Tk):
             padx=(8, 0),
         )
 
+        bouton_pension_alimentaire_4e = ttk.Button(
+            zone_actions,
+            text="Pension alimentaire 2025 (4E)",
+            command=ouvrir_pension_alimentaire_4e_2025,
+        )
+        bouton_pension_alimentaire_4e.pack(
+            side="left",
+            padx=(8, 0),
+        )
+
         bouton_ajustements_fiscaux = ttk.Button(
             zone_actions,
             text="Ajustements fiscaux",
@@ -13015,6 +13394,7 @@ class ApplicationComptaPrivee(tk.Tk):
         mettre_a_jour_bouton_frais_garde()
         mettre_a_jour_bouton_depenses_emploi()
         mettre_a_jour_bouton_frais_demenagement()
+        mettre_a_jour_bouton_pension_alimentaire()
         mettre_a_jour_etat_dossier_valide()
         champ_client.focus_set()
 

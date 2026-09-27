@@ -45,6 +45,11 @@ from .tax_moving_expenses_2025 import (
     appliquer_frais_demenagement_2025,
     lignes_resume_frais_demenagement_2025,
 )
+from .tax_support_payments_2025 import (
+    PensionAlimentairePayee2025,
+    appliquer_pension_alimentaire_payee_2025,
+    lignes_resume_pension_alimentaire_payee_2025,
+)
 from .tax_contribution_overpayments_2025 import (
     CotisationsExcedentaires2025,
     calculer_remboursements_cotisations_2025,
@@ -250,6 +255,7 @@ class EstimationFiscale2025:
     frais_garde_federaux: FraisGardeFederaux2025
     depenses_emploi: DepensesEmploi2025
     frais_demenagement: FraisDemenagement2025
+    pension_alimentaire_payee: PensionAlimentairePayee2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
@@ -305,6 +311,7 @@ def calculer_estimation_fiscale_2025(
     frais_garde_federaux: FraisGardeFederaux2025 | None = None,
     depenses_emploi: DepensesEmploi2025 | None = None,
     frais_demenagement: FraisDemenagement2025 | None = None,
+    pension_alimentaire_payee: PensionAlimentairePayee2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
@@ -721,6 +728,41 @@ def calculer_estimation_fiscale_2025(
     revenu = appliquer_frais_demenagement_2025(
         revenu,
         frais_demenagement_effectifs,
+    )
+
+    pension_alimentaire_payee_effective = (
+        pension_alimentaire_payee
+        if pension_alimentaire_payee is not None
+        else PensionAlimentairePayee2025()
+    )
+
+    if (
+        pension_alimentaire_payee_effective.deduction_federale_22000
+        > Decimal("0")
+        or pension_alimentaire_payee_effective.deduction_quebec_225
+        > Decimal("0")
+    ):
+        profils_credits_lies = (
+            montant_conjoint_federal,
+            personne_charge_admissible_federale,
+            aidant_conjoint_personne_charge_federal,
+            aidant_autre_personne_charge_federal,
+            aidant_enfant_federal,
+        )
+        if any(
+            profil is not None
+            and getattr(profil, "reclamer_montant", False)
+            for profil in profils_credits_lies
+        ):
+            raise ValueError(
+                "Bloc 4E simple : une pension alimentaire déductible ne peut "
+                "pas être combinée ici avec les lignes fédérales "
+                "30300/30400/30425/30450/30500. Une revue avancée est requise."
+            )
+
+    revenu = appliquer_pension_alimentaire_payee_2025(
+        revenu,
+        pension_alimentaire_payee_effective,
     )
 
     cotisations_effectives = (
@@ -1402,6 +1444,7 @@ def calculer_estimation_fiscale_2025(
         frais_garde_federaux=frais_garde_federaux_effectifs,
         depenses_emploi=depenses_emploi_effectives,
         frais_demenagement=frais_demenagement_effectifs,
+        pension_alimentaire_payee=pension_alimentaire_payee_effective,
         cotisations_syndicales=cotisations_effectives,
         dons_bienfaisance=dons_effectifs,
         frais_medicaux=frais_medicaux_effectifs,
@@ -1518,6 +1561,9 @@ def formater_estimation_fiscale_2025(
         ),
         *lignes_resume_frais_demenagement_2025(
             estimation.frais_demenagement
+        ),
+        *lignes_resume_pension_alimentaire_payee_2025(
+            estimation.pension_alimentaire_payee
         ),
         *(
             [

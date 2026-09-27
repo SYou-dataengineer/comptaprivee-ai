@@ -1809,3 +1809,53 @@ Contrat technique livré :
 
 Validation ciblée finale avant suite complète : **145 tests réussis**,
 avec **5 avertissements de dépréciation existants** non bloquants.
+
+
+### Bloc 4E livré — pension alimentaire payée simple, lignes 21999 / 22000 / 225
+
+Le bloc 4E couvre un profil volontairement limité de pension alimentaire
+périodique versée à un conjoint ou ex-conjoint, avec montants déjà établis
+et validés.
+
+Périmètre livré :
+
+- fédéral : total payé reporté à la ligne 21999;
+- fédéral : partie déductible reportée à la ligne 22000;
+- Québec : montant déductible reporté à la ligne 225;
+- ordonnance d'un tribunal ou entente écrite confirmée;
+- payeur et bénéficiaire vivant séparés au moment du paiement;
+- enregistrement ARC confirmé lorsque requis;
+- sources fédérale et Québec conservées localement;
+- validation comptable obligatoire;
+- application de la déduction fédérale et Québec aux revenus net et imposable
+  de la juridiction correspondante, sans modifier le revenu total;
+- ligne 21999 conservée comme information distincte de la déduction 22000.
+
+Les situations suivantes sont explicitement hors périmètre 4E simple :
+pension alimentaire pour enfant, ancien régime ou choix T1157, arrérages ou
+paiements rétroactifs, paiement forfaitaire, remboursement de pension,
+frais juridiques ou comptables, plusieurs bénéficiaires et année de changement
+d'état civil nécessitant un arbitrage avec les crédits personnels fédéraux.
+
+Le pipeline refuse aussi, dans ce profil simple, une combinaison avec une
+réclamation active des lignes fédérales 30300, 30400, 30425, 30450 ou 30500.
+Ces situations nécessitent une revue fiscale avancée.
+
+Contrat technique livré :
+
+1. profil immuable `PensionAlimentairePayee2025`;
+2. validation stricte des montants finis et non négatifs;
+3. contrôle ligne 22000 <= ligne 21999;
+4. intégration dans `EstimationFiscale2025` après le bloc 4D;
+5. garde-fou explicite pour les crédits fédéraux liés;
+6. trace de calcul avec ligne informationnelle 21999, déduction 22000 et
+   déduction Québec 225;
+7. persistance JSON rétrocompatible, avec refus d'une divergence entre le
+   profil explicite et celui de l'estimation;
+8. formulaire GUI dédié avec révocation automatique des confirmations après
+   toute modification pertinente;
+9. rapport PDF avec montants et sources validées;
+10. tests moteur, estimation, trace, stockage, GUI et PDF.
+
+Validation ciblée finale avant suite complète : **164 tests réussis**,
+avec **5 avertissements de dépréciation existants** non bloquants.

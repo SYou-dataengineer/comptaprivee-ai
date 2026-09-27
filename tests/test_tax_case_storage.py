@@ -604,3 +604,128 @@ def test_stockage_frais_demenagement_4d_invalide_est_refuse_au_rechargement(
     )
     with pytest.raises(ValueError, match="hors périmètre 4D"):
         charger_dossier_fiscal(p)
+
+
+# --- Priorité 4E : persistance pension alimentaire payée ---
+
+from src.comptaprivee.tax_support_payments_2025 import (
+    PensionAlimentairePayee2025,
+)
+
+
+def _pension_alimentaire_4e_stockage():
+    return PensionAlimentairePayee2025(
+        total_paye_federal_21999=Decimal("6000"),
+        deduction_federale_22000=Decimal("6000"),
+        deduction_quebec_225=Decimal("6000"),
+        source_federale="Ordonnance + paiements 2025",
+        source_quebec="Ordonnance + paiements 2025",
+        valide_par_comptable=True,
+        ordonnance_ou_entente_ecrite_confirmee=True,
+        paiement_periodique_conjoint_ex_conjoint_confirme=True,
+        vie_separee_au_moment_paiement_confirmee=True,
+        enregistrement_arc_confirme=True,
+        montant_federal_confirme=True,
+        montant_quebec_confirme=True,
+        aucun_credit_personnel_lie_confirme=True,
+    )
+
+
+def test_stockage_pension_alimentaire_4e_roundtrip_direct(tmp_path):
+    profil = _pension_alimentaire_4e_stockage()
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        pension_alimentaire_payee=profil,
+        destination=tmp_path / "d.json",
+    )
+    assert charger_dossier_fiscal(p).pension_alimentaire_payee == profil
+
+
+def test_stockage_pension_alimentaire_4e_depuis_estimation(tmp_path):
+    d = _dossier()
+    profil = _pension_alimentaire_4e_stockage()
+    estimation = calculer_estimation_fiscale_2025(
+        d,
+        pension_alimentaire_payee=profil,
+    )
+    p = sauvegarder_dossier_fiscal(
+        d,
+        estimation=estimation,
+        destination=tmp_path / "d.json",
+    )
+    charge = charger_dossier_fiscal(p)
+    assert charge.pension_alimentaire_payee == profil
+    assert charge.estimation is not None
+
+
+def test_stockage_pension_alimentaire_4e_refuse_profil_different_estimation(
+    tmp_path,
+):
+    d = _dossier()
+    profil = _pension_alimentaire_4e_stockage()
+    estimation = calculer_estimation_fiscale_2025(
+        d,
+        pension_alimentaire_payee=profil,
+    )
+    autre = replace(
+        profil,
+        deduction_federale_22000=Decimal("5000"),
+    )
+    with pytest.raises(ValueError, match="pension alimentaire diffère"):
+        sauvegarder_dossier_fiscal(
+            d,
+            estimation=estimation,
+            pension_alimentaire_payee=autre,
+            destination=tmp_path / "d.json",
+        )
+
+
+def test_stockage_ancien_json_sans_pension_alimentaire_4e_reste_compatible(
+    tmp_path,
+):
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        destination=tmp_path / "d.json",
+    )
+    brut = json.loads(p.read_text(encoding="utf-8"))
+    brut.pop("pension_alimentaire_payee", None)
+    p.write_text(
+        json.dumps(brut, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    assert (
+        charger_dossier_fiscal(p).pension_alimentaire_payee
+        == PensionAlimentairePayee2025()
+    )
+
+
+def test_stockage_pension_alimentaire_4e_invalide_refuse_au_rechargement(
+    tmp_path,
+):
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        destination=tmp_path / "d.json",
+    )
+    brut = json.loads(p.read_text(encoding="utf-8"))
+    brut["pension_alimentaire_payee"] = {
+        "total_paye_federal_21999": "6000",
+        "deduction_federale_22000": "6000",
+        "deduction_quebec_225": "6000",
+        "source_federale": "Ordonnance + paiements 2025",
+        "source_quebec": "Ordonnance + paiements 2025",
+        "valide_par_comptable": True,
+        "ordonnance_ou_entente_ecrite_confirmee": True,
+        "paiement_periodique_conjoint_ex_conjoint_confirme": True,
+        "vie_separee_au_moment_paiement_confirmee": True,
+        "enregistrement_arc_confirme": True,
+        "montant_federal_confirme": True,
+        "montant_quebec_confirme": True,
+        "aucun_credit_personnel_lie_confirme": True,
+        "pension_enfant": True,
+    }
+    p.write_text(
+        json.dumps(brut, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="hors périmètre 4E"):
+        charger_dossier_fiscal(p)
