@@ -91,3 +91,23 @@ def test_enfant_naissance_revoque_admissibilite(application):
     assert d.getvar(champ(d, "enfant_admissible_confirme_5u").cget("variable")) == 0
     bouton(d, "Fermer").invoke()
     fiscal.destroy()
+
+
+def test_conjoint_etudiant_enfant_distinct_persiste_et_revoque(application):
+    fiscal, d = ouvrir(application)
+    remplir(d)
+    cocher(d, "conjoint_etudiant_5u")
+    _remplir(champ(d, "conjoint_enfant_nom_5u"), "Enfant du conjoint")
+    _remplir(champ(d, "conjoint_enfant_naissance_5u"), "2015-01-01")
+    cocher(d, "conjoint_enfant_admissible_confirme_5u")
+    confirmer(d)
+    bouton(d, "Valider et appliquer").invoke()
+    assert not d.winfo_exists(), application.messages_test
+    bouton(fiscal, "Allocation travailleurs 2025 (5E)").invoke()
+    d = derniere_fenetre(fiscal)
+    assert champ(d, "conjoint_enfant_nom_5u").get() == "Enfant du conjoint"
+    _remplir(champ(d, "conjoint_enfant_naissance_5u"), "2016-01-01")
+    assert d.getvar(champ(d, "conjoint_enfant_admissible_confirme_5u").cget("variable")) == 0
+    assert d.getvar(champ(d, "attribution_unique_5u").cget("variable")) == 0
+    bouton(d, "Fermer").invoke()
+    fiscal.destroy()

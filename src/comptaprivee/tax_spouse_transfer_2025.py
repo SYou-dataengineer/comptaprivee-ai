@@ -65,6 +65,8 @@ class ResultatTransfertConjoint2025:
     act_base_conjoint_reclamee: bool = False
     revenu_travail_conjoint: Decimal = ZERO
     ciph_conjoint_act_confirme: bool = False
+    attribution_enfants_act: tuple[tuple[str, str], tuple[str, str]] | None = None
+    etudiants_act: tuple[bool, bool] | None = None
 
 
 def _montant(valeur, nom):
@@ -201,6 +203,10 @@ def calculer_transfert_conjoint_2025(p, *, beneficiaire):
         travail_beneficiaire_declare_act=(act.famille.conjoint_revenu_travail if act.famille.activer else None),
         act_base_beneficiaire_declare=(act.famille.conjoint_reclame_base if act.famille.activer else None),
         act_base_conjoint_reclamee=act.reclamer_base,
+        attribution_enfants_act=(((act.famille.enfant_nom, act.famille.enfant_naissance),
+            (act.famille.conjoint_enfant_nom, act.famille.conjoint_enfant_naissance)) if act.famille.activer else None),
+        etudiants_act=((act.famille.demandeur_etudiant or not act.pas_etudiant_temps_plein_plus_13_semaines,
+            act.famille.conjoint_etudiant) if act.famille.activer else None),
         revenu_travail_conjoint=conjoint.base.revenu_emploi_federal,
         ciph_conjoint_act_confirme=act.present and act.admissibilite_ciph_confirmee,
         revenu_beneficiaire_declare_30300=(conjoint.montant_conjoint_federal.revenu_net_conjoint_2025

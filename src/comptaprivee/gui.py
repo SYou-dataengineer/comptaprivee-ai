@@ -4840,6 +4840,10 @@ class ApplicationComptaPrivee(tk.Tk):
             famille_vars = {}
             labels_famille = {
                 "activer": "Activer le profil familial",
+                "demandeur_etudiant": "Demandeur étudiant à temps plein pendant plus de 13 semaines",
+                "conjoint_enfant_nom": "Enfant distinct attribué au conjoint — nom (vide si aucun)",
+                "conjoint_enfant_naissance": "Naissance de l’enfant attribué au conjoint — AAAA-MM-JJ",
+                "conjoint_enfant_admissible_confirme": "Enfant admissible attribué exclusivement au conjoint, lien et cohabitation vérifiés",
                 "conjoint_nom": "Conjoint visé au 31 décembre — nom (vide si aucun)",
                 "conjoint_resident": "Conjoint résident du Canada toute l'année",
                 "conjoint_etudiant": "Conjoint étudiant à temps plein pendant plus de 13 semaines",
@@ -4876,12 +4880,12 @@ class ApplicationComptaPrivee(tk.Tk):
             def revoquer(*_):
                 for variable in confirmations.values():
                     variable.set(False)
-                for nom in (*CONFIRMATIONS_FAMILLE_ACT, "enfant_admissible_confirme", "conjoint_etudiant_sans_dependant_confirme"):
+                for nom in (*CONFIRMATIONS_FAMILLE_ACT, "enfant_admissible_confirme", "conjoint_enfant_admissible_confirme", "conjoint_etudiant_sans_dependant_confirme"):
                     famille_vars[nom].set(False)
             for variable in (*variables.values(), *choix.values()):
                 variable.trace_add("write", revoquer)
             for nom, variable in famille_vars.items():
-                if nom not in (*CONFIRMATIONS_FAMILLE_ACT, "enfant_admissible_confirme", "conjoint_etudiant_sans_dependant_confirme"):
+                if nom not in (*CONFIRMATIONS_FAMILLE_ACT, "enfant_admissible_confirme", "conjoint_enfant_admissible_confirme", "conjoint_etudiant_sans_dependant_confirme"):
                     variable.trace_add("write", revoquer)
 
             def effacer():

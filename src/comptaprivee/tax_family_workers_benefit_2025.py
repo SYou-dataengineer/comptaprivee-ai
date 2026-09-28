@@ -16,6 +16,10 @@ CONFIRMATIONS_FAMILLE_ACT = {
 @dataclass(frozen=True)
 class FamilleAllocation2025:
     activer: bool = False
+    demandeur_etudiant: bool = False
+    conjoint_enfant_nom: str = ""
+    conjoint_enfant_naissance: str = ""
+    conjoint_enfant_admissible_confirme: bool = False
     conjoint_nom: str = ""
     conjoint_resident: bool = False
     conjoint_etudiant: bool = False
@@ -39,7 +43,7 @@ class FamilleAllocation2025:
 
     @property
     def conjoint_admissible(self):
-        return bool(self.conjoint_nom and self.conjoint_resident and not self.conjoint_etudiant
+        return bool(self.conjoint_nom and self.conjoint_resident and (not self.conjoint_etudiant or bool(self.conjoint_enfant_nom))
                     and not self.conjoint_detenu and not self.conjoint_exempt)
 
 
@@ -78,23 +82,28 @@ def valider_famille_act_2025(f):
         if f.conjoint_nom or any(getattr(f, c.name) for c in fields(f)
                                 if c.name.startswith("conjoint_") and c.name != "conjoint_nom"):
             raise ValueError("Données du conjoint ACT présentes sans identité.")
-    if f.enfant_nom:
-        if not f.enfant_nom.strip() or not f.enfant_admissible_confirme:
-            raise ValueError("Enfant ACT : identité et admissibilité confirmées obligatoires.")
-        try:
-            naissance = date.fromisoformat(f.enfant_naissance)
-        except ValueError as exc:
-            raise ValueError("Naissance de l'enfant ACT invalide.") from exc
-        if naissance.isoformat() != f.enfant_naissance or not date(2007, 1, 1) <= naissance <= date(2025, 12, 31):
-            raise ValueError("L'enfant ACT doit avoir moins de 19 ans au 31 décembre 2025.")
-    elif f.enfant_naissance or f.enfant_admissible_confirme:
-        raise ValueError("Données de l'enfant ACT présentes sans identité.")
-    if f.conjoint_etudiant and f.enfant_nom:
-        raise ValueError("Conjoint étudiant avec enfant : attribution de la personne à charge et exception étudiante à traiter séparément; hors de ce profil.")
-    if f.conjoint_etudiant and not f.conjoint_etudiant_sans_dependant_confirme:
-        raise ValueError("Conjoint étudiant : confirmer l'absence de personne à charge admissible pour lui; sinon exception étudiante hors de ce profil.")
-    if not f.conjoint_etudiant and f.conjoint_etudiant_sans_dependant_confirme:
-        raise ValueError("Confirmation du conjoint étudiant sans statut étudiant.")
+    for prefixe in ("enfant", "conjoint_enfant"):
+        nom = getattr(f, prefixe + "_nom")
+        naissance_texte = getattr(f, prefixe + "_naissance")
+        confirme = getattr(f, prefixe + "_admissible_confirme")
+        if nom:
+            if not nom.strip() or not confirme:
+                raise ValueError("Enfant ACT : identité et admissibilité confirmées obligatoires.")
+            try:
+                naissance = date.fromisoformat(naissance_texte)
+            except ValueError as exc:
+                raise ValueError("Naissance de l'enfant ACT invalide.") from exc
+            if naissance.isoformat() != naissance_texte or not date(2007, 1, 1) <= naissance <= date(2025, 12, 31):
+                raise ValueError("L'enfant ACT doit avoir moins de 19 ans au 31 décembre 2025.")
+        elif naissance_texte or confirme:
+            raise ValueError("Données de l'enfant ACT présentes sans identité.")
+    normaliser = lambda n: " ".join(n.split()).casefold()
+    if f.enfant_nom and normaliser(f.enfant_nom) == normaliser(f.conjoint_enfant_nom):
+        raise ValueError("Un même enfant ne peut être attribué aux deux parents pour l'ACT, même avec des dates divergentes.")
+    if f.conjoint_etudiant and not f.conjoint_enfant_nom and not f.conjoint_etudiant_sans_dependant_confirme:
+        raise ValueError("Conjoint étudiant : confirmer l'absence de personne à charge attribuée pour lui.")
+    if f.conjoint_etudiant_sans_dependant_confirme and (not f.conjoint_etudiant or f.conjoint_enfant_nom):
+        raise ValueError("Confirmation du conjoint étudiant sans personne à charge contradictoire.")
     if f.conjoint_reclame_base and not f.conjoint_admissible:
         raise ValueError("Un conjoint non admissible ne peut réclamer l'ACT de base.")
     if f.conjoint_reclame_base and f.avances_base_attribuees_demandeur:
@@ -124,6 +133,8 @@ class ResultatActFamilial2025:
     avances_base_retenues: Decimal = ZERO
     ligne_45300: Decimal = ZERO
     ligne_41500: Decimal = ZERO
+    demandeur_admissible: bool = False
+    conjoint_admissible: bool = False
 
 
 def calculer_act_familial_2025(p, *, revenu_travail, revenu_net):
@@ -134,6 +145,9 @@ def calculer_act_familial_2025(p, *, revenu_travail, revenu_net):
         return ResultatActFamilial2025()
     if p.reclamer_base and f.conjoint_reclame_base:
         raise ValueError("Deux demandes d'ACT de base dans le couple.")
+    admissible = not f.demandeur_etudiant or bool(f.enfant_nom)
+    base_demandee = p.reclamer_base and admissible
+    supplement_demande = p.reclamer_supplement and admissible
     conjoint, enfant = f.conjoint_admissible, bool(f.enfant_nom)
     travail_c = f.conjoint_revenu_travail if conjoint else ZERO
     net_c = max(f.conjoint_revenu_net, ZERO) if conjoint else ZERO
@@ -147,13 +161,13 @@ def calculer_act_familial_2025(p, *, revenu_travail, revenu_net):
         (True, True): ("3600", ".239", "3808.23", "22007.75", "41048.90"),
     }
     seuil, taux, plafond, seuil_base, seuil_supp = map(Decimal, params[conjoint, enfant])
-    avant = min(plafond, arrondir_cent(max(travail + travail_c - seuil, ZERO) * taux)) if p.reclamer_base else ZERO
-    reduction = arrondir_cent(max(familial - seuil_base, ZERO) * Decimal(".20")) if p.reclamer_base else ZERO
+    avant = min(plafond, arrondir_cent(max(travail + travail_c - seuil, ZERO) * taux)) if base_demandee else ZERO
+    reduction = arrondir_cent(max(familial - seuil_base, ZERO) * Decimal(".20")) if base_demandee else ZERO
     base = max(avant - reduction, ZERO)
     taux_supp = Decimal(".20") if conjoint else Decimal(".40")
     taux_reduction_supp = Decimal(".10") if conjoint and f.conjoint_ciph else Decimal(".20")
-    supp_avant = min(Decimal("851.31"), arrondir_cent(max(travail - Decimal(1200), ZERO) * taux_supp)) if p.reclamer_supplement else ZERO
-    supp_reduction = arrondir_cent(max(familial - seuil_supp, ZERO) * taux_reduction_supp) if p.reclamer_supplement else ZERO
+    supp_avant = min(Decimal("851.31"), arrondir_cent(max(travail - Decimal(1200), ZERO) * taux_supp)) if supplement_demande else ZERO
+    supp_reduction = arrondir_cent(max(familial - seuil_supp, ZERO) * taux_reduction_supp) if supplement_demande else ZERO
     supplement = max(supp_avant - supp_reduction, ZERO)
     avances_base = (p.avances_rc210_case10 + f.conjoint_avances_base
                     if p.reclamer_base or f.avances_base_attribuees_demandeur or not f.conjoint_nom else ZERO)
@@ -161,7 +175,7 @@ def calculer_act_familial_2025(p, *, revenu_travail, revenu_net):
     return ResultatActFamilial2025(travail+travail_c, net+net_c, exemption, familial,
         seuil, taux, plafond, seuil_base, avant, reduction, base, taux_supp, seuil_supp,
         taux_reduction_supp, supp_avant, supp_reduction, supplement, avances_base, credit,
-        min(credit, avances_base + p.avances_rc210_case11))
+        min(credit, avances_base + p.avances_rc210_case11), admissible, conjoint)
 
 
 def famille_act_vers_dict(f):
@@ -177,7 +191,8 @@ def verifier_concordance_act_familial_2025(p, *, demandeur, medical, supplement,
     normaliser = lambda n: " ".join(n.split()).casefold()
     if f.conjoint_nom and normaliser(f.conjoint_nom) == normaliser(demandeur):
         raise ValueError("Le conjoint ACT doit différer du demandeur.")
-    if f.enfant_nom and normaliser(f.enfant_nom) in {normaliser(demandeur), normaliser(f.conjoint_nom)}:
+    if any(n and normaliser(n) in {normaliser(demandeur), normaliser(f.conjoint_nom)}
+           for n in (f.enfant_nom, f.conjoint_enfant_nom)):
         raise ValueError("L'enfant ACT doit différer du demandeur et de son conjoint.")
     noms = list(noms_conjoints) + [x.nom for x in medical.personnes if x.lien == "conjoint"]
     if conjoint_32600 is not None:
@@ -190,6 +205,15 @@ def verifier_concordance_act_familial_2025(p, *, demandeur, medical, supplement,
         revenus = ([conjoint_30300.revenu_net_conjoint_2025] if conjoint_30300.reclamer_montant else [])
         if conjoint_32600 is not None:
             revenus.append(conjoint_32600.revenu_net_conjoint)
+            if conjoint_32600.attribution_enfants_act is not None:
+                normaliser_enfant = lambda e: (normaliser(e[0]), e[1])
+                ici = ((f.conjoint_enfant_nom, f.conjoint_enfant_naissance),
+                       (f.enfant_nom, f.enfant_naissance))
+                if tuple(map(normaliser_enfant, ici)) != tuple(map(normaliser_enfant, conjoint_32600.attribution_enfants_act)):
+                    raise ValueError("Attribution des enfants ACT divergente entre les deux dossiers.")
+                etudiants = (f.conjoint_etudiant, f.demandeur_etudiant or not p.pas_etudiant_temps_plein_plus_13_semaines)
+                if etudiants != conjoint_32600.etudiants_act:
+                    raise ValueError("Statuts étudiants ACT divergents entre les deux dossiers.")
             if f.conjoint_revenu_travail != conjoint_32600.revenu_travail_conjoint:
                 raise ValueError("Revenu de travail du conjoint ACT divergent de son dossier 32600.")
             if conjoint_32600.ciph_conjoint_act_confirme and not f.conjoint_ciph:
@@ -210,6 +234,8 @@ def verifier_concordance_act_familial_2025(p, *, demandeur, medical, supplement,
 
 def trace_act_familial_2025(r):
     return (
+        ("Admissibilité étudiante ACT après attribution", ZERO,
+         f"Demandeur admissible : {r.demandeur_admissible}; conjoint : {r.conjoint_admissible}; exception étudiante réservée au parent attributaire, 122.7(10)"),
         ("Revenu de travail familial ACT", r.travail_familial, "10100 demandeur + 10100 conjoint admissible; autres postes exclus du profil"),
         ("Revenu net familial avant exemption ACT", r.net_avant_exemption, "Somme des 23600 retenus, chacun borné à zéro; conjoint non admissible exclu"),
         ("Exemption du second revenu ACT", r.exemption_second_revenu, "min(16386, travail et net du même membre ayant le plus faible travail); à égalité, colonne conjoint"),

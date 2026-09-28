@@ -68,6 +68,8 @@ def valider_allocation_travailleurs_2025(p: AllocationTravailleurs2025) -> Alloc
         raise ValueError("Âge ACT invalide.")
     if not isinstance(p.source, str):
         raise ValueError("Source ACT invalide.")
+    if famille.demandeur_etudiant and p.pas_etudiant_temps_plein_plus_13_semaines:
+        raise ValueError("Statut étudiant du demandeur contradictoire.")
     if p.present:
         if p.age_fin_2025 < 19 and not (famille.activer and (famille.conjoint_nom or famille.enfant_nom)):
             raise ValueError("Le profil ACT individuel exige au moins 19 ans fin 2025.")
@@ -78,7 +80,7 @@ def valider_allocation_travailleurs_2025(p: AllocationTravailleurs2025) -> Alloc
                 if getattr(p, nom):
                     raise ValueError("ACT familial incompatible avec la confirmation individuelle sans famille.")
                 continue
-            if famille.activer and famille.enfant_nom and nom == "pas_etudiant_temps_plein_plus_13_semaines":
+            if famille.activer and (famille.enfant_nom or famille.demandeur_etudiant) and nom == "pas_etudiant_temps_plein_plus_13_semaines":
                 continue
             if not getattr(p, nom):
                 raise ValueError("Confirmation obligatoire : " + libelle)
@@ -137,6 +139,8 @@ def lignes_allocation_travailleurs_2025(p: AllocationTravailleurs2025, r: Result
             f"Sources validées : {p.source}; famille : {f.source}",
             f"Conjoint : {f.conjoint_nom or 'aucun'}; admissible ACT : {'oui' if f.conjoint_admissible else 'non'}; CIPH : {'oui' if f.conjoint_ciph else 'non'}",
             f"Enfant admissible attribué : {f.enfant_nom or 'aucun'}; naissance : {f.enfant_naissance or 'sans objet'}",
+            f"Enfant attribué au conjoint : {f.conjoint_enfant_nom or 'aucun'}; naissance : {f.conjoint_enfant_naissance or 'sans objet'}",
+            f"Exception étudiante après attribution unique 122.7(10); demandeur admissible : {c.demandeur_admissible}; conjoint : {c.conjoint_admissible}",
             f"Travail du demandeur : {r.revenu_travail:.2f} $; conjoint déclaré : {f.conjoint_revenu_travail:.2f} $",
             f"Travail familial retenu : {c.travail_familial:.2f} $; net conjoint déclaré : {f.conjoint_revenu_net:.2f} $",
             f"Revenus nets retenus : {c.net_avant_exemption:.2f} $; exemption second revenu : {c.exemption_second_revenu:.2f} $ (maximum 16386.00 $)",

@@ -135,3 +135,42 @@ def test_trace_et_pdf_act_familial(tmp_path):
                 assert 0 <= x0 < x1 <= page.rect.width and 0 <= y0 < y1 <= page.rect.height
     for mot in ("ACT FAMILIALE", "Conjoint fictif", "Enfant fictif", "3808.23", "8000.00", "41500"):
         assert mot in texte
+
+
+def test_etudiant_attribution_json_trace_pdf_et_recalcul(tmp_path):
+    p = profil(famille(**enfant(), conjoint_etudiant=True,
+        conjoint_etudiant_sans_dependant_confirme=True))
+    e = calcul(dossier_20000(), allocation_travailleurs=p)
+    assert e.resultat_allocation_travailleurs.ligne_45300 == D("945.31")
+    fichier = sauvegarder_dossier_fiscal(e.dossier, estimation=e, destination=tmp_path / "etudiant.json")
+    charge = dossier_fiscal_depuis_contenu(json.loads(fichier.read_text(encoding="utf-8")))
+    assert charge.allocation_travailleurs == p
+    assert calcul(charge.dossier, allocation_travailleurs=charge.allocation_travailleurs).resultat_allocation_travailleurs == e.resultat_allocation_travailleurs
+    trace = construire_trace_calcul_fiscal_2025(e)
+    assert any("122.7(10)" in x.formule and "conjoint : False" in x.formule for x in trace.lignes)
+    fichier_pdf = exporter_rapport_fiscal_pdf_2025(e, tmp_path / "etudiant.pdf")
+    with fitz.open(fichier_pdf) as pdf:
+        texte = "\n".join(page.get_text() for page in pdf)
+    assert "945.31" in texte and "Exception étudiante" in texte
+
+
+def test_attributions_reciproques_dossier_conjoint_32600(tmp_path):
+    t = donneur(tmp_path, act=True)
+    brut = json.loads(t.dossier_conjoint_json)
+    a = brut["allocation_travailleurs"]
+    a["pas_etudiant_temps_plein_plus_13_semaines"] = False
+    a["famille"].update(demandeur_etudiant=True, conjoint_enfant_nom="Enfant fictif",
+        conjoint_enfant_naissance="2015-05-02", conjoint_enfant_admissible_confirme=True)
+    t = replace(t, dossier_conjoint_json=json.dumps(brut))
+    p = profil(famille(**enfant(), conjoint_etudiant=True,
+        conjoint_etudiant_sans_dependant_confirme=True,
+        conjoint_revenu_travail=D(20000), conjoint_revenu_net=D(19835)))
+    e = calcul(dossier_20000(), allocation_travailleurs=p, transfert_conjoint=t)
+    assert e.resultat_allocation_travailleurs.ligne_45300 == D("945.31")
+    with pytest.raises(ValueError, match="Attribution des enfants ACT divergente"):
+        calcul(dossier_20000(), allocation_travailleurs=replace(p,
+            famille=replace(p.famille, enfant_nom="Autre enfant")), transfert_conjoint=t)
+    with pytest.raises(ValueError, match="Statuts étudiants ACT divergents"):
+        calcul(dossier_20000(), allocation_travailleurs=replace(p,
+            famille=replace(p.famille, conjoint_etudiant=False,
+                conjoint_etudiant_sans_dependant_confirme=False)), transfert_conjoint=t)

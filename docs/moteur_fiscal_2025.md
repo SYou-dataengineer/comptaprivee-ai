@@ -3248,9 +3248,63 @@ Limites logicielles conservées : revenus de travail autres que 10100,
 ajustements PUGE/REEI, choix de revenus exonérés, décès/faillite et situations
 conjugales spéciales. Le conjoint étudiant est couvert comme non admissible
 seulement si l'absence de personne à charge admissible pour lui est confirmée.
-Le conjoint étudiant avec enfant et les attributions croisées d'enfants
-restent à étendre; aucune exclusion fiscale générale n'est déduite de cette
-limite. La Priorité 5 n'est pas encore clôturée.
+L'extension ci-dessous traite désormais le conjoint étudiant et l'attribution
+distincte d'un enfant à chaque parent. La Priorité 5 n'est pas encore clôturée.
 
 Validation ciblée et GUI : **299 passed, 5 warnings**. Suite complète :
 **5416 passed, 8 warnings** (175,59 s). Rendu PDF familial vérifié visuellement.
+
+
+### Correctif 5U — attribution unique et exception étudiante ACT
+
+Arbitrage fiscal retenu pour le projet : pour l'application des paragraphes
+122.7(2) et (3), l'attribution unique prévue à 122.7(10) conditionne également
+l'exception étudiante de 122.7(1). Un étudiant à temps plein pendant plus de
+13 semaines ne bénéficie pas de l'enfant attribué à l'autre parent pour
+demeurer admissible. Il lui faut une autre personne à charge admissible
+qui lui est attribuée exclusivement.
+
+Références : [LIR 122.7(1), (5) et (10)](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-122.7.html),
+[admissibilité ARC 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-45300-canada-workers-benefit-cwb/who-is-eligible.html)
+et annexe 6 Québec 2025 citée plus haut. Cette mise en œuvre applique
+l'arbitrage fourni lors de la reprise; elle ne présente pas l'ancien refus
+logiciel comme une exclusion fiscale générale.
+
+Le profil distingue l'enfant attribué au demandeur de celui attribué au
+conjoint (nom, naissance, admissibilité et attribution vérifiées). Un même
+nom normalisé ne peut figurer des deux côtés, même avec des dates divergentes.
+Les pièces et la confirmation d'attribution unique restent nécessaires pour
+vérifier les identités et les attributions à d'autres soutiens. Un enfant
+représentatif par parent suffit pour établir son exception et son barème;
+le moteur ne choisit ni ne réattribue automatiquement l'enfant.
+
+Le statut étudiant du demandeur est explicite; une confirmation contradictoire
+d'absence d'études est refusée. Un demandeur étudiant sans enfant attribué
+obtient zéro à 45300 et 41500, y compris pour le supplément CIPH.
+Un conjoint étudiant sans enfant attribué est exclu des revenus familiaux,
+mais ses avances RC210 suivent toujours les règles de l'étape 4.
+Avec deux enfants distincts attribués, les deux étudiants peuvent conserver
+leur exception, sous les autres conditions. Une seule demande de base dans
+le couple est autorisée conformément à 122.7(5).
+
+**Exemple arbitré** : A non étudiant, travail/net 12000 $; B étudiant,
+travail/net 8000 $; enfant commun attribué à A, aucun autre enfant attribué
+à B. B est non admissible; revenu retenu 12000 $, exemption second revenu 0.
+Base = min(2044, (12000 - 2400) × 20 %) = **1920,00 $**.
+Réduction = max(12000 - 14341,56, 0) × 20 % = 0.
+Ligne 45300 = **1920,00 $**, hors supplément et sans avances dans cet exemple.
+L'hypothèse 3808,23 $ est écartée pour ces mêmes données.
+Si B possède un autre enfant admissible distinct qui lui est attribué,
+son revenu est inclus : travail familial 20000 $, net ajusté après exemption
+8000 $ = 12000 $, base min(3808,23, 16400 × 23,9 %) = 3808,23 $.
+
+JSON ancien sans nouveaux champs : valeurs vides/fausses, comportement
+historique conservé. Contrôles stricts à la lecture; les dossiers conjoints
+chargés via 32600 doivent porter des attributions et statuts étudiants
+réciproquement cohérents. Aucun changement de formule du transfert 32600.
+GUI : saisie distincte et révocation des confirmations après modification.
+Trace/PDF : attribution à chaque parent et admissibilité après exception.
+
+Validation ciblée, GUI et intégration : **268 passed, 5 warnings**.
+Suite complète : **5436 passed, 8 warnings** (180,62 s), avec `--capture=sys`.
+PDF de l'attribution étudiante vérifié visuellement; aucun artefact de test livré.
