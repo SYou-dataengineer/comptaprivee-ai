@@ -3396,3 +3396,48 @@ Le PDF synthétique a été contrôlé visuellement sans artefact livré.
 
 Validation ciblée moteur, intégration et GUI : **78 passed, 5 warnings**.
 Suite complète : **5501 passed, 8 warnings** (173,15 s), avec `--capture=sys`.
+
+
+### Bloc 5X — plusieurs personnes à charge, ligne 30450 / nombre 51120
+
+Sources 2025 : [Annexe 5, pages 1 et 5](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-s5/5000-s5-25e.pdf),
+[ARC, ligne 30450](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-30450-caregiver-infirm-dependant.html).
+L'annexe demande de calculer le montant séparément pour chaque personne,
+puis de porter la somme à 30450 et le nombre de personnes réclamées à 51120.
+
+L'extension lève la limite d'une seule personne du profil 30450. Chaque fiche
+conserve ses propres faits, preuves et exclusions : lien admissible, âge 18+
+dans l'année, dépendance en raison de l'infirmité, résidence lorsque requise,
+absence de 30300/30400 pour cette personne et absence de pension alimentaire.
+Le partage 5W s'applique séparément à chaque fiche. Les mêmes critères ne sont
+pas déduits automatiquement du diagnostic ou du nom : confirmation comptable
+obligatoire par fiche, puis confirmation des identités distinctes de l'ensemble.
+
+Pour chaque personne : min(8601, max(28798 - revenu 23600, 0)) moins les
+parts convenues ailleurs. Le total 30450 additionne les parts du dossier;
+51120 compte celles qui sont positives. Le crédit de 14,5 % est arrondi une
+seule fois après la somme. Deux bases de 1,01 $ donnent ainsi 0,29 $ de crédit.
+Exemple : parent A, revenu zéro, sans partage = 8601 $; parent B, revenu
+25000 $, parts ailleurs 1500 $ = 2298 $; total 10899 $, 51120 = 2.
+Intégration aux bases 33500/33800, 34990/35000 puis 42900/40500 inchangée;
+les revenus et le calcul Québec ne sont pas modifiés.
+
+Référence locale sans NAS, nom et naissance ISO obligatoires. Références en
+double et même nom normalisé avec même naissance refusés. L'identité réelle
+et l'absence de doubles demandes dans des dossiers externes restent vérifiées
+par le comptable. Pas de listes imbriquées ni de faits individuels concurrents
+au niveau de l'ensemble. Le profil historique reste disponible et compatible.
+
+JSON : liste des fiches brutes, Decimal texte, clés/types contrôlés à la lecture,
+ancien champ absent = liste vide. Profil inféré depuis l'estimation si omis;
+divergence explicite refusée. GUI : ajout, modification, retrait, réouverture;
+modification des faits révoquant les confirmations individuelles et modification
+de la liste révoquant les confirmations globales. La conversion d'un profil
+historique reprend ses faits enregistrés et exige de compléter son identité.
+Trace/PDF détaillent le calcul, les sources et les validations de chaque personne,
+puis le total; le PDF synthétique a été vérifié visuellement.
+
+Validation ciblée moteur, stockage, trace/PDF et GUI : **133 passed, 5 warnings**.
+Les fiches de la liste restent strictes même si leurs nouveaux champs sont absents.
+
+Suite complète finale : **5537 passed, 8 warnings** (175,46 s), avec `--capture=sys`.

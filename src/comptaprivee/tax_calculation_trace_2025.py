@@ -41,6 +41,7 @@ from .tax_federal_home_buyers_2025 import (
 )
 from .tax_federal_caregiver_other_dependant_2025 import (
     description_partage_30450_2025,
+    details_personnes_30450_2025,
     credit_federal_ligne_30450_2025,
     montant_ligne_30450_2025,
     nombre_personnes_charge_ligne_51120_2025,
@@ -1314,7 +1315,17 @@ def construire_trace_calcul_fiscal_2025(
             ),
         )
 
-    if aidant_30450_federal.reclamer_montant:
+    if aidant_30450_federal.personnes_detaillees:
+        lignes = _inserer_ligne_avant(lignes, "Impôt fédéral de base", _ligne(
+            0, "FÉDÉRAL", "Crédit fédéral — aidants 30450 / 51120",
+            "Annexe 5 2025; identités distinctes et validation comptable confirmées. "
+            + " ; ".join(details_personnes_30450_2025(aidant_30450_federal)),
+            f"Somme des parts individuelles = {montant_ligne_30450_2025(aidant_30450_federal):.2f} $; "
+            f"51120 = {nombre_personnes_charge_ligne_51120_2025(aidant_30450_federal)}; "
+            "crédit = total × 14,5 %, arrondi une fois; 34990/35000 dans l'ordre T1.",
+            credit_federal_ligne_30450_2025(aidant_30450_federal)))
+
+    if aidant_30450_federal.reclamer_montant and not aidant_30450_federal.personnes_detaillees:
         montant_30450 = montant_ligne_30450_2025(
             aidant_30450_federal
         )

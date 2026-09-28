@@ -100,6 +100,7 @@ from .tax_federal_home_buyers_2025 import (
     valider_montant_achat_habitation_2025,
 )
 from .tax_federal_caregiver_other_dependant_2025 import (
+    PersonneAidant30450,
     AidantNaturelAutrePersonneChargeFederal2025,
     valider_aidant_naturel_30450_2025,
 )
@@ -2785,11 +2786,14 @@ def _aidant_autre_personne_charge_federal_vers_dict(
         "montant_attribue_autres_soutiens": _decimal_texte(profil.montant_attribue_autres_soutiens),
         "reference_personne": profil.reference_personne,
         "source_partage": profil.source_partage,
+        "identites_distinctes_confirmees": profil.identites_distinctes_confirmees,
+        "personnes_detaillees": [{"reference": p.reference, "nom": p.nom, "naissance": p.naissance,
+            "profil": _aidant_autre_personne_charge_federal_vers_dict(p.profil)} for p in profil.personnes_detaillees],
     }
 
 
 def _aidant_autre_personne_charge_federal_depuis_dict(
-    valeur: Any,
+    valeur: Any, *, individuel: bool = False,
 ) -> AidantNaturelAutrePersonneChargeFederal2025:
     if valeur is None:
         return AidantNaturelAutrePersonneChargeFederal2025()
@@ -2800,8 +2804,8 @@ def _aidant_autre_personne_charge_federal_depuis_dict(
             "enregistré est invalide."
         )
 
-    nouveaux = {"partage_30450_confirme", "montant_attribue_autres_soutiens", "reference_personne", "source_partage"}
-    if nouveaux.intersection(valeur):
+    nouveaux = {"partage_30450_confirme", "montant_attribue_autres_soutiens", "reference_personne", "source_partage", "personnes_detaillees", "identites_distinctes_confirmees"}
+    if individuel or nouveaux.intersection(valeur):
         defaults = AidantNaturelAutrePersonneChargeFederal2025()
         connus = {c.name for c in fields(defaults)}
         if set(valeur) - connus:
@@ -2815,7 +2819,21 @@ def _aidant_autre_personne_charge_federal_depuis_dict(
             if isinstance(defaut, Decimal) and type(v) not in (str, int):
                 raise ValueError(f"Montant 30450 invalide : {nom}.")
 
+    liste = valeur.get("personnes_detaillees", [])
+    if type(liste) is not list or (individuel and liste):
+        raise ValueError("Liste détaillée 30450 invalide ou imbriquée.")
+    personnes = []
+    for personne in liste:
+        if (type(personne) is not dict or set(personne) != {"reference", "nom", "naissance", "profil"}
+                or type(personne["profil"]) is not dict):
+            raise ValueError("Fiche de personne 30450 invalide.")
+        personnes.append(PersonneAidant30450(
+            reference=personne["reference"], nom=personne["nom"], naissance=personne["naissance"],
+            profil=_aidant_autre_personne_charge_federal_depuis_dict(personne["profil"], individuel=True)))
+
     profil = AidantNaturelAutrePersonneChargeFederal2025(
+        personnes_detaillees=tuple(personnes),
+        identites_distinctes_confirmees=valeur.get("identites_distinctes_confirmees", False),
         partage_30450_confirme=valeur.get("partage_30450_confirme", False),
         montant_attribue_autres_soutiens=_decimal_depuis_json(
             valeur.get("montant_attribue_autres_soutiens", "0"), "partage 30450"),
@@ -3540,9 +3558,9 @@ def sauvegarder_dossier_fiscal(
 ) -> Path:
     if estimation is not None:
         estime_30450 = estimation.aidant_autre_personne_charge_federal
-        if estime_30450.partage_30450_confirme or (
+        if estime_30450.partage_30450_confirme or estime_30450.personnes_detaillees or (
             aidant_autre_personne_charge_federal is not None
-            and aidant_autre_personne_charge_federal.partage_30450_confirme
+            and (aidant_autre_personne_charge_federal.partage_30450_confirme or aidant_autre_personne_charge_federal.personnes_detaillees)
         ):
             if aidant_autre_personne_charge_federal is None:
                 aidant_autre_personne_charge_federal = estime_30450

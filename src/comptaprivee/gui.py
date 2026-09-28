@@ -8290,6 +8290,16 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal aidant_30450_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
 
+            from .gui_caregiver_dependants_2025 import ouvrir_personnes_30450_2025
+            def appliquer_personnes(profil):
+                nonlocal aidant_30450_federal_courant, derniere_estimation, dernier_rapport_pdf
+                aidant_30450_federal_courant = profil
+                derniere_estimation = dernier_rapport_pdf = None
+                self.statut.set("Personnes à charge fédérales 30450 mises à jour")
+            if aidant_30450_federal_courant.personnes_detaillees:
+                ouvrir_personnes_30450_2025(fenetre, aidant_30450_federal_courant, appliquer_personnes)
+                return
+
             dialogue = tk.Toplevel(fenetre)
             dialogue.title(
                 "Aidant naturel — autre personne à charge — fédéral 2025"
@@ -8547,7 +8557,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 text=(
                     "Garde-fous : enfant/petit-enfant peut bénéficier "
                     "de l'exception de résidence prévue au module. "
-                    "Plusieurs personnes à charge et pensions alimentaires restent hors profil. "
+                    "Pensions alimentaires hors profil; plusieurs personnes via le bouton dédié. "
                     "En partage, le solde après les parts attribuées aux autres soutiens "
                     "est calculé automatiquement; conserver leur entente. "
                     "La ligne 34990 est calculée automatiquement (2025)."
@@ -8715,6 +8725,10 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            def plusieurs_personnes():
+                dialogue.destroy()
+                ouvrir_personnes_30450_2025(fenetre, aidant_30450_federal_courant, appliquer_personnes)
+            ttk.Button(actions, text="Plusieurs personnes — profil enregistré", command=plusieurs_personnes).pack(side="left")
             organiser_boutons(formulaire.actions)
 
 

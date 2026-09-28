@@ -79,6 +79,7 @@ from .tax_federal_home_buyers_2025 import (
 )
 from .tax_federal_caregiver_other_dependant_2025 import (
     description_partage_30450_2025,
+    details_personnes_30450_2025,
     credit_federal_ligne_30450_2025,
     montant_ligne_30450_2025,
     nombre_personnes_charge_ligne_51120_2025,
@@ -744,7 +745,15 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
             ]
         )
 
-    if aidant_30450_federal.reclamer_montant:
+    if aidant_30450_federal.personnes_detaillees:
+        lignes.extend(["", "AIDANTS - PERSONNES À CHARGE - 30450 / 51120",
+            *details_personnes_30450_2025(aidant_30450_federal),
+            f"Total ligne 30450 : {montant_ligne_30450_2025(aidant_30450_federal):.2f} $",
+            f"Nombre ligne 51120 : {nombre_personnes_charge_ligne_51120_2025(aidant_30450_federal)}",
+            f"Crédit à 14,5 % du total, arrondi une fois : {credit_federal_ligne_30450_2025(aidant_30450_federal):.2f} $",
+            "Identités distinctes et validation comptable confirmées; exclusions 30300/30400 et pensions confirmées par personne."])
+
+    if aidant_30450_federal.reclamer_montant and not aidant_30450_federal.personnes_detaillees:
         montant_30450 = montant_ligne_30450_2025(
             aidant_30450_federal
         )

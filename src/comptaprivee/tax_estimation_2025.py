@@ -164,6 +164,7 @@ from .tax_federal_home_buyers_2025 import (
 )
 from .tax_federal_caregiver_other_dependant_2025 import (
     description_partage_30450_2025,
+    details_personnes_30450_2025,
     AidantNaturelAutrePersonneChargeFederal2025,
     appliquer_credit_federal_ligne_30450_2025,
     credit_federal_ligne_30450_2025,
@@ -2070,6 +2071,11 @@ def formater_estimation_fiscale_2025(
             if estimation.achat_habitation_federal.reclamer_montant
             else []
         ),
+        *(["", "AIDANTS — PERSONNES À CHARGE 30450", *details_personnes_30450_2025(estimation.aidant_autre_personne_charge_federal),
+            f"Total ligne 30450 : {montant_ligne_30450_2025(estimation.aidant_autre_personne_charge_federal):.2f} $; "
+            f"nombre ligne 51120 : {nombre_personnes_charge_ligne_51120_2025(estimation.aidant_autre_personne_charge_federal)}; "
+            "crédit calculé à 14,5 % de la somme des parts, arrondi une fois."]
+          if estimation.aidant_autre_personne_charge_federal.personnes_detaillees else []),
         *(
             [
                 "",
@@ -2111,7 +2117,7 @@ def formater_estimation_fiscale_2025(
             ]
             if (
                 estimation.aidant_autre_personne_charge_federal
-                .reclamer_montant
+                .reclamer_montant and not estimation.aidant_autre_personne_charge_federal.personnes_detaillees
             )
             else []
         ),

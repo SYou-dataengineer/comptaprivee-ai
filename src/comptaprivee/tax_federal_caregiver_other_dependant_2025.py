@@ -15,7 +15,7 @@ Pour les liens autres qu'enfant ou petit-enfant, cette première version
 exige que la personne ait résidé au Canada à un moment de 2025.
 
 Le bloc 5W autorise le partage documenté entre soutiens pour cette personne.
-Les pensions alimentaires et plusieurs personnes restent hors de ce profil.
+Le bloc 5X ajoute une liste de fiches individuelles, sans pension alimentaire.
 
 Calcul de l'annexe 5 — ligne 30450 :
 1. 28 798 $ moins le revenu net de la personne;
@@ -98,6 +98,16 @@ class AidantNaturelAutrePersonneChargeFederal2025:
     montant_attribue_autres_soutiens: Decimal = ZERO
     reference_personne: str = ""
     source_partage: str = ""
+    personnes_detaillees: tuple["PersonneAidant30450", ...] = ()
+    identites_distinctes_confirmees: bool = False
+
+
+@dataclass(frozen=True)
+class PersonneAidant30450:
+    reference: str = ""
+    nom: str = ""
+    naissance: str = ""
+    profil: AidantNaturelAutrePersonneChargeFederal2025 = AidantNaturelAutrePersonneChargeFederal2025()
 
 
 def aucun_aidant_naturel_30450_2025(
@@ -108,6 +118,55 @@ def aucun_aidant_naturel_30450_2025(
 def valider_aidant_naturel_30450_2025(
     profil: AidantNaturelAutrePersonneChargeFederal2025,
 ) -> AidantNaturelAutrePersonneChargeFederal2025:
+    if type(profil.personnes_detaillees) is not tuple or type(profil.identites_distinctes_confirmees) is not bool:
+        raise ValueError("Liste de personnes 30450 ou confirmation d'identité invalide.")
+    if profil.personnes_detaillees:
+        from datetime import date
+        for champ in fields(profil):
+            if type(getattr(profil, champ.name)) is not type(champ.default):
+                raise ValueError("Type invalide dans l'enveloppe détaillée 30450 : " + champ.name)
+        attendu = AidantNaturelAutrePersonneChargeFederal2025(
+            reclamer_montant=True, valide_par_comptable=True,
+            personnes_detaillees=profil.personnes_detaillees, identites_distinctes_confirmees=True)
+        if profil != attendu or type(profil.reclamer_montant) is not bool or type(profil.valide_par_comptable) is not bool:
+            raise ValueError("Le profil détaillé 30450 exige validation, identités distinctes et aucun fait individuel à la racine.")
+        references, identites = set(), set()
+        for personne in profil.personnes_detaillees:
+            if type(personne) is not PersonneAidant30450:
+                raise ValueError("Personne 30450 invalide.")
+            for nom in ("reference", "nom", "naissance"):
+                if type(getattr(personne, nom)) is not str or not getattr(personne, nom).strip():
+                    raise ValueError("Référence, nom et naissance obligatoires pour chaque personne 30450.")
+            try:
+                naissance = date.fromisoformat(personne.naissance)
+            except ValueError as erreur:
+                raise ValueError("Naissance 30450 invalide : AAAA-MM-JJ attendu.") from erreur
+            if naissance.isoformat() != personne.naissance or naissance > date(2007, 12, 31):
+                raise ValueError("Chaque personne 30450 doit avoir au moins 18 ans au cours de 2025.")
+            reference = " ".join(personne.reference.casefold().split())
+            identite = (" ".join(personne.nom.casefold().split()), naissance)
+            if reference in references or identite in identites:
+                raise ValueError("Personne 30450 en double : référence ou identité déjà présente.")
+            references.add(reference)
+            identites.add(identite)
+            individuel = personne.profil
+            if type(individuel) is not AidantNaturelAutrePersonneChargeFederal2025 or individuel.personnes_detaillees:
+                raise ValueError("Les listes imbriquées de personnes 30450 sont interdites.")
+            for champ in fields(individuel):
+                valeur, defaut = getattr(individuel, champ.name), champ.default
+                if isinstance(defaut, (bool, str)) and type(valeur) is not type(defaut):
+                    raise ValueError("Type invalide dans la fiche individuelle 30450 : " + champ.name)
+                if isinstance(defaut, Decimal) and (not isinstance(valeur, Decimal) or not valeur.is_finite()
+                        or valeur < ZERO or valeur != arrondir_cent(valeur)):
+                    raise ValueError("Montant individuel 30450 invalide : " + champ.name)
+            if not individuel.reclamer_montant:
+                raise ValueError("Chaque fiche détaillée 30450 doit être activée.")
+            valider_aidant_naturel_30450_2025(individuel)
+            if individuel.partage_30450_confirme and " ".join(individuel.reference_personne.casefold().split()) != reference:
+                raise ValueError("La référence de partage ne correspond pas à la personne 30450.")
+        return profil
+    if profil.identites_distinctes_confirmees:
+        raise ValueError("Confirmation d'identités 30450 sans liste détaillée.")
     if type(profil.partage_30450_confirme) is not bool:
         raise ValueError("La confirmation de partage 30450 doit être booléenne.")
     autres = profil.montant_attribue_autres_soutiens
@@ -238,6 +297,9 @@ def montant_ligne_30450_2025(
 ) -> Decimal:
     valider_aidant_naturel_30450_2025(profil)
 
+    if profil.personnes_detaillees:
+        return sum((montant_ligne_30450_2025(p.profil) for p in profil.personnes_detaillees), ZERO)
+
     if not profil.reclamer_montant:
         return ZERO
 
@@ -264,7 +326,23 @@ def nombre_personnes_charge_ligne_51120_2025(
     profil: AidantNaturelAutrePersonneChargeFederal2025,
 ) -> int:
     valider_aidant_naturel_30450_2025(profil)
+    if profil.personnes_detaillees:
+        return sum(montant_ligne_30450_2025(p.profil) > ZERO for p in profil.personnes_detaillees)
     return int(montant_ligne_30450_2025(profil) > ZERO)
+
+
+def details_personnes_30450_2025(profil: AidantNaturelAutrePersonneChargeFederal2025) -> tuple[str, ...]:
+    valider_aidant_naturel_30450_2025(profil)
+    lignes = []
+    for personne in profil.personnes_detaillees:
+        p = personne.profil
+        plafond = min(MAXIMUM_LIGNE_30450_2025, max(BASE_CALCUL_30450_2025 - p.revenu_net_personne_ligne_23600, ZERO))
+        lignes.append(f"{personne.reference} — {personne.nom}, née le {personne.naissance}, lien {p.lien_personne}; "
+            f"revenu 23600 {p.revenu_net_personne_ligne_23600:.2f} $; plafond {plafond:.2f} $ "
+            f"moins parts ailleurs {p.montant_attribue_autres_soutiens:.2f} $ = {montant_ligne_30450_2025(p):.2f} $. "
+            f"Source : {p.source_personne}. Preuve médicale et validation comptable confirmées. "
+            + description_partage_30450_2025(p))
+    return tuple(lignes)
 
 
 def description_partage_30450_2025(profil: AidantNaturelAutrePersonneChargeFederal2025) -> str:
