@@ -77,6 +77,7 @@ from .tax_contribution_overpayments_2025 import (
     valider_cotisations_excedentaires_2025,
 )
 from .tax_donations_2025 import (
+    valider_plafond_dons_monetaire_federal_2025,
     DonsBienfaisance2025,
     appliquer_credit_federal_dons_2025,
     appliquer_credit_quebec_dons_2025,
@@ -880,6 +881,7 @@ def calculer_estimation_fiscale_2025(
         if dons_bienfaisance is not None
         else DonsBienfaisance2025()
     )
+    valider_plafond_dons_monetaire_federal_2025(dons_effectifs, revenu.revenu_net_federal)
 
     frais_medicaux_effectifs = (
         frais_medicaux

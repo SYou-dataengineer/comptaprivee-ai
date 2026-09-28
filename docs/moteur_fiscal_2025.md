@@ -2296,3 +2296,22 @@ Validation ciblée : **281 passed, 5 warnings**, comprenant formation, ACT,
 scolarité existante, stockage, trace, PDF et GUI. Aucun test existant modifié.
 
 Suite complète 5F : **3902 passed, 8 warnings** avec `--capture=sys`.
+
+
+### Correctif — plafond fédéral des dons monétaires ordinaires
+
+L'[annexe 9 de 2025, lignes 6–10](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-s9/5000-s9-25e.pdf)
+limite les dons monétaires ordinaires réclamés à 75 % du revenu net 23600.
+Les majorations pour dons en nature ne s'appliquent pas au profil monétaire
+actuel. Le pipeline ne contrôlait pas ce plafond : 40 000 $ étaient acceptés
+avec 51 515 $ de revenu net, alors que le plafond était de 38 636,25 $.
+
+Le pipeline refuse maintenant l'excédent avec un message indiquant le besoin
+de report. Il ne supprime aucun don et ne crée pas de report implicitement.
+La prise en charge des reports reste une étape distincte. Le contrôle utilise
+le revenu net après déductions, sans transposer ce plafond au Québec.
+
+Régression avant correction : **2 failed, 1 passed**. Validation ciblée après
+correction : **121 passed, 5 warnings**. Aucun test existant modifié.
+
+Suite complète du correctif dons : **3905 passed, 8 warnings** (`--capture=sys`).

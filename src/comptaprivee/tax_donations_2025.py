@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 from .tax_rules_2025 import arrondir_cent
+from .tax_federal_top_up_2025 import montant_decimal_2025
 
 ZERO = Decimal("0")
 DEUX_CENTS = Decimal("200")
@@ -28,6 +29,18 @@ class DonsBienfaisance2025:
 
 def aucun_don_bienfaisance_2025():
     return DonsBienfaisance2025()
+
+
+def valider_plafond_dons_monetaire_federal_2025(dons, revenu_net_federal):
+    """Annexe 9 (25), lignes 6–10 : dons monétaires, sans majoration en nature."""
+    valider_dons_bienfaisance_2025(dons)
+    net = montant_decimal_2025(revenu_net_federal, "Revenu net fédéral 23600")
+    plafond = arrondir_cent(net * Decimal("0.75"))
+    if dons.montant_admissible_federal > plafond:
+        raise ValueError(
+            "Les dons monétaires fédéraux réclamés dépassent 75 % du revenu net 23600. "
+            "L'excédent nécessite un report, hors du profil actuel."
+        )
 
 
 def valider_dons_bienfaisance_2025(dons):
