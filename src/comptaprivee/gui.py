@@ -8107,11 +8107,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 sticky="w",
                 pady=4,
             )
-            ttk.Entry(
-                cadre,
-                textvariable=montant_var,
-                width=28,
-            ).grid(
+            champ_montant = ttk.Entry(cadre, name="montant_31270", textvariable=montant_var, width=28)
+            champ_montant.grid(
                 row=3,
                 column=1,
                 sticky="ew",
@@ -8125,6 +8122,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     cadre,
                     wraplength=680, anchor="w", justify="left",
                     text=texte,
+                    name=champ + "_5z",
                     variable=variables[champ],
                 ).grid(
                     row=ligne,
@@ -8156,12 +8154,61 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             ligne += 1
 
+            mode_partage = tk.BooleanVar(value=achat_habitation_federal_courant.partage_31270_confirme)
+            entente = tk.BooleanVar(value=achat_habitation_federal_courant.partage_31270_confirme)
+            admissibles = tk.BooleanVar(value=achat_habitation_federal_courant.autres_acquereurs_admissibles_confirmes)
+            autres = tk.StringVar(value=str(achat_habitation_federal_courant.montant_attribue_autres_acquereurs))
+            reference = tk.StringVar(value=achat_habitation_federal_courant.reference_habitation)
+            source_partage = tk.StringVar(value=achat_habitation_federal_courant.source_partage)
+            tk.Checkbutton(cadre, name="mode_partage_31270", text="Utiliser le partage : montant du dossier calculé automatiquement",
+                variable=mode_partage).grid(row=ligne, column=0, columnspan=2, sticky="w", pady=5)
+            ligne += 1
+            for nom, texte, variable in (("reference_31270", "Référence de l'habitation commune :", reference),
+                ("autres_31270", "Somme des parts attribuées aux autres acquéreurs ($) :", autres),
+                ("source_partage_31270", "Source de l'entente entre tous les acquéreurs :", source_partage)):
+                ttk.Label(cadre, text=texte, wraplength=400).grid(row=ligne, column=0, sticky="w", pady=4)
+                ttk.Entry(cadre, name=nom, textvariable=variable).grid(row=ligne, column=1, sticky="ew", pady=4)
+                ligne += 1
+            for nom, texte, variable in (("admissibles_31270", "Tous les autres acquéreurs participant au partage sont admissibles pour la même habitation", admissibles),
+                ("entente_31270", "Entente de répartition confirmée entre tous les acquéreurs", entente)):
+                tk.Checkbutton(cadre, name=nom, text=texte, variable=variable, wraplength=680,
+                    anchor="w", justify="left").grid(row=ligne, column=0, columnspan=2, sticky="w", pady=4)
+                ligne += 1
+
+            def revoquer_partage(*_):
+                variables["valide_par_comptable"].set(False)
+                entente.set(False)
+                admissibles.set(False)
+
+            def actualiser_part(*_):
+                champ_montant.configure(state="readonly" if mode_partage.get() else "normal")
+                if mode_partage.get():
+                    try:
+                        montant_autres = Decimal(autres.get().strip().replace(" ", "").replace(",", ".") or "0")
+                        if not montant_autres.is_finite():
+                            raise ValueError("Montant non fini")
+                        montant_var.set(str(max(Decimal("10000") - montant_autres, Decimal("0"))))
+                    except (InvalidOperation, ValueError):
+                        montant_var.set("0")
+            for variable in (source_var, reference, source_partage, autres, reclamer_var, mode_partage):
+                variable.trace_add("write", revoquer_partage)
+            for nom, variable in variables.items():
+                if nom != "valide_par_comptable":
+                    variable.trace_add("write", revoquer_partage)
+            for variable in (autres, mode_partage):
+                variable.trace_add("write", actualiser_part)
+            for variable in (entente, admissibles, montant_var):
+                variable.trace_add("write", lambda *_: variables["valide_par_comptable"].set(False))
+            actualiser_part()
+            # Reopening a validated profile must not revoke it merely to display the derived amount.
+            variables["valide_par_comptable"].set(achat_habitation_federal_courant.valide_par_comptable)
+
             ttk.Label(
                 cadre,
                 text=(
-                    "Cette première version refuse le partage du montant "
-                    "et l'exception liée au crédit d'impôt pour personnes "
-                    "handicapées. Les dossiers hors profil doivent être "
+                    "Le partage exige une entente et l'admissibilité de tous les participants. "
+                    "L'exception liée au crédit d'impôt pour personnes "
+                    "handicapées reste hors profil. Les autres dossiers doivent être "
                     "traités séparément."
                 ),
                 foreground="#92400e",
@@ -8181,12 +8228,20 @@ class ApplicationComptaPrivee(tk.Tk):
                 source_var.set("")
                 for variable in variables.values():
                     variable.set(False)
+                mode_partage.set(False)
+                entente.set(False)
+                admissibles.set(False)
+                autres.set("0")
+                reference.set("")
+                source_partage.set("")
 
             def appliquer() -> None:
                 nonlocal achat_habitation_federal_courant
                 nonlocal derniere_estimation, dernier_rapport_pdf
 
                 try:
+                    if mode_partage.get() and not entente.get():
+                        raise ValueError("L'entente de partage 31270 doit être confirmée.")
                     texte_montant = (
                         montant_var.get()
                         .strip()
@@ -8201,9 +8256,16 @@ class ApplicationComptaPrivee(tk.Tk):
                             "Le montant ligne 31270 doit être fini."
                         )
 
+                    if mode_partage.get():
+                        montant = Decimal("0")
                     profil = MontantAchatHabitationFederal2025(
                         reclamer_montant=reclamer_var.get(),
                         montant_reclame=montant,
+                        partage_31270_confirme=mode_partage.get(),
+                        montant_attribue_autres_acquereurs=(Decimal(autres.get().strip().replace(" ", "").replace(",", ".") or "0") if mode_partage.get() else Decimal("0")),
+                        autres_acquereurs_admissibles_confirmes=admissibles.get() if mode_partage.get() else False,
+                        reference_habitation=reference.get().strip() if mode_partage.get() else "",
+                        source_partage=source_partage.get().strip() if mode_partage.get() else "",
                         acquisition_en_2025=variables[
                             "acquisition_en_2025"
                         ].get(),

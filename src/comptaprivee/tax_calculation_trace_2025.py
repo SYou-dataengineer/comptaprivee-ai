@@ -36,6 +36,7 @@ from .tax_federal_home_accessibility_2025 import (
     montant_ligne_31285_2025,
 )
 from .tax_federal_home_buyers_2025 import (
+    description_partage_31270_2025,
     credit_federal_ligne_31270_2025,
     montant_ligne_31270_2025,
 )
@@ -1316,7 +1317,7 @@ def construire_trace_calcul_fiscal_2025(
                     + "aucune habitation possédée et habitée pendant "
                     + "l'année de l'achat ou les quatre années précédentes; "
                     + "intention de résidence principale dans un an; "
-                    + "aucun partage; exception handicap non utilisée; "
+                    + description_partage_31270_2025(achat_habitation_federal) + "; exception handicap non utilisée; "
                     + "pièces justificatives conservées"
                 ),
                 credit_federal_ligne_31270_2025(

@@ -156,6 +156,7 @@ from .tax_federal_home_accessibility_2025 import (
     valider_depenses_accessibilite_domiciliaire_2025,
 )
 from .tax_federal_home_buyers_2025 import (
+    description_partage_31270_2025,
     MontantAchatHabitationFederal2025,
     appliquer_credit_federal_ligne_31270_2025,
     credit_federal_ligne_31270_2025,
@@ -2060,7 +2061,7 @@ def formater_estimation_fiscale_2025(
                 "Première habitation : confirmée",
                 "Aucune habitation possédée et habitée pendant l'année de l'achat ou les quatre années précédentes : oui",
                 "Intention de résidence principale dans un an : oui",
-                "Aucun partage du montant 31270 : oui",
+                description_partage_31270_2025(estimation.achat_habitation_federal),
                 "Exception handicap non utilisée dans ce profil simple : oui",
                 "Pièces justificatives conservées : oui",
                 "Validation comptable : confirmée",

@@ -74,6 +74,7 @@ from .tax_federal_home_accessibility_2025 import (
     montant_ligne_31285_2025,
 )
 from .tax_federal_home_buyers_2025 import (
+    description_partage_31270_2025,
     credit_federal_ligne_31270_2025,
     montant_ligne_31270_2025,
 )
@@ -725,7 +726,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     "Intention de résidence principale dans un an : "
                     "confirmée"
                 ),
-                "Aucun partage du montant ligne 31270 : oui",
+                (description_partage_31270_2025(achat_habitation_federal) if achat_habitation_federal.partage_31270_confirme else "Aucun partage du montant ligne 31270 : oui"),
                 (
                     "Exception handicap non utilisée dans ce profil "
                     "simple : oui"
@@ -740,8 +741,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     "Ligne 34990 : calcul automatique intégré (2025)."
                 ),
                 (
-                    "Profil simple : partage et exception handicap "
-                    "non pris en charge dans cette première version."
+                    "Partage couvert par une entente validée; exception handicap hors de ce profil."
                 ),
             ]
         )

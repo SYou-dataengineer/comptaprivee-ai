@@ -3484,3 +3484,42 @@ puis nombre, base totale et crédit; pas de saisie manuelle du montant calculabl
 Validation ciblée moteur, stockage, trace/PDF et GUI : **119 passed, 5 warnings**.
 Le PDF synthétique de deux enfants a été contrôlé visuellement.
 Suite complète : **5574 passed, 8 warnings** (178,87 s), avec `--capture=sys`.
+
+
+### Bloc 5Z — partage du montant pour achat d'habitation, ligne 31270
+
+Sources : [ARC, ligne 31270, année 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-31270-home-buyers-amount.html),
+[LIR 118.05(1) à (4)](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/page-90.html).
+Plusieurs personnes admissibles à l'égard de la même habitation peuvent répartir
+le montant, sans dépasser ensemble 10000 $. Cela comprend des conjoints admissibles
+ou d'autres personnes admissibles ayant acquis ensemble l'habitation. Si un seul
+conjoint est admissible, lui seul peut réclamer : le partage exige leur admissibilité.
+
+Périmètre : première habitation, critères historiques d'acquisition, propriété,
+occupation et pièces conservés; exception liée au handicap toujours exclue de
+ce profil logiciel. Le comptable confirme l'admissibilité de tous les participants
+au partage et leur entente. Une référence d'habitation et la source de l'entente
+entre tous les acquéreurs sont obligatoires; aucun rapprochement automatique de
+dossiers externes non liés. Le moteur ne détermine pas l'admissibilité juridique
+à partir de l'adresse seule et ne choisit pas la répartition optimale.
+
+Nouveau mode partagé : 31270 = 10000 $ moins la somme des parts attribuées aux
+autres acquéreurs dans l'entente. Exemple : 4000 $ ailleurs donne 6000 $ dans le
+dossier, soit 870 $ de crédit à 14,5 %. Les sommes négatives, au-delà de 10000 $,
+non finies ou avec fractions de cent sont refusées. Une part entièrement attribuée
+ailleurs donne zéro dans le dossier. Le champ historique `montant_reclame` doit
+rester zéro dans ce mode, pour éviter deux sources de montant. Le total alimente
+33500/33800, puis 34990/35000 et 42900/40500 dans l'ordre existant. Revenu et Québec
+inchangés. L'ancien profil sans partage conserve son montant explicite à la lecture.
+
+JSON : nouvelles données brutes, Decimal texte, types et clés stricts; ancien
+champ absent = partage désactivé. Profil partagé inféré depuis l'estimation si
+omis; divergence explicite refusée. GUI : choix du partage, montant dérivé en
+lecture seule, faits de l'entente et confirmations révoquées après modification.
+Trace/PDF : plafond commun, parts ailleurs, solde et sources. L'ancien test PDF
+exigeant un refus général du partage a été actualisé pour vérifier la limite
+encore présente, l'exception handicap, sans affaiblir les tests de plafond.
+
+Validation ciblée moteur, stockage, trace/PDF et GUI : **96 passed, 5 warnings**.
+PDF synthétique du partage vérifié visuellement; aucun artefact de test livré.
+Suite complète : **5610 passed, 8 warnings** (175,47 s), avec `--capture=sys`.

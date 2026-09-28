@@ -1,6 +1,9 @@
 """Ligne fédérale 31270 — montant pour l'achat d'une habitation — 2025.
 
-Première version volontairement limitée au profil simple :
+Extension 5Z : partage documenté entre acquéreurs admissibles, plafond commun
+10000 $, part du dossier calculée après les parts convenues ailleurs.
+
+Profil historique conservé :
 - acquisition d'une habitation admissible en 2025;
 - habitation située au Canada et enregistrée au nom du contribuable
   ou de son époux/conjoint de fait;
@@ -20,7 +23,7 @@ Source :
 ARC — ligne 31270, montant pour l'achat d'une habitation — 2025.
 """
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, fields
 from decimal import Decimal
 
 from .tax_federal_2025 import ImpotFederalPreliminaire2025
@@ -56,6 +59,11 @@ class MontantAchatHabitationFederal2025:
     pieces_justificatives_conservees: bool = False
     valide_par_comptable: bool = False
     source_habitation: str = ""
+    partage_31270_confirme: bool = False
+    montant_attribue_autres_acquereurs: Decimal = ZERO
+    autres_acquereurs_admissibles_confirmes: bool = False
+    reference_habitation: str = ""
+    source_partage: str = ""
 
 
 def aucun_montant_achat_habitation_2025(
@@ -66,6 +74,30 @@ def aucun_montant_achat_habitation_2025(
 def valider_montant_achat_habitation_2025(
     profil: MontantAchatHabitationFederal2025,
 ) -> MontantAchatHabitationFederal2025:
+    if type(profil.partage_31270_confirme) is not bool or type(profil.autres_acquereurs_admissibles_confirmes) is not bool:
+        raise ValueError("Les confirmations de partage 31270 doivent être booléennes.")
+    autres = profil.montant_attribue_autres_acquereurs
+    if (not isinstance(autres, Decimal) or not autres.is_finite() or not ZERO <= autres <= MAXIMUM_LIGNE_31270_2025
+            or autres != arrondir_cent(autres)):
+        raise ValueError("Les parts des autres acquéreurs doivent être en cents, entre 0 et 10000 $.")
+    if type(profil.reference_habitation) is not str or type(profil.source_partage) is not str:
+        raise ValueError("Référence et source du partage 31270 invalides.")
+    if profil.partage_31270_confirme:
+        for champ in fields(profil):
+            v, defaut = getattr(profil, champ.name), champ.default
+            if isinstance(defaut, (bool, str)) and type(v) is not type(defaut):
+                raise ValueError("Type du profil partagé 31270 invalide : " + champ.name)
+            if isinstance(defaut, Decimal) and (not isinstance(v, Decimal) or not v.is_finite()
+                    or not ZERO <= v <= MAXIMUM_LIGNE_31270_2025 or v != arrondir_cent(v)):
+                raise ValueError("Montant du profil partagé 31270 invalide : " + champ.name)
+        if not profil.reclamer_montant or profil.aucun_partage_du_montant or profil.montant_reclame != ZERO:
+            raise ValueError("Partage 31270 contradictoire : activer la demande, désactiver aucun partage et laisser le montant manuel à zéro.")
+        if not profil.autres_acquereurs_admissibles_confirmes:
+            raise ValueError("Tous les autres acquéreurs participant au partage doivent être admissibles à 31270 pour la même habitation.")
+        if not profil.reference_habitation.strip() or not profil.source_partage.strip():
+            raise ValueError("Le partage 31270 exige une référence d'habitation et la source de l'entente entre tous les acquéreurs.")
+    elif autres != ZERO or profil.autres_acquereurs_admissibles_confirmes or profil.reference_habitation or profil.source_partage:
+        raise ValueError("Données de partage 31270 sans entente confirmée.")
     if profil.montant_reclame < ZERO:
         raise ValueError(
             "Le montant réclamé à la ligne 31270 ne peut pas être négatif."
@@ -85,7 +117,7 @@ def valider_montant_achat_habitation_2025(
             )
         return profil
 
-    if profil.montant_reclame <= ZERO:
+    if profil.montant_reclame <= ZERO and not profil.partage_31270_confirme:
         raise ValueError(
             "Le montant réclamé à la ligne 31270 doit être supérieur à zéro."
         )
@@ -135,7 +167,7 @@ def valider_montant_achat_habitation_2025(
             "l'acquisition."
         )
 
-    if not profil.aucun_partage_du_montant:
+    if not profil.aucun_partage_du_montant and not profil.partage_31270_confirme:
         raise ValueError(
             "Le partage du montant de la ligne 31270 est hors du profil "
             "simple de cette première version."
@@ -173,6 +205,8 @@ def montant_ligne_31270_2025(
     valider_montant_achat_habitation_2025(profil)
     if not profil.reclamer_montant:
         return ZERO
+    if profil.partage_31270_confirme:
+        return arrondir_cent(MAXIMUM_LIGNE_31270_2025 - profil.montant_attribue_autres_acquereurs)
     return arrondir_cent(profil.montant_reclame)
 
 
@@ -223,3 +257,13 @@ def integration_31270_sans_credit_compensatoire_autorisee_2025(
         revenu_imposable_federal
         <= SEUIL_PREMIERE_TRANCHE_FEDERALE_2025
     )
+
+
+def description_partage_31270_2025(profil):
+    valider_montant_achat_habitation_2025(profil)
+    if not profil.partage_31270_confirme:
+        return "Aucun partage du montant 31270 : oui"
+    return (f"Partage 31270 — habitation {profil.reference_habitation} : plafond commun 10000,00 $ "
+            f"moins parts des autres acquéreurs {profil.montant_attribue_autres_acquereurs:.2f} $ "
+            f"= part du dossier {montant_ligne_31270_2025(profil):.2f} $. "
+            f"Admissibilité de tous les participants confirmée; entente : {profil.source_partage}")

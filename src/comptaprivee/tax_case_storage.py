@@ -2656,6 +2656,11 @@ def _achat_habitation_federal_vers_dict(
             profil.valide_par_comptable
         ),
         "source_habitation": profil.source_habitation,
+        "partage_31270_confirme": profil.partage_31270_confirme,
+        "montant_attribue_autres_acquereurs": _decimal_texte(profil.montant_attribue_autres_acquereurs),
+        "autres_acquereurs_admissibles_confirmes": profil.autres_acquereurs_admissibles_confirmes,
+        "reference_habitation": profil.reference_habitation,
+        "source_partage": profil.source_partage,
     }
 
 
@@ -2671,7 +2676,23 @@ def _achat_habitation_federal_depuis_dict(
             "ligne 31270 enregistré est invalide."
         )
 
+    nouveaux = {"partage_31270_confirme", "montant_attribue_autres_acquereurs", "autres_acquereurs_admissibles_confirmes", "reference_habitation", "source_partage"}
+    if nouveaux.intersection(valeur):
+        defaults = MontantAchatHabitationFederal2025()
+        if set(valeur) - {f.name for f in fields(defaults)}:
+            raise ValueError("Clé inconnue dans le profil 31270.")
+        for nom, v in valeur.items():
+            defaut = getattr(defaults, nom)
+            if isinstance(defaut, (bool, str)) and type(v) is not type(defaut):
+                raise ValueError("Type JSON 31270 invalide : " + nom)
+            if isinstance(defaut, Decimal) and type(v) not in (str, int):
+                raise ValueError("Montant JSON 31270 invalide : " + nom)
+
     profil = MontantAchatHabitationFederal2025(
+        partage_31270_confirme=valeur.get("partage_31270_confirme", False),
+        montant_attribue_autres_acquereurs=_decimal_depuis_json(valeur.get("montant_attribue_autres_acquereurs", "0"), "Parts autres acquéreurs 31270"),
+        autres_acquereurs_admissibles_confirmes=valeur.get("autres_acquereurs_admissibles_confirmes", False),
+        reference_habitation=valeur.get("reference_habitation", ""), source_partage=valeur.get("source_partage", ""),
         reclamer_montant=bool(
             valeur.get("reclamer_montant", False)
         ),
@@ -3591,6 +3612,14 @@ def sauvegarder_dossier_fiscal(
             aidant_enfant_federal = estimation.aidant_enfant_federal
         elif aidant_enfant_federal != estimation.aidant_enfant_federal:
             raise ValueError("Profil des enfants 30500 divergent de l'estimation.")
+
+    if estimation is not None and (estimation.achat_habitation_federal.partage_31270_confirme or (
+        achat_habitation_federal is not None and achat_habitation_federal.partage_31270_confirme
+    )):
+        if achat_habitation_federal is None:
+            achat_habitation_federal = estimation.achat_habitation_federal
+        elif achat_habitation_federal != estimation.achat_habitation_federal:
+            raise ValueError("Profil partagé 31270 divergent de l'estimation.")
 
     celiapp_effectif = (
         deduction_celiapp
