@@ -8,6 +8,8 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_quebec_childcare_2025 import (FraisGardeQuebec2025, ResultatGardeQuebec2025,
+    calculer_garde_quebec_2025, verifier_garde_conjoint_2025, normaliser_garde, lignes_garde_quebec_2025)
 from .tax_quebec_refundable_medical_2025 import (MedicalRemboursableQuebec2025, ResultatMedicalRemboursableQuebec2025,
     calculer_medical_remboursable_quebec_2025, lignes_medical_remboursable_quebec_2025, avantages_ancien_emploi_211_2025,
     valider_medical_remboursable_quebec_2025)
@@ -363,6 +365,8 @@ class EstimationFiscale2025:
     prestations_rrq_rpc: PrestationsRrqRpc2025 = PrestationsRrqRpc2025()
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
     resultat_allocation_travailleurs: ResultatAllocationTravailleurs2025 = ResultatAllocationTravailleurs2025()
+    frais_garde_quebec: FraisGardeQuebec2025 = FraisGardeQuebec2025()
+    resultat_garde_quebec: ResultatGardeQuebec2025 = ResultatGardeQuebec2025()
     medical_remboursable_quebec: MedicalRemboursableQuebec2025 = MedicalRemboursableQuebec2025()
     resultat_medical_remboursable_quebec: ResultatMedicalRemboursableQuebec2025 = ResultatMedicalRemboursableQuebec2025()
     prolongation_carriere_quebec: ProlongationCarriereQuebec2025 = ProlongationCarriereQuebec2025()
@@ -475,6 +479,7 @@ def calculer_estimation_fiscale_2025(
     transfert_conjoint: TransfertConjointFederal2025 | None = None,
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
+    frais_garde_quebec: FraisGardeQuebec2025 | None = None,
     medical_remboursable_quebec: MedicalRemboursableQuebec2025 | None = None,
     prolongation_carriere_quebec: ProlongationCarriereQuebec2025 | None = None,
     achat_habitation_quebec: AchatHabitationQuebec2025 | None = None,
@@ -1611,6 +1616,41 @@ def calculer_estimation_fiscale_2025(
                 or carriere_quebec.reclamer and carriere_quebec.naissance != medical_quebec.naissance
                 or frais_medicaux_effectifs.supplement.reclamer and frais_medicaux_effectifs.supplement.age_fin_2025 != age_medical):
             raise ValueError("Naissance médicale Québec divergente des autres profils actifs.")
+    garde_quebec = frais_garde_quebec if frais_garde_quebec is not None else FraisGardeQuebec2025()
+    resultat_garde_quebec = calculer_garde_quebec_2025(garde_quebec,
+        revenu_net=revenu.revenu_net_quebec, demandeur=dossier.client)
+    if garde_quebec.reclamer:
+        if any(d.valeur_validee != Decimal(0) for d in dossier.donnees_validees
+                if (d.type_document, d.case) in (("RL-1", "201"), ("RL-5", "J"))):
+            raise ValueError("Garde Québec 6F : allocation 201/J à traiter dans une extension du profil.")
+        famille_garde = bool(garde_quebec.enfants or garde_quebec.conjoint_nom)
+        if famille_garde and (medical_quebec.reclamer
+                or frais_medicaux_effectifs.montant_admissible_federal or frais_medicaux_effectifs.montant_admissible_quebec
+                or act.present and not act.famille.activer
+                or frais_medicaux_effectifs.supplement.reclamer and not frais_medicaux_effectifs.supplement.mode_familial):
+            raise ValueError("Garde Québec familiale incompatible avec les profils médicaux/ACT individuels sans personne à charge.")
+        if garde_quebec.conjoint_nom and (personne_charge_admissible_federale_effective.reclamer_montant
+                or personne_vivant_seule_effective.reclamer_montant
+                or montants_age_retraite_effectifs.reclamer_age or montants_age_retraite_effectifs.reclamer_revenus_retraite):
+            raise ValueError("Conjoint garde Québec incompatible avec le profil actuel sans conjoint 30400/361.")
+        if montant_conjoint_federal_effectif.reclamer_montant and not garde_quebec.conjoint_nom:
+            raise ValueError("Le conjoint 30300 doit être déclaré dans le profil garde Québec.")
+        noms_conjoints_garde = [fonds.conjoint.nom, politiques.nom_conjoint]
+        if act.famille.activer:
+            noms_conjoints_garde.append(act.famille.conjoint_nom)
+        supp = frais_medicaux_effectifs.supplement
+        if supp.reclamer and supp.mode_familial:
+            noms_conjoints_garde.append(supp.nom_conjoint if supp.situation_conjugale == "conjoint" else "")
+        noms_conjoints_garde.extend(p.nom for p in medical_familial.personnes if p.lien == "conjoint")
+        if any(normaliser_garde(n) != normaliser_garde(garde_quebec.conjoint_nom) for n in noms_conjoints_garde if n):
+            raise ValueError("Identité du conjoint divergente entre garde Québec et les autres profils.")
+        if act.famille.activer and normaliser_garde(act.famille.conjoint_nom) != normaliser_garde(garde_quebec.conjoint_nom):
+            raise ValueError("Situation conjugale divergente entre ACT et garde Québec.")
+        if supp.reclamer and supp.mode_familial and ((supp.situation_conjugale == "conjoint") != bool(garde_quebec.conjoint_nom)):
+            raise ValueError("Situation conjugale divergente entre supplément médical et garde Québec.")
+    if conjoint.activer:
+        verifier_garde_conjoint_2025(garde_quebec, resultat_garde_quebec,
+            demandeur=dossier.client, revenu_net=revenu.revenu_net_quebec, conjoint=resultat_conjoint)
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
         federal,
@@ -1620,6 +1660,8 @@ def calculer_estimation_fiscale_2025(
         allocation_travailleurs=resultat_act.ligne_45300,
         avances_act=resultat_act.ligne_41500,
         credit_multigenerationnel=resultat_multigenerationnel.ligne_45355,
+        credit_garde_quebec=resultat_garde_quebec.credit_ligne_455,
+        avances_garde_quebec=resultat_garde_quebec.avances_ligne_441,
         credit_medical_quebec=resultat_medical_quebec.credit_ligne_462,
         credit_educateur=resultat_educateur.ligne_46900,
         credit_fonds=resultat_fonds.ligne_41400,
@@ -1677,6 +1719,7 @@ def calculer_estimation_fiscale_2025(
         transferts_scolarite_recus=scolarite_recue,
         allocation_travailleurs=act, resultat_allocation_travailleurs=resultat_act,
         resultat_supplement_medical=supplement_medical,
+        frais_garde_quebec=garde_quebec, resultat_garde_quebec=resultat_garde_quebec,
         medical_remboursable_quebec=medical_quebec, resultat_medical_remboursable_quebec=resultat_medical_quebec,
         prolongation_carriere_quebec=carriere_quebec, resultat_carriere_quebec=resultat_carriere_quebec,
         achat_habitation_quebec=achat_quebec, resultat_achat_quebec=resultat_achat_quebec,
@@ -1864,6 +1907,7 @@ def formater_estimation_fiscale_2025(
         *lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs),
         *lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical),
         *lignes_formation_2025(estimation.frais_scolarite.formation),
+        *lignes_garde_quebec_2025(estimation.frais_garde_quebec, estimation.resultat_garde_quebec),
         *lignes_medical_remboursable_quebec_2025(estimation.medical_remboursable_quebec, estimation.resultat_medical_remboursable_quebec),
         *lignes_carriere_quebec_2025(estimation.prolongation_carriere_quebec, estimation.resultat_carriere_quebec),
         *lignes_achat_quebec_2025(estimation.achat_habitation_quebec, estimation.resultat_achat_quebec),

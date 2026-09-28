@@ -28,6 +28,8 @@ from .tax_tuition_carryforward_2025 import ReportsScolariteFederaux2025, valider
 from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025
 from .tax_medical_supplement_2025 import SupplementMedical2025, valider_supplement_medical_2025, verifier_famille_supplement_2025
 from .tax_training_credit_2025 import Formation2025, valider_formation_2025
+from .tax_quebec_childcare_2025 import (FraisGardeQuebec2025, valider_garde_quebec_2025,
+    garde_quebec_vers_dict, garde_quebec_depuis_dict)
 from .tax_quebec_refundable_medical_2025 import (MedicalRemboursableQuebec2025, valider_medical_remboursable_quebec_2025,
     medical_remboursable_quebec_vers_dict, medical_remboursable_quebec_depuis_dict)
 from .tax_quebec_career_extension_2025 import (ProlongationCarriereQuebec2025, valider_carriere_quebec_2025,
@@ -249,6 +251,7 @@ class DossierFiscalEnregistre:
     transfert_conjoint: TransfertConjointFederal2025 = TransfertConjointFederal2025()
     transferts_scolarite_recus: TransfertsScolariteRecus2025 = TransfertsScolariteRecus2025()
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
+    frais_garde_quebec: FraisGardeQuebec2025 = FraisGardeQuebec2025()
     medical_remboursable_quebec: MedicalRemboursableQuebec2025 = MedicalRemboursableQuebec2025()
     prolongation_carriere_quebec: ProlongationCarriereQuebec2025 = ProlongationCarriereQuebec2025()
     achat_habitation_quebec: AchatHabitationQuebec2025 = AchatHabitationQuebec2025()
@@ -3585,6 +3588,7 @@ def sauvegarder_dossier_fiscal(
     transfert_conjoint: TransfertConjointFederal2025 | None = None,
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
+    frais_garde_quebec: FraisGardeQuebec2025 | None = None,
     medical_remboursable_quebec: MedicalRemboursableQuebec2025 | None = None,
     prolongation_carriere_quebec: ProlongationCarriereQuebec2025 | None = None,
     achat_habitation_quebec: AchatHabitationQuebec2025 | None = None,
@@ -3884,6 +3888,10 @@ def sauvegarder_dossier_fiscal(
     )
     if estimation is not None and act != estimation.allocation_travailleurs:
         raise ValueError("Le profil ACT diffère de l'estimation.")
+    frais_garde_quebec = valider_garde_quebec_2025(frais_garde_quebec if frais_garde_quebec is not None
+        else estimation.frais_garde_quebec if estimation is not None else FraisGardeQuebec2025())
+    if estimation is not None and frais_garde_quebec != estimation.frais_garde_quebec:
+        raise ValueError("Profil de garde Québec divergent de l'estimation.")
     medical_remboursable_quebec = valider_medical_remboursable_quebec_2025(medical_remboursable_quebec if medical_remboursable_quebec is not None
         else estimation.medical_remboursable_quebec if estimation is not None else MedicalRemboursableQuebec2025())
     if estimation is not None and medical_remboursable_quebec != estimation.medical_remboursable_quebec:
@@ -4209,6 +4217,7 @@ def sauvegarder_dossier_fiscal(
         "transfert_conjoint": {nom: getattr(conjoint, nom) for nom in conjoint.__dataclass_fields__},
         "transferts_scolarite_recus": _scolarite_recue_vers_dict(scolarite_recue),
         "allocation_travailleurs": _allocation_travailleurs_vers_dict(act),
+        "frais_garde_quebec": garde_quebec_vers_dict(frais_garde_quebec),
         "medical_remboursable_quebec": medical_remboursable_quebec_vers_dict(medical_remboursable_quebec),
         "prolongation_carriere_quebec": carriere_quebec_vers_dict(carriere_quebec),
         "achat_habitation_quebec": achat_quebec_vers_dict(achat_quebec),
@@ -4693,6 +4702,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         transfert_conjoint=_transfert_conjoint_depuis_dict(contenu.get("transfert_conjoint"), dossier.client),
         transferts_scolarite_recus=_scolarite_recue_depuis_dict(contenu.get("transferts_scolarite_recus")),
         allocation_travailleurs=_allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")),
+        frais_garde_quebec=garde_quebec_depuis_dict(contenu.get("frais_garde_quebec")),
         medical_remboursable_quebec=medical_remboursable_quebec_depuis_dict(contenu.get("medical_remboursable_quebec")),
         prolongation_carriere_quebec=carriere_quebec_depuis_dict(contenu.get("prolongation_carriere_quebec")),
         achat_habitation_quebec=achat_quebec_depuis_dict(contenu.get("achat_habitation_quebec")),

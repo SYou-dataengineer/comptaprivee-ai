@@ -18,6 +18,7 @@ autonomes, plusieurs employeurs et autres situations particulières.
 from dataclasses import dataclass
 from decimal import Decimal
 
+from .tax_quebec_childcare_2025 import montant_garde_quebec
 from .tax_quebec_refundable_medical_2025 import montant_medical_remboursable_quebec
 from .tax_federal_top_up_2025 import montant_decimal_2025
 from .tax_political_contributions_2025 import montant_politique_2025
@@ -80,6 +81,8 @@ class RapprochementFiscal2025:
     credit_politique_ligne_41000: Decimal = ZERO
     credit_multigenerationnel_ligne_45355: Decimal = ZERO
     credit_educateur_ligne_46900: Decimal = ZERO
+    credit_garde_quebec_ligne_455: Decimal = ZERO
+    avances_garde_quebec_ligne_441: Decimal = ZERO
     credit_medical_quebec_ligne_462: Decimal = ZERO
     credit_fonds_ligne_41400: Decimal = ZERO
 
@@ -167,9 +170,13 @@ def calculer_rapprochement_fiscal_2025(
     credit_educateur: Decimal = ZERO,
     credit_fonds: Decimal = ZERO,
     credit_medical_quebec: Decimal = ZERO,
+    credit_garde_quebec: Decimal = ZERO,
+    avances_garde_quebec: Decimal = ZERO,
 ) -> RapprochementFiscal2025:
     """Calcule une estimation de base du remboursement ou du solde."""
     _verifier_coherence(base, federal, quebec)
+    montant_garde_quebec(credit_garde_quebec, "455")
+    montant_garde_quebec(avances_garde_quebec, "441")
     montant_medical_remboursable_quebec(credit_medical_quebec, "462 point 1")
     if credit_medical_quebec > Decimal(1466):
         raise ValueError("Crédit médical Québec 462 : maximum 1466 $.")
@@ -229,6 +236,7 @@ def calculer_rapprochement_fiscal_2025(
     impot_total = arrondir_cent(
         federal_apres_abattement
         + quebec.impot_quebec_preliminaire
+        + avances_garde_quebec
         + cotisation_assurance_medicaments
         + prestations_rqap.cotisation_fss
         + prestations_ae.cotisation_fss + prestations_ae.recuperation
@@ -254,6 +262,7 @@ def calculer_rapprochement_fiscal_2025(
         + credit_multigenerationnel
         + credit_educateur
         + credit_medical_quebec
+        + credit_garde_quebec
         - impot_total
     )
 
@@ -330,6 +339,7 @@ def calculer_rapprochement_fiscal_2025(
     )
     credit_familial_inclus = (
         credit_personne_seule_inclus
+        or credit_garde_quebec > ZERO
         or credit_conjoint_federal_inclus
         or credit_personne_charge_federal_inclus
         or credit_aidant_enfant_federal_inclus
@@ -379,6 +389,8 @@ def calculer_rapprochement_fiscal_2025(
             limitation_credits = (
                 "Montant fédéral pour personne à charge admissible inclus."
             )
+        elif credit_garde_quebec > ZERO:
+            limitation_credits = "Crédit Québec pour frais de garde ligne 455 inclus."
         else:
             limitation_credits = (
                 "Crédit familial Québec pour personne vivant seule inclus."
@@ -408,6 +420,8 @@ def calculer_rapprochement_fiscal_2025(
         credit_multigenerationnel_ligne_45355=credit_multigenerationnel,
         credit_educateur_ligne_46900=credit_educateur,
         credit_fonds_ligne_41400=credit_fonds,
+        credit_garde_quebec_ligne_455=credit_garde_quebec,
+        avances_garde_quebec_ligne_441=avances_garde_quebec,
         credit_medical_quebec_ligne_462=credit_medical_quebec,
         client=base.client,
         annee_fiscale=base.annee_fiscale,

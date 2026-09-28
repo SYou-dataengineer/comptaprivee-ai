@@ -3970,3 +3970,79 @@ sans échec fiscal. Le groupe concerné est repassé à **46 passed, 5 warnings*
 puis toute la suite est verte, sans modification du code ni des assertions.
 Cause exacte de cet incident GUI non établie; point à surveiller lors du
 durcissement Windows. Aucune exception, exclusion ou assertion affaiblie ajoutée.
+
+
+### Bloc 6F livré — frais de garde Québec, annexe C, lignes 455 et 441
+
+Sources officielles 2025 : [annexe C](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.C%282025-12%29.pdf),
+[RQ ligne 455](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/451-a-480-remboursement-ou-solde-a-payer/ligne-455/),
+[barème 2025](https://www.revenuquebec.ca/fr/citoyens/credits-dimpot/credit-dimpot-pour-frais-de-garde-denfants/bareme-des-taux-du-credit-dimpot-2025/)
+et [frais exclus](https://www.revenuquebec.ca/fr/citoyens/credits-dimpot/credit-dimpot-pour-frais-de-garde-denfants/frais-de-garde-ne-donnant-pas-droit-au-credit-dimpot/).
+
+Le moteur utilise les plafonds de l'annexe C : 16 800 $ pour déficience grave
+et prolongée; sinon 12 275 $ pour naissance après 2018; sinon 6 180 $ pour
+naissance après 2008 ou infirmité. Le plafond 50 est leur **somme familiale**.
+La base 85 est le minimum du total des frais admissibles 41 et du plafond 50;
+on ne plafonne pas séparément chaque dépense à la limite de son enfant.
+
+Le taux, calculé sur la somme des revenus nets Québec 275, vaut respectivement
+78 %, 75 %, 74 %, 73 %, 72 %, 71 %, 70 % jusqu'aux bornes incluses
+24 795 / 43 725 / 45 340 / 46 970 / 48 570 / 50 195 / 119 835 $, puis 67 %.
+Un revenu nul utilise 78 %. Le crédit familial 94 est arrondi au cent;
+la ligne 455 en retranche la part convenue du conjoint. Les avances personnelles
+RL-19 C alimentent intégralement 441, même supérieures à 455.
+
+Périmètre logiciel : famille stable, demandeur seul ou couple résident du
+Québec/Canada toute l'année, enfants propres ou du conjoint, emploi lors des
+frais, RL-24 vérifiés. Paiement par le demandeur ou le conjoint, cohabitation
+avec l'enfant lors des frais, résidence du prestataire, admissibilité des
+services et attestations médicales Québec sont confirmés sur pièces.
+L'application ne détermine pas automatiquement l'admissibilité détaillée.
+
+Hors de ce premier périmètre : garde partagée, autres enfants à charge, frais
+avec hébergement, allocations/aides/remboursements, prestations ou études comme
+seule condition d'activité, changements d'union, décès/faillite, résidence
+partielle et exonérations internationales. Une case 201 RL-1 ou J RL-5 non nulle
+refuse ce profil; elle ne devient jamais une dépense silencieusement admissible.
+Ces limites logicielles ne sont pas des exclusions fiscales générales.
+Les frais subventionnés, médicaux, scolaires, personnels et les versements aux
+parents de l'enfant ou au conjoint restent exclus selon les règles officielles.
+
+Faits saisis : fiches enfants distinctes (référence, nom, naissance, condition,
+cases E et sources), conjoint éventuel avec revenu Québec documenté et part
+convenue, avances RL-19 et preuves. Le revenu propre, les plafonds, le taux et
+le crédit propre sont dérivés. Avec un instantané conjoint 32600, les revenus
+Québec, identités, mêmes enfants/frais et parts réciproques sont rapprochés du
+recalcul du conjoint; aucune lecture de crédit dérivé stocké.
+
+Les profils sans conjoint/personne à charge incompatibles sont refusés : ACT
+individuel, médical agrégé/6E, et 30400/361 individuel en présence d'un conjoint.
+Les identités conjugales sont rapprochées des autres profils familiaux actifs.
+Le T778 fédéral reste distinct : sa déduction n'abaisse pas le revenu Québec.
+455 est ajouté une fois aux paiements; 441 est ajouté une fois au total à payer.
+Ni les impôts de base, ni les revenus, ni l'abattement fédéral ne sont modifiés
+par le crédit Québec lui-même.
+
+Exemples synthétiques : net Québec 50 095 $, enfant né en 2020, frais 10 000 $
+→ 71 %, crédit 7 100 $. Avec avances 8 000 $, effet net de -900 $ au
+rapprochement. Deux conjoints à 50 095 $ chacun donnent un taux de 70 %,
+crédit familial 7 000 $, réparti en 5 000 $ et 2 000 $ dans les dossiers testés.
+Un enfant jeune avec frais 20 000 $ et un autre plus âgé admissible avec frais
+nuls donne un plafond familial 18 455 $, et non 12 275 $.
+
+JSON rétrocompatible, clés/types stricts, Decimal en chaînes, résultats
+recalculés et divergences refusées. GUI d'ajout/modification/retrait des enfants,
+révocation des confirmations, réouverture/effacement et isolation des dossiers.
+Trace/PDF : enfant, source, condition, plafond, base, revenu familial, taux,
+part convenue, 455 et avances 441. PDF synthétique vérifié visuellement.
+
+Validation ciblée avec régressions 4B/5K/6E/rapprochement : **309 passed,
+5 warnings**. Couvre les bornes du barème, âge/condition, plafond commun,
+arrondis, partage, avances excédentaires, rapprochement des conjoints,
+incompatibilités, JSON, GUI et PDF.
+
+Journal précédent 6E : commit `75f967b`, 12 fichiers; suites complètes avant et
+après commit **6017 passed, 8 warnings**; push réussi, dépôt propre avant 6F.
+
+Suite complète 6F avant commit : **6112 passed, 8 warnings** (195,84 s).
+`git diff --check` sans erreur.

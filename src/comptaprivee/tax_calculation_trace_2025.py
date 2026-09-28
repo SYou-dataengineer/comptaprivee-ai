@@ -426,6 +426,8 @@ def construire_trace_calcul_fiscal_2025(
     formule_impot_total = (
         "Impôt fédéral après abattement + impôt Québec"
     )
+    if final.avances_garde_quebec_ligne_441:
+        formule_impot_total += " + avances garde Québec 441 (RL-19 C, sans plafond)"
     if rqap.present:
         formule_impot_total += " + FSS Québec 446"
     if ae.present:
@@ -1975,6 +1977,19 @@ def construire_trace_calcul_fiscal_2025(
             lignes = lignes + (_ligne(len(lignes) + 1, "FORMATION 2025 — BLOC 5C", libelle,
                 frais_scolarite.formation.source, formule, montant),)
 
+    if estimation.frais_garde_quebec.reclamer:
+        rg = estimation.resultat_garde_quebec
+        for libelle, montant, formule in (
+            ("Frais de garde Québec 41", rg.frais_ligne_41, "Somme des cases E RL-24 validées; aides exclues de ce profil"),
+            ("Plafond familial garde Québec 50", rg.plafond_ligne_50, "Somme des plafonds 16800/12275/6180 selon les enfants"),
+            ("Revenu familial garde Québec 80", rg.revenu_familial_ligne_80, "275 du demandeur recalculé + 275 du conjoint vérifié"),
+            ("Crédit familial garde Québec 94", rg.credit_familial_ligne_94, f"min(41, 50) × {rg.taux_ligne_92 * 100:.0f} %"),
+            ("Crédit garde Québec 455", rg.credit_ligne_455, "94 moins part convenue du conjoint; remboursable"),
+            ("Avances garde Québec 441", rg.avances_ligne_441, "RL-19 case C personnel; montant intégral, même supérieur à 455"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "GARDE QUÉBEC — BLOC 6F", libelle,
+                estimation.frais_garde_quebec.source + "; RQ annexe C 2025; validation comptable confirmée", formule, montant),)
+
     if estimation.medical_remboursable_quebec.reclamer:
         rm = estimation.resultat_medical_remboursable_quebec
         for libelle, montant, formule in (
@@ -2262,6 +2277,11 @@ def construire_trace_calcul_fiscal_2025(
     if final.credit_medical_quebec_ligne_462:
         formule += (" + crédit médical Québec 462" if final.remboursement_estime
                     else " - crédit médical Québec 462")
+
+    if final.credit_garde_quebec_ligne_455:
+        formule += (" + crédit garde Québec 455" if final.remboursement_estime else " - crédit garde Québec 455")
+    if final.avances_garde_quebec_ligne_441:
+        formule += "; impôt total incluant les avances garde Québec 441"
 
     lignes += (
         _ligne(

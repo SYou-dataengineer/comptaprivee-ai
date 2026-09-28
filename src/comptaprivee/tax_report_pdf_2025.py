@@ -22,6 +22,7 @@ from .tax_tuition_received_2025 import lignes_transferts_scolarite_recus_2025
 from .tax_workers_benefit_2025 import lignes_allocation_travailleurs_2025
 from .tax_medical_supplement_2025 import lignes_supplement_medical_2025
 from .tax_training_credit_2025 import lignes_formation_2025
+from .tax_quebec_childcare_2025 import lignes_garde_quebec_2025
 from .tax_quebec_refundable_medical_2025 import lignes_medical_remboursable_quebec_2025
 from .tax_quebec_career_extension_2025 import lignes_carriere_quebec_2025
 from .tax_quebec_home_buyers_2025 import lignes_achat_quebec_2025
@@ -2024,6 +2025,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs))
     lignes.extend(lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical))
     lignes.extend(lignes_formation_2025(estimation.frais_scolarite.formation))
+    lignes.extend(lignes_garde_quebec_2025(estimation.frais_garde_quebec, estimation.resultat_garde_quebec))
     lignes.extend(lignes_medical_remboursable_quebec_2025(estimation.medical_remboursable_quebec, estimation.resultat_medical_remboursable_quebec))
     lignes.extend(lignes_carriere_quebec_2025(estimation.prolongation_carriere_quebec, estimation.resultat_carriere_quebec))
     lignes.extend(lignes_achat_quebec_2025(estimation.achat_habitation_quebec, estimation.resultat_achat_quebec))

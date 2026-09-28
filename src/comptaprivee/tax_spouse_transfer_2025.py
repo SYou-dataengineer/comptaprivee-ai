@@ -8,6 +8,7 @@ from decimal import Decimal
 import json
 
 from .tax_rules_2025 import arrondir_cent
+from .tax_quebec_childcare_2025 import FraisGardeQuebec2025
 
 ZERO = Decimal("0")
 CODES_LIGNE_100 = frozenset({
@@ -68,6 +69,9 @@ class ResultatTransfertConjoint2025:
     attribution_enfants_act: tuple[tuple[str, str], tuple[str, str]] | None = None
     etudiants_act: tuple[bool, bool] | None = None
     enfants_30500: tuple[tuple[str, str, str], ...] = ()
+    revenu_net_quebec_conjoint: Decimal = ZERO
+    garde_quebec_conjoint: FraisGardeQuebec2025 = FraisGardeQuebec2025()
+    credit_garde_quebec_conjoint: Decimal = ZERO
 
 
 def _montant(valeur, nom):
@@ -199,6 +203,9 @@ def calculer_transfert_conjoint_2025(p, *, beneficiaire):
         scolarite_designee=transfert.montant_designe,
     )
     return replace(r, nom_conjoint=conjoint.dossier.client, revenu_net_conjoint=conjoint.revenu.revenu_net_federal,
+        revenu_net_quebec_conjoint=conjoint.revenu.revenu_net_quebec,
+        garde_quebec_conjoint=conjoint.frais_garde_quebec,
+        credit_garde_quebec_conjoint=conjoint.resultat_garde_quebec.credit_ligne_455,
         enfants_30500=tuple((e.reference, e.nom, e.naissance) for e in conjoint.aidant_enfant_federal.enfants_detailles),
         revenu_beneficiaire_declare_45200=(max(supp.revenu_net_conjoint, ZERO) if supp.reclamer else None),
         revenu_beneficiaire_declare_act=(max(act.famille.conjoint_revenu_net, ZERO) if act.famille.activer else None),
