@@ -1006,7 +1006,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     "Besoin de beaucoup plus d'aide que les enfants "
                     "du même âge : oui"
                 ),
-                "Enfant avec ses deux parents toute l'année 2025 : oui",
+                ("Enfant avec ses deux parents toute l'année 2025 : oui" if not aidant_enfant_federal.enfant_reclame_30400 else "Enfant réclamé par le même parent à 30400 et 30500 : " + aidant_enfant_federal.reference_enfant),
                 "Aucune garde partagée : oui",
                 "Aucune pension alimentaire : oui",
                 "Aucun autre réclamant ligne 30500 : oui",
@@ -1022,7 +1022,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                 ),
                 (
                     "Combinaison ligne 30400 + ligne 30500 : "
-                    "non supportée dans ce profil simple."
+                    + ("validée; 2687 $ uniquement à 30500." if aidant_enfant_federal.enfant_reclame_30400 else "non supportée dans ce profil simple.")
                 ),
             ]
         )
@@ -1072,7 +1072,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                 "Aucun époux/conjoint pendant toute l'année 2025 : oui",
                 "Personne à charge = enfant du contribuable : oui",
                 "Enfant de moins de 18 ans à la fin de 2025 : oui",
-                "Aucune déficience de l'enfant : oui",
+                ("Infirmité de l'enfant : confirmée; supplément distinct à 30500" if personne_charge_admissible_federale.enfant_infirmite_ligne30500 else "Aucune déficience de l'enfant : oui"),
                 "Enfant soutenu par le contribuable en 2025 : oui",
                 "Enfant ayant vécu avec le contribuable : oui",
                 "Habitation maintenue par le contribuable : oui",

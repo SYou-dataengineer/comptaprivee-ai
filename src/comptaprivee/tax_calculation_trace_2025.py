@@ -1112,6 +1112,7 @@ def construire_trace_calcul_fiscal_2025(
                 (
                     "ARC lignes 30499 / 30500 — "
                     + aidant_enfant_federal.source_enfant
+                    + (" — même enfant 30400/30500 : " + aidant_enfant_federal.reference_enfant if aidant_enfant_federal.enfant_reclame_30400 else "")
                     + " — validation comptable"
                 ),
                 (

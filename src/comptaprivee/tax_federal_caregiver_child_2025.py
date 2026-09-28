@@ -1,6 +1,10 @@
 """Montant canadien pour aidant naturel — enfant de moins de 18 ans — 2025.
 
-Première version volontairement limitée à un profil simple et vérifié :
+Extension 5V : combinaison explicite 30400/30500 du même enfant mineur
+avec infirmité, parent sans conjoint, référence concordante et preuve médicale.
+Le supplément de 2687 $ est porté uniquement à 30500.
+
+Profil historique conservé :
 - un seul enfant biologique ou adopté du contribuable, ou de son époux/conjoint;
 - enfant âgé de moins de 18 ans à la fin de 2025;
 - infirmité mentale ou physique confirmée;
@@ -31,7 +35,7 @@ ARC — ligne 30500, montant canadien pour aidant naturel pour enfants
 de moins de 18 ans ayant une infirmité — année d'imposition 2025.
 """
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, fields
 from decimal import Decimal
 
 from .tax_federal_2025 import ImpotFederalPreliminaire2025
@@ -71,6 +75,8 @@ class AidantNaturelEnfantMoins18Federal2025:
     valide_par_comptable: bool = False
 
     source_enfant: str = ""
+    enfant_reclame_30400: bool = False
+    reference_enfant: str = ""
 
 
 def aucun_aidant_naturel_enfant_moins18_federal_2025(
@@ -81,6 +87,25 @@ def aucun_aidant_naturel_enfant_moins18_federal_2025(
 def valider_aidant_naturel_enfant_moins18_federal_2025(
     profil: AidantNaturelEnfantMoins18Federal2025,
 ) -> AidantNaturelEnfantMoins18Federal2025:
+    if type(profil.enfant_reclame_30400) is not bool or not isinstance(profil.reference_enfant, str):
+        raise ValueError("Profil combiné 30400/30500 invalide.")
+    if profil.enfant_reclame_30400:
+        for champ in fields(profil):
+            v = getattr(profil, champ.name)
+            if champ.type is bool and type(v) is not bool:
+                raise ValueError("Confirmation 30400/30500 non booléenne : " + champ.name)
+            if champ.type is str and not isinstance(v, str):
+                raise ValueError("Texte 30400/30500 invalide : " + champ.name)
+            if champ.type is Decimal:
+                from .tax_federal_top_up_2025 import montant_decimal_2025
+                if montant_decimal_2025(v, champ.name) != v:
+                    raise ValueError("Montant 30400/30500 à exprimer en cents.")
+        if not profil.reclamer_montant or not profil.reference_enfant.strip():
+            raise ValueError("Profil combiné 30400/30500 : réclamation et référence enfant obligatoires.")
+        if profil.enfant_avec_deux_parents_toute_annee:
+            raise ValueError("Le profil 30400/30500 exige un parent sans conjoint; résidence avec les deux parents contradictoire.")
+    elif profil.reference_enfant:
+        raise ValueError("Référence enfant 30500 sans activation du profil combiné.")
     if not profil.reclamer_montant:
         return profil
 
@@ -110,7 +135,7 @@ def valider_aidant_naturel_enfant_moins18_federal_2025(
             "besoins et soins personnels que les autres enfants du même âge.",
         ),
         (
-            profil.enfant_avec_deux_parents_toute_annee,
+            profil.enfant_avec_deux_parents_toute_annee or profil.enfant_reclame_30400,
             "Cette première version est limitée au cas où l'enfant a vécu "
             "avec ses deux parents pendant toute l'année 2025.",
         ),
@@ -253,3 +278,18 @@ def integration_sans_credit_compensatoire_autorisee_2025(
         revenu_imposable_federal
         <= SEUIL_PREMIERE_TRANCHE_FEDERALE_2025
     )
+
+
+def verifier_combinaison_30400_30500_2025(personne, aidant):
+    """Même enfant; 2687 à 30500 uniquement, ARC 30500 et annexe 5."""
+    valider_aidant_naturel_enfant_moins18_federal_2025(aidant)
+    from .tax_federal_eligible_dependant_2025 import valider_montant_personne_charge_admissible_federal_2025
+    valider_montant_personne_charge_admissible_federal_2025(personne)
+    if personne.enfant_infirmite_ligne30500 or aidant.enfant_reclame_30400:
+        if not (personne.enfant_infirmite_ligne30500 and aidant.enfant_reclame_30400):
+            raise ValueError("Les deux profils 30400/30500 du même enfant doivent être présents.")
+        normaliser = lambda s: " ".join(s.split()).casefold()
+        if normaliser(personne.reference_enfant) != normaliser(aidant.reference_enfant):
+            raise ValueError("Références de l'enfant divergentes entre 30400 et 30500.")
+    elif personne.reclamer_montant and aidant.reclamer_montant:
+        raise ValueError("Combinaison 30400/30500 : utiliser le profil explicite du même enfant.")

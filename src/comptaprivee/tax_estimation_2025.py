@@ -9,6 +9,7 @@ d'estimation soumise à validation comptable.
 """
 
 from .tax_rules_2025 import arrondir_cent
+from .tax_federal_caregiver_child_2025 import verifier_combinaison_30400_30500_2025
 from .tax_family_workers_benefit_2025 import verifier_concordance_act_familial_2025
 from .tax_family_medical_2025 import (FraisMedicauxFamilleFederaux2025, ResultatMedicalFamilial2025, calculer_medical_familial_2025, lignes_medical_familial_2025, verifier_combinaison_medicale_famille)
 from .tax_disability_transfer_2025 import (TransfertsHandicap2025, ResultatTransfertsHandicap2025, calculer_transferts_handicap_2025)
@@ -1272,17 +1273,8 @@ def calculer_estimation_fiscale_2025(
         aidant_enfant_federal_effectif
     )
 
-    if (
-        aidant_enfant_federal_effectif.reclamer_montant
-        and personne_charge_admissible_federale_effective.reclamer_montant
-    ):
-        raise ValueError(
-            "Cette première version ne combine pas encore la ligne 30400 "
-            "avec la ligne 30500. Le profil ligne 30500 intégré ici exige "
-            "que l'enfant ait vécu avec ses deux parents pendant toute "
-            "l'année 2025; les situations où la ligne 30400 détermine "
-            "le réclamant seront traitées séparément."
-        )
+    verifier_combinaison_30400_30500_2025(
+        personne_charge_admissible_federale_effective, aidant_enfant_federal_effectif)
 
     assurance_medicaments_effective = (
         assurance_medicaments
@@ -1769,6 +1761,8 @@ def formater_estimation_fiscale_2025(
         *lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons),
         *lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite),
         *lignes_handicap_detaille_2025(estimation.credit_deficience),
+        *([f"COMBINAISON 30400 / 30500 — enfant : {estimation.aidant_enfant_federal.reference_enfant}; attribution au même parent validée; 2687 $ uniquement à 30500."]
+          if estimation.aidant_enfant_federal.enfant_reclame_30400 else []),
         *lignes_medical_familial_2025(estimation.frais_medicaux_famille, estimation.resultat_medical_familial),
         *lignes_transferts_handicap_2025(estimation.transferts_handicap, estimation.resultat_transferts_handicap),
         *lignes_multigenerationnelles_2025(estimation.renovations_multigenerationnelles, estimation.resultat_multigenerationnel),
@@ -2145,7 +2139,7 @@ def formater_estimation_fiscale_2025(
                 "Enfant de moins de 18 ans : oui",
                 "Infirmité physique ou mentale confirmée : oui",
                 "Besoin de beaucoup plus d'aide que les enfants du même âge : oui",
-                "Enfant avec ses deux parents toute l'année : oui",
+                ("Même enfant réclamé à 30400/30500 : " + estimation.aidant_enfant_federal.reference_enfant if estimation.aidant_enfant_federal.enfant_reclame_30400 else "Enfant avec ses deux parents toute l'année : oui"),
                 "Aucune garde partagée : oui",
                 "Aucune pension alimentaire : oui",
                 "Aucun autre réclamant ligne 30500 : oui",
@@ -2198,7 +2192,7 @@ def formater_estimation_fiscale_2025(
                 "Personne à charge : enfant de moins de 18 ans",
                 "Aucune garde partagée : oui",
                 "Aucune pension alimentaire : oui",
-                "Aucune déficience de l'enfant : oui",
+                ("Infirmité de l'enfant : confirmée; supplément distinct à 30500" if estimation.personne_charge_admissible_federale.enfant_infirmite_ligne30500 else "Aucune déficience de l'enfant : oui"),
                 "Validation comptable : confirmée",
                 (
                     "Source : "

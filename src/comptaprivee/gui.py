@@ -9052,6 +9052,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ).pack(anchor="w", pady=(0, 8))
 
             champs = [
+                ("Même enfant réclamé à 30400 — parent sans conjoint (5V)", "enfant_reclame_30400"),
                 (
                     "Enfant biologique ou adopté du contribuable ou du conjoint",
                     "enfant_biologique_ou_adopte",
@@ -9103,7 +9104,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     cadre,
                     wraplength=680, anchor="w", justify="left",
                     text=texte,
-                    variable=variable,
+                    variable=variable, name=champ+"_5v",
                 ).pack(anchor="w", pady=2)
 
             ttk.Label(
@@ -9124,10 +9125,23 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 text=(
                     "Calcul automatique de la ligne 34990 (2025). La combinaison "
-                    "ligne 30400 + ligne 30500 est bloquée dans ce profil."
+                    "ligne 30400 + ligne 30500 exige le profil explicite du même enfant (5V)."
                 ),
                 wraplength=700,
             ).pack(anchor="w", pady=(10, 8))
+
+            reference_var = tk.StringVar(value=aidant_enfant_federal_courant.reference_enfant)
+            ttk.Label(cadre, text="Référence locale du même enfant à 30400/30500 (sans NAS)").pack(anchor="w")
+            ttk.Entry(cadre, name="reference_30500_5v", textvariable=reference_var).pack(fill="x")
+            def revoquer_5v(*_):
+                variables["valide_par_comptable"].set(False)
+                variables["preuve_medicale_ou_t2201_confirmee"].set(False)
+            source_var.trace_add("write", revoquer_5v)
+            reference_var.trace_add("write", revoquer_5v)
+            reclamer_var.trace_add("write", lambda *_: variables["valide_par_comptable"].set(False))
+            for nom, variable in variables.items():
+                if nom != "valide_par_comptable":
+                    variable.trace_add("write", lambda *_: variables["valide_par_comptable"].set(False))
 
             def appliquer() -> None:
                 nonlocal aidant_enfant_federal_courant
@@ -9136,6 +9150,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 profil = AidantNaturelEnfantMoins18Federal2025(
                     reclamer_montant=reclamer_var.get(),
                     source_enfant=source_var.get().strip(),
+                    reference_enfant=reference_var.get().strip(),
                     **{
                         champ: variable.get()
                         for champ, variable in variables.items()
@@ -9340,6 +9355,10 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
             )
 
+            infirmite_5v_var = tk.BooleanVar(value=personne_charge_admissible_federale_courante.enfant_infirmite_ligne30500)
+            preuve_5v_var = tk.BooleanVar(value=personne_charge_admissible_federale_courante.preuve_medicale_ou_t2201_confirmee)
+            reference_5v_var = tk.StringVar(value=personne_charge_admissible_federale_courante.reference_enfant)
+
             ligne = 2
 
             tk.Checkbutton(
@@ -9456,6 +9475,28 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 ligne += 1
 
+            for nom, texte, variable in (
+                ("infirmite_30400_5v", "Enfant mineur avec infirmité — montant aidant réclamé à 30500", infirmite_5v_var),
+                ("preuve_30400_5v", "Preuve médicale ou T2201 pour cet enfant confirmée", preuve_5v_var),
+            ):
+                tk.Checkbutton(cadre, name=nom, text=texte, variable=variable,
+                    wraplength=680, anchor="w", justify="left").grid(row=ligne, column=0, columnspan=2, sticky="w")
+                ligne += 1
+            ttk.Label(cadre, text="Référence locale du même enfant à 30500 (sans NAS)").grid(row=ligne, column=0, sticky="w")
+            ttk.Entry(cadre, name="reference_30400_5v", textvariable=reference_5v_var).grid(row=ligne, column=1, sticky="ew")
+            ligne += 1
+            def revoquer_5v(*_):
+                validation_var.set(False)
+                revenu_confirme_var.set(False)
+                preuve_5v_var.set(False)
+            for variable in (revenu_contribuable_var, revenu_personne_charge_var, source_var, reference_5v_var):
+                variable.trace_add("write", revoquer_5v)
+            for _, variable in validations:
+                if variable is not validation_var:
+                    variable.trace_add("write", lambda *_: validation_var.set(False))
+            infirmite_5v_var.trace_add("write", revoquer_5v)
+            preuve_5v_var.trace_add("write", lambda *_: validation_var.set(False))
+
             ttk.Label(
                 cadre,
                 text="Source — état civil, résidence et revenu de l'enfant",
@@ -9476,9 +9517,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 text=(
                     "Le crédit fédéral est calculé à 14,5 %. La ligne 34990 "
                     "est calculée automatiquement (2025). Les cas de "
-                    "garde partagée, pension alimentaire, déficience/aide "
-                    "naturelle et les profils avec conjoint sont exclus de "
-                    "cette première version."
+                    "garde partagée, pension alimentaire et profils avec conjoint "
+                    "restent exclus. Un enfant mineur avec infirmité peut utiliser "
+                    "le profil combiné 30400/30500 (5V), avec la même référence."
                 ),
                 wraplength=760,
                 foreground="#92400e",
@@ -9500,6 +9541,9 @@ class ApplicationComptaPrivee(tk.Tk):
                 enfant_var.set(False)
                 moins_18_var.set(False)
                 aucune_infirmite_var.set(False)
+                infirmite_5v_var.set(False)
+                preuve_5v_var.set(False)
+                reference_5v_var.set("")
                 soutien_var.set(False)
                 cohabitation_var.set(False)
                 habitation_var.set(False)
@@ -9552,6 +9596,10 @@ class ApplicationComptaPrivee(tk.Tk):
                             aucune_infirmite_enfant=(
                                 aucune_infirmite_var.get()
                             ),
+                            enfant_infirmite_ligne30500=infirmite_5v_var.get(),
+                            reference_enfant=reference_5v_var.get().strip(),
+                            personne_charge_avec_infirmite=infirmite_5v_var.get(),
+                            preuve_medicale_ou_t2201_confirmee=preuve_5v_var.get(),
                             enfant_soutenu_2025=soutien_var.get(),
                             enfant_a_vecu_avec_contribuable=(
                                 cohabitation_var.get()

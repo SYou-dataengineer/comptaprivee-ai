@@ -15,7 +15,7 @@ from .tax_spouse_transfer_2025 import TransfertConjointFederal2025, valider_tran
 from .tax_tuition_received_2025 import TransfertsScolariteRecus2025, valider_transferts_scolarite_recus_2025
 from .tax_tuition_received_2025 import DesignationScolariteRecue2025
 from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, valider_reports_dons_federaux_2025
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import json
@@ -108,6 +108,7 @@ from .tax_federal_caregiver_spouse_dependant_2025 import (
     valider_aidant_naturel_30425_2025,
 )
 from .tax_federal_caregiver_child_2025 import (
+    verifier_combinaison_30400_30500_2025,
     AidantNaturelEnfantMoins18Federal2025,
     valider_aidant_naturel_enfant_moins18_federal_2025,
 )
@@ -2247,6 +2248,8 @@ def _personne_charge_admissible_federale_vers_dict(
     )
 
     return {
+        "enfant_infirmite_ligne30500": profil.enfant_infirmite_ligne30500,
+        "reference_enfant": profil.reference_enfant,
         "reclamer_montant": bool(profil.reclamer_montant),
         "revenu_net_contribuable_ligne_23600": _decimal_texte(
             profil.revenu_net_contribuable_ligne_23600
@@ -2333,7 +2336,23 @@ def _personne_charge_admissible_federale_depuis_dict(
             "admissible enregistré est invalide."
         )
 
+    if type(valeur.get("enfant_infirmite_ligne30500", False)) is not bool:
+        raise ValueError("Activation du profil 30400/30500 non booléenne.")
+    if valeur.get("enfant_infirmite_ligne30500", False):
+        if set(valeur) - {f.name for f in fields(MontantPersonneChargeAdmissibleFederal2025)}:
+            raise ValueError("Clés du profil 30400/30500 inconnues.")
+        for champ in fields(MontantPersonneChargeAdmissibleFederal2025):
+            if champ.type is bool and champ.name in valeur and type(valeur[champ.name]) is not bool:
+                raise ValueError("Confirmation JSON 30400/30500 non booléenne.")
+            if champ.type is str and champ.name in valeur and not isinstance(valeur[champ.name], str):
+                raise ValueError("Texte JSON 30400/30500 invalide.")
+            if champ.type is Decimal and champ.name in valeur and (isinstance(valeur[champ.name], bool) or not isinstance(valeur[champ.name], (str, int))):
+                raise ValueError("Montant JSON 30400/30500 invalide.")
+
+
     profil = MontantPersonneChargeAdmissibleFederal2025(
+        enfant_infirmite_ligne30500=valeur.get("enfant_infirmite_ligne30500", False),
+        reference_enfant=valeur.get("reference_enfant", ""),
         reclamer_montant=bool(
             valeur.get("reclamer_montant", False)
         ),
@@ -2999,6 +3018,8 @@ def _aidant_enfant_federal_vers_dict(
     valider_aidant_naturel_enfant_moins18_federal_2025(profil)
 
     return {
+        "enfant_reclame_30400": profil.enfant_reclame_30400,
+        "reference_enfant": profil.reference_enfant,
         "reclamer_montant": bool(profil.reclamer_montant),
         "enfant_biologique_ou_adopte": bool(
             profil.enfant_biologique_ou_adopte
@@ -3052,7 +3073,23 @@ def _aidant_enfant_federal_depuis_dict(
             "enregistré est invalide."
         )
 
+    if type(valeur.get("enfant_reclame_30400", False)) is not bool:
+        raise ValueError("Activation du profil 30400/30500 non booléenne.")
+    if valeur.get("enfant_reclame_30400", False):
+        if set(valeur) - {f.name for f in fields(AidantNaturelEnfantMoins18Federal2025)}:
+            raise ValueError("Clés du profil 30400/30500 inconnues.")
+        for champ in fields(AidantNaturelEnfantMoins18Federal2025):
+            if champ.type is bool and champ.name in valeur and type(valeur[champ.name]) is not bool:
+                raise ValueError("Confirmation JSON 30400/30500 non booléenne.")
+            if champ.type is str and champ.name in valeur and not isinstance(valeur[champ.name], str):
+                raise ValueError("Texte JSON 30400/30500 invalide.")
+            if champ.type is Decimal and champ.name in valeur and (isinstance(valeur[champ.name], bool) or not isinstance(valeur[champ.name], (str, int))):
+                raise ValueError("Montant JSON 30400/30500 invalide.")
+
+
     profil = AidantNaturelEnfantMoins18Federal2025(
+        enfant_reclame_30400=valeur.get("enfant_reclame_30400", False),
+        reference_enfant=valeur.get("reference_enfant", ""),
         reclamer_montant=bool(
             valeur.get("reclamer_montant", False)
         ),
@@ -3609,6 +3646,20 @@ def sauvegarder_dossier_fiscal(
         elif (dons_bienfaisance.reports_federaux.activer or estimation.dons_bienfaisance.reports_federaux.activer) and dons_bienfaisance != estimation.dons_bienfaisance:
             raise ValueError("Le profil dons/reports diffère de l'estimation.")
 
+    if estimation is not None and (
+        estimation.personne_charge_admissible_federale.enfant_infirmite_ligne30500
+        or estimation.aidant_enfant_federal.enfant_reclame_30400
+        or (personne_charge_admissible_federale is not None and personne_charge_admissible_federale.enfant_infirmite_ligne30500)
+        or (aidant_enfant_federal is not None and aidant_enfant_federal.enfant_reclame_30400)
+    ):
+        if personne_charge_admissible_federale is None:
+            personne_charge_admissible_federale = estimation.personne_charge_admissible_federale
+        if aidant_enfant_federal is None:
+            aidant_enfant_federal = estimation.aidant_enfant_federal
+        if (personne_charge_admissible_federale != estimation.personne_charge_admissible_federale
+                or aidant_enfant_federal != estimation.aidant_enfant_federal):
+            raise ValueError("Profils 30400/30500 divergents de l'estimation.")
+
     medical_familial = frais_medicaux_famille if frais_medicaux_famille is not None else (estimation.frais_medicaux_famille if estimation else FraisMedicauxFamilleFederaux2025())
     if estimation is not None and medical_familial != estimation.frais_medicaux_famille:
         raise ValueError("Profil médical familial divergent de l'estimation.")
@@ -4049,6 +4100,7 @@ def sauvegarder_dossier_fiscal(
     verifier_combinaison_medicale_famille(medical_familial,
         _frais_medicaux_depuis_dict(contenu["frais_medicaux"]), act.present and not act.famille.activer)
     _verifier_prestations_familiales_stockees(contenu, dossier, medical_familial)
+    _verifier_enfant_5v_stocke(contenu)
     temporaire = chemin.with_suffix(chemin.suffix + ".tmp")
     try:
         temporaire.write_text(json.dumps(contenu, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -4399,6 +4451,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
     act = _allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs"))
     verifier_combinaison_medicale_famille(medical_familial, frais_medicaux, act.present and not act.famille.activer)
     _verifier_prestations_familiales_stockees(contenu, dossier, medical_familial)
+    _verifier_enfant_5v_stocke(contenu)
     handicap_transfere = transferts_handicap_depuis_dict(contenu.get("transferts_handicap"))
     calculer_transferts_handicap_2025(handicap_transfere,
         beneficiaire=dossier.client, annee=dossier.annee_fiscale,
@@ -4494,3 +4547,10 @@ def lister_dossiers_fiscaux(dossier: Path | str = DOSSIERS_FISCAUX_DIR):
         except ValueError:
             continue
     return tuple(sorted(resultats, key=lambda x: (x.sauvegarde_le, x.chemin.name), reverse=True))
+
+
+def _verifier_enfant_5v_stocke(contenu):
+    personne = _personne_charge_admissible_federale_depuis_dict(contenu.get("personne_charge_admissible_federale"))
+    aidant = _aidant_enfant_federal_depuis_dict(contenu.get("aidant_enfant_federal"))
+    if personne.enfant_infirmite_ligne30500 or aidant.enfant_reclame_30400:
+        verifier_combinaison_30400_30500_2025(personne, aidant)

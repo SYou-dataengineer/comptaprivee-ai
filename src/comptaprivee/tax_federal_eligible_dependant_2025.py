@@ -1,6 +1,10 @@
 """Montant fédéral pour personne à charge admissible — ligne 30400 — 2025.
 
-Première version volontairement limitée à un profil simple et vérifié :
+Extension 5V : combinaison explicite 30400/30500 du même enfant mineur
+avec infirmité, parent sans conjoint, référence concordante et preuve médicale.
+Le supplément de 2687 $ est porté uniquement à 30500.
+
+Profil historique conservé :
 - contribuable résident du Canada toute l'année 2025;
 - aucun époux ou conjoint de fait pendant toute l'année 2025;
 - une seule personne à charge réclamée;
@@ -26,7 +30,7 @@ au-delà de la première tranche fédérale.
 Source fiscale : ARC, ligne 30400 et annexe 5, année d'imposition 2025.
 """
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, fields
 from decimal import Decimal
 
 from .tax_federal_2025 import ImpotFederalPreliminaire2025
@@ -77,6 +81,8 @@ class MontantPersonneChargeAdmissibleFederal2025:
 
     valide_par_comptable: bool = False
     source_personne_charge: str = ""
+    enfant_infirmite_ligne30500: bool = False
+    reference_enfant: str = ""
 
 
 def aucun_montant_personne_charge_admissible_federal_2025(
@@ -87,6 +93,25 @@ def aucun_montant_personne_charge_admissible_federal_2025(
 def valider_montant_personne_charge_admissible_federal_2025(
     profil: MontantPersonneChargeAdmissibleFederal2025,
 ) -> MontantPersonneChargeAdmissibleFederal2025:
+    if type(profil.enfant_infirmite_ligne30500) is not bool or not isinstance(profil.reference_enfant, str):
+        raise ValueError("Profil combiné 30400/30500 invalide.")
+    if profil.enfant_infirmite_ligne30500:
+        for champ in fields(profil):
+            v = getattr(profil, champ.name)
+            if champ.type is bool and type(v) is not bool:
+                raise ValueError("Confirmation 30400/30500 non booléenne : " + champ.name)
+            if champ.type is str and not isinstance(v, str):
+                raise ValueError("Texte 30400/30500 invalide : " + champ.name)
+            if champ.type is Decimal:
+                from .tax_federal_top_up_2025 import montant_decimal_2025
+                if montant_decimal_2025(v, champ.name) != v:
+                    raise ValueError("Montant 30400/30500 à exprimer en cents.")
+        if not profil.reclamer_montant or not profil.reference_enfant.strip():
+            raise ValueError("Profil combiné 30400/30500 : réclamation et référence enfant obligatoires.")
+        if profil.personne_charge_18_ans_ou_plus or not profil.enfant_moins_18_fin_2025:
+            raise ValueError("Profil combiné 30400/30500 réservé à un enfant mineur.")
+    elif profil.reference_enfant:
+        raise ValueError("Référence enfant 30400 sans activation du profil combiné.")
     if profil.revenu_net_contribuable_ligne_23600 < ZERO:
         raise ValueError(
             "Le revenu net du contribuable à la ligne 23600 "
@@ -215,22 +240,30 @@ def valider_montant_personne_charge_admissible_federal_2025(
                 "L'enfant doit avoir moins de 18 ans à la fin de 2025 "
                 "dans ce profil simple."
             )
-        if not profil.aucune_infirmite_enfant:
-            raise ValueError(
-                "L'enfant avec déficience doit être traité séparément "
-                "avec les règles du montant canadien pour aidant naturel."
-            )
-        if (
-            profil.personne_charge_avec_infirmite
-            or profil.dependance_due_uniquement_a_infirmite
-            or profil.dependance_periode_considerable
-            or profil.aidant_naturel_base_2687_inclus
-            or profil.preuve_medicale_ou_t2201_confirmee
-        ):
-            raise ValueError(
-                "Les indicateurs d'aidant naturel pour une personne "
-                "de 18 ans ou plus ne peuvent pas être activés ici."
-            )
+        if profil.enfant_infirmite_ligne30500:
+            if (profil.aucune_infirmite_enfant or not profil.personne_charge_avec_infirmite
+                    or not profil.preuve_medicale_ou_t2201_confirmee):
+                raise ValueError("Infirmité et preuve médicale confirmées requises pour 30400/30500.")
+            if (profil.aidant_naturel_base_2687_inclus or profil.dependance_due_uniquement_a_infirmite
+                    or profil.dependance_periode_considerable):
+                raise ValueError("Le supplément enfant de 2687 relève de 30500, pas de 30400.")
+        else:
+            if not profil.aucune_infirmite_enfant:
+                raise ValueError(
+                    "L'enfant avec déficience doit être traité séparément "
+                    "avec les règles du montant canadien pour aidant naturel."
+                )
+            if (
+                profil.personne_charge_avec_infirmite
+                or profil.dependance_due_uniquement_a_infirmite
+                or profil.dependance_periode_considerable
+                or profil.aidant_naturel_base_2687_inclus
+                or profil.preuve_medicale_ou_t2201_confirmee
+            ):
+                raise ValueError(
+                    "Les indicateurs d'aidant naturel pour une personne "
+                    "de 18 ans ou plus ne peuvent pas être activés ici."
+                )
 
     if not profil.source_personne_charge.strip():
         raise ValueError(

@@ -3308,3 +3308,47 @@ Trace/PDF : attribution à chaque parent et admissibilité après exception.
 Validation ciblée, GUI et intégration : **268 passed, 5 warnings**.
 Suite complète : **5436 passed, 8 warnings** (180,62 s), avec `--capture=sys`.
 PDF de l'attribution étudiante vérifié visuellement; aucun artefact de test livré.
+
+
+### Bloc 5V — combinaison 30400 / 30500, même enfant mineur avec infirmité
+
+Sources 2025 : [ARC, ligne 30500](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-30499-30500-canada-caregiver-infirm-children-under-18-years.html),
+[RC4064](https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/rc4064/disability-related-information.html),
+[ARC, ajustements courants des lignes 30400/30500](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/review-your-tax-return-cra/common-adjustments.html).
+
+Règle officielle : pour son enfant mineur avec infirmité, le parent réclamant
+30400 peut réclamer le montant aidant de 2687 $ à 30500, sous les conditions
+de lien, dépendance, aide accrue et preuve médicale. Ces 2687 $ ne sont pas
+ajoutés une seconde fois à la base de 30400.
+
+Périmètre 5V : un même enfant biologique/adopté, un parent sans conjoint toute
+l'année, sans garde partagée ni pension alimentaire; conditions historiques
+de résidence et de soutien maintenues. Le nouveau mode est explicite dans
+les deux profils; leur référence locale d'enfant (sans NAS) doit concorder.
+Le comptable confirme l'identité réelle, les pièces et l'unicité du réclamant.
+Le moteur ne détermine pas automatiquement une admissibilité médicale.
+
+30400 = max(montant personnel applicable au parent - revenu net enfant, 0).
+30500 = 2687 $. Exemple au revenu du parent de 51515 $ et de l'enfant de
+4000 $ : 30400 = 12129 $, 30500 = 2687 $. Un revenu enfant élevé peut ramener
+30400 à zéro sans réduire le montant fixe 30500 dans ce profil admissible.
+Les deux bases alimentent 33500/33800 puis 34990/35000 selon l'ordre T1;
+42900/40500 et l'abattement suivent le calcul existant, sans crédit ajouté
+deux fois. Aucun changement de revenu ni de calcul Québec.
+
+L'ancien profil 30500 avec deux parents demeure inchangé et ne se combine
+pas implicitement avec 30400. Les situations d'autres enfants, de garde
+partagée, de pensions et d'attribution à un autre réclamant restent à étendre;
+ces limites logicielles ne constituent pas des interdictions fiscales.
+
+Persistance : anciens champs absents = mode désactivé; nouvelles données
+brutes conservées, types/clés contrôlés, références vérifiées à la sauvegarde
+et au rechargement. Le profil combiné est inféré de l'estimation si omis
+lors de la sauvegarde; toute divergence explicite est refusée.
+GUI : référence commune, preuve médicale, confirmations révoquées après
+modification. Trace/PDF identifient la combinaison et n'affirment plus
+l'absence d'infirmité ou une résidence avec deux parents pour ce mode.
+
+Validation ciblée, GUI et intégration : **128 passed, 5 warnings**.
+Suite complète : **5465 passed, 8 warnings** (172,18 s), avec `--capture=sys`.
+Le PDF combiné a été vérifié visuellement.
