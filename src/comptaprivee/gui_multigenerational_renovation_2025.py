@@ -77,7 +77,8 @@ def _champs(cadre, objet, exclus=(), confirmations=()):
         v = tk.BooleanVar(value=valeur) if champ.type is bool else tk.StringVar(value=str(valeur))
         variables[nom] = v
         if champ.type is bool:
-            w = ttk.Checkbutton(cadre, name=nom + "_5q", text=LIBELLES[nom], variable=v)
+            w = tk.Checkbutton(cadre, name=nom + "_5q", text=LIBELLES[nom], variable=v,
+                               wraplength=900, justify="left", anchor="w")
             w.grid(row=ligne, column=0, columnspan=2, sticky="w", pady=3)
         else:
             ttk.Label(cadre, text=LIBELLES[nom], wraplength=420).grid(row=ligne, column=0, sticky="w")
