@@ -2239,3 +2239,19 @@ Validation ciblée : **356 passed, 5 warnings**, incluant les blocs 5C/5D,
 stockage, estimation, PDF et GUI. Aucun test existant modifié.
 
 Suite complète 5E : **3821 passed, 8 warnings** avec `--capture=sys`.
+
+
+### Correctif de validation avant les reports de scolarité
+
+Défaut reproduit après 5E : les validateurs médicaux et scolarité acceptaient
+`Infinity`; `NaN` déclenchait `InvalidOperation`. Les montants des deux
+juridictions doivent désormais être des `Decimal` finis avant les comparaisons.
+Les erreurs sont des `ValueError` explicites. Aucune formule, admissibilité,
+limite fiscale ni règle d'arrondi n'est modifiée; les montants finis valides
+et les anciens JSON restent compatibles. Ce contrôle technique respecte le
+contrat Decimal existant, sans introduire de nouvelle règle fiscale.
+
+Régression avant correctif : **32 failed, 2 passed**. Après correctif et
+non-régression ciblée : **299 passed, 5 warnings**. Aucun test existant modifié.
+
+Suite complète du correctif : **3855 passed, 8 warnings** (`--capture=sys`).

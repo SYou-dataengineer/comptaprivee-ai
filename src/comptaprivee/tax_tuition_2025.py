@@ -72,6 +72,10 @@ def aucun_frais_scolarite_2025() -> FraisScolarite2025:
 def valider_frais_scolarite_2025(
     frais: FraisScolarite2025,
 ) -> FraisScolarite2025:
+    for nom in ("montant_admissible_federal", "montant_admissible_quebec"):
+        montant = getattr(frais, nom)
+        if not isinstance(montant, Decimal) or not montant.is_finite():
+            raise ValueError(f"{nom} doit être un Decimal fini.")
     valider_formation_2025(frais.formation)
     ccf = credit_formation_2025(frais.formation)
     if frais.formation.frais_canadiens and frais.formation.frais_canadiens > frais.montant_admissible_federal:

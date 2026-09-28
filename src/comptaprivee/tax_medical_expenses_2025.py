@@ -41,6 +41,10 @@ def aucun_frais_medical_2025() -> FraisMedicaux2025:
 
 
 def valider_frais_medicaux_2025(frais: FraisMedicaux2025) -> FraisMedicaux2025:
+    for nom in ("montant_admissible_federal", "montant_admissible_quebec"):
+        montant = getattr(frais, nom)
+        if not isinstance(montant, Decimal) or not montant.is_finite():
+            raise ValueError(f"{nom} doit être un Decimal fini.")
     valider_supplement_medical_2025(frais.supplement)
     fed = frais.montant_admissible_federal
     qc = frais.montant_admissible_quebec
