@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from .tax_family_medical_2025 import (FraisMedicauxFamilleFederaux2025, calculer_medical_familial_2025, medical_familial_vers_dict, medical_familial_depuis_dict, verifier_combinaison_medicale_famille)
+from .tax_family_workers_benefit_2025 import famille_act_vers_dict, famille_act_depuis_dict, verifier_concordance_act_familial_2025
 from .tax_disability_transfer_2025 import (TransfertsHandicap2025, calculer_transferts_handicap_2025, transferts_handicap_vers_dict, transferts_handicap_depuis_dict)
 
 from .tax_multigenerational_renovation_2025 import (RenovationsMultigenerationnelles2025, calculer_multigenerationnel_2025, multigenerationnel_vers_dict, multigenerationnel_depuis_dict)
@@ -1191,9 +1192,10 @@ def _dons_bienfaisance_depuis_dict(
     return valider_dons_bienfaisance_2025(dons)
 
 
-def _verifier_famille_supplement_stocke(contenu, dossier, medical):
+def _verifier_prestations_familiales_stockees(contenu, dossier, medical):
     p = _frais_medicaux_depuis_dict(contenu.get("frais_medicaux")).supplement
-    if not p.reclamer or not p.mode_familial:
+    act = _allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs"))
+    if not (p.reclamer and p.mode_familial) and not act.famille.activer:
         return
     conjoint = _transfert_conjoint_depuis_dict(contenu.get("transfert_conjoint"), dossier.client)
     resultat = calculer_transfert_conjoint_2025(conjoint, beneficiaire=dossier.client) if conjoint.activer else None
@@ -1203,7 +1205,11 @@ def _verifier_famille_supplement_stocke(contenu, dossier, medical):
         conjoint_30300=_montant_conjoint_federal_depuis_dict(contenu.get("montant_conjoint_federal")),
         personne_30400=_personne_charge_admissible_federale_depuis_dict(contenu.get("personne_charge_admissible_federale")),
         conjoint_32600=resultat, noms_conjoints=(fonds.conjoint.nom, politiques.nom_conjoint),
-        act_individuel=_allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")).present)
+        act_individuel=act.present and not act.famille.activer)
+    verifier_concordance_act_familial_2025(act, demandeur=dossier.client, medical=medical, supplement=p,
+        conjoint_30300=_montant_conjoint_federal_depuis_dict(contenu.get("montant_conjoint_federal")),
+        personne_30400=_personne_charge_admissible_federale_depuis_dict(contenu.get("personne_charge_admissible_federale")),
+        conjoint_32600=resultat, noms_conjoints=(fonds.conjoint.nom, politiques.nom_conjoint))
 
 
 def _supplement_medical_depuis_dict(valeur):
@@ -3312,6 +3318,7 @@ def _allocation_travailleurs_vers_dict(profil):
     valeurs = asdict(valider_allocation_travailleurs_2025(profil))
     for nom in ("avances_rc210_case10", "avances_rc210_case11"):
         valeurs[nom] = format(valeurs[nom], ".2f")
+    valeurs["famille"] = famille_act_vers_dict(profil.famille)
     return valeurs
 
 
@@ -3321,6 +3328,7 @@ def _allocation_travailleurs_depuis_dict(valeur):
     if not isinstance(valeur, dict) or set(valeur) - set(AllocationTravailleurs2025.__dataclass_fields__):
         raise ValueError("Profil ACT ou clés inconnues invalides.")
     valeurs = dict(valeur)
+    valeurs["famille"] = famille_act_depuis_dict(valeurs.get("famille"))
     for nom in ("avances_rc210_case10", "avances_rc210_case11"):
         valeurs[nom] = _decimal_depuis_json(valeurs.get(nom, "0"), "allocation_travailleurs." + nom)
     return valider_allocation_travailleurs_2025(AllocationTravailleurs2025(**valeurs))
@@ -4039,8 +4047,8 @@ def sauvegarder_dossier_fiscal(
         reclame_30450=contenu["aidant_autre_personne_charge_federal"]["reclamer_montant"],
         deduction_22000=pension_alimentaire_effective.deduction_federale_22000)
     verifier_combinaison_medicale_famille(medical_familial,
-        _frais_medicaux_depuis_dict(contenu["frais_medicaux"]), act.present)
-    _verifier_famille_supplement_stocke(contenu, dossier, medical_familial)
+        _frais_medicaux_depuis_dict(contenu["frais_medicaux"]), act.present and not act.famille.activer)
+    _verifier_prestations_familiales_stockees(contenu, dossier, medical_familial)
     temporaire = chemin.with_suffix(chemin.suffix + ".tmp")
     try:
         temporaire.write_text(json.dumps(contenu, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -4388,9 +4396,9 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
     verifier_confirmation_reports_pertes_2025(pertes_profil, dossier, capital_profil, frais_profil)
     medical_familial = medical_familial_depuis_dict(contenu.get("frais_medicaux_famille"))
     calculer_medical_familial_2025(medical_familial, demandeur=dossier.client, revenu_net=Decimal(0), annee=dossier.annee_fiscale)
-    verifier_combinaison_medicale_famille(medical_familial, frais_medicaux,
-        _allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")).present)
-    _verifier_famille_supplement_stocke(contenu, dossier, medical_familial)
+    act = _allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs"))
+    verifier_combinaison_medicale_famille(medical_familial, frais_medicaux, act.present and not act.famille.activer)
+    _verifier_prestations_familiales_stockees(contenu, dossier, medical_familial)
     handicap_transfere = transferts_handicap_depuis_dict(contenu.get("transferts_handicap"))
     calculer_transferts_handicap_2025(handicap_transfere,
         beneficiaire=dossier.client, annee=dossier.annee_fiscale,

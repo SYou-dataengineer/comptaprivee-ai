@@ -58,6 +58,13 @@ class ResultatTransfertConjoint2025:
     total_ligne_11: Decimal = ZERO
     reduction_36100: Decimal = ZERO
     ligne_32600: Decimal = ZERO
+    revenu_beneficiaire_declare_45200: Decimal | None = None
+    revenu_beneficiaire_declare_act: Decimal | None = None
+    travail_beneficiaire_declare_act: Decimal | None = None
+    act_base_beneficiaire_declare: bool | None = None
+    act_base_conjoint_reclamee: bool = False
+    revenu_travail_conjoint: Decimal = ZERO
+    ciph_conjoint_act_confirme: bool = False
 
 
 def _montant(valeur, nom):
@@ -172,8 +179,13 @@ def calculer_transfert_conjoint_2025(p, *, beneficiaire):
         raise ValueError("Le bénéficiaire du transfert a changé; confirmez de nouveau l'autorisation.")
     if normaliser(conjoint.dossier.client) == normaliser(beneficiaire):
         raise ValueError("Le conjoint et le bénéficiaire doivent être deux personnes distinctes.")
-    if conjoint.allocation_travailleurs.present or conjoint.frais_medicaux.supplement.reclamer:
+    act, supp = conjoint.allocation_travailleurs, conjoint.frais_medicaux.supplement
+    if (act.present and not act.famille.activer) or (supp.reclamer and not supp.mode_familial):
         raise ValueError("Le dossier du conjoint contient un crédit réservé au profil individuel sans conjoint.")
+    if supp.reclamer and (supp.situation_conjugale != "conjoint" or normaliser(supp.nom_conjoint) != normaliser(beneficiaire)):
+        raise ValueError("Le conjoint déclaré pour 45200 doit être le bénéficiaire de 32600.")
+    if act.famille.activer and (normaliser(act.famille.conjoint_nom) != normaliser(beneficiaire) or not act.famille.conjoint_resident):
+        raise ValueError("Le conjoint ACT déclaré doit être le bénéficiaire 32600, résident canadien toute l'année.")
     transfert = conjoint.frais_scolarite.reports_federaux.transfert_sortant
     if transfert.present and (transfert.relation != "conjoint" or normaliser(transfert.beneficiaire) != normaliser(beneficiaire)):
         raise ValueError("La désignation de scolarité doit viser exclusivement ce conjoint bénéficiaire.")
@@ -184,6 +196,13 @@ def calculer_transfert_conjoint_2025(p, *, beneficiaire):
         scolarite_designee=transfert.montant_designe,
     )
     return replace(r, nom_conjoint=conjoint.dossier.client, revenu_net_conjoint=conjoint.revenu.revenu_net_federal,
+        revenu_beneficiaire_declare_45200=(max(supp.revenu_net_conjoint, ZERO) if supp.reclamer else None),
+        revenu_beneficiaire_declare_act=(max(act.famille.conjoint_revenu_net, ZERO) if act.famille.activer else None),
+        travail_beneficiaire_declare_act=(act.famille.conjoint_revenu_travail if act.famille.activer else None),
+        act_base_beneficiaire_declare=(act.famille.conjoint_reclame_base if act.famille.activer else None),
+        act_base_conjoint_reclamee=act.reclamer_base,
+        revenu_travail_conjoint=conjoint.base.revenu_emploi_federal,
+        ciph_conjoint_act_confirme=act.present and act.admissibilite_ciph_confirmee,
         revenu_beneficiaire_declare_30300=(conjoint.montant_conjoint_federal.revenu_net_conjoint_2025
             if conjoint.montant_conjoint_federal.reclamer_montant else None))
 

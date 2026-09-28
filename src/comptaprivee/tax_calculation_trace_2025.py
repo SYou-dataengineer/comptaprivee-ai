@@ -23,6 +23,7 @@ def construire_trace_fractionnement_2025(r):
         'Solde de chaque conjoint = impôts fédéral + Québec + FSS - retenues après répartition.',
     )
 
+from .tax_family_workers_benefit_2025 import trace_act_familial_2025
 from .tax_age_retirement_2025 import (
     credit_quebec_age_retraite_2025,
     montant_age_2025,
@@ -1921,7 +1922,12 @@ def construire_trace_calcul_fiscal_2025(
             lignes += (_ligne(len(lignes) + 1, "SUPPLÉMENT MÉDICAL — BLOC 5D", libelle,
                 frais_medicaux.supplement.source, formule, montant),)
 
-    if estimation.allocation_travailleurs.present:
+    if estimation.allocation_travailleurs.famille.activer:
+        for libelle, montant, formule in trace_act_familial_2025(estimation.resultat_allocation_travailleurs.famille):
+            lignes += (_ligne(len(lignes) + 1, "ACT FAMILIALE — BLOC 5U", libelle,
+                estimation.allocation_travailleurs.famille.source, formule, montant),)
+
+    if estimation.allocation_travailleurs.present and not estimation.allocation_travailleurs.famille.activer:
         r = estimation.resultat_allocation_travailleurs
         for libelle, montant, formule in (
             ("Revenu travail ACT", r.revenu_travail, "10100 brut, profil salarié sans 10400 ni autres revenus de travail"),

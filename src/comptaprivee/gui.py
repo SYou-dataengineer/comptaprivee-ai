@@ -32,6 +32,7 @@ from .tax_tuition_transfer_2025 import (
 )
 from .tax_tuition_carryforward_2025 import ReportsScolariteFederaux2025, CONFIRMATIONS_REPORTS_SCOLARITE
 from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025, CONFIRMATIONS_ACT
+from .tax_family_workers_benefit_2025 import FamilleAllocation2025, CONFIRMATIONS_FAMILLE_ACT
 from .tax_medical_supplement_2025 import (SupplementMedical2025, CONFIRMATIONS_SUPPLEMENT, SITUATIONS_SUPPLEMENT, LIBELLE_FAMILLE_SUPPLEMENT)
 from .tax_training_credit_2025 import Formation2025, CONFIRMATIONS_FORMATION
 from .tax_student_loan_interest_2025 import (
@@ -4802,10 +4803,10 @@ class ApplicationComptaPrivee(tk.Tk):
             cadre.columnconfigure(1, weight=1)
             ttk.Label(cadre, text="ACT 2025 — annexe 6 Québec", font=("Segoe UI", 16, "bold")).grid(
                 row=0, column=0, columnspan=2, sticky="w")
-            ttk.Label(cadre, text=("Profil individuel salarié sans conjoint ni personne à charge. "
+            ttk.Label(cadre, text=("Profil salarié individuel ou familial. "
                 "Lignes 45300 et 41500 calculées; saisir seulement les avances des RC210. "
-                "Le supplément exige une admissibilité CIPH confirmée. Les autres profils "
-                "familiaux, revenus de travail et traitements spéciaux restent hors de ce formulaire."),
+                "Le supplément exige une admissibilité CIPH confirmée. Activez la section familiale "
+                "pour un conjoint ou des personnes à charge. Autres revenus de travail et traitements spéciaux hors profil."),
                 wraplength=810, justify="left").grid(row=1, column=0, columnspan=2, sticky="ew", pady=8)
             profil = allocation_travailleurs_courante
             variables = {}
@@ -4836,17 +4837,61 @@ class ApplicationComptaPrivee(tk.Tk):
                 ttk.Checkbutton(cadre, name=nom + "_5e", text=libelle, variable=variable).grid(
                     row=row, column=0, columnspan=2, sticky="w", pady=3)
 
+            famille_vars = {}
+            labels_famille = {
+                "activer": "Activer le profil familial",
+                "conjoint_nom": "Conjoint visé au 31 décembre — nom (vide si aucun)",
+                "conjoint_resident": "Conjoint résident du Canada toute l'année",
+                "conjoint_etudiant": "Conjoint étudiant à temps plein pendant plus de 13 semaines",
+                "conjoint_etudiant_sans_dependant_confirme": "Conjoint étudiant : aucune personne à charge admissible à l'ACT pour lui, vérifié sur pièces",
+                "conjoint_detenu": "Conjoint détenu pendant au moins 90 jours",
+                "conjoint_exempt": "Conjoint exempté en qualité de diplomate, famille ou employé visé",
+                "conjoint_ciph": "Conjoint admissible au CIPH pour lui-même en 2025",
+                "conjoint_revenu_travail": "Revenu de travail 10100 du conjoint",
+                "conjoint_revenu_net": "Revenu net 23600 du conjoint avant plancher zéro",
+                "conjoint_avances_base": "RC210 du conjoint — total case 10",
+                "conjoint_reclame_base": "Le conjoint réclame l'ACT de base",
+                "enfant_nom": "Enfant admissible attribué à cette demande — nom (vide si aucun)",
+                "enfant_naissance": "Naissance de cet enfant — AAAA-MM-JJ",
+                "enfant_admissible_confirme": "Enfant de vous ou du conjoint, vivant avec vous au 31 décembre, non admissible lui-même à l'ACT; lien vérifié",
+                "avances_base_attribuees_demandeur": "Si personne ne réclame la base, attribuer les cases 10 à ce demandeur",
+                "source": "Source des situations, revenus et choix familiaux",
+                **CONFIRMATIONS_FAMILLE_ACT,
+            }
+            ligne_famille = 8 + len(libelles)
+            ttk.Label(cadre, text="ACT familiale — annexe 6 (5U)", font=("Segoe UI", 12, "bold")).grid(
+                row=ligne_famille, column=0, columnspan=2, sticky="w", pady=12)
+            for i, (nom, libelle) in enumerate(labels_famille.items(), ligne_famille+1):
+                valeur = getattr(profil.famille, nom)
+                if type(valeur) is bool:
+                    variable = tk.BooleanVar(value=valeur)
+                    tk.Checkbutton(cadre, name=nom+"_5u", text=libelle, variable=variable,
+                        wraplength=810, anchor="w", justify="left").grid(row=i, column=0, columnspan=2, sticky="w", pady=3)
+                else:
+                    variable = tk.StringVar(value=str(valeur))
+                    ttk.Label(cadre, text=libelle, wraplength=450).grid(row=i, column=0, sticky="w", pady=3)
+                    ttk.Entry(cadre, name=nom+"_5u", textvariable=variable).grid(row=i, column=1, sticky="ew")
+                famille_vars[nom] = variable
+
             def revoquer(*_):
                 for variable in confirmations.values():
                     variable.set(False)
+                for nom in (*CONFIRMATIONS_FAMILLE_ACT, "enfant_admissible_confirme", "conjoint_etudiant_sans_dependant_confirme"):
+                    famille_vars[nom].set(False)
             for variable in (*variables.values(), *choix.values()):
                 variable.trace_add("write", revoquer)
+            for nom, variable in famille_vars.items():
+                if nom not in (*CONFIRMATIONS_FAMILLE_ACT, "enfant_admissible_confirme", "conjoint_etudiant_sans_dependant_confirme"):
+                    variable.trace_add("write", revoquer)
 
             def effacer():
                 for variable in variables.values():
                     variable.set("")
                 for variable in choix.values():
                     variable.set(False)
+                for nom, variable in famille_vars.items():
+                    valeur = getattr(FamilleAllocation2025(), nom)
+                    variable.set(valeur if type(valeur) is bool else str(valeur))
                 revoquer()
 
             def appliquer():
@@ -4858,7 +4903,11 @@ class ApplicationComptaPrivee(tk.Tk):
                     except InvalidOperation as erreur:
                         raise ValueError("Montant RC210 invalide.") from erreur
                 try:
+                    valeurs_famille = {n: v.get() for n, v in famille_vars.items()}
+                    for nom in ("conjoint_revenu_travail", "conjoint_revenu_net", "conjoint_avances_base"):
+                        valeurs_famille[nom] = Decimal(valeurs_famille[nom].strip().replace(" ", "").replace(",", ".") or "0")
                     nouveau = valider_allocation_travailleurs_2025(AllocationTravailleurs2025(
+                        famille=FamilleAllocation2025(**valeurs_famille),
                         age_fin_2025=int(variables["age_fin_2025"].get().strip() or "0"),
                         avances_rc210_case10=montant("avances_rc210_case10"),
                         avances_rc210_case11=montant("avances_rc210_case11"),
@@ -4866,8 +4915,8 @@ class ApplicationComptaPrivee(tk.Tk):
                         **{nom: v.get() for nom, v in choix.items()},
                         **{nom: v.get() for nom, v in confirmations.items()},
                     ))
-                except ValueError as erreur:
-                    messagebox.showerror("ACT invalide", str(erreur), parent=dialogue)
+                except (ValueError, InvalidOperation) as erreur:
+                    messagebox.showerror("ACT invalide", "Montant familial invalide." if isinstance(erreur, InvalidOperation) else str(erreur), parent=dialogue)
                     return
                 allocation_travailleurs_courante = nouveau
                 derniere_estimation = None

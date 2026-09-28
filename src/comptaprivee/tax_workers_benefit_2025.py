@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 from .tax_federal_top_up_2025 import montant_decimal_2025
 from .tax_rules_2025 import arrondir_cent
+from .tax_family_workers_benefit_2025 import (FamilleAllocation2025, ResultatActFamilial2025,
+    valider_famille_act_2025, calculer_act_familial_2025)
 
 ZERO = Decimal("0")
 
@@ -27,11 +29,13 @@ class AllocationTravailleurs2025:
     aucun_deces_faillite: bool = False
     rc210_exhaustifs_ou_absence_confirmee: bool = False
     admissibilite_ciph_confirmee: bool = False
+    famille: FamilleAllocation2025 = FamilleAllocation2025()
 
     @property
     def present(self) -> bool:
         return bool(self.reclamer_base or self.reclamer_supplement
-                    or self.avances_rc210_case10 or self.avances_rc210_case11)
+                    or self.avances_rc210_case10 or self.avances_rc210_case11
+                    or self.famille != FamilleAllocation2025())
 
 
 CONFIRMATIONS_ACT = {
@@ -52,6 +56,7 @@ CONFIRMATIONS_ACT = {
 def valider_allocation_travailleurs_2025(p: AllocationTravailleurs2025) -> AllocationTravailleurs2025:
     if not isinstance(p, AllocationTravailleurs2025):
         raise ValueError("Profil ACT invalide.")
+    famille = valider_famille_act_2025(p.famille)
     for nom in ("reclamer_base", "reclamer_supplement", "admissibilite_ciph_confirmee", *CONFIRMATIONS_ACT):
         if type(getattr(p, nom)) is not bool:
             raise ValueError("Confirmation ACT non booléenne : " + nom)
@@ -64,15 +69,23 @@ def valider_allocation_travailleurs_2025(p: AllocationTravailleurs2025) -> Alloc
     if not isinstance(p.source, str):
         raise ValueError("Source ACT invalide.")
     if p.present:
-        if p.age_fin_2025 < 19:
+        if p.age_fin_2025 < 19 and not (famille.activer and (famille.conjoint_nom or famille.enfant_nom)):
             raise ValueError("Le profil ACT individuel exige au moins 19 ans fin 2025.")
         if not p.source.strip():
             raise ValueError("Source ACT obligatoire.")
         for nom, libelle in CONFIRMATIONS_ACT.items():
+            if famille.activer and nom == "sans_conjoint_ni_personne_charge":
+                if getattr(p, nom):
+                    raise ValueError("ACT familial incompatible avec la confirmation individuelle sans famille.")
+                continue
+            if famille.activer and famille.enfant_nom and nom == "pas_etudiant_temps_plein_plus_13_semaines":
+                continue
             if not getattr(p, nom):
                 raise ValueError("Confirmation obligatoire : " + libelle)
         if p.reclamer_supplement and not p.admissibilite_ciph_confirmee:
             raise ValueError("Admissibilité au CIPH obligatoire pour le supplément ACT.")
+        if famille.conjoint_reclame_base and p.reclamer_base:
+            raise ValueError("Deux demandes d'ACT de base dans le couple.")
     return p
 
 
@@ -88,6 +101,7 @@ class ResultatAllocationTravailleurs2025:
     supplement: Decimal = ZERO
     ligne_45300: Decimal = ZERO
     ligne_41500: Decimal = ZERO
+    famille: ResultatActFamilial2025 = ResultatActFamilial2025()
 
 
 def calculer_allocation_travailleurs_2025(p: AllocationTravailleurs2025, *,
@@ -95,6 +109,11 @@ def calculer_allocation_travailleurs_2025(p: AllocationTravailleurs2025, *,
     valider_allocation_travailleurs_2025(p)
     if not p.present:
         return ResultatAllocationTravailleurs2025()
+    if p.famille.activer:
+        r = calculer_act_familial_2025(p, revenu_travail=revenu_travail, revenu_net=revenu_net)
+        return ResultatAllocationTravailleurs2025(revenu_travail, r.net_familial,
+            r.base_avant, r.reduction_base, r.base, r.supplement_avant,
+            r.reduction_supplement, r.supplement, r.ligne_45300, r.ligne_41500, r)
     travail = montant_decimal_2025(revenu_travail, "Revenu travail ACT")
     net = montant_decimal_2025(revenu_net, "Revenu net ACT")
     base_avant = min(Decimal("3812.06"), arrondir_cent(max(travail - Decimal(2400), ZERO) * Decimal(".373"))) if p.reclamer_base else ZERO
@@ -112,6 +131,24 @@ def calculer_allocation_travailleurs_2025(p: AllocationTravailleurs2025, *,
 def lignes_allocation_travailleurs_2025(p: AllocationTravailleurs2025, r: ResultatAllocationTravailleurs2025) -> list[str]:
     if not p.present:
         return []
+    if p.famille.activer:
+        f, c = p.famille, r.famille
+        return ["", "ACT FAMILIALE — ANNEXE 6 QUÉBEC 2025 / BLOC 5U",
+            f"Sources validées : {p.source}; famille : {f.source}",
+            f"Conjoint : {f.conjoint_nom or 'aucun'}; admissible ACT : {'oui' if f.conjoint_admissible else 'non'}; CIPH : {'oui' if f.conjoint_ciph else 'non'}",
+            f"Enfant admissible attribué : {f.enfant_nom or 'aucun'}; naissance : {f.enfant_naissance or 'sans objet'}",
+            f"Travail du demandeur : {r.revenu_travail:.2f} $; conjoint déclaré : {f.conjoint_revenu_travail:.2f} $",
+            f"Travail familial retenu : {c.travail_familial:.2f} $; net conjoint déclaré : {f.conjoint_revenu_net:.2f} $",
+            f"Revenus nets retenus : {c.net_avant_exemption:.2f} $; exemption second revenu : {c.exemption_second_revenu:.2f} $ (maximum 16386.00 $)",
+            f"Revenu familial ajusté : {c.net_familial:.2f} $",
+            f"Base avant réduction : min({c.plafond_base:.2f}, max(travail familial - {c.seuil_travail:.2f}, 0) x {c.taux_base * 100} %) = {c.base_avant:.2f} $ si demandée",
+            f"Réduction base : 20 % au-delà de {c.seuil_reduction_base:.2f} = {c.reduction_base:.2f} $ si demandée; base nette : {c.base:.2f} $",
+            f"Supplément avant réduction : {c.taux_supplement * 100} % du travail personnel au-delà de 1200, maximum 851.31 = {c.supplement_avant:.2f} $ si demandé",
+            f"Réduction supplément : {c.taux_reduction_supplement * 100} % au-delà de {c.seuil_reduction_supplement:.2f} = {c.reduction_supplement:.2f} $ si demandé; net : {c.supplement:.2f} $",
+            f"Ligne 45300 : {r.ligne_45300:.2f} $; demande de base du conjoint : {'oui' if f.conjoint_reclame_base else 'non'}",
+            f"RC210 case 10 : demandeur {p.avances_rc210_case10:.2f} $, conjoint {f.conjoint_avances_base:.2f} $; avances de base retenues ici : {c.avances_base_retenues:.2f} $",
+            f"RC210 case 11 du demandeur : {p.avances_rc210_case11:.2f} $; ligne 41500 : {r.ligne_41500:.2f} $",
+            "41500 = min(45300, avances attribuées); 42900, 40500 et abattement inchangés."]
     return ["", "ALLOCATION CANADIENNE POUR LES TRAVAILLEURS — BLOC 5E",
         f"Source validée par le comptable : {p.source}",
         "Annexe 6 Québec 2025, profil individuel salarié; admissibilité confirmée.",

@@ -3172,7 +3172,7 @@ au cent, clés inconnues et valeurs non finies refusées, résultat dérivé non
 persisté, divergence avec l'estimation refusée. Trace et PDF distinguent le
 revenu déclaré, le revenu retenu, la source et le résultat calculé.
 
-Limites logicielles : ACT familial encore à développer; son ancien profil
+Limites logicielles : l'ACT familiale est intégrée en 5U; son ancien profil
 individuel ne peut être associé à ce mode familial. Le profil agrégé de frais
 médicaux reste individuel et ne se cumule pas avec le mode familial; utiliser
 5S. Travail autonome, 10400, assurance-salaire, 21500/23100, ajustements PUGE/
@@ -3183,3 +3183,74 @@ Ces limites ne constituent pas des exclusions fiscales générales.
 
 Validation ciblée : **227 passed, 5 warnings**. Suite complète :
 **5308 passed, 8 warnings** (171,49 s). Rendu PDF familial vérifié visuellement.
+
+### Bloc 5U — ACT familiale Québec, lignes fédérales 45300 et 41500
+
+Sources officielles : [annexe 6 Québec 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s6/5005-s6-25e.pdf),
+[admissibilité ARC 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-45300-canada-workers-benefit-cwb/who-is-eligible.html),
+[attribution des RC210, ligne 41500](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-41500-canada-workers-benefit-cwb-advance-payments.html),
+[LIR 122.7, admissibilité et attribution entre personnes](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-122.7.html)
+et [LIR 122.71, paramètres provinciaux convenus](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-122.71.html).
+
+Le nouveau sous-profil familial de 5E distingue le conjoint présent du
+conjoint admissible à l'ACT. Résidence, études, détention et exemption
+diplomatique sont consignées; les pièces et attributions sont vérifiées par
+le comptable. Un enfant admissible est identifié avec sa naissance, le lien,
+la cohabitation au 31 décembre et l'absence d'admissibilité propre à l'ACT.
+Il doit avoir moins de 19 ans. Un enfant suffit à établir la catégorie;
+son attribution doit respecter 122.7(10), sans désignation automatique par
+le moteur ni double demande entre soutiens. La condition d'âge du demandeur
+admet le parent ou conjoint de moins de 19 ans. L'exception aux études de
+plus de treize semaines est couverte pour le demandeur ayant l'enfant admissible.
+
+Le moteur suit les quatre colonnes de l'annexe 6 :
+
+| Conjoint admissible | Enfant admissible | Seuil travail | Taux base | Maximum | Seuil réduction base | Seuil réduction supplément |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Non | Non | 2400 | 37,3 % | 3812,06 | 14170,05 | 33230,35 |
+| Oui | Non | 3600 | 37,3 % | 5943,38 | 21787,19 | 51504,09 |
+| Non | Oui | 2400 | 20 % | 2044,00 | 14341,56 | 24561,56 |
+| Oui | Oui | 3600 | 23,9 % | 3808,23 | 22007,75 | 41048,90 |
+
+Seuls les revenus du conjoint admissible sont ajoutés. Chaque revenu net
+retenu est borné à zéro. L'exemption du second revenu prend le minimum de
+16386 $, du travail et du net ajusté du **même membre**, celui dont le travail
+est le plus faible; à égalité, colonne du conjoint. La réduction de base est
+de 20 %. Le supplément utilise le travail personnel au-delà de 1200 $, avec
+taux de 20 % si conjoint admissible, sinon 40 %, et maximum 851,31 $. Sa
+réduction est de 10 % si le conjoint admissible est aussi admissible au CIPH,
+sinon 20 %. Les deux composantes sont bornées séparément à zéro.
+
+L'ACT de base n'est réclamée qu'une fois dans le couple. Ses avances regroupent
+les cases 10 des deux conjoints chez le déclarant désigné, même si le conjoint
+n'est pas admissible à l'ACT. Si personne ne réclame la base, le choix du
+déclarant des avances est explicite. La case 11 demeure personnelle. 41500
+est plafonnée à la propre 45300 du demandeur. Les avances augmentent 42000,
+sans modifier 42900/40500 ni l'abattement. 45300 est ajoutée une seule fois
+au rapprochement; aucun changement de revenu ou de crédit non remboursable.
+
+Les garde-fous individuels sont levés seulement pour le sous-profil familial
+validé. Les revenus et identités sont rapprochés de 30300, 32600, des reçus
+politiques, des fonds et du médical 5S/5T. L'exemption ACT n'est jamais appliquée
+au revenu familial de 45200. Les anciens profils individuels sont conservés.
+Les profils du conjoint donneur à 32600 peuvent désormais contenir 45200 ou
+l'ACT familiaux : son bénéficiaire, les revenus nets, le travail et le choix
+du réclamant de la base sont contrôlés réciproquement lors du recalcul.
+
+Le JSON stocke les données brutes du sous-profil, sans exemption ni prestation
+calculée; ancien champ absent : famille vide. Decimal en chaînes au cent,
+types stricts, clés inconnues refusées et divergence avec estimation refusée.
+Contrôles de concordance à la sauvegarde et au rechargement. GUI avec
+révocation des confirmations après modification, trace détaillant les étapes
+de l'annexe 6 et PDF avec sources, revenus, exemption, composantes et avances.
+
+Limites logicielles conservées : revenus de travail autres que 10100,
+ajustements PUGE/REEI, choix de revenus exonérés, décès/faillite et situations
+conjugales spéciales. Le conjoint étudiant est couvert comme non admissible
+seulement si l'absence de personne à charge admissible pour lui est confirmée.
+Le conjoint étudiant avec enfant et les attributions croisées d'enfants
+restent à étendre; aucune exclusion fiscale générale n'est déduite de cette
+limite. La Priorité 5 n'est pas encore clôturée.
+
+Validation ciblée et GUI : **299 passed, 5 warnings**. Suite complète :
+**5416 passed, 8 warnings** (175,59 s). Rendu PDF familial vérifié visuellement.
