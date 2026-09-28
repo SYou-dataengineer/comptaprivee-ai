@@ -2030,6 +2030,15 @@ def construire_trace_calcul_fiscal_2025(
             lignes = _inserer_ligne_avant(lignes, "Impôt fédéral après abattement",
                 _ligne(0, "CONTRIBUTIONS POLITIQUES — BLOC 5N", libelle, p.source, formule, montant))
 
+    if estimation.fournitures_educateur.depenses:
+        p, r = estimation.fournitures_educateur, estimation.resultat_fournitures_educateur
+        for libelle, montant, formule in (
+            ("Fournitures scolaires nettes", r.depenses_admissibles, "Paiements moins aides hors exception imposable non déductible"),
+            ("Fournitures scolaires — 46800", r.ligne_46800, "min(1000, dépenses nettes); zéro si attestation demandée non fournie"),
+            ("Crédit éducateur remboursable — 46900", r.ligne_46900, "46800 × 25 %; ajouté une fois aux paiements, sans plafond d'impôt"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "FOURNITURES SCOLAIRES — BLOC 5P", libelle, p.source, formule, montant),)
+
     if estimation.fonds_travailleurs.acquisitions:
         p, r = estimation.fonds_travailleurs, estimation.resultat_fonds_travailleurs
         for libelle, montant, formule in (
@@ -2092,6 +2101,11 @@ def construire_trace_calcul_fiscal_2025(
         formule = ("Retenues + remboursements cotisations + crédits 45200/45300/45350 - impôt total incluant 41500"
                    if final.remboursement_estime else
                    "Impôt total incluant 41500 - retenues - remboursements cotisations - crédits 45200/45300/45350")
+
+    if final.credit_educateur_ligne_46900:
+        formule = ("Retenues + remboursements cotisations + crédits 45200/45300/45350/46900 - impôt total incluant 41500"
+                   if final.remboursement_estime else
+                   "Impôt total incluant 41500 - retenues - remboursements cotisations - crédits 45200/45300/45350/46900")
 
     lignes += (
         _ligne(

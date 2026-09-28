@@ -2824,3 +2824,63 @@ Validation ciblée : **399 passed, 5 warnings**. Aucun test existant modifié.
 
 Suite complète 5O : **4692 passed, 8 warnings** (`--capture=sys`).
 Rapport PDF synthétique vérifié visuellement.
+
+### Bloc 5P livré — fournitures scolaires d'éducateur, 46800 / 46900
+
+Sources : [ARC, fournitures scolaires, année 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/lines-46800-46900-eligible-educator-school-supply-tax-credit.html),
+[LIR 122.9](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-122.9.html),
+[RIR 9600, biens durables prescrits](https://laws-lois.justice.gc.ca/eng/regulations/C.R.C.%2C_c._945/section-9600.html).
+Les dernières modifications des dispositions consultées datent de 2022;
+la page ARC confirme leur application à 2025.
+
+Crédit fédéral **remboursable** : 46800 = min(1 000 $, dépenses admissibles),
+puis 46900 = 25 % de 46800, maximum 250 $. Ajout unique aux paiements du
+rapprochement, même en l'absence d'impôt. Aucun revenu, crédit non remboursable,
+33500/33800/34990/35000, base 42900 ou abattement Québec n'est modifié.
+Ce bloc ne crée aucun crédit provincial.
+
+Employeur, province/territoire d'emploi et qualification reconnue sont
+documentés. Le comptable confirme l'emploi au Canada en 2025 comme enseignant
+ou éducateur à la petite enfance dans une école primaire/secondaire ou une
+garderie réglementée, avec certificat, permis ou diplôme valide et reconnu.
+Le logiciel ne détermine pas seul cette admissibilité.
+
+Chaque achat personnel payé en 2025 conserve date, description, catégorie,
+prix de la portion professionnelle, aides reçues ou auxquelles l'éducateur
+a droit, portion d'aide imposable non déductible et référence unique de pièce.
+L'usage personnel est exclu avant saisie et sa ventilation est validée.
+La portion financée par une aide est retranchée, sauf l'exception légale des
+aides incluses au revenu et non déductibles du revenu imposable. Aucun montant
+ne doit avoir servi à une autre déduction fédérale de revenu ou d'impôt pour
+quiconque, quelle que soit l'année. Avec une déduction T777, une source de
+rapprochement distinct des fournitures est obligatoire. Le bloc 4C contient
+des agrégats : le rapprochement des factures reste humain et documenté,
+sans détection automatique exhaustive des dépenses déjà déduites.
+
+Catégories : consommables et liste fermée du RIR 9600 — livres, jeux et
+casse-têtes, contenants, logiciels éducatifs, calculatrices, stockage externe,
+webcams/microphones/casques, projecteurs, pointeurs sans fil, jouets éducatifs
+électroniques, minuteries numériques, haut-parleurs, diffusion vidéo,
+imprimantes et ordinateurs/tablettes. Ces derniers sont refusés si l'employeur
+met un ordinateur ou une tablette à disposition pour utilisation hors classe.
+L'usage professionnel et la classification sont vérifiés sur pièces.
+
+L'attestation écrite de l'employeur n'est pas une exigence universelle
+préalable. Si l'ARC l'a demandée et qu'elle n'est pas fournie, le crédit est
+nul selon 122.9(2)c), avec motif dans le rapport. Le statut fourni exige une
+référence. Résidence partielle, non-résidence, faillite et déclarations
+spéciales de décès restent des limites logicielles à traiter en priorité 7,
+et non des exclusions fiscales générales.
+
+JSON rétrocompatible : profil absent = vide; achats, choix, faits, sources
+et confirmations seuls sont enregistrés; résultats reconstruits. Clés
+inconnues, types invalides, Decimal non finis/négatifs/hors cents, dates hors
+2025 et divergences profil explicite/estimation sont refusés. GUI : ajout,
+modification, retrait et effacement; modification révoquant les confirmations.
+Aucun crédit calculé saisi manuellement. Trace, résumé et PDF présentent
+dépenses nettes, aides, plafond, statut d'attestation, 46800/46900 et résultat.
+
+Validation ciblée : **281 passed, 5 warnings**. Aucun test existant affaibli.
+
+Suite complète 5P : **4831 passed, 8 warnings** (`--capture=sys`).
+Rapport PDF synthétique vérifié visuellement.

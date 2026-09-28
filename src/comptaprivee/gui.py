@@ -10,6 +10,7 @@ from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, CONFIRMATIONS_REPORTS_DONS
+from .tax_educator_supplies_2025 import (FournituresEducateur2025, DepenseEducateur2025, CATEGORIES_FOURNITURES, PROVINCES_EMPLOI, CONFIRMATIONS_EDUCATEUR, calculer_fournitures_educateur_2025, valider_depenses_educateur_2025)
 from .tax_labour_funds_2025 import (FondsTravailleurs2025, SituationFonds2025, AcquisitionFonds2025, FONDS_ADMIS, REGIMES_ADMIS, CONFIRMATIONS_FONDS, calculer_fonds_travailleurs_2025, valider_acquisitions_fonds_2025)
 from .tax_political_contributions_2025 import (ContributionsPolitiques2025, RecuPolitique2025, TYPES_BENEFICIAIRES_POLITIQUES, CONFIRMATIONS_POLITIQUES, calculer_contributions_politiques_2025, valider_recus_politiques_2025)
 from .tax_adoption_2025 import (Adoption2025, EnfantAdopte2025, DepenseAdoption2025, CATEGORIES_ADOPTION, CONFIRMATIONS_ADOPTION, calculer_adoption_2025, calculer_enfants_adoptes_2025)
@@ -2518,6 +2519,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_demenagement_courants = FraisDemenagement2025()
         pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
         autres_deductions_courantes = AutresDeductions2025()
+        fournitures_educateur_courantes = FournituresEducateur2025()
         fonds_travailleurs_courants = FondsTravailleurs2025()
         contributions_politiques_courantes = ContributionsPolitiques2025()
         adoption_courante = Adoption2025()
@@ -3797,6 +3799,149 @@ class ApplicationComptaPrivee(tk.Tk):
 
         # --- Priorité 5B : GUI intérêts sur prêts étudiants ---
 
+        def ouvrir_fournitures_educateur_5p_2025():
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Fournitures scolaires d'éducateur — 46800 / 46900")
+            dimensionner_fenetre(dialogue, 1100, 900)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(1, weight=1)
+            ttk.Label(cadre, text="Crédit fédéral remboursable : 25 % des dépenses admissibles, maximum 250 $. "
+                "Paiements de 2025, usage personnel exclu. Déclarez toutes les aides auxquelles vous avez droit. "
+                "Une attestation demandée par l'ARC et non fournie ramène le crédit à zéro. "
+                "Les factures doivent être distinctes des dépenses déduites au T777.", wraplength=980).grid(row=0, column=0, columnspan=2, sticky="ew")
+            profil = {}
+            row = 1
+            textes = (("employeur", "Employeur et établissement admissible"), ("province_emploi", "Province ou territoire de l'emploi"),
+                ("source_qualification", "Référence du brevet, permis ou diplôme valide"), ("source", "Source de validation comptable"),
+                ("source_attestation", "Référence de l'attestation fournie, le cas échéant"),
+                ("rapprochement_t777", "Pièce de rapprochement avec le T777, si une déduction d'emploi est réclamée"))
+            for nom, libelle in textes:
+                v = tk.StringVar(value=getattr(fournitures_educateur_courantes, nom))
+                profil[nom] = v
+                ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w")
+                w = (ttk.Combobox(cadre, name=nom + "_5p", textvariable=v, values=PROVINCES_EMPLOI, state="readonly")
+                    if nom == "province_emploi" else ttk.Entry(cadre, name=nom + "_5p", textvariable=v))
+                w.grid(row=row, column=1, sticky="ew")
+                row += 1
+            for nom, libelle in (("ordinateur_employeur_disponible", "L'employeur fournit un ordinateur ou une tablette utilisable hors classe"),
+                    ("attestation_demandee", "L'ARC a demandé une attestation de l'employeur"),
+                    ("attestation_fournie", "Attestation écrite fournie; référence renseignée ci-dessus")):
+                v = tk.BooleanVar(value=getattr(fournitures_educateur_courantes, nom))
+                profil[nom] = v
+                ttk.Checkbutton(cadre, name=nom + "_5p", text=libelle, variable=v).grid(row=row, column=0, columnspan=2, sticky="w")
+                row += 1
+            depenses = list(fournitures_educateur_courantes.depenses)
+            tableau = ttk.Treeview(cadre, name="depenses_5p", columns=("description", "categorie", "montant", "aide"), show="headings", height=4)
+            for nom in ("description", "categorie", "montant", "aide"):
+                tableau.heading(nom, text=nom.capitalize())
+                tableau.column(nom, width=220)
+            tableau.grid(row=row, column=0, columnspan=2, sticky="ew")
+            row += 1
+            variables = {}
+            montants = ("montant", "aide", "aide_imposable_non_deductible")
+            for nom, libelle in (("date_paiement", "Paiement en 2025 (AAAA-MM-JJ)"), ("description", "Description de la fourniture"),
+                    ("categorie", "Catégorie admissible"), ("montant", "Prix payé, usage professionnel seulement ($)"),
+                    ("aide", "Aides reçues ou auxquelles vous avez droit ($)"),
+                    ("aide_imposable_non_deductible", "Dont aide incluse au revenu et non déductible du revenu imposable ($)"),
+                    ("source", "Référence unique de la facture et de sa ventilation")):
+                v = tk.StringVar()
+                variables[nom] = v
+                ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w")
+                w = (ttk.Combobox(cadre, name=nom + "_depense_5p", textvariable=v, values=CATEGORIES_FOURNITURES, state="readonly")
+                    if nom == "categorie" else ttk.Entry(cadre, name=nom + "_depense_5p", textvariable=v))
+                w.grid(row=row, column=1, sticky="ew")
+                row += 1
+            actions = ttk.Frame(cadre)
+            actions.grid(row=row, column=0, columnspan=2, sticky="ew")
+            row += 1
+            confirmations = {}
+            for nom, libelle in CONFIRMATIONS_EDUCATEUR.items():
+                v = tk.BooleanVar(value=getattr(fournitures_educateur_courantes, nom))
+                confirmations[nom] = v
+                ttk.Checkbutton(cadre, name=nom + "_5p", text=libelle, variable=v).grid(row=row, column=0, columnspan=2, sticky="w")
+                row += 1
+            selection, modifie = [None], [False]
+            def revoquer(*_):
+                for v in confirmations.values():
+                    v.set(False)
+            def modifier(*_):
+                modifie[0] = True
+                revoquer()
+            for v in profil.values():
+                v.trace_add("write", revoquer)
+            for v in variables.values():
+                v.trace_add("write", modifier)
+            def rafraichir():
+                for iid in tableau.get_children():
+                    tableau.delete(iid)
+                for i, d in enumerate(depenses):
+                    tableau.insert("", "end", iid=str(i), values=(d.description, d.categorie, str(d.montant), str(d.aide)))
+            def nouveau():
+                selection[0] = None
+                for nom, v in variables.items():
+                    v.set("0" if nom in montants else "")
+                modifie[0] = False
+            def charger():
+                if tableau.selection():
+                    selection[0] = int(tableau.selection()[0])
+                    for nom, v in variables.items():
+                        v.set(str(getattr(depenses[selection[0]], nom)))
+                    modifie[0] = False
+            def enregistrer():
+                try:
+                    brut = {nom: v.get().strip() for nom, v in variables.items()}
+                    for nom in montants:
+                        brut[nom] = Decimal(brut[nom].replace(",", "."))
+                    d = DepenseEducateur2025(**brut)
+                    lignes = list(depenses)
+                    if selection[0] is None:
+                        lignes.append(d)
+                    else:
+                        lignes[selection[0]] = d
+                    valider_depenses_educateur_2025(tuple(lignes))
+                except (ValueError, InvalidOperation) as erreur:
+                    messagebox.showerror("Dépense d'éducateur invalide", str(erreur), parent=dialogue)
+                    return
+                depenses[:] = lignes
+                nouveau()
+                rafraichir()
+            def retirer():
+                if tableau.selection():
+                    del depenses[int(tableau.selection()[0])]
+                    nouveau()
+                    rafraichir()
+            for libelle, commande in (("Nouvelle dépense", nouveau), ("Modifier la dépense", charger),
+                    ("Enregistrer la dépense", enregistrer), ("Retirer la dépense", retirer)):
+                ttk.Button(actions, text=libelle, command=commande).pack(side="left", padx=4)
+            def appliquer(effacer=False):
+                nonlocal fournitures_educateur_courantes, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                try:
+                    if not effacer and modifie[0]:
+                        raise ValueError("Enregistrez la dépense modifiée avant d'appliquer.")
+                    brut = {nom: v.get().strip() if isinstance(v, tk.StringVar) else v.get() for nom, v in profil.items()}
+                    p = FournituresEducateur2025() if effacer else FournituresEducateur2025(depenses=tuple(depenses),
+                        **brut, **{nom: v.get() for nom, v in confirmations.items()})
+                    calculer_fournitures_educateur_2025(p)
+                except ValueError as erreur:
+                    messagebox.showerror("Fournitures d'éducateur invalides", str(erreur), parent=dialogue)
+                    return
+                fournitures_educateur_courantes = p
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Fournitures d'éducateur mises à jour; recalculez l'estimation.")
+                dialogue.destroy()
+            ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer).pack(side="right")
+            ttk.Button(formulaire.actions, text="Effacer le profil", command=lambda: appliquer(True)).pack(side="right", padx=8)
+            ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
+            nouveau()
+            for nom, v in confirmations.items():
+                v.set(getattr(fournitures_educateur_courantes, nom))
+            rafraichir()
+
         def ouvrir_fonds_travailleurs_5o_2025():
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Fonds de travailleurs fédéraux — 41300 / 41400")
@@ -4485,7 +4630,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
 
         def ouvrir_scolarite_recue_5h_2025():
-            nonlocal fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Scolarité reçue — ligne 32400")
             dimensionner_fenetre(dialogue, 1000, 880)
@@ -5667,6 +5812,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    fournitures_educateur=fournitures_educateur_courantes,
                     fonds_travailleurs=fonds_travailleurs_courants,
                     contributions_politiques=contributions_politiques_courantes,
                     adoption=adoption_courante,
@@ -13860,6 +14006,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    fournitures_educateur=fournitures_educateur_courantes,
                     fonds_travailleurs=fonds_travailleurs_courants,
                     contributions_politiques=contributions_politiques_courantes,
                     adoption=adoption_courante,
@@ -13924,6 +14071,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    fournitures_educateur=fournitures_educateur_courantes,
                     fonds_travailleurs=fonds_travailleurs_courants,
                     contributions_politiques=contributions_politiques_courantes,
                     adoption=adoption_courante,
@@ -14018,7 +14166,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
-            nonlocal fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal interets_pret_etudiant_courants
             nonlocal frais_garde_federaux_courants
@@ -14099,6 +14247,7 @@ class ApplicationComptaPrivee(tk.Tk):
             pension_alimentaire_payee_courante = (
                 enregistrement.pension_alimentaire_payee
             )
+            fournitures_educateur_courantes = enregistrement.fournitures_educateur
             fonds_travailleurs_courants = enregistrement.fonds_travailleurs
             contributions_politiques_courantes = enregistrement.contributions_politiques
             adoption_courante = enregistrement.adoption
@@ -14443,6 +14592,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    fournitures_educateur=fournitures_educateur_courantes,
                     fonds_travailleurs=fonds_travailleurs_courants,
                     contributions_politiques=contributions_politiques_courantes,
                     adoption=adoption_courante,
@@ -14938,6 +15088,8 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_allocation_travailleurs_5e_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Contributions politiques 2025 (5N)",
                    command=ouvrir_contributions_politiques_5n_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Fournitures éducateur 2025 (5P)",
+                   command=ouvrir_fournitures_educateur_5p_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Fonds de travailleurs 2025 (5O)",
                    command=ouvrir_fonds_travailleurs_5o_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Frais d'adoption 2025 (5M)",
