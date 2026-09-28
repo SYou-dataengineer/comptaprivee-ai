@@ -525,7 +525,8 @@ def construire_trace_calcul_fiscal_2025(
         _ligne(
             11, "FÉDÉRAL", "Impôt fédéral après abattement",
             "Rapprochement fiscal 2025",
-            "Impôt fédéral après 40500 - abattement Québec remboursable 44000",
+            ("Impôt fédéral après 40500 + avances ACT 41500 - abattement Québec remboursable 44000"
+             if final.avances_act_ligne_41500 else "Impôt fédéral après 40500 - abattement Québec remboursable 44000"),
             final.impot_federal_apres_abattement,
         ),
         _ligne(
@@ -1914,6 +1915,21 @@ def construire_trace_calcul_fiscal_2025(
             lignes += (_ligne(len(lignes) + 1, "SUPPLÉMENT MÉDICAL — BLOC 5D", libelle,
                 frais_medicaux.supplement.source, formule, montant),)
 
+    if estimation.allocation_travailleurs.present:
+        r = estimation.resultat_allocation_travailleurs
+        for libelle, montant, formule in (
+            ("Revenu travail ACT", r.revenu_travail, "10100 brut, profil salarié sans 10400 ni autres revenus de travail"),
+            ("Revenu net ajusté ACT", r.revenu_net_ajuste, "23600, sans conjoint ni ajustements PUGE/REEI"),
+            ("ACT avant réduction", r.base_avant_reduction, "Si base demandée : min(3812.06, max(travail - 2400, 0) × 37.3 %)"),
+            ("Réduction ACT", r.reduction_base, "Si base demandée : max(net - 14170.05, 0) × 20 %"),
+            ("Supplément ACT avant réduction", r.supplement_avant_reduction, "Si supplément demandé : min(851.31, max(travail - 1200, 0) × 40 %)"),
+            ("Réduction supplément ACT", r.reduction_supplement, "Si supplément demandé : max(net - 33230.35, 0) × 20 %"),
+            ("ACT remboursable 45300", r.ligne_45300, "Base et supplément après réduction, chacun avec plancher zéro"),
+            ("Avances ACT 41500", r.ligne_41500, "min(45300, RC210 cases 10 + 11); ajouté à 42000, hors 42900"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "ACT QUÉBEC — BLOC 5E", libelle,
+                estimation.allocation_travailleurs.source, formule, montant),)
+
     prochain_ordre = len(lignes) + 1
 
     if final.remboursement_estime > Decimal("0"):
@@ -1947,6 +1963,11 @@ def construire_trace_calcul_fiscal_2025(
         formule = ("Retenues + remboursements cotisations + crédits 45350/45200 - impôt total"
                    if final.remboursement_estime else
                    "Impôt total - retenues - remboursements cotisations - crédits 45350/45200")
+
+    if final.allocation_travailleurs_ligne_45300:
+        formule = ("Retenues + remboursements cotisations + crédits 45200/45300/45350 - impôt total incluant 41500"
+                   if final.remboursement_estime else
+                   "Impôt total incluant 41500 - retenues - remboursements cotisations - crédits 45200/45300/45350")
 
     lignes += (
         _ligne(

@@ -11,6 +11,11 @@ d'estimation soumise à validation comptable.
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_workers_benefit_2025 import (
+    AllocationTravailleurs2025, ResultatAllocationTravailleurs2025,
+    valider_allocation_travailleurs_2025, calculer_allocation_travailleurs_2025,
+    lignes_allocation_travailleurs_2025,
+)
 from .tax_medical_supplement_2025 import (ResultatSupplementMedical2025, calculer_supplement_medical_2025, lignes_supplement_medical_2025)
 from .tax_training_credit_2025 import credit_formation_2025, lignes_formation_2025
 from .tax_student_loan_interest_2025 import (
@@ -317,6 +322,8 @@ class EstimationFiscale2025:
     prestations_psv: PrestationsPsv2025 = PrestationsPsv2025()
     rrq_rpc_confirme: bool = False
     prestations_rrq_rpc: PrestationsRrqRpc2025 = PrestationsRrqRpc2025()
+    allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
+    resultat_allocation_travailleurs: ResultatAllocationTravailleurs2025 = ResultatAllocationTravailleurs2025()
     interets_pret_etudiant: InteretsPretEtudiant2025 = InteretsPretEtudiant2025()
     resultat_interets_pret_etudiant: ResultatInteretsPretEtudiant2025 = ResultatInteretsPretEtudiant2025()
     resultat_supplement_medical: ResultatSupplementMedical2025 = ResultatSupplementMedical2025()
@@ -389,6 +396,7 @@ def calculer_estimation_fiscale_2025(
     profil_pensions: ProfilPensions2025 = ProfilPensions2025(),
     psv_confirme: bool = False,
     rrq_rpc_confirme: bool = False,
+    allocation_travailleurs: AllocationTravailleurs2025 | None = None,
     interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
@@ -398,6 +406,9 @@ def calculer_estimation_fiscale_2025(
             "uniquement pour l'année 2025."
         )
 
+    act = valider_allocation_travailleurs_2025(
+        allocation_travailleurs if allocation_travailleurs is not None else AllocationTravailleurs2025()
+    )
     pret_etudiant = valider_interets_pret_etudiant_2025(
         interets_pret_etudiant if interets_pret_etudiant is not None else InteretsPretEtudiant2025()
     )
@@ -1350,6 +1361,14 @@ def calculer_estimation_fiscale_2025(
     )):
         raise ValueError("Supplément médical 5D : combinaison familiale hors du profil individuel pris en charge.")
 
+    if act.present and any(p.reclamer_montant for p in (
+        montant_conjoint_federal_effectif, personne_charge_admissible_federale_effective,
+        aidant_30425_effectif, aidant_30450_effectif, aidant_enfant_federal_effectif,
+    )):
+        raise ValueError("ACT 5E : combinaison familiale hors du profil individuel pris en charge.")
+    resultat_act = calculer_allocation_travailleurs_2025(
+        act, revenu_travail=base.revenu_emploi_federal, revenu_net=revenu.revenu_net_federal,
+    )
     supplement_medical = calculer_supplement_medical_2025(
         frais_medicaux_effectifs.supplement, emploi=base.revenu_emploi_federal,
         deduction_20700=rpa_effectives.montant_federal,
@@ -1364,6 +1383,8 @@ def calculer_estimation_fiscale_2025(
         quebec,
         credit_formation=credit_formation_2025(frais_scolarite_effectifs.formation),
         supplement_medical=supplement_medical.ligne_45200,
+        allocation_travailleurs=resultat_act.ligne_45300,
+        avances_act=resultat_act.ligne_41500,
         prestations_rqap=prestations_rqap,
         prestations_ae=prestations_ae,
         pensions=pensions,
@@ -1403,6 +1424,7 @@ def calculer_estimation_fiscale_2025(
         dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
     )
     return EstimationFiscale2025(
+        allocation_travailleurs=act, resultat_allocation_travailleurs=resultat_act,
         resultat_supplement_medical=supplement_medical,
         interets_pret_etudiant=pret_etudiant,
         resultat_interets_pret_etudiant=resultat_pret_etudiant,
@@ -1568,6 +1590,7 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_pension_alimentaire_payee_2025(
             estimation.pension_alimentaire_payee
         ),
+        *lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs),
         *lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical),
         *lignes_formation_2025(estimation.frais_scolarite.formation),
         *lignes_resume_interets_pret_etudiant_2025(

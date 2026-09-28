@@ -2192,3 +2192,50 @@ contradictions familiales, GUI et limites de page PDF. Aucun test existant
 modifié et aucune modification de la configuration pytest.
 
 Suite complète 5D : **3733 passed, 8 warnings** avec `--capture=sys`.
+
+
+### Bloc 5E livré — ACT Québec, lignes fédérales 45300 et 41500
+
+Sources 2025 : [annexe 6 propre au Québec, 5005-S6](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s6/5005-s6-25e.pdf)
+et [T1 Québec, pages 7–8](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-r/5005-r-25e.pdf).
+
+Pour une personne sans conjoint ni personne à charge admissible, l'annexe 6
+prévoit une ACT de base de 37,3 % du revenu de travail dépassant 2 400 $,
+plafonnée à 3 812,06 $, réduite de 20 % du revenu net ajusté au-delà de
+14 170,05 $. Le supplément CIPH utilise 40 % de l'excédent de travail sur
+1 200 $, un plafond de 851,31 $, puis une réduction de 20 % au-delà de
+33 230,35 $. Chaque résultat est ramené à zéro s'il est négatif.
+Admissibilité : résidence au Canada toute l'année, âge minimal 19 ans dans
+ce profil; exclusions concernant études à temps plein de plus de 13 semaines,
+détention d'au moins 90 jours et exemption diplomatique. Le supplément
+requiert l'admissibilité CIPH confirmée. Les cases 10/11 RC210 sont additionnées;
+41500 est limité au montant 45300. Un excédent d'avances n'est pas récupéré
+par cette formule.
+
+Décision de périmètre : salarié individuel sans conjoint ni personne à charge,
+résident du Québec fin 2025, revenu de travail limité à 10100, sans 10400,
+bourse imposable, travail autonome, revenu exonéré, ajustement PUGE/REEI,
+décès ou faillite. Les exceptions et familles ne sont pas automatiquement
+inadmissibles fiscalement; elles nécessitent des blocs distincts. Les profils
+familiaux actifs contradictoires sont refusés. Les revenus de travail sont
+pris avant déductions, à la différence du supplément médical 45200.
+
+Les choix de base et de supplément sont indépendants. La GUI saisit uniquement
+âge, source, avances RC210 et confirmations; aucun montant calculé n'est
+saisi. Toute modification révoque les confirmations. L'admissibilité reste
+validée par le comptable, sans déduction automatique à partir des seuls revenus.
+
+45300 rejoint les crédits remboursables une seule fois. 41500 augmente l'impôt
+net 42000 après les crédits non remboursables : aucune augmentation de 42900
+ni de la base de l'abattement 44000. Les revenus, 33800/34990/35000 et 40500
+restent inchangés. Trace et PDF exposent source, choix, seuils, réductions,
+supplément, RC210, 45300 et 41500, y compris un résultat nul.
+
+Le JSON `allocation_travailleurs` conserve uniquement le profil et les avances
+en chaînes décimales à deux décimales. Ancien JSON absent = profil vide;
+clés inconnues, types invalides et divergence avec l'estimation sont refusés.
+
+Validation ciblée : **356 passed, 5 warnings**, incluant les blocs 5C/5D,
+stockage, estimation, PDF et GUI. Aucun test existant modifié.
+
+Suite complète 5E : **3821 passed, 8 warnings** avec `--capture=sys`.

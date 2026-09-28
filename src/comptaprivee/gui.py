@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
+from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025, CONFIRMATIONS_ACT
 from .tax_medical_supplement_2025 import SupplementMedical2025, CONFIRMATIONS_SUPPLEMENT
 from .tax_training_credit_2025 import Formation2025, CONFIRMATIONS_FORMATION
 from .tax_student_loan_interest_2025 import (
@@ -2502,6 +2503,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_demenagement_courants = FraisDemenagement2025()
         pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
         autres_deductions_courantes = AutresDeductions2025()
+        allocation_travailleurs_courante = AllocationTravailleurs2025()
         interets_pret_etudiant_courants = InteretsPretEtudiant2025()
         cotisations_syndicales_courantes = (
             CotisationsSyndicalesProfessionnelles2025()
@@ -3774,6 +3776,95 @@ class ApplicationComptaPrivee(tk.Tk):
 
         # --- Priorité 5B : GUI intérêts sur prêts étudiants ---
 
+        def ouvrir_allocation_travailleurs_5e_2025() -> None:
+            nonlocal allocation_travailleurs_courante
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Allocation canadienne pour les travailleurs — Bloc 5E")
+            dimensionner_fenetre(dialogue, 940, 850)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(1, weight=1)
+            ttk.Label(cadre, text="ACT 2025 — annexe 6 Québec", font=("Segoe UI", 16, "bold")).grid(
+                row=0, column=0, columnspan=2, sticky="w")
+            ttk.Label(cadre, text=("Profil individuel salarié sans conjoint ni personne à charge. "
+                "Lignes 45300 et 41500 calculées; saisir seulement les avances des RC210. "
+                "Le supplément exige une admissibilité CIPH confirmée. Les autres profils "
+                "familiaux, revenus de travail et traitements spéciaux restent hors de ce formulaire."),
+                wraplength=810, justify="left").grid(row=1, column=0, columnspan=2, sticky="ew", pady=8)
+            profil = allocation_travailleurs_courante
+            variables = {}
+            for row, (nom, libelle) in enumerate((
+                ("age_fin_2025", "Âge au 31 décembre 2025"),
+                ("avances_rc210_case10", "Total RC210 case 10 — avances de base"),
+                ("avances_rc210_case11", "Total RC210 case 11 — avances supplément"),
+                ("source", "Source / validation du profil et des RC210"),
+            ), 2):
+                variable = tk.StringVar(value=str(getattr(profil, nom) or ""))
+                variables[nom] = variable
+                ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w", pady=3)
+                ttk.Entry(cadre, name=nom + "_5e", textvariable=variable).grid(row=row, column=1, sticky="ew")
+            choix = {}
+            for row, (nom, libelle) in enumerate((
+                ("reclamer_base", "Demander l'ACT de base"),
+                ("reclamer_supplement", "Demander le supplément ACT pour handicap"),
+            ), 6):
+                variable = tk.BooleanVar(value=getattr(profil, nom))
+                choix[nom] = variable
+                ttk.Checkbutton(cadre, name=nom + "_5e", text=libelle, variable=variable).grid(
+                    row=row, column=0, columnspan=2, sticky="w")
+            confirmations = {}
+            libelles = dict(CONFIRMATIONS_ACT, admissibilite_ciph_confirmee="Admissibilité CIPH confirmée pour 2025 (si supplément demandé)")
+            for row, (nom, libelle) in enumerate(libelles.items(), 8):
+                variable = tk.BooleanVar(value=getattr(profil, nom))
+                confirmations[nom] = variable
+                ttk.Checkbutton(cadre, name=nom + "_5e", text=libelle, variable=variable).grid(
+                    row=row, column=0, columnspan=2, sticky="w", pady=3)
+
+            def revoquer(*_):
+                for variable in confirmations.values():
+                    variable.set(False)
+            for variable in (*variables.values(), *choix.values()):
+                variable.trace_add("write", revoquer)
+
+            def effacer():
+                for variable in variables.values():
+                    variable.set("")
+                for variable in choix.values():
+                    variable.set(False)
+                revoquer()
+
+            def appliquer():
+                nonlocal allocation_travailleurs_courante
+                nonlocal derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                def montant(nom):
+                    try:
+                        return Decimal(variables[nom].get().strip().replace(" ", "").replace(",", ".") or "0")
+                    except InvalidOperation as erreur:
+                        raise ValueError("Montant RC210 invalide.") from erreur
+                try:
+                    nouveau = valider_allocation_travailleurs_2025(AllocationTravailleurs2025(
+                        age_fin_2025=int(variables["age_fin_2025"].get().strip() or "0"),
+                        avances_rc210_case10=montant("avances_rc210_case10"),
+                        avances_rc210_case11=montant("avances_rc210_case11"),
+                        source=variables["source"].get().strip(),
+                        **{nom: v.get() for nom, v in choix.items()},
+                        **{nom: v.get() for nom, v in confirmations.items()},
+                    ))
+                except ValueError as erreur:
+                    messagebox.showerror("ACT invalide", str(erreur), parent=dialogue)
+                    return
+                allocation_travailleurs_courante = nouveau
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("ACT 5E validée; recalculez l'estimation.")
+                dialogue.destroy()
+            ttk.Button(formulaire.actions, text="Effacer", command=effacer).pack(side="left")
+            ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer).pack(side="right")
+            ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
+
         def ouvrir_interets_pret_etudiant_5b_2025() -> None:
             nonlocal interets_pret_etudiant_courants
             dialogue = tk.Toplevel(fenetre)
@@ -4750,6 +4841,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    allocation_travailleurs=allocation_travailleurs_courante,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
                     cotisations_rpa=cotisations_rpa_courantes,
                     cotisations_syndicales=cotisations_syndicales_courantes,
@@ -12815,6 +12907,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    allocation_travailleurs=allocation_travailleurs_courante,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
                             cotisations_syndicales=(
                                 cotisations_syndicales_courantes
@@ -12872,6 +12965,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    allocation_travailleurs=allocation_travailleurs_courante,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
@@ -12959,6 +13053,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
+            nonlocal allocation_travailleurs_courante
             nonlocal interets_pret_etudiant_courants
             nonlocal frais_garde_federaux_courants
             nonlocal depenses_emploi_courantes
@@ -13038,6 +13133,7 @@ class ApplicationComptaPrivee(tk.Tk):
             pension_alimentaire_payee_courante = (
                 enregistrement.pension_alimentaire_payee
             )
+            allocation_travailleurs_courante = enregistrement.allocation_travailleurs
             interets_pret_etudiant_courants = enregistrement.interets_pret_etudiant
             autres_deductions_courantes = (
                 enregistrement.autres_deductions
@@ -13375,6 +13471,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    allocation_travailleurs=allocation_travailleurs_courante,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
@@ -13858,6 +13955,9 @@ class ApplicationComptaPrivee(tk.Tk):
             side="left",
             padx=(8, 0),
         )
+
+        ttk.Button(zone_actions, text="Allocation travailleurs 2025 (5E)",
+                   command=ouvrir_allocation_travailleurs_5e_2025).pack(side="left", padx=(8, 0))
 
         ttk.Button(zone_actions, text="Intérêts prêts étudiants 2025 (5B)",
                    command=ouvrir_interets_pret_etudiant_5b_2025).pack(side="left", padx=(8, 0))

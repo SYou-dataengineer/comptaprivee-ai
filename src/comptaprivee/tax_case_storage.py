@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025
 from .tax_medical_supplement_2025 import SupplementMedical2025, valider_supplement_medical_2025
 from .tax_training_credit_2025 import Formation2025, valider_formation_2025
 from .tax_student_loan_interest_2025 import (
@@ -211,6 +212,7 @@ class DossierFiscalEnregistre:
     profil_pensions: ProfilPensions2025 = ProfilPensions2025()
     psv_confirme: bool = False
     rrq_rpc_confirme: bool = False
+    allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
     interets_pret_etudiant: InteretsPretEtudiant2025 = InteretsPretEtudiant2025()
 
 
@@ -3160,6 +3162,24 @@ def _rpa_depuis_dict(valeur):
     return valider_cotisations_rpa_2025(CotisationsRpa2025(**valeurs))
 
 
+def _allocation_travailleurs_vers_dict(profil):
+    valeurs = asdict(valider_allocation_travailleurs_2025(profil))
+    for nom in ("avances_rc210_case10", "avances_rc210_case11"):
+        valeurs[nom] = format(valeurs[nom], ".2f")
+    return valeurs
+
+
+def _allocation_travailleurs_depuis_dict(valeur):
+    if valeur is None:
+        return AllocationTravailleurs2025()
+    if not isinstance(valeur, dict) or set(valeur) - set(AllocationTravailleurs2025.__dataclass_fields__):
+        raise ValueError("Profil ACT ou clés inconnues invalides.")
+    valeurs = dict(valeur)
+    for nom in ("avances_rc210_case10", "avances_rc210_case11"):
+        valeurs[nom] = _decimal_depuis_json(valeurs.get(nom, "0"), "allocation_travailleurs." + nom)
+    return valider_allocation_travailleurs_2025(AllocationTravailleurs2025(**valeurs))
+
+
 def _interets_pret_etudiant_vers_dict(profil):
     profil = valider_interets_pret_etudiant_2025(profil)
     valeurs = asdict(profil)
@@ -3200,6 +3220,7 @@ def sauvegarder_dossier_fiscal(
     frais_demenagement: FraisDemenagement2025 | None = None,
     pension_alimentaire_payee: PensionAlimentairePayee2025 | None = None,
     autres_deductions: AutresDeductions2025 | None = None,
+    allocation_travailleurs: AllocationTravailleurs2025 | None = None,
     interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
@@ -3367,6 +3388,12 @@ def sauvegarder_dossier_fiscal(
             if frais_scolarite != estimation.frais_scolarite:
                 raise ValueError("Le profil scolarité/formation diffère de l'estimation.")
 
+    act = valider_allocation_travailleurs_2025(
+        allocation_travailleurs if allocation_travailleurs is not None
+        else (estimation.allocation_travailleurs if estimation else AllocationTravailleurs2025())
+    )
+    if estimation is not None and act != estimation.allocation_travailleurs:
+        raise ValueError("Le profil ACT diffère de l'estimation.")
     pret_etudiant = valider_interets_pret_etudiant_2025(
         interets_pret_etudiant if interets_pret_etudiant is not None
         else (estimation.interets_pret_etudiant if estimation else InteretsPretEtudiant2025())
@@ -3665,6 +3692,7 @@ def sauvegarder_dossier_fiscal(
         "pension_alimentaire_payee": _pension_alimentaire_payee_vers_dict(
             pension_alimentaire_effective
         ),
+        "allocation_travailleurs": _allocation_travailleurs_vers_dict(act),
         "interets_pret_etudiant": _interets_pret_etudiant_vers_dict(pret_etudiant),
         "autres_deductions": _autres_deductions_vers_dict(
             autres_deductions_effectives
@@ -4103,6 +4131,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         depenses_emploi=depenses_emploi,
         frais_demenagement=frais_demenagement,
         pension_alimentaire_payee=pension_alimentaire_payee,
+        allocation_travailleurs=_allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")),
         interets_pret_etudiant=_interets_pret_etudiant_depuis_dict(contenu.get("interets_pret_etudiant")),
         autres_deductions=autres_deductions,
         cotisations_syndicales=cotisations_syndicales,

@@ -70,6 +70,8 @@ class RapprochementFiscal2025:
     credit_etranger_ligne_40500: Decimal = ZERO
     credit_formation_ligne_45350: Decimal = ZERO
     supplement_medical_ligne_45200: Decimal = ZERO
+    allocation_travailleurs_ligne_45300: Decimal = ZERO
+    avances_act_ligne_41500: Decimal = ZERO
 
     @property
     def impot_federal_apres_credit_etranger(self) -> Decimal:
@@ -131,11 +133,17 @@ def calculer_rapprochement_fiscal_2025(
     retraits: Retraits2025 = Retraits2025(),
     credit_formation: Decimal = ZERO,
     supplement_medical: Decimal = ZERO,
+    allocation_travailleurs: Decimal = ZERO,
+    avances_act: Decimal = ZERO,
 ) -> RapprochementFiscal2025:
     """Calcule une estimation de base du remboursement ou du solde."""
     _verifier_coherence(base, federal, quebec)
     credit_formation = montant_decimal_2025(credit_formation, "Crédit formation 45350")
     supplement_medical = montant_decimal_2025(supplement_medical, "Supplément médical 45200")
+    allocation_travailleurs = montant_decimal_2025(allocation_travailleurs, "ACT 45300")
+    avances_act = montant_decimal_2025(avances_act, "Avances ACT 41500")
+    if avances_act > allocation_travailleurs:
+        raise ValueError("Les avances ACT 41500 ne peuvent pas dépasser 45300.")
 
     abattement = arrondir_cent(
         federal.impot_federal_de_base
@@ -145,7 +153,7 @@ def calculer_rapprochement_fiscal_2025(
     # L'abattement 44000 est remboursable : ne pas plafonner sa valeur
     # au solde après 40500. La base reste exclusivement la ligne 42900.
     federal_apres_abattement = arrondir_cent(
-        federal.impot_federal_apres_credit_etranger - abattement
+        federal.impot_federal_apres_credit_etranger + avances_act - abattement
     )
 
     if cotisation_assurance_medicaments < ZERO:
@@ -197,6 +205,7 @@ def calculer_rapprochement_fiscal_2025(
         + remboursements_cotisations_totaux
         + credit_formation
         + supplement_medical
+        + allocation_travailleurs
         - impot_total
     )
 
@@ -345,6 +354,8 @@ def calculer_rapprochement_fiscal_2025(
     return RapprochementFiscal2025(
         credit_formation_ligne_45350=credit_formation,
         supplement_medical_ligne_45200=supplement_medical,
+        allocation_travailleurs_ligne_45300=allocation_travailleurs,
+        avances_act_ligne_41500=avances_act,
         client=base.client,
         annee_fiscale=base.annee_fiscale,
         province=base.province,
