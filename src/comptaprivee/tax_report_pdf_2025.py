@@ -1,5 +1,6 @@
 """Export PDF local du rapport d'estimation fiscale 2025."""
 
+from .tax_disability_transfer_2025 import lignes_transferts_handicap_2025
 from .tax_multigenerational_renovation_2025 import lignes_multigenerationnelles_2025
 from .tax_educator_supplies_2025 import (lignes_fournitures_educateur_2025)
 from .tax_labour_funds_2025 import (FondsTravailleurs2025, ResultatFondsTravailleurs2025, calculer_fonds_travailleurs_2025, fonds_vers_dict, fonds_depuis_dict, verifier_fonds_conjoint_2025, lignes_fonds_travailleurs_2025)
@@ -122,7 +123,8 @@ from .tax_tuition_2025 import (
     credit_quebec_frais_scolarite_2025,
 )
 from .tax_disability_2025 import (
-    MONTANT_FEDERAL_HANDICAP_2025,
+    montant_federal_handicap_2025,
+    lignes_handicap_detaille_2025,
     MONTANT_QUEBEC_DEFICIENCE_2025,
     credit_federal_handicap_2025,
     credit_quebec_deficience_2025,
@@ -492,7 +494,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     (
                         "Montant fédéral — ligne 31600 : "
                         f"{formater_montant_estimation(
-                            MONTANT_FEDERAL_HANDICAP_2025
+                            montant_federal_handicap_2025(deficience)
                         )}"
                     ),
                     (
@@ -1983,7 +1985,9 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons))
     lignes.extend(lignes_credits_dons_2025(estimation.dons_bienfaisance,
         estimation.revenu.revenu_imposable_federal, estimation.revenu.revenu_imposable_quebec))
+    lignes.extend(lignes_handicap_detaille_2025(estimation.credit_deficience))
     lignes.extend(lignes_multigenerationnelles_2025(estimation.renovations_multigenerationnelles, estimation.resultat_multigenerationnel))
+    lignes.extend(lignes_transferts_handicap_2025(estimation.transferts_handicap, estimation.resultat_transferts_handicap))
     lignes.extend(lignes_fournitures_educateur_2025(estimation.fournitures_educateur, estimation.resultat_fournitures_educateur))
     lignes.extend(lignes_fonds_travailleurs_2025(estimation.fonds_travailleurs, estimation.resultat_fonds_travailleurs, estimation.rapprochement))
     lignes.extend(lignes_contributions_politiques_2025(estimation.contributions_politiques, estimation.resultat_contributions_politiques, estimation.rapprochement))

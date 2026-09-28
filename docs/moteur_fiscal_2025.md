@@ -2945,3 +2945,116 @@ Suite complète : **4993 passed, 8 warnings** (`--capture=sys`), avant
 l'ajout du contrôle de lisibilité précité; celui-ci passe séparément.
 Faillite et décès restent des limites logicielles à traiter en priorité 7,
 et non des exclusions générales de la loi.
+
+### Bloc 5R livré — handicap fédéral détaillé et transfert 31800
+
+Le montant personnel 31600 est de 10 138 $. Pour une personne de moins de
+18 ans au 31 décembre 2025, le supplément est :
+`max(5914 - max(soins - 3464, 0), 0)`.
+Les soins comprennent les frais payés en 2025 pour la garde ou la surveillance,
+réclamés par quiconque sous les articles 63, 64 ou 118.2, même dans une autre
+année. Leur source, leur exhaustivité, l'approbation CIPH et l'absence de conflit
+avec les soins spécialisés exigent une validation comptable. Le profil Québec
+376 reste distinct; sa limite logicielle d'âge antérieure n'est pas levée.
+Les anciens profils adultes restent compatibles sans les nouveaux champs.
+
+**Calcul retenu pour 31800 : solde inutilisé selon LIR 118.3(2)d).**
+Les entrées personnelles du donneur sont recalculées depuis un instantané JSON.
+Soit `B` sa base 31600, supplément éventuel compris, et `I` son impôt fédéral
+hypothétique avant les déductions de la division E autres que les articles
+118 à 118.07 et 118.7. Les dons, dividendes, frais médicaux, scolarité, crédits
+politiques et fonds ne créent donc pas artificiellement un transfert.
+Le compensatoire 118(11) est recalculé sur les crédits permis dans cette
+hypothèse; les ajouts pris en charge à l'impôt de la partie I sont inclus.
+
+- Crédit DTC disponible : `C = arrondi_cent(B × 0,145)`.
+- Crédit utilisé au sens de ce transfert : `U = min(C, I)`.
+- Crédit inutilisé : `C - U`.
+- Base transférable : `min(B, arrondi_cent((C - U) / 0,145))`.
+- Base utilisée affichée : `B - base transférable`.
+- Part du bénéficiaire : base transférable moins parts des autres soutiens,
+  ou part moindre désignée par accord. La somme des parts ne peut dépasser
+  la base disponible. Aucun montant transférable maximal n'est imposé par défaut.
+
+La base utilisée est le complément au cent de la base transférable; elle
+n'est pas une consigne de remplacer la ligne personnelle 31600 du donneur.
+La distinction entre crédit d'impôt et base de crédit est conservée dans
+les résultats, la trace et le PDF. Les arrondis peuvent créer quelques cents
+d'écart de base avec une soustraction directe du revenu.
+
+**Rapprochement de l'exemple 10 138 $ / 6 728,97 $.**
+Le test d'intégration reconstruit un donneur adulte avec 80 000 $ de revenus
+net et imposable, aucun supplément enfant, aucune part d'un autre soutien,
+aucune demande concurrente 30400/32600 et un bénéficiaire satisfaisant aux
+conditions hypothétiques 30450 documentées. Les crédits du donneur avant DTC
+proviennent du montant personnel 16 129 $ et de 68 871 $ de frais d'adoption
+pour quatre enfants : 19 580 + 19 580 + 19 580 + 10 131. Le total de base 102
+est donc 85 000 $; aucun plafond individuel d'adoption n'est dépassé.
+
+| Étape | Montant |
+| --- | ---: |
+| Impôt brut : 57375 × 14,5 % + 22625 × 20,5 % | 12 957,50 $ |
+| Crédits permis : 85000 × 14,5 % | 12 325,00 $ |
+| Compensatoire permis : (12325 - 8319,38) × 3,45 % | 138,19 $ |
+| Impôt hypothétique avant DTC | 494,31 $ |
+| Crédit DTC disponible | 1 470,01 $ |
+| Crédit DTC utilisé | 494,31 $ |
+| Crédit DTC inutilisé | 975,70 $ |
+| Base DTC disponible - utilisée | 10138 - 3409,03 $ |
+| Base inutilisée transférable | 6 728,97 $ |
+
+La feuille fédérale 31800, page 6, lignes 8 à 13, donne réellement
+`min(10138, max(10138 + 85000 - 80000, 0)) = 10138` pour ces mêmes entrées.
+Le prototype ne reproduit pas cette soustraction : il applique le calcul
+fondé sur l'impôt de 118.3(2)d), confirmé comme mécanisme par le folio 2.37.
+La divergence exacte vient du barème progressif : la tranche de 22 625 $
+supporte 6 points de plus que le taux des crédits, soit 1 357,50 $.
+L'excédent de base de 5 000 $ ne compense que 725 $ d'impôt; après
+compensatoire de 138,19 $, il reste 494,31 $. Les deux expressions ne sont
+pas algébriquement équivalentes dans ce cas. Le calcul légal est retenu;
+la documentation ne prétend pas que la feuille produit elle aussi 6 728,97 $.
+Le total d'impôt réellement payable après tous les crédits ou remboursements
+ne remplace pas l'impôt hypothétique expressément prévu pour le transfert.
+
+**Admissibilité et garde-fous.** Le comptable vérifie le lien familial, le
+soutien régulier pour les nécessités de la vie, les conditions 30400/30450,
+l'autorisation, les obligations alimentaires et l'accord de partage. Les
+lignes indiquées comme réellement réclamées sont contrôlées dans le dossier
+bénéficiaire. Les demandes concurrentes du conjoint du donneur (dont 32600)
+ou d'une autre personne à 30400 sont refusées; un réclamant 30400 ne partage
+pas ce transfert. Le conjoint relève du bloc 32600 distinct. Les exceptions
+alimentaires exigent les justificatifs et sont rapprochées de 22000.
+Aucune admissibilité détaillée n'est inventée automatiquement.
+
+**Limites logicielles.** Donneurs résidents du Québec et du Canada toute
+l'année 2025, sans décès, faillite ou traitement spécial omis. Les instantanés
+31800/32600 imbriqués sont refusés; le dossier importé précède les transferts.
+Ces restrictions logicielles ne sont pas présentées comme des règles fiscales.
+
+**Intégration.** 31800 entre une seule fois dans la base avant scolarité,
+puis dans 33500/33800/34990. Revenus et calcul Québec sont inchangés.
+Le JSON stocke les données brutes; anciens dossiers : profil vide. Les clés
+inconnues et montants non finis sont refusés, les donneurs sont recalculés
+au rechargement, les profils explicites divergents de l'estimation sont refusés.
+La GUI gère import, donneurs, parts et désignations; une modification révoque
+les confirmations. Trace et PDF présentent sources, calcul et parts par donneur.
+
+Sources officielles consultées pour 2025 :
+- [ARC, ligne 31800](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-31800-disability-amount-transferred-a-dependant.html).
+- [RC4064 2025](https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/rc4064/disability-related-information.html).
+- [DTC, montants 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/segments/tax-credits-deductions-persons-disabilities/disability-tax-credit/claiming-dtc.html).
+- [Feuille fédérale 2025, pages 5 et 6](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-d1/5000-d1-25e.pdf).
+- [LIR 118.3(2) et (3)](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-118.3.html).
+- [Compensatoire, LIR 118(11), applicable dès 2025](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-118.html).
+- [Folio S1-F1-C2, paragraphes 2.30 à 2.37](https://www.canada.ca/en/revenue-agency/services/tax/technical-information/income-tax/income-tax-folios-index/series-1-individuals/folio-1-health-medical/income-tax-folio-s1-f1-c2-disability-tax-credit.html).
+
+Validation : tests moteur, Decimal, bornes, supplément, transferts maximal,
+partiel et nul, revenus nul/positif, partage, exclusions, JSON, estimation,
+ordre avant scolarité, trace, PDF et GUI. Les tests de comparaison avec la
+feuille conservent explicitement la divergence, sans affaiblir une assertion.
+Dernière suite complète avant le complément d'audit : **5151 passed, 8 warnings**.
+Complément moteur et intégration : **108 passed, 5 warnings**.
+Validation ciblée finale du bloc : **172 passed, 5 warnings**.
+Suite complète finale : **5159 passed, 8 warnings en 162,62 s**, avec
+`--capture=sys`. Avertissements inchangés : cinq SWIG et trois openpyxl.
+Revue visuelle du PDF actualisé : détail disponible/utilisé/inutilisé lisible.

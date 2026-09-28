@@ -74,6 +74,7 @@ from .tax_donations_2025 import (
 )
 from .tax_disability_2025 import (
     credit_federal_handicap_2025,
+    montant_federal_handicap_2025,
     credit_quebec_deficience_2025,
 )
 from .tax_drug_insurance_2025 import (
@@ -1470,8 +1471,8 @@ def construire_trace_calcul_fiscal_2025(
                     + " — admissibilité CIPH validée"
                 ),
                 (
-                    "Montant fédéral 2025 de 10 138 $ × 14,5 % "
-                    "— personne elle-même, 18 ans ou plus"
+                    f"31600 = {montant_federal_handicap_2025(credit_deficience)} $; crédit = 31600 × 14,5 %; "
+                    "base 10 138 + supplément mineur max(5914 - max(soins - 3464, 0), 0), si applicable"
                 ),
                 credit_federal_handicap_2025(
                     credit_deficience
@@ -2075,6 +2076,25 @@ def construire_trace_calcul_fiscal_2025(
             ("Adoption — solde maximal des autres demandeurs", r.reste_autres_demandeurs, "Base plafonnée moins part du demandeur"),
         ):
             lignes += (_ligne(len(lignes) + 1, "FRAIS D'ADOPTION — BLOC 5M", libelle, source, formule, montant),)
+
+    if estimation.transferts_handicap.transferts:
+        for t, d in zip(estimation.transferts_handicap.transferts, estimation.resultat_transferts_handicap.donneurs):
+            c = d.calcul
+            source = t.nom_donneur + " : " + t.source + "; " + t.rapprochement_30400_30450
+            for libelle, valeur, formule in (
+                ("Donneur — base handicap 31600", c.montant_31600, "10 138 + supplément mineur net des soins"),
+                ("Donneur — impôt hypothétique", c.impot_avant_handicap, "Impôt brut moins crédits 118 à 118.07/118.7 et compensatoire permis; ajouts partie I inclus"),
+                ("Donneur — crédit handicap disponible", c.credit_disponible, "max(31600 × 14,5 % - impôt hypothétique, 0)"),
+                ("Donneur — crédit handicap utilisé", c.credit_utilise, "Crédit DTC total moins crédit inutilisé selon 118.3(2)"),
+                ("Donneur — base handicap utilisée", c.base_utilisee, "Base 31600 moins base transférable arrondie au cent"),
+                ("Donneur — base disponible", c.base_disponible, "min(31600, crédit disponible / 14,5 %), au cent"),
+                ("Donneur — part reçue", d.base_retenue, "Base disponible moins autres parts; choix de part limitée si activé"),
+            ):
+                lignes = _inserer_ligne_avant(lignes, "Base ligne 33500", _ligne(0, "TRANSFERT HANDICAP 31800", libelle, source, formule, valeur))
+        lignes = _inserer_ligne_avant(lignes, "Base ligne 33500", _ligne(0,
+            "TRANSFERT HANDICAP 31800", "Handicap transféré — ligne 31800", "LIR 118.3(2); dossiers validés",
+            "Somme des parts reçues; incluse une fois avant scolarité; aucun effet sur revenus ou Québec",
+            estimation.resultat_transferts_handicap.ligne_31800))
 
     prochain_ordre = len(lignes) + 1
 

@@ -1,6 +1,7 @@
 """Persistance locale des dossiers fiscaux validés."""
 
 from __future__ import annotations
+from .tax_disability_transfer_2025 import (TransfertsHandicap2025, calculer_transferts_handicap_2025, transferts_handicap_vers_dict, transferts_handicap_depuis_dict)
 
 from .tax_multigenerational_renovation_2025 import (RenovationsMultigenerationnelles2025, calculer_multigenerationnel_2025, multigenerationnel_vers_dict, multigenerationnel_depuis_dict)
 from .tax_educator_supplies_2025 import (FournituresEducateur2025, calculer_fournitures_educateur_2025, educateur_vers_dict, educateur_depuis_dict)
@@ -225,6 +226,7 @@ class DossierFiscalEnregistre:
     psv_confirme: bool = False
     rrq_rpc_confirme: bool = False
     renovations_multigenerationnelles: RenovationsMultigenerationnelles2025 = RenovationsMultigenerationnelles2025()
+    transferts_handicap: TransfertsHandicap2025 = TransfertsHandicap2025()
     fournitures_educateur: FournituresEducateur2025 = FournituresEducateur2025()
     fonds_travailleurs: FondsTravailleurs2025 = FondsTravailleurs2025()
     contributions_politiques: ContributionsPolitiques2025 = ContributionsPolitiques2025()
@@ -1435,6 +1437,10 @@ def _credit_deficience_vers_dict(
     valider_credit_deficience_2025(credit)
 
     return {
+        "naissance_federale": credit.naissance_federale,
+        "soins_reclames_federaux": format(credit.soins_reclames_federaux, ".2f"),
+        "source_soins_federaux": credit.source_soins_federaux,
+        "soins_federaux_valides": credit.soins_federaux_valides,
         "reclamer_federal": bool(credit.reclamer_federal),
         "reclamer_quebec": bool(credit.reclamer_quebec),
         "source_federale": credit.source_federale,
@@ -1473,7 +1479,18 @@ def _credit_deficience_depuis_dict(
             "Le crédit handicap/déficience enregistré est invalide."
         )
 
+    from dataclasses import fields
+    if set(valeur) - {f.name for f in fields(CreditDeficience2025)}:
+        raise ValueError("Clé inconnue du profil handicap/déficience.")
+    soins = valeur.get("soins_reclames_federaux", "0")
+    if not isinstance(soins, (str, int)) or isinstance(soins, bool):
+        raise ValueError("Type invalide des frais de soins fédéraux.")
+
     credit = CreditDeficience2025(
+        naissance_federale=valeur.get("naissance_federale", ""),
+        soins_reclames_federaux=_decimal_depuis_json(soins, "soins_reclames_federaux"),
+        source_soins_federaux=valeur.get("source_soins_federaux", ""),
+        soins_federaux_valides=valeur.get("soins_federaux_valides", False),
         reclamer_federal=bool(
             valeur.get("reclamer_federal", False)
         ),
@@ -3366,6 +3383,7 @@ def sauvegarder_dossier_fiscal(
     pension_alimentaire_payee: PensionAlimentairePayee2025 | None = None,
     autres_deductions: AutresDeductions2025 | None = None,
     renovations_multigenerationnelles: RenovationsMultigenerationnelles2025 | None = None,
+    transferts_handicap: TransfertsHandicap2025 | None = None,
     fournitures_educateur: FournituresEducateur2025 | None = None,
     fonds_travailleurs: FondsTravailleurs2025 | None = None,
     contributions_politiques: ContributionsPolitiques2025 | None = None,
@@ -3526,6 +3544,13 @@ def sauvegarder_dossier_fiscal(
         )
 
     if estimation is not None:
+        if credit_deficience is None and estimation.credit_deficience.naissance_federale:
+            credit_deficience = estimation.credit_deficience
+        elif credit_deficience is not None and (credit_deficience.naissance_federale or estimation.credit_deficience.naissance_federale):
+            if credit_deficience != estimation.credit_deficience:
+                raise ValueError("Profil handicap détaillé divergent de l'estimation.")
+
+    if estimation is not None:
         if frais_medicaux is None:
             frais_medicaux = estimation.frais_medicaux
         elif (frais_medicaux.supplement != SupplementMedical2025()
@@ -3575,6 +3600,9 @@ def sauvegarder_dossier_fiscal(
     calculer_benevoles_2025(benevoles_effectifs, dossier)
     if estimation is not None and benevoles_effectifs != estimation.benevoles:
         raise ValueError("Le profil bénévoles diffère de l'estimation.")
+    handicap_transfere = transferts_handicap if transferts_handicap is not None else (estimation.transferts_handicap if estimation else TransfertsHandicap2025())
+    if estimation is not None and handicap_transfere != estimation.transferts_handicap:
+        raise ValueError("Profil des transferts handicap divergent de l'estimation.")
     conjoint = valider_transfert_conjoint_2025(
         transfert_conjoint if transfert_conjoint is not None
         else (estimation.transfert_conjoint if estimation else TransfertConjointFederal2025())
@@ -3893,6 +3921,7 @@ def sauvegarder_dossier_fiscal(
             pension_alimentaire_effective
         ),
         "renovations_multigenerationnelles": multigenerationnel_vers_dict(multigenerationnel),
+        "transferts_handicap": transferts_handicap_vers_dict(handicap_transfere),
         "fournitures_educateur": educateur_vers_dict(educateur),
         "fonds_travailleurs": fonds_vers_dict(fonds),
         "contributions_politiques": politiques_vers_dict(politiques),
@@ -3971,6 +4000,11 @@ def sauvegarder_dossier_fiscal(
         "rapport_pdf": _chemin_vers_stockage(Path(rapport_pdf)) if rapport_pdf else None,
     }
 
+    calculer_transferts_handicap_2025(handicap_transfere,
+        beneficiaire=dossier.client, annee=dossier.annee_fiscale,
+        reclame_30400=contenu["personne_charge_admissible_federale"]["reclamer_montant"],
+        reclame_30450=contenu["aidant_autre_personne_charge_federal"]["reclamer_montant"],
+        deduction_22000=pension_alimentaire_effective.deduction_federale_22000)
     temporaire = chemin.with_suffix(chemin.suffix + ".tmp")
     try:
         temporaire.write_text(json.dumps(contenu, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -4316,7 +4350,14 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
     except (TypeError, ValueError) as erreur:
         raise ValueError("Profil reports de pertes enregistré invalide.") from erreur
     verifier_confirmation_reports_pertes_2025(pertes_profil, dossier, capital_profil, frais_profil)
+    handicap_transfere = transferts_handicap_depuis_dict(contenu.get("transferts_handicap"))
+    calculer_transferts_handicap_2025(handicap_transfere,
+        beneficiaire=dossier.client, annee=dossier.annee_fiscale,
+        reclame_30400=personne_charge_admissible_federale.reclamer_montant,
+        reclame_30450=aidant_autre_personne_charge_federal.reclamer_montant,
+        deduction_22000=pension_alimentaire_payee.deduction_federale_22000)
     return DossierFiscalEnregistre(
+        transferts_handicap=handicap_transfere,
         profil_reports_pertes=pertes_profil,
         profil_frais_placement=frais_profil,
         profil_capital=capital_profil,

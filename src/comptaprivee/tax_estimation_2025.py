@@ -9,6 +9,8 @@ d'estimation soumise à validation comptable.
 """
 
 from .tax_rules_2025 import arrondir_cent
+from .tax_disability_transfer_2025 import (TransfertsHandicap2025, ResultatTransfertsHandicap2025, calculer_transferts_handicap_2025)
+from .tax_disability_transfer_2025 import lignes_transferts_handicap_2025
 from .tax_multigenerational_renovation_2025 import (RenovationsMultigenerationnelles2025, ResultatMultigenerationnel2025, calculer_multigenerationnel_2025, lignes_multigenerationnelles_2025, multigenerationnel_vers_dict, multigenerationnel_depuis_dict)
 from .tax_educator_supplies_2025 import (FournituresEducateur2025, ResultatFournituresEducateur2025, calculer_fournitures_educateur_2025, lignes_fournitures_educateur_2025)
 from .tax_labour_funds_2025 import (FondsTravailleurs2025, ResultatFondsTravailleurs2025, calculer_fonds_travailleurs_2025, fonds_vers_dict, fonds_depuis_dict, verifier_fonds_conjoint_2025, lignes_fonds_travailleurs_2025)
@@ -102,7 +104,8 @@ from .tax_federal_top_up_2025 import (
     lignes_resume_credit_compensatoire_2025,
 )
 from .tax_disability_2025 import (
-    MONTANT_FEDERAL_HANDICAP_2025,
+    montant_federal_handicap_2025,
+    lignes_handicap_detaille_2025,
     CreditDeficience2025,
     appliquer_credit_federal_handicap_2025,
     appliquer_credit_quebec_deficience_2025,
@@ -347,6 +350,8 @@ class EstimationFiscale2025:
     resultat_reports_scolarite: ResultatReportsScolariteFederaux2025 = ResultatReportsScolariteFederaux2025()
     resultat_reports_dons: ResultatReportsDonsFederaux2025 = ResultatReportsDonsFederaux2025()
     renovations_multigenerationnelles: RenovationsMultigenerationnelles2025 = RenovationsMultigenerationnelles2025()
+    transferts_handicap: TransfertsHandicap2025 = TransfertsHandicap2025()
+    resultat_transferts_handicap: ResultatTransfertsHandicap2025 = ResultatTransfertsHandicap2025()
     resultat_multigenerationnel: ResultatMultigenerationnel2025 = ResultatMultigenerationnel2025()
     fournitures_educateur: FournituresEducateur2025 = FournituresEducateur2025()
     fonds_travailleurs: FondsTravailleurs2025 = FondsTravailleurs2025()
@@ -431,6 +436,7 @@ def calculer_estimation_fiscale_2025(
     psv_confirme: bool = False,
     rrq_rpc_confirme: bool = False,
     renovations_multigenerationnelles: RenovationsMultigenerationnelles2025 | None = None,
+    transferts_handicap: TransfertsHandicap2025 | None = None,
     fournitures_educateur: FournituresEducateur2025 | None = None,
     fonds_travailleurs: FondsTravailleurs2025 | None = None,
     contributions_politiques: ContributionsPolitiques2025 | None = None,
@@ -1312,6 +1318,13 @@ def calculer_estimation_fiscale_2025(
     # T1 Québec : ligne 105 avant scolarité et frais médicaux. Les fonctions
     # existantes conservent leurs validations et limitations; la finalisation
     # ci-dessous reconstruit l'impôt depuis le brut, sans cumuler leurs débits.
+    handicap_transfere = transferts_handicap if transferts_handicap is not None else TransfertsHandicap2025()
+    resultat_handicap_transfere = calculer_transferts_handicap_2025(
+        handicap_transfere, beneficiaire=dossier.client, annee=dossier.annee_fiscale,
+        reclame_30400=personne_charge_admissible_federale_effective.reclamer_montant,
+        reclame_30450=aidant_30450_effectif.reclamer_montant,
+        deduction_22000=pension_alimentaire_payee_effective.deduction_federale_22000,
+    )
     montants_avant_scolarite = (
         ("30000", federal.montant_personnel_base),
         ("30800", federal.cotisation_base_rrq),
@@ -1329,7 +1342,8 @@ def calculer_estimation_fiscale_2025(
         ("31270", montant_ligne_31270_2025(achat_habitation_federal_effectif)),
         ("31285", montant_ligne_31285_2025(accessibilite_domiciliaire_federale_effective)),
         ("31300", resultat_adoption.montant_31300),
-        ("31600", MONTANT_FEDERAL_HANDICAP_2025 if credit_deficience_effectif.reclamer_federal else Decimal("0")),
+        ("31600", montant_federal_handicap_2025(credit_deficience_effectif)),
+        ("31800", resultat_handicap_transfere.ligne_31800),
     )
     base_ligne105 = calculer_base_33500_2025(montants_avant_scolarite)
     reports_scolarite = calculer_reports_scolarite_federaux_2025(
@@ -1543,6 +1557,7 @@ def calculer_estimation_fiscale_2025(
         dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
     )
     return EstimationFiscale2025(
+        transferts_handicap=handicap_transfere, resultat_transferts_handicap=resultat_handicap_transfere,
         renovations_multigenerationnelles=multigenerationnel, resultat_multigenerationnel=resultat_multigenerationnel,
         fournitures_educateur=educateur, resultat_fournitures_educateur=resultat_educateur,
         fonds_travailleurs=fonds, resultat_fonds_travailleurs=resultat_fonds,
@@ -1721,6 +1736,8 @@ def formater_estimation_fiscale_2025(
         ),
         *lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons),
         *lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite),
+        *lignes_handicap_detaille_2025(estimation.credit_deficience),
+        *lignes_transferts_handicap_2025(estimation.transferts_handicap, estimation.resultat_transferts_handicap),
         *lignes_multigenerationnelles_2025(estimation.renovations_multigenerationnelles, estimation.resultat_multigenerationnel),
         *lignes_fournitures_educateur_2025(estimation.fournitures_educateur, estimation.resultat_fournitures_educateur),
         *lignes_fonds_travailleurs_2025(estimation.fonds_travailleurs, estimation.resultat_fonds_travailleurs, estimation.rapprochement),

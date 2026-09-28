@@ -10,6 +10,8 @@ from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, CONFIRMATIONS_REPORTS_DONS
+from .gui_disability_transfer_2025 import ouvrir_transferts_handicap_2025
+from .tax_disability_transfer_2025 import TransfertsHandicap2025
 from .gui_multigenerational_renovation_2025 import ouvrir_multigenerationnel_2025
 from .tax_multigenerational_renovation_2025 import RenovationsMultigenerationnelles2025
 from .tax_educator_supplies_2025 import (FournituresEducateur2025, DepenseEducateur2025, CATEGORIES_FOURNITURES, PROVINCES_EMPLOI, CONFIRMATIONS_EDUCATEUR, calculer_fournitures_educateur_2025, valider_depenses_educateur_2025)
@@ -2521,6 +2523,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_demenagement_courants = FraisDemenagement2025()
         pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
         autres_deductions_courantes = AutresDeductions2025()
+        transferts_handicap_courants = TransfertsHandicap2025()
         renovations_multigenerationnelles_courantes = RenovationsMultigenerationnelles2025()
         fournitures_educateur_courantes = FournituresEducateur2025()
         fonds_travailleurs_courants = FondsTravailleurs2025()
@@ -3802,6 +3805,16 @@ class ApplicationComptaPrivee(tk.Tk):
 
         # --- Priorité 5B : GUI intérêts sur prêts étudiants ---
 
+        def ouvrir_handicap_transfere_5r_2025():
+            def appliquer(profil):
+                nonlocal transferts_handicap_courants, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                transferts_handicap_courants = profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Transferts handicap mis à jour; recalculez l'estimation.")
+            ouvrir_transferts_handicap_2025(fenetre, transferts_handicap_courants, client_fiscal.get().strip(), appliquer)
+
         def ouvrir_renovations_5q_2025():
             def appliquer(profil):
                 nonlocal renovations_multigenerationnelles_courantes, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
@@ -4643,7 +4656,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
 
         def ouvrir_scolarite_recue_5h_2025():
-            nonlocal renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal transferts_handicap_courants, renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Scolarité reçue — ligne 32400")
             dimensionner_fenetre(dialogue, 1000, 880)
@@ -5825,6 +5838,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    transferts_handicap=transferts_handicap_courants,
                     renovations_multigenerationnelles=renovations_multigenerationnelles_courantes,
                     fournitures_educateur=fournitures_educateur_courantes,
                     fonds_travailleurs=fonds_travailleurs_courants,
@@ -7179,8 +7193,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 text=(
                     "Profil actuel : crédit pour la personne elle-même, "
-                    "18 ans ou plus au 1er janvier 2025, sans transfert "
-                    "fédéral. L'admissibilité et les pièces doivent être "
+                    "supplément fédéral des moins de 18 ans au 31 décembre. "
+                    "Québec encore limité aux adultes au 1er janvier. Sans transfert fédéral. Les pièces doivent être "
                     "validées par le comptable."
                 ),
                 foreground="#166534",
@@ -7250,7 +7264,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 wraplength=680, anchor="w", justify="left",
                 text=(
                     "Réclamer le montant fédéral — ligne 31600 "
-                    "(10 138 $)"
+                    "(10 138 $ plus supplément mineur, si applicable)"
                 ),
                 variable=reclamer_fed_var,
             ).grid(
@@ -7388,7 +7402,33 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=(12, 8),
             )
 
+            naissance_5r_var = tk.StringVar(value=credit_deficience_courant.naissance_federale)
+            soins_5r_var = tk.StringVar(value=str(credit_deficience_courant.soins_reclames_federaux))
+            source_soins_5r_var = tk.StringVar(value=credit_deficience_courant.source_soins_federaux)
+            soins_valides_5r_var = tk.BooleanVar(value=credit_deficience_courant.soins_federaux_valides)
+            for row, nom, libelle, variable in (
+                (15, "naissance_federale", "Naissance fédérale (AAAA-MM-JJ), requise si mineur ou devenu majeur en 2025", naissance_5r_var),
+                (16, "soins_reclames_federaux", "Garde/soins payés en 2025 et réclamés par quiconque ($), même pour une autre année", soins_5r_var),
+                (17, "source_soins_federaux", "Pièces et rapprochement des frais de garde/soins, y compris si zéro", source_soins_5r_var),
+            ):
+                ttk.Label(cadre, text=libelle, wraplength=340).grid(row=row, column=0, sticky="w")
+                ttk.Entry(cadre, name=nom + "_5r", textvariable=variable).grid(row=row, column=1, sticky="ew")
+            tk.Checkbutton(cadre, name="soins_federaux_valides_5r", variable=soins_valides_5r_var,
+                text="Âge et total des frais réclamés sous les articles 63, 64 ou 118.2 vérifiés; aucune dépense omise",
+                wraplength=680, anchor="w", justify="left").grid(row=18, column=0, columnspan=2, sticky="w")
+            def revoquer_handicap_5r(*_):
+                for _, variable in confirmations:
+                    variable.set(False)
+                soins_valides_5r_var.set(False)
+            for variable in (naissance_5r_var, soins_5r_var, source_soins_5r_var, source_fed_var, source_qc_var,
+                             reclamer_fed_var, reclamer_qc_var):
+                variable.trace_add("write", revoquer_handicap_5r)
+
             def effacer() -> None:
+                naissance_5r_var.set("")
+                soins_5r_var.set("0")
+                source_soins_5r_var.set("")
+                soins_valides_5r_var.set(False)
                 reclamer_fed_var.set(False)
                 reclamer_qc_var.set(False)
                 source_fed_var.set("")
@@ -7408,6 +7448,10 @@ class ApplicationComptaPrivee(tk.Tk):
 
                 try:
                     nouveau_credit = CreditDeficience2025(
+                        naissance_federale=naissance_5r_var.get().strip(),
+                        soins_reclames_federaux=Decimal(soins_5r_var.get().strip().replace(",", ".")),
+                        source_soins_federaux=source_soins_5r_var.get().strip(),
+                        soins_federaux_valides=soins_valides_5r_var.get(),
                         reclamer_federal=reclamer_fed_var.get(),
                         reclamer_quebec=reclamer_qc_var.get(),
                         source_federale=source_fed_var.get().strip(),
@@ -7430,7 +7474,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     nouveau_credit = valider_credit_deficience_2025(
                         nouveau_credit
                     )
-                except ValueError as erreur:
+                except (ValueError, InvalidOperation) as erreur:
                     messagebox.showerror(
                         "Crédit handicap / déficience invalide",
                         str(erreur),
@@ -14020,6 +14064,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    transferts_handicap=transferts_handicap_courants,
                     renovations_multigenerationnelles=renovations_multigenerationnelles_courantes,
                     fournitures_educateur=fournitures_educateur_courantes,
                     fonds_travailleurs=fonds_travailleurs_courants,
@@ -14086,6 +14131,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    transferts_handicap=transferts_handicap_courants,
                     renovations_multigenerationnelles=renovations_multigenerationnelles_courantes,
                     fournitures_educateur=fournitures_educateur_courantes,
                     fonds_travailleurs=fonds_travailleurs_courants,
@@ -14182,7 +14228,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
-            nonlocal renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal transferts_handicap_courants, renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal interets_pret_etudiant_courants
             nonlocal frais_garde_federaux_courants
@@ -14263,6 +14309,7 @@ class ApplicationComptaPrivee(tk.Tk):
             pension_alimentaire_payee_courante = (
                 enregistrement.pension_alimentaire_payee
             )
+            transferts_handicap_courants = enregistrement.transferts_handicap
             renovations_multigenerationnelles_courantes = enregistrement.renovations_multigenerationnelles
             fournitures_educateur_courantes = enregistrement.fournitures_educateur
             fonds_travailleurs_courants = enregistrement.fonds_travailleurs
@@ -14609,6 +14656,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    transferts_handicap=transferts_handicap_courants,
                     renovations_multigenerationnelles=renovations_multigenerationnelles_courantes,
                     fournitures_educateur=fournitures_educateur_courantes,
                     fonds_travailleurs=fonds_travailleurs_courants,
@@ -15108,6 +15156,8 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_contributions_politiques_5n_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Rénovations multigénérationnelles 2025 (5Q)",
                    command=ouvrir_renovations_5q_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Transferts handicap 2025 (5R)",
+                   command=ouvrir_handicap_transfere_5r_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Fournitures éducateur 2025 (5P)",
                    command=ouvrir_fournitures_educateur_5p_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Fonds de travailleurs 2025 (5O)",
