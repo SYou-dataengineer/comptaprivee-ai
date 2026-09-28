@@ -3909,3 +3909,64 @@ cette correction indépendante.
 
 Suite complète avant commit de la correction : **5906 passed, 8 warnings**,
 `--capture=sys`, 200,23 s; `git diff --check` sans erreur.
+
+
+### Bloc 6E livré — crédit médical remboursable Québec, ligne 462 point 1
+
+Sources : [annexe B 2025, partie D](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.B%282025-12%29.pdf)
+et [RQ, ligne 462 point 1, grille du revenu de travail](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/451-a-480-remboursement-ou-solde-a-payer/ligne-462/point-1/).
+
+Règle 2025 : au moins 18 ans au 31 décembre, résidence Canada toute l'année et
+Québec à la fin de l'année; revenu de travail admissible d'au moins 3 750 $.
+Partie D : ligne 44 = `min((381 + 250 point 7) × 25 %, 1466)`;
+réduction 48 = `max(revenu familial - 28335, 0) × 5 %`;
+crédit 462 = `max(44 - 48, 0)`. Multiplications arrondies au cent.
+À 57 655 $ de revenu familial, le maximum est entièrement réduit.
+
+Périmètre logiciel 6E : salarié individuel sans conjoint ni personne à charge,
+vivant et sans faillite, emploi 101 uniquement, aucune déduction 250 point 7.
+Les revenus de travail indépendant, lignes 105/107, programmes d'incitation et
+protection des salariés nécessitent une extension; ils ne sont pas déclarés
+fiscalement inadmissibles. Dans ce périmètre, travail =
+`max(101 - 205 - 207 - case 211 RL-1, 0)`. Les déductions RPA et TP-59 viennent
+des profils existants; les cotisations syndicales Québec 397 ne sont pas une
+déduction de cette grille. Chaque case 211 est validée et comptée une seule
+fois par feuillet. Le revenu familial est le revenu net Québec 275 du demandeur.
+
+La base médicale 381 est recalculée après son seuil de 3 %, depuis les frais
+Québec déjà validés. Aucun montant de crédit, revenu net ou base 381 n'est saisi
+manuellement dans le nouveau dialogue. Naissance, source et confirmations
+comptables sont obligatoires. Les combinaisons familiales détectées sont
+refusées dans ce profil, et l'âge est rapproché des profils actifs de pensions,
+carrière et supplément médical fédéral. Une annexe B familiale reste à livrer.
+
+Le crédit est ajouté une seule fois au rapprochement; revenu, impôts fédéral et
+Québec, crédits médicaux non remboursables et abattement sont inchangés.
+Exemple synthétique : salaire 52 000 $, revenu net Québec 50 095 $, frais Québec
+10 000 $ → base 381 de 8 497,15 $, maximum 1 466 $, réduction 1 088 $,
+crédit remboursable **378 $**. Pour les mêmes données du dossier, le supplément
+fédéral distinct est **592,95 $**, soit **970,95 $** de crédits remboursables
+médicaux cumulés. Le crédit Québec peut subsister avec un impôt Québec nul.
+
+JSON rétrocompatible : absence du profil → profil vide; seules naissance,
+source, demande et confirmations sont enregistrées. Types/clefs stricts,
+divergence avec l'estimation refusée, résultats recalculés. GUI avec révocation,
+réouverture, effacement et réinitialisation lors d'un nouveau dossier. Résumé,
+trace et PDF détaillent bases, seuils, formule, source et validation. Aucun envoi.
+
+Tests ciblés avec régressions médicales/rapprochement/GUI : **278 passed,
+5 warnings**. Couvrent seuils et arrondis, case 211, déductions, âge, impôt nul,
+cumul fédéral/Québec, familles hors périmètre, JSON, isolation et PDF. PDF
+synthétique vérifié visuellement, sans débordement.
+
+Journal de la correction d'isolation : commit `0c69245`, 3 fichiers; suites
+complètes avant/après commit **5906 passed, 8 warnings**; push réussi, dépôt
+propre avant 6E.
+
+Journal 6E : suite complète avant commit **6017 passed, 8 warnings**,
+`--capture=sys`, 204,52 s. Une première exécution a signalé 14 échecs de
+visibilité de boutons Tk (`winfo_ismapped`) dans les écrans historiques du bloc 2,
+sans échec fiscal. Le groupe concerné est repassé à **46 passed, 5 warnings**,
+puis toute la suite est verte, sans modification du code ni des assertions.
+Cause exacte de cet incident GUI non établie; point à surveiller lors du
+durcissement Windows. Aucune exception, exclusion ou assertion affaiblie ajoutée.

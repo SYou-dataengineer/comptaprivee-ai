@@ -18,6 +18,7 @@ autonomes, plusieurs employeurs et autres situations particulières.
 from dataclasses import dataclass
 from decimal import Decimal
 
+from .tax_quebec_refundable_medical_2025 import montant_medical_remboursable_quebec
 from .tax_federal_top_up_2025 import montant_decimal_2025
 from .tax_political_contributions_2025 import montant_politique_2025
 from .tax_multigenerational_renovation_2025 import montant_multigenerationnel_2025
@@ -79,6 +80,7 @@ class RapprochementFiscal2025:
     credit_politique_ligne_41000: Decimal = ZERO
     credit_multigenerationnel_ligne_45355: Decimal = ZERO
     credit_educateur_ligne_46900: Decimal = ZERO
+    credit_medical_quebec_ligne_462: Decimal = ZERO
     credit_fonds_ligne_41400: Decimal = ZERO
 
     @property
@@ -164,9 +166,13 @@ def calculer_rapprochement_fiscal_2025(
     credit_multigenerationnel: Decimal = ZERO,
     credit_educateur: Decimal = ZERO,
     credit_fonds: Decimal = ZERO,
+    credit_medical_quebec: Decimal = ZERO,
 ) -> RapprochementFiscal2025:
     """Calcule une estimation de base du remboursement ou du solde."""
     _verifier_coherence(base, federal, quebec)
+    montant_medical_remboursable_quebec(credit_medical_quebec, "462 point 1")
+    if credit_medical_quebec > Decimal(1466):
+        raise ValueError("Crédit médical Québec 462 : maximum 1466 $.")
     credit_formation = montant_decimal_2025(credit_formation, "Crédit formation 45350")
     supplement_medical = montant_decimal_2025(supplement_medical, "Supplément médical 45200")
     allocation_travailleurs = montant_decimal_2025(allocation_travailleurs, "ACT 45300")
@@ -247,6 +253,7 @@ def calculer_rapprochement_fiscal_2025(
         + allocation_travailleurs
         + credit_multigenerationnel
         + credit_educateur
+        + credit_medical_quebec
         - impot_total
     )
 
@@ -401,6 +408,7 @@ def calculer_rapprochement_fiscal_2025(
         credit_multigenerationnel_ligne_45355=credit_multigenerationnel,
         credit_educateur_ligne_46900=credit_educateur,
         credit_fonds_ligne_41400=credit_fonds,
+        credit_medical_quebec_ligne_462=credit_medical_quebec,
         client=base.client,
         annee_fiscale=base.annee_fiscale,
         province=base.province,

@@ -1975,6 +1975,19 @@ def construire_trace_calcul_fiscal_2025(
             lignes = lignes + (_ligne(len(lignes) + 1, "FORMATION 2025 — BLOC 5C", libelle,
                 frais_scolarite.formation.source, formule, montant),)
 
+    if estimation.medical_remboursable_quebec.reclamer:
+        rm = estimation.resultat_medical_remboursable_quebec
+        for libelle, montant, formule in (
+            ("Revenu de travail médical Québec", rm.revenu_travail, "max(101 - 205 - 207 - case 211, 0); minimum 3750"),
+            ("Revenu familial médical Québec", rm.revenu_familial, "275, profil individuel sans conjoint"),
+            ("Base médicale Québec 381", rm.base_ligne_381, "Frais Québec moins 3 % du revenu familial; plancher zéro"),
+            ("Crédit médical avant réduction", rm.credit_ligne_44, "min(381 × 25 %, 1466); 250 point 7 exclu de ce profil"),
+            ("Réduction médicale Québec", rm.reduction_ligne_48, "max(275 - 28335, 0) × 5 %"),
+            ("Crédit médical remboursable Québec 462", rm.credit_ligne_462, "max(crédit - réduction, 0) si travail >= 3750; ajout unique aux paiements"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "MÉDICAL REMBOURSABLE QUÉBEC — BLOC 6E", libelle,
+                estimation.medical_remboursable_quebec.source + "; RQ annexe B 2025; validation comptable confirmée", formule, montant),)
+
     if frais_medicaux.supplement.reclamer:
         r = estimation.resultat_supplement_medical
         for libelle, montant, formule in (
@@ -2245,6 +2258,10 @@ def construire_trace_calcul_fiscal_2025(
         formule = ("Retenues + remboursements cotisations + crédits 45200/45300/45350/45355/46900 - impôt total incluant 41500"
                    if final.remboursement_estime else
                    "Impôt total incluant 41500 - retenues - remboursements cotisations - crédits 45200/45300/45350/45355/46900")
+
+    if final.credit_medical_quebec_ligne_462:
+        formule += (" + crédit médical Québec 462" if final.remboursement_estime
+                    else " - crédit médical Québec 462")
 
     lignes += (
         _ligne(

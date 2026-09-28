@@ -8,6 +8,9 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_quebec_refundable_medical_2025 import (MedicalRemboursableQuebec2025, ResultatMedicalRemboursableQuebec2025,
+    calculer_medical_remboursable_quebec_2025, lignes_medical_remboursable_quebec_2025, avantages_ancien_emploi_211_2025,
+    valider_medical_remboursable_quebec_2025)
 from .tax_quebec_career_extension_2025 import (ProlongationCarriereQuebec2025, ResultatCarriereQuebec2025,
     calculer_carriere_quebec_2025, appliquer_carriere_quebec_2025, lignes_carriere_quebec_2025)
 from .tax_quebec_home_buyers_2025 import (AchatHabitationQuebec2025, ResultatAchatQuebec2025,
@@ -360,6 +363,8 @@ class EstimationFiscale2025:
     prestations_rrq_rpc: PrestationsRrqRpc2025 = PrestationsRrqRpc2025()
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
     resultat_allocation_travailleurs: ResultatAllocationTravailleurs2025 = ResultatAllocationTravailleurs2025()
+    medical_remboursable_quebec: MedicalRemboursableQuebec2025 = MedicalRemboursableQuebec2025()
+    resultat_medical_remboursable_quebec: ResultatMedicalRemboursableQuebec2025 = ResultatMedicalRemboursableQuebec2025()
     prolongation_carriere_quebec: ProlongationCarriereQuebec2025 = ProlongationCarriereQuebec2025()
     resultat_carriere_quebec: ResultatCarriereQuebec2025 = ResultatCarriereQuebec2025()
     achat_habitation_quebec: AchatHabitationQuebec2025 = AchatHabitationQuebec2025()
@@ -470,6 +475,7 @@ def calculer_estimation_fiscale_2025(
     transfert_conjoint: TransfertConjointFederal2025 | None = None,
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
+    medical_remboursable_quebec: MedicalRemboursableQuebec2025 | None = None,
     prolongation_carriere_quebec: ProlongationCarriereQuebec2025 | None = None,
     achat_habitation_quebec: AchatHabitationQuebec2025 | None = None,
     interets_etudiants_quebec: InteretsEtudiantsQuebec2025 | None = None,
@@ -1579,6 +1585,32 @@ def calculer_estimation_fiscale_2025(
     multigenerationnel = renovations_multigenerationnelles if renovations_multigenerationnelles is not None else RenovationsMultigenerationnelles2025()
     resultat_multigenerationnel = calculer_multigenerationnel_2025(multigenerationnel, annee=dossier.annee_fiscale,
         autres_frais_reclames=bool(frais_medicaux_effectifs.montant_admissible_federal or medical_familial.depenses or accessibilite_domiciliaire_federale_effective.depenses_admissibles))
+    medical_quebec = valider_medical_remboursable_quebec_2025(
+        medical_remboursable_quebec if medical_remboursable_quebec is not None else MedicalRemboursableQuebec2025())
+    resultat_medical_quebec = calculer_medical_remboursable_quebec_2025(medical_quebec,
+        salaire=base.revenu_emploi_quebec, deduction_205=rpa_effectives.montant_quebec,
+        deduction_207=depenses_emploi_effectives.deduction_quebec_tp59,
+        avantages_211=avantages_ancien_emploi_211_2025(dossier) if medical_quebec.reclamer else Decimal(0),
+        revenu_net=revenu.revenu_net_quebec,
+        base_381=montant_frais_medicaux_quebec_apres_seuil_2025(frais_medicaux_effectifs, revenu.revenu_net_quebec))
+    if medical_quebec.reclamer:
+        if (any(p.reclamer_montant for p in (montant_conjoint_federal_effectif,
+                personne_charge_admissible_federale_effective, aidant_30425_effectif,
+                aidant_30450_effectif, aidant_enfant_federal_effectif))
+                or conjoint.activer or fonds.conjoint.nom or politiques.nom_conjoint
+                or handicap_transfere.transferts or adoption_effective.enfants
+                or frais_garde_federaux_effectifs.nombre_enfants_moins_7_sans_dtc
+                or frais_garde_federaux_effectifs.nombre_enfants_7_a_16_ou_infirmes_sans_dtc
+                or frais_garde_federaux_effectifs.nombre_enfants_dtc
+                or act.famille.conjoint_nom or act.famille.enfant_nom or act.famille.conjoint_enfant_nom
+                or frais_medicaux_effectifs.supplement.mode_familial
+                or any(p.lien != "soi-même" for p in medical_familial.personnes)):
+            raise ValueError("Crédit médical Québec 6E : combinaison familiale hors du profil individuel pris en charge.")
+        age_medical = 2025 - int(medical_quebec.naissance[:4])
+        if (pensions.present and profil_pensions.age_31_decembre != age_medical
+                or carriere_quebec.reclamer and carriere_quebec.naissance != medical_quebec.naissance
+                or frais_medicaux_effectifs.supplement.reclamer and frais_medicaux_effectifs.supplement.age_fin_2025 != age_medical):
+            raise ValueError("Naissance médicale Québec divergente des autres profils actifs.")
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
         federal,
@@ -1588,6 +1620,7 @@ def calculer_estimation_fiscale_2025(
         allocation_travailleurs=resultat_act.ligne_45300,
         avances_act=resultat_act.ligne_41500,
         credit_multigenerationnel=resultat_multigenerationnel.ligne_45355,
+        credit_medical_quebec=resultat_medical_quebec.credit_ligne_462,
         credit_educateur=resultat_educateur.ligne_46900,
         credit_fonds=resultat_fonds.ligne_41400,
         credit_politique=resultat_politiques.ligne_41000,
@@ -1644,6 +1677,7 @@ def calculer_estimation_fiscale_2025(
         transferts_scolarite_recus=scolarite_recue,
         allocation_travailleurs=act, resultat_allocation_travailleurs=resultat_act,
         resultat_supplement_medical=supplement_medical,
+        medical_remboursable_quebec=medical_quebec, resultat_medical_remboursable_quebec=resultat_medical_quebec,
         prolongation_carriere_quebec=carriere_quebec, resultat_carriere_quebec=resultat_carriere_quebec,
         achat_habitation_quebec=achat_quebec, resultat_achat_quebec=resultat_achat_quebec,
         interets_etudiants_quebec=pret_quebec, resultat_interets_quebec=resultat_pret_quebec,
@@ -1830,6 +1864,7 @@ def formater_estimation_fiscale_2025(
         *lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs),
         *lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical),
         *lignes_formation_2025(estimation.frais_scolarite.formation),
+        *lignes_medical_remboursable_quebec_2025(estimation.medical_remboursable_quebec, estimation.resultat_medical_remboursable_quebec),
         *lignes_carriere_quebec_2025(estimation.prolongation_carriere_quebec, estimation.resultat_carriere_quebec),
         *lignes_achat_quebec_2025(estimation.achat_habitation_quebec, estimation.resultat_achat_quebec),
         *lignes_interets_quebec_2025(estimation.interets_etudiants_quebec, estimation.resultat_interets_quebec),
