@@ -3799,18 +3799,18 @@ class ApplicationComptaPrivee(tk.Tk):
 
         def ouvrir_fonds_travailleurs_5o_2025():
             dialogue = tk.Toplevel(fenetre)
-            dialogue.title("Fonds de travailleurs f?d?raux ? 41300 / 41400")
+            dialogue.title("Fonds de travailleurs fédéraux — 41300 / 41400")
             dimensionner_fenetre(dialogue, 1100, 900)
             dialogue.transient(fenetre)
             dialogue.grab_set()
             formulaire = FormulaireDefilant(dialogue)
             cadre = formulaire.corps
             cadre.columnconfigure(1, weight=1)
-            ttk.Label(cadre, text="FTQ A et Fondaction A/B : cr?dit f?d?ral de 15 %, maximum 750 $. "
-                "Acquisitions du 1 janvier 2025 au 2 mars 2026. Aucune d?duction REER automatique. "
-                "Le cr?dit Qu?bec 424 est distinct. Les rachats, remplacements RAP/REEP et autres traitements "
-                "sp?cialis?s ne sont pas couverts ici. Pour un REER conjoint, renseignez les deux personnes; "
-                "le cr?dit d'une m?me action ne peut pas ?tre partag?.", wraplength=980).grid(row=0, column=0, columnspan=2, sticky="ew")
+            ttk.Label(cadre, text="FTQ A et Fondaction A/B : crédit fédéral de 15 %, maximum 750 $. "
+                "Acquisitions du 1 janvier 2025 au 2 mars 2026. Aucune déduction REER automatique. "
+                "Le crédit Québec 424 est distinct. Les rachats, remplacements RAP/REEP et autres traitements "
+                "spécialisés ne sont pas couverts ici. Pour un REER conjoint, renseignez les deux personnes; "
+                "le crédit d'une même action ne peut pas être partagé.", wraplength=980).grid(row=0, column=0, columnspan=2, sticky="ew")
             source = tk.StringVar(value=fonds_travailleurs_courants.source)
             ttk.Label(cadre, text="Source de validation comptable").grid(row=1, column=0, sticky="w")
             ttk.Entry(cadre, name="source_5o", textvariable=source).grid(row=1, column=1, sticky="ew")
@@ -3819,13 +3819,13 @@ class ApplicationComptaPrivee(tk.Tk):
             for role in ("contribuable", "conjoint"):
                 situations[role] = {}
                 actuel = getattr(fonds_travailleurs_courants, role)
-                ttk.Label(cadre, text=role.capitalize() + " ? conjoint seulement pour un REER conjoint").grid(row=row, column=0, columnspan=2, sticky="w")
+                ttk.Label(cadre, text=role.capitalize() + " — conjoint seulement pour un REER conjoint").grid(row=row, column=0, columnspan=2, sticky="w")
                 row += 1
                 for nom, libelle in (("nom", "Nom"), ("naissance", "Naissance (AAAA-MM-JJ)"),
                         ("revenu_emploi_entreprise", "Total des revenus d'emploi et d'entreprise 2025 ($)"),
-                        ("rente_retraite", "Rente RRQ/RPC, RPA/REER/FERR/RPAC/RVER/RPDB en 2025, hors sommes dues au d?c?s du conjoint"),
-                        ("conge_sans_retour", "Cong? avec traitement en 2025 sans retour au travail pr?vu"),
-                        ("rachat_demande", "Rachat demand? au plus tard le 31 d?cembre 2025")):
+                        ("rente_retraite", "Rente RRQ/RPC, RPA/REER/FERR/RPAC/RVER/RPDB en 2025, hors sommes dues au décès du conjoint"),
+                        ("conge_sans_retour", "Congé avec traitement en 2025 sans retour au travail prévu"),
+                        ("rachat_demande", "Rachat demandé au plus tard le 31 décembre 2025")):
                     booleen = nom in ("rente_retraite", "conge_sans_retour", "rachat_demande")
                     v = tk.BooleanVar(value=getattr(actuel, nom)) if booleen else tk.StringVar(value=str(getattr(actuel, nom)))
                     situations[role][nom] = v
@@ -3844,14 +3844,14 @@ class ApplicationComptaPrivee(tk.Tk):
             row += 1
             variables = {}
             montants = ("montant", "aide_publique", "credit_utilise_2024", "cout_reserve_2026")
-            for nom, libelle in (("date_acquisition", "Acquisition ou souscription irr?vocable pay?e (AAAA-MM-JJ)"),
-                    ("fonds", "Fonds et cat?gorie"), ("regime", "D?tention"), ("souscripteur", "Personne ayant souscrit"),
-                    ("rentier", "Rentier du REER conjoint; contribuable pour les autres d?tentions"),
-                    ("montant", "Prix pay? ($)"), ("aide_publique", "Aides publiques re?ues ou ? recevoir, hors cr?dits d'imp?t ($)"),
-                    ("credit_utilise_2024", "Cr?dit f?d?ral effectivement d?duit en 2024 sur ces actions ($)"),
-                    ("source_2024", "Pi?ce du cr?dit 2024 : d?claration cotis?e et rapprochement"),
-                    ("cout_reserve_2026", "Choix : co?t net des achats de d?but 2026 r?serv? ? la d?claration 2026 ($)"),
-                    ("source", "R?f?rence unique de l'acquisition / du relev? 10")):
+            for nom, libelle in (("date_acquisition", "Acquisition ou souscription irrévocable payée (AAAA-MM-JJ)"),
+                    ("fonds", "Fonds et catégorie"), ("regime", "Détention"), ("souscripteur", "Personne ayant souscrit"),
+                    ("rentier", "Rentier du REER conjoint; contribuable pour les autres détentions"),
+                    ("montant", "Prix payé ($)"), ("aide_publique", "Aides publiques reçues ou à recevoir, hors crédits d'impôt ($)"),
+                    ("credit_utilise_2024", "Crédit fédéral effectivement déduit en 2024 sur ces actions ($)"),
+                    ("source_2024", "Pièce du crédit 2024 : déclaration cotisée et rapprochement"),
+                    ("cout_reserve_2026", "Choix : coût net des achats de début 2026 réservé à la déclaration 2026 ($)"),
+                    ("source", "Référence unique de l'acquisition / du relevé 10")):
                 v = tk.StringVar()
                 variables[nom] = v
                 ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w")
@@ -3932,7 +3932,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 nonlocal fonds_travailleurs_courants, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
                 try:
                     if not effacer and modifie[0]:
-                        raise ValueError("Enregistrez l'acquisition modifi?e avant d'appliquer.")
+                        raise ValueError("Enregistrez l'acquisition modifiée avant d'appliquer.")
                     personnes = {}
                     if not effacer:
                         for role, valeurs in situations.items():
@@ -3951,7 +3951,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 derniere_estimation = None
                 dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
-                self.statut.set("Fonds de travailleurs mis ? jour; recalculez l'estimation.")
+                self.statut.set("Fonds de travailleurs mis à jour; recalculez l'estimation.")
                 dialogue.destroy()
             ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer).pack(side="right")
             ttk.Button(formulaire.actions, text="Effacer le profil", command=lambda: appliquer(True)).pack(side="right", padx=8)
