@@ -8,6 +8,7 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_tuition_received_2025 import TransfertsScolariteRecus2025, valider_transferts_scolarite_recus_2025, montant_ligne_32400_2025, lignes_transferts_scolarite_recus_2025
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
@@ -334,6 +335,7 @@ class EstimationFiscale2025:
     resultat_interets_pret_etudiant: ResultatInteretsPretEtudiant2025 = ResultatInteretsPretEtudiant2025()
     resultat_supplement_medical: ResultatSupplementMedical2025 = ResultatSupplementMedical2025()
     resultat_reports_scolarite: ResultatReportsScolariteFederaux2025 = ResultatReportsScolariteFederaux2025()
+    transferts_scolarite_recus: TransfertsScolariteRecus2025 = TransfertsScolariteRecus2025()
 
 
 def calculer_estimation_fiscale_2025(
@@ -403,6 +405,7 @@ def calculer_estimation_fiscale_2025(
     profil_pensions: ProfilPensions2025 = ProfilPensions2025(),
     psv_confirme: bool = False,
     rrq_rpc_confirme: bool = False,
+    transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
     interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
 ) -> EstimationFiscale2025:
@@ -413,6 +416,9 @@ def calculer_estimation_fiscale_2025(
             "uniquement pour l'année 2025."
         )
 
+    scolarite_recue = valider_transferts_scolarite_recus_2025(
+        transferts_scolarite_recus if transferts_scolarite_recus is not None else TransfertsScolariteRecus2025()
+    )
     act = valider_allocation_travailleurs_2025(
         allocation_travailleurs if allocation_travailleurs is not None else AllocationTravailleurs2025()
     )
@@ -1323,6 +1329,7 @@ def calculer_estimation_fiscale_2025(
         ) + (
             ("32300", reports_scolarite.ligne_32300 if frais_scolarite_effectifs.reports_federaux.activer
              else frais_scolarite_effectifs.montant_net_federal),
+            *((("32400", montant_ligne_32400_2025(scolarite_recue)),) if scolarite_recue.designations else ()),
             ("33200", montant_frais_medicaux_federal_apres_seuil_2025(
                 frais_medicaux_effectifs, revenu.revenu_net_federal)),
         ),
@@ -1442,6 +1449,7 @@ def calculer_estimation_fiscale_2025(
     )
     return EstimationFiscale2025(
         resultat_reports_scolarite=reports_scolarite,
+        transferts_scolarite_recus=scolarite_recue,
         allocation_travailleurs=act, resultat_allocation_travailleurs=resultat_act,
         resultat_supplement_medical=supplement_medical,
         interets_pret_etudiant=pret_etudiant,
@@ -1609,6 +1617,7 @@ def formater_estimation_fiscale_2025(
             estimation.pension_alimentaire_payee
         ),
         *lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite),
+        *lignes_transferts_scolarite_recus_2025(estimation.transferts_scolarite_recus),
         *lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs),
         *lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical),
         *lignes_formation_2025(estimation.frais_scolarite.formation),

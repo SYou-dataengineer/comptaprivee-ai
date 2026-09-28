@@ -1951,6 +1951,15 @@ def construire_trace_calcul_fiscal_2025(
             transfert.source, f"Autorisation signée : {transfert.beneficiaire} ({transfert.relation}); montant désigné validé",
             estimation.resultat_reports_scolarite.ligne_32700),)
 
+    for designation in estimation.transferts_scolarite_recus.designations:
+        lignes += (_ligne(len(lignes) + 1, "SCOLARITÉ REÇUE — BLOC 5H", "Désignation reçue : " + designation.nom_etudiant,
+            designation.source, "Certificat signé, annexe 11 et plafond vérifiés par le comptable; référence " + designation.reference_etudiant,
+            designation.montant_certificat),)
+    if estimation.transferts_scolarite_recus.designations:
+        lignes += (_ligne(len(lignes) + 1, "SCOLARITÉ REÇUE — BLOC 5H", "Scolarité reçue 32400",
+            "Certificats des étudiants", "Somme des désignations; une fois dans 33500, puis 33800/34990/35000; aucun report chez le bénéficiaire",
+            sum((d.montant_certificat for d in estimation.transferts_scolarite_recus.designations), Decimal("0"))),)
+
     prochain_ordre = len(lignes) + 1
 
     if final.remboursement_estime > Decimal("0"):

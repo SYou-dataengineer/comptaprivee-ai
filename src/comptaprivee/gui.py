@@ -9,6 +9,10 @@ import sys
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
+from .tax_tuition_received_2025 import (
+    TransfertsScolariteRecus2025, DesignationScolariteRecue2025,
+    valider_transferts_scolarite_recus_2025, RELATIONS_SCOLARITE_RECUE, CONFIRMATIONS_SCOLARITE_RECUE,
+)
 from .tax_tuition_transfer_2025 import (
     TransfertScolariteSortant2025, RELATIONS_TRANSFERT_SCOLARITE,
     CONFIRMATIONS_TRANSFERT_SCOLARITE, LIBELLE_RESTRICTION_CONJOINT,
@@ -2508,6 +2512,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_demenagement_courants = FraisDemenagement2025()
         pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
         autres_deductions_courantes = AutresDeductions2025()
+        transferts_scolarite_recus_courants = TransfertsScolariteRecus2025()
         allocation_travailleurs_courante = AllocationTravailleurs2025()
         interets_pret_etudiant_courants = InteretsPretEtudiant2025()
         cotisations_syndicales_courantes = (
@@ -3781,6 +3786,124 @@ class ApplicationComptaPrivee(tk.Tk):
 
         # --- Priorité 5B : GUI intérêts sur prêts étudiants ---
 
+        def ouvrir_scolarite_recue_5h_2025():
+            nonlocal transferts_scolarite_recus_courants
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Scolarité reçue — ligne 32400")
+            dimensionner_fenetre(dialogue, 1000, 880)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(1, weight=1)
+            ttk.Label(cadre, text="Désignations reçues d'enfants / petits-enfants", font=("Segoe UI", 14, "bold")).grid(
+                row=0, column=0, columnspan=2, sticky="w")
+            ttk.Label(cadre, text="Saisir le montant du certificat signé, pas un crédit calculé. "
+                "Le comptable doit vérifier l'annexe 11 de chaque étudiant et son plafond. "
+                "Lien : votre qualité de parent/grand-parent de l'étudiant ou de son conjoint. "
+                "Les transferts du conjoint (32600) et Québec sont distincts.", wraplength=880).grid(
+                row=1, column=0, columnspan=2, sticky="w")
+            designations = list(transferts_scolarite_recus_courants.designations)
+            tableau = ttk.Treeview(cadre, name="designations_5h", columns=("nom", "montant"), show="headings", height=4)
+            tableau.heading("nom", text="Étudiant")
+            tableau.heading("montant", text="Désignation signée")
+            tableau.grid(row=2, column=0, columnspan=2, sticky="ew")
+            variables = {}
+            for row, (nom, libelle) in enumerate((
+                ("reference_etudiant", "Référence unique du dossier étudiant (sans NAS)"),
+                ("nom_etudiant", "Nom de l'étudiant"), ("relation", "Votre lien"),
+                ("montant_certificat", "Montant désigné sur le certificat signé"),
+                ("source", "Source du certificat et de l'annexe 11"),
+            ), 3):
+                v = tk.StringVar()
+                variables[nom] = v
+                ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w")
+                w = (ttk.Combobox(cadre, name=nom + "_5h", textvariable=v, values=RELATIONS_SCOLARITE_RECUE, state="readonly")
+                     if nom == "relation" else ttk.Entry(cadre, name=nom + "_5h", textvariable=v))
+                w.grid(row=row, column=1, sticky="ew")
+            confirmations = {}
+            for row, (nom, libelle) in enumerate(CONFIRMATIONS_SCOLARITE_RECUE.items(), 8):
+                v = tk.BooleanVar()
+                confirmations[nom] = v
+                ttk.Checkbutton(cadre, name=nom + "_5h", text=libelle, variable=v).grid(
+                    row=row, column=0, columnspan=2, sticky="w")
+            selection = [None]
+            modifie = [False]
+            def revoquer(*_):
+                modifie[0] = True
+                for v in confirmations.values():
+                    v.set(False)
+            for v in variables.values():
+                v.trace_add("write", revoquer)
+            def marquer_modification(*_):
+                modifie[0] = True
+            for v in confirmations.values():
+                v.trace_add("write", marquer_modification)
+            def rafraichir():
+                for iid in tableau.get_children():
+                    tableau.delete(iid)
+                for i, d in enumerate(designations):
+                    tableau.insert("", "end", iid=str(i), values=(d.nom_etudiant, str(d.montant_certificat)))
+            def nouveau():
+                selection[0] = None
+                for v in variables.values():
+                    v.set("")
+                modifie[0] = False
+            def charger():
+                if not tableau.selection():
+                    return
+                i = int(tableau.selection()[0])
+                selection[0] = i
+                d = designations[i]
+                for nom, v in variables.items():
+                    v.set(str(getattr(d, nom)))
+                for nom, v in confirmations.items():
+                    v.set(getattr(d, nom))
+                modifie[0] = False
+            def enregistrer():
+                try:
+                    montant = Decimal(variables["montant_certificat"].get().strip().replace(" ", "").replace(",", ".") or "0")
+                    d = DesignationScolariteRecue2025(montant_certificat=montant,
+                        **{nom: v.get().strip() for nom, v in variables.items() if nom != "montant_certificat"},
+                        **{nom: v.get() for nom, v in confirmations.items()})
+                    nouvelle = list(designations)
+                    if selection[0] is None:
+                        nouvelle.append(d)
+                    else:
+                        nouvelle[selection[0]] = d
+                    valider_transferts_scolarite_recus_2025(TransfertsScolariteRecus2025(tuple(nouvelle)))
+                except (ValueError, InvalidOperation) as erreur:
+                    messagebox.showerror("Désignation invalide", str(erreur), parent=dialogue)
+                    return
+                designations[:] = nouvelle
+                nouveau()
+                rafraichir()
+            def retirer():
+                if tableau.selection():
+                    del designations[int(tableau.selection()[0])]
+                    nouveau()
+                    rafraichir()
+            actions = ttk.Frame(cadre)
+            actions.grid(row=14, column=0, columnspan=2, sticky="ew", pady=8)
+            for libelle, commande in (("Nouvel étudiant", nouveau), ("Modifier la sélection", charger),
+                    ("Enregistrer la désignation", enregistrer), ("Retirer la sélection", retirer)):
+                ttk.Button(actions, text=libelle, command=commande).pack(side="left", padx=3)
+            def appliquer():
+                nonlocal transferts_scolarite_recus_courants, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                if modifie[0]:
+                    messagebox.showerror("Désignation non enregistrée", "Enregistrez la désignation modifiée avant d'appliquer.", parent=dialogue)
+                    return
+                transferts_scolarite_recus_courants = valider_transferts_scolarite_recus_2025(
+                    TransfertsScolariteRecus2025(tuple(designations)))
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Scolarité reçue validée; recalculez l'estimation.")
+                dialogue.destroy()
+            ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer).pack(side="right")
+            ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
+            rafraichir()
+
         def ouvrir_allocation_travailleurs_5e_2025() -> None:
             nonlocal allocation_travailleurs_courante
             dialogue = tk.Toplevel(fenetre)
@@ -4846,6 +4969,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
                     cotisations_rpa=cotisations_rpa_courantes,
@@ -12981,6 +13105,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
                             cotisations_syndicales=(
@@ -13039,6 +13164,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
                     cotisations_syndicales=(
@@ -13127,6 +13253,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
+            nonlocal transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal interets_pret_etudiant_courants
             nonlocal frais_garde_federaux_courants
@@ -13207,6 +13334,7 @@ class ApplicationComptaPrivee(tk.Tk):
             pension_alimentaire_payee_courante = (
                 enregistrement.pension_alimentaire_payee
             )
+            transferts_scolarite_recus_courants = enregistrement.transferts_scolarite_recus
             allocation_travailleurs_courante = enregistrement.allocation_travailleurs
             interets_pret_etudiant_courants = enregistrement.interets_pret_etudiant
             autres_deductions_courantes = (
@@ -13545,6 +13673,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
                     cotisations_syndicales=(
@@ -14032,6 +14161,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(zone_actions, text="Allocation travailleurs 2025 (5E)",
                    command=ouvrir_allocation_travailleurs_5e_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Scolarité reçue 2025 (5H)",
+                   command=ouvrir_scolarite_recue_5h_2025).pack(side="left", padx=(8, 0))
 
         ttk.Button(zone_actions, text="Intérêts prêts étudiants 2025 (5B)",
                    command=ouvrir_interets_pret_etudiant_5b_2025).pack(side="left", padx=(8, 0))

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .tax_tuition_received_2025 import TransfertsScolariteRecus2025, valider_transferts_scolarite_recus_2025
+from .tax_tuition_received_2025 import DesignationScolariteRecue2025
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -214,6 +216,7 @@ class DossierFiscalEnregistre:
     profil_pensions: ProfilPensions2025 = ProfilPensions2025()
     psv_confirme: bool = False
     rrq_rpc_confirme: bool = False
+    transferts_scolarite_recus: TransfertsScolariteRecus2025 = TransfertsScolariteRecus2025()
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
     interets_pret_etudiant: InteretsPretEtudiant2025 = InteretsPretEtudiant2025()
 
@@ -3194,6 +3197,30 @@ def _rpa_depuis_dict(valeur):
     return valider_cotisations_rpa_2025(CotisationsRpa2025(**valeurs))
 
 
+def _scolarite_recue_vers_dict(profil):
+    valider_transferts_scolarite_recus_2025(profil)
+    return {"designations": [dict(asdict(d), montant_certificat=format(d.montant_certificat, ".2f"))
+                             for d in profil.designations]}
+
+
+def _scolarite_recue_depuis_dict(valeur):
+    if valeur is None:
+        return TransfertsScolariteRecus2025()
+    if not isinstance(valeur, dict) or set(valeur) - {"designations"}:
+        raise ValueError("Profil scolarité reçue ou clés inconnues invalides.")
+    liste = valeur.get("designations", [])
+    if not isinstance(liste, list):
+        raise ValueError("Liste des désignations invalide.")
+    designations = []
+    for entree in liste:
+        if not isinstance(entree, dict) or set(entree) - set(DesignationScolariteRecue2025.__dataclass_fields__):
+            raise ValueError("Désignation ou clés inconnues invalides.")
+        v = dict(entree)
+        v["montant_certificat"] = _decimal_depuis_json(v.get("montant_certificat", "0"), "Désignation reçue")
+        designations.append(DesignationScolariteRecue2025(**v))
+    return valider_transferts_scolarite_recus_2025(TransfertsScolariteRecus2025(tuple(designations)))
+
+
 def _allocation_travailleurs_vers_dict(profil):
     valeurs = asdict(valider_allocation_travailleurs_2025(profil))
     for nom in ("avances_rc210_case10", "avances_rc210_case11"):
@@ -3252,6 +3279,7 @@ def sauvegarder_dossier_fiscal(
     frais_demenagement: FraisDemenagement2025 | None = None,
     pension_alimentaire_payee: PensionAlimentairePayee2025 | None = None,
     autres_deductions: AutresDeductions2025 | None = None,
+    transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
     interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
     cotisations_syndicales: (
@@ -3422,6 +3450,12 @@ def sauvegarder_dossier_fiscal(
             if frais_scolarite != estimation.frais_scolarite:
                 raise ValueError("Le profil scolarité/formation diffère de l'estimation.")
 
+    scolarite_recue = valider_transferts_scolarite_recus_2025(
+        transferts_scolarite_recus if transferts_scolarite_recus is not None
+        else (estimation.transferts_scolarite_recus if estimation else TransfertsScolariteRecus2025())
+    )
+    if estimation is not None and scolarite_recue != estimation.transferts_scolarite_recus:
+        raise ValueError("Le profil scolarité reçue diffère de l’estimation.")
     act = valider_allocation_travailleurs_2025(
         allocation_travailleurs if allocation_travailleurs is not None
         else (estimation.allocation_travailleurs if estimation else AllocationTravailleurs2025())
@@ -3726,6 +3760,7 @@ def sauvegarder_dossier_fiscal(
         "pension_alimentaire_payee": _pension_alimentaire_payee_vers_dict(
             pension_alimentaire_effective
         ),
+        "transferts_scolarite_recus": _scolarite_recue_vers_dict(scolarite_recue),
         "allocation_travailleurs": _allocation_travailleurs_vers_dict(act),
         "interets_pret_etudiant": _interets_pret_etudiant_vers_dict(pret_etudiant),
         "autres_deductions": _autres_deductions_vers_dict(
@@ -4165,6 +4200,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         depenses_emploi=depenses_emploi,
         frais_demenagement=frais_demenagement,
         pension_alimentaire_payee=pension_alimentaire_payee,
+        transferts_scolarite_recus=_scolarite_recue_depuis_dict(contenu.get("transferts_scolarite_recus")),
         allocation_travailleurs=_allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")),
         interets_pret_etudiant=_interets_pret_etudiant_depuis_dict(contenu.get("interets_pret_etudiant")),
         autres_deductions=autres_deductions,

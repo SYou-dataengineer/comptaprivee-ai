@@ -6,6 +6,7 @@ import re
 import textwrap
 import fitz
 from .tax_tuition_carryforward_2025 import lignes_reports_scolarite_federaux_2025
+from .tax_tuition_received_2025 import lignes_transferts_scolarite_recus_2025
 from .tax_workers_benefit_2025 import lignes_allocation_travailleurs_2025
 from .tax_medical_supplement_2025 import lignes_supplement_medical_2025
 from .tax_training_credit_2025 import lignes_formation_2025
@@ -1970,6 +1971,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
         estimation.federal.credits_federaux_complets
     ))
     lignes.extend(lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite))
+    lignes.extend(lignes_transferts_scolarite_recus_2025(estimation.transferts_scolarite_recus))
     lignes.extend(lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs))
     lignes.extend(lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical))
     lignes.extend(lignes_formation_2025(estimation.frais_scolarite.formation))

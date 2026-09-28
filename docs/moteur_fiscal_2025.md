@@ -2355,3 +2355,50 @@ ancien JSON, divergence, bornes, non-finis, GUI, trace et PDF. Aucun test
 existant modifié.
 
 Suite complète 5G : **3947 passed, 8 warnings** (`--capture=sys`).
+
+
+### Bloc 5H livré — scolarité reçue d'enfants ou petits-enfants, ligne 32400
+
+Sources 2025 : [ARC, ligne 32400](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-32400-tuition-education-textbook-amounts-transferred-a-child.html)
+et [annexe 11, lignes 21–24](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s11/5005-s11-25e.pdf).
+Le bénéficiaire peut recevoir des désignations de plusieurs étudiants; chaque
+étudiant désigne un seul bénéficiaire. Ce dernier doit être un parent ou
+grand-parent admissible de l'étudiant ou de son conjoint. Le conjoint de
+l'étudiant ne doit pas réclamer 30300, 30425 ou 32600 pour cet étudiant.
+
+La donnée saisie est le montant désigné sur le certificat signé. Le comptable
+vérifie la déclaration de l'étudiant, l'annexe 11, la concordance avec 32700,
+les frais courants nets du CCF, leur utilisation personnelle et le plafond
+`max(min(frais courants nets, 5000) - frais courants utilisés, 0)`.
+Aucun report antérieur ne peut être transféré. Ce profil bénéficiaire ne
+reconstitue pas automatiquement la déclaration du tiers : il exige ces
+confirmations et la source documentaire. Il vérifie en plus la borne absolue
+de 5000 $ par étudiant, les cents, les montants finis, le lien et les doublons
+de références d'étudiants. Il n'impose pas de plafond global de 5000 $.
+
+32400 additionne les désignations et entre une seule fois dans 33500, après
+le calcul de la scolarité personnelle. 33800, 34990 et 35000 sont recalculés;
+le crédit est non remboursable. Aucun solde n'est reporté chez le bénéficiaire.
+Revenus et impôt Québec inchangés. Les reports personnels 5F et transferts
+sortants 5G peuvent coexister : leurs montants ne comprennent jamais 32400.
+Les libellés de leurs confirmations distinguent désormais les frais personnels
+des désignations reçues. Le transfert reçu du conjoint, 32600 / annexe 2,
+et les transferts Québec restent à livrer séparément.
+
+Le JSON persiste uniquement les désignations et confirmations dans
+`transferts_scolarite_recus`; ancien JSON sans ce champ = profil vide.
+Clés inconnues, types et confirmations invalides sont refusés au chargement;
+un profil explicite divergent de l'estimation est refusé à la sauvegarde.
+Les références locales d'étudiants permettent de distinguer les dossiers
+sans demander de NAS. L'unicité réelle et le lien restent à vérifier sur pièces.
+
+GUI : liste de plusieurs étudiants, ajout, modification, retrait, réouverture;
+modification des données = révocation des confirmations. Une saisie modifiée
+non enregistrée empêche l'application du profil. Trace et PDF indiquent chaque
+étudiant, sa référence, sa source, sa désignation et le total 32400.
+
+Validation ciblée : **203 passed, 5 warnings**, incluant scolarité existante,
+stockage, GUI, trace, PDF, compensation 34990 et combinaison 5F/5G.
+Aucun test existant modifié.
+
+Suite complète 5H : **4014 passed, 8 warnings** (`--capture=sys`).

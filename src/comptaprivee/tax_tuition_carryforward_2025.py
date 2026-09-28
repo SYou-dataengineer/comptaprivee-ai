@@ -34,7 +34,7 @@ CONFIRMATIONS_REPORTS_SCOLARITE = {
     "valide_par_comptable": "Reports fédéraux validés par le comptable",
     "avis_arc_2024_confirme": "Dernier avis ARC 2024 vérifié, ou absence de report confirmée",
     "solde_non_reclame_confirme": "Solde fédéral disponible, non déjà réclamé, confirmé",
-    "aucun_transfert_entrant_sortant": "Aucun transfert de scolarité reçu ou accordé en 2025",
+    "aucun_transfert_entrant_sortant": "Aucun transfert sortant de mes frais; les désignations reçues à 32400 sont séparées",
     "resident_canada_quebec_confirme": "Profil résident Canada/Québec confirmé",
     "aucun_deces_faillite": "Aucun décès ni faillite — traitements hors profil",
 }

@@ -28,7 +28,7 @@ CONFIRMATIONS_TRANSFERT_SCOLARITE = {
     "valide_par_comptable": "Désignation et lien avec le bénéficiaire validés par le comptable",
     "autorisation_signee": "Autorisation de transfert du certificat de scolarité signée et vérifiée",
     "beneficiaire_unique_confirme": "Un seul bénéficiaire désigné pour ce transfert fédéral",
-    "aucun_transfert_entrant": "Aucun transfert de scolarité reçu dans ce dossier étudiant",
+    "aucun_transfert_entrant": "Aucune désignation reçue à 32400 incluse dans mes propres frais de scolarité",
 }
 LIBELLE_RESTRICTION_CONJOINT = "Pour un parent/grand-parent : le conjoint ne réclame pas 30300, 30425 ou 32600 pour l'étudiant"
 
