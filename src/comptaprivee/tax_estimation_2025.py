@@ -34,7 +34,7 @@ from .tax_workers_benefit_2025 import (
     valider_allocation_travailleurs_2025, calculer_allocation_travailleurs_2025,
     lignes_allocation_travailleurs_2025,
 )
-from .tax_medical_supplement_2025 import (ResultatSupplementMedical2025, calculer_supplement_medical_2025, lignes_supplement_medical_2025)
+from .tax_medical_supplement_2025 import (ResultatSupplementMedical2025, calculer_supplement_medical_2025, lignes_supplement_medical_2025, verifier_famille_supplement_2025)
 from .tax_training_credit_2025 import credit_formation_2025, lignes_formation_2025
 from .tax_student_loan_interest_2025 import (
     InteretsPretEtudiant2025, ResultatInteretsPretEtudiant2025,
@@ -1418,7 +1418,7 @@ def calculer_estimation_fiscale_2025(
                 raise ValueError("Les deux conjoints ne peuvent réclamer simultanément 30300.")
         if montant_conjoint_federal_effectif.reclamer_montant and montant_conjoint_federal_effectif.revenu_net_conjoint_2025 != resultat_conjoint.revenu_net_conjoint:
             raise ValueError("Le revenu du conjoint pour 30300 diffère du dossier recalculé pour 32600.")
-        if act.present or frais_medicaux_effectifs.supplement.reclamer:
+        if act.present or (frais_medicaux_effectifs.supplement.reclamer and not frais_medicaux_effectifs.supplement.mode_familial):
             raise ValueError("Le transfert 32600 est incompatible avec les crédits du profil individuel sans conjoint.")
         if any(" ".join(d.nom_etudiant.split()).casefold() == " ".join(resultat_conjoint.nom_conjoint.split()).casefold()
                for d in scolarite_recue.designations):
@@ -1486,7 +1486,7 @@ def calculer_estimation_fiscale_2025(
         )
     )
 
-    if frais_medicaux_effectifs.supplement.reclamer and any(p.reclamer_montant for p in (
+    if frais_medicaux_effectifs.supplement.reclamer and not frais_medicaux_effectifs.supplement.mode_familial and any(p.reclamer_montant for p in (
         montant_conjoint_federal_effectif, personne_charge_admissible_federale_effective,
         aidant_30425_effectif, aidant_30450_effectif, aidant_enfant_federal_effectif,
     )):
@@ -1500,10 +1500,16 @@ def calculer_estimation_fiscale_2025(
     resultat_act = calculer_allocation_travailleurs_2025(
         act, revenu_travail=base.revenu_emploi_federal, revenu_net=revenu.revenu_net_federal,
     )
-    if fonds.conjoint.nom and (act.present or frais_medicaux_effectifs.supplement.reclamer):
+    if fonds.conjoint.nom and (act.present or (frais_medicaux_effectifs.supplement.reclamer and not frais_medicaux_effectifs.supplement.mode_familial)):
         raise ValueError("Fonds avec conjoint : profil familial ACT/supplément médical non encore couvert.")
-    if politiques.nom_conjoint and (act.present or frais_medicaux_effectifs.supplement.reclamer):
+    if politiques.nom_conjoint and (act.present or (frais_medicaux_effectifs.supplement.reclamer and not frais_medicaux_effectifs.supplement.mode_familial)):
         raise ValueError("Les reçus politiques du conjoint exigent un profil familial; ACT et supplément médical individuels ne couvrent pas cette combinaison.")
+    verifier_famille_supplement_2025(frais_medicaux_effectifs.supplement,
+        demandeur=dossier.client, medical=medical_familial,
+        conjoint_30300=montant_conjoint_federal_effectif,
+        personne_30400=personne_charge_admissible_federale_effective,
+        conjoint_32600=resultat_conjoint if conjoint.activer else None,
+        noms_conjoints=(fonds.conjoint.nom, politiques.nom_conjoint), act_individuel=act.present)
     supplement_medical = calculer_supplement_medical_2025(
         frais_medicaux_effectifs.supplement, emploi=base.revenu_emploi_federal,
         deduction_20700=rpa_effectives.montant_federal,

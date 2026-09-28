@@ -231,7 +231,7 @@ def verifier_combinaison_medicale_famille(p, frais_individuels, act_present=Fals
     if any(x.lien != "soi-même" for x in p.personnes):
         if frais_individuels.montant_admissible_quebec:
             raise ValueError("Frais médicaux familiaux Québec : extension de l'annexe B requise; le profil Québec individuel est incompatible.")
-        if act_present or frais_individuels.supplement.reclamer:
+        if act_present or (frais_individuels.supplement.reclamer and not frais_individuels.supplement.mode_familial):
             raise ValueError("ACT et supplément médical familiaux nécessitent leur extension dédiée; profil individuel incompatible.")
 
 

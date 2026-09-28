@@ -1910,7 +1910,10 @@ def construire_trace_calcul_fiscal_2025(
         r = estimation.resultat_supplement_medical
         for libelle, montant, formule in (
             ("Revenu de travail pour 45200", r.revenu_travail, "max(10100 - 20700 - 21200 - 22900, 0); autres postes exclus du profil; minimum 4390"),
-            ("Revenu familial ajusté 45200", r.revenu_familial_ajuste, "23600, profil individuel sans ajustements PUGE/REEI"),
+            ("Revenu familial ajusté 45200", r.revenu_familial_ajuste,
+             (f"23600 du demandeur + max(23600 conjoint, 0) si conjoint retenu; situation : {frais_medicaux.supplement.situation_conjugale}; "
+              f"revenu conjoint retenu {r.revenu_conjoint_retenu:.2f}; source {frais_medicaux.supplement.source_conjoint}; sans ajustements PUGE/REEI"
+              if frais_medicaux.supplement.mode_familial else "23600, profil individuel sans ajustements PUGE/REEI")),
             ("Plafond médical avant réduction", r.montant_avant_reduction, "min(1504, 33200 × 25 %); 21500 exclu"),
             ("Réduction du supplément médical", r.reduction_revenu, "max(revenu familial - 33294, 0) × 5 %"),
             ("Supplément médical remboursable 45200", r.ligne_45200, "Si revenu travail >= 4390 : max(plafond - réduction, 0), sinon 0"),

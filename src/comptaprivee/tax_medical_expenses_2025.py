@@ -48,6 +48,8 @@ def valider_frais_medicaux_2025(frais: FraisMedicaux2025) -> FraisMedicaux2025:
     valider_supplement_medical_2025(frais.supplement)
     fed = frais.montant_admissible_federal
     qc = frais.montant_admissible_quebec
+    if frais.supplement.mode_familial and (fed or qc):
+        raise ValueError("Le supplément familial exige les frais médicaux détaillés 5S; le profil agrégé reste individuel.")
 
     if fed < ZERO:
         raise ValueError(

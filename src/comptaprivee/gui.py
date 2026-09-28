@@ -32,7 +32,7 @@ from .tax_tuition_transfer_2025 import (
 )
 from .tax_tuition_carryforward_2025 import ReportsScolariteFederaux2025, CONFIRMATIONS_REPORTS_SCOLARITE
 from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025, CONFIRMATIONS_ACT
-from .tax_medical_supplement_2025 import SupplementMedical2025, CONFIRMATIONS_SUPPLEMENT
+from .tax_medical_supplement_2025 import (SupplementMedical2025, CONFIRMATIONS_SUPPLEMENT, SITUATIONS_SUPPLEMENT, LIBELLE_FAMILLE_SUPPLEMENT)
 from .tax_training_credit_2025 import Formation2025, CONFIRMATIONS_FORMATION
 from .tax_student_loan_interest_2025 import (
     InteretsPretEtudiant2025, valider_interets_pret_etudiant_2025, CONFIRMATIONS_5B,
@@ -3810,7 +3810,11 @@ class ApplicationComptaPrivee(tk.Tk):
 
         def ouvrir_frais_familiaux_5s_2025():
             def appliquer(profil):
-                nonlocal frais_medicaux_famille_courants, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                nonlocal frais_medicaux_famille_courants, frais_medicaux_courants, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                if profil != frais_medicaux_famille_courants and frais_medicaux_courants.supplement.reclamer:
+                    frais_medicaux_courants = replace(frais_medicaux_courants,
+                        supplement=replace(frais_medicaux_courants.supplement,
+                            valide_par_comptable=False, donnees_familiales_verifiees=False))
                 frais_medicaux_famille_courants = profil
                 derniere_estimation = None
                 dernier_rapport_pdf = None
@@ -5564,17 +5568,47 @@ class ApplicationComptaPrivee(tk.Tk):
                                 variable=confirmations_5d[nom]).grid(
                                     row=ligne, column=0, columnspan=2, sticky="w", pady=4)
 
+            mode_5t = tk.BooleanVar(value=supplement.mode_familial)
+            situation_5t = tk.StringVar(value=supplement.situation_conjugale)
+            nom_5t = tk.StringVar(value=supplement.nom_conjoint)
+            revenu_5t = tk.StringVar(value=format(supplement.revenu_net_conjoint, ".2f"))
+            source_5t = tk.StringVar(value=supplement.source_conjoint)
+            confirme_5t = tk.BooleanVar(value=supplement.donnees_familiales_verifiees)
+            ligne_5t = 17 + len(CONFIRMATIONS_SUPPLEMENT)
+            ttk.Checkbutton(cadre, name="mode_familial_5t", text="Supplément familial : frais détaillés dans la fenêtre 5S",
+                            variable=mode_5t).grid(row=ligne_5t, column=0, columnspan=2, sticky="w", pady=10)
+            ttk.Label(cadre, text="Situation conjugale pour 45200 :").grid(row=ligne_5t+1, column=0, sticky="w")
+            ttk.Combobox(cadre, name="situation_conjugale_5t", textvariable=situation_5t,
+                         values=SITUATIONS_SUPPLEMENT, state="readonly").grid(row=ligne_5t+1, column=1, sticky="ew")
+            for ligne, (nom, libelle, variable) in enumerate((
+                ("nom_conjoint", "Nom du conjoint :", nom_5t),
+                ("revenu_net_conjoint", "Revenu net 23600 du conjoint (avant plancher zéro) :", revenu_5t),
+                ("source_conjoint", "Pièce justifiant revenu et situation conjugale :", source_5t),
+            ), start=ligne_5t+2):
+                ttk.Label(cadre, text=libelle, wraplength=390).grid(row=ligne, column=0, sticky="w", pady=5)
+                ttk.Entry(cadre, name=nom+"_5t", textvariable=variable).grid(row=ligne, column=1, sticky="ew")
+            ttk.Checkbutton(cadre, name="donnees_familiales_verifiees_5t", text="Situation familiale validée sur pièces",
+                            variable=confirme_5t).grid(row=ligne_5t+5, column=0, columnspan=2, sticky="w")
+            ttk.Label(cadre, text=LIBELLE_FAMILLE_SUPPLEMENT, wraplength=680).grid(
+                row=ligne_5t+6, column=0, columnspan=2, sticky="w", pady=6)
+
             def revoquer_medical(*_args) -> None:
+                confirme_5t.set(False)
                 for _, variable in confirmations:
                     variable.set(False)
                 for variable in confirmations_5d.values():
                     variable.set(False)
 
             for variable in (fed_var, qc_var, source_fed_var, source_qc_var,
-                             age_5d, source_5d, demande_5d):
+                             age_5d, source_5d, demande_5d, mode_5t, situation_5t, nom_5t, revenu_5t, source_5t):
                 variable.trace_add("write", revoquer_medical)
 
             def effacer() -> None:
+                mode_5t.set(False)
+                situation_5t.set("")
+                nom_5t.set("")
+                revenu_5t.set("0.00")
+                source_5t.set("")
                 age_5d.set("")
                 source_5d.set("")
                 demande_5d.set(False)
@@ -5598,6 +5632,10 @@ class ApplicationComptaPrivee(tk.Tk):
                         supplement=SupplementMedical2025(
                             reclamer=demande_5d.get(), age_fin_2025=int(age_5d.get().strip() or "0"),
                             source=source_5d.get().strip(),
+                            mode_familial=mode_5t.get(), situation_conjugale=situation_5t.get(),
+                            nom_conjoint=nom_5t.get().strip(), source_conjoint=source_5t.get().strip(),
+                            revenu_net_conjoint=decimal_depuis_champ(revenu_5t.get(), "Revenu net du conjoint"),
+                            donnees_familiales_verifiees=confirme_5t.get(),
                             **{nom: variable.get() for nom, variable in confirmations_5d.items()},
                         ),
                         montant_admissible_federal=decimal_depuis_champ(

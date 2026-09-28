@@ -3129,3 +3129,57 @@ charge. Ces limites ne signifient pas une exclusion fiscale générale.
 
 Validation ciblée : **228 passed, 5 warnings**. Suite complète :
 **5247 passed, 8 warnings** (178,02 s). Rendu PDF familial vérifié visuellement.
+
+### Bloc 5T — supplément médical familial, ligne 45200
+
+Sources officielles 2025 :
+- [ARC, ligne 45200](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-45200-refundable-medical-expense-supplement.html).
+- [Feuille fédérale 2025, page 9](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-d1/5000-d1-25e.pdf).
+
+L'extension ajoute un mode familial explicite au profil 5D. La résidence
+canadienne toute l'année, l'âge minimal de 18 ans et les autres conditions
+restent vérifiés. Dans le périmètre salarié sans ajustements PUGE/REEI,
+le revenu familial est le revenu net du demandeur plus celui du conjoint,
+avec plancher zéro appliqué séparément. Le revenu d'une personne à charge
+n'entre pas dans cette somme. Le minimum de travail de 4390 $ concerne
+le demandeur, après les déductions 20700/21200/22900 couvertes.
+
+Le revenu du conjoint est exclu en cas de rupture avec séparation d'au moins
+90 jours incluant le 31 décembre 2025, ou de décès au plus tard à cette date.
+Ces faits exigent une vérification comptable sur pièces; le profil conserve
+le nom, la source et le revenu déclaré, même lorsque ce dernier est exclu.
+Le choix « sans conjoint » peut couvrir une personne avec personnes à charge.
+
+Calcul : max(min(1504, 25 % de 33200) - 5 % de max(revenu familial - 33294, 0), 0),
+sous réserve du minimum de travail. La base 33200 vient du moteur familial
+5S. Aucun montant de crédit calculé n'est saisi. Les lignes 33500/33800/34990/
+35000, 42900/40500 et l'abattement restent ceux du calcul non remboursable;
+45200 est ajouté une seule fois au rapprochement.
+
+Les combinaisons 30300/32600 sont admises avec un conjoint et un revenu
+concordants; 30400 reste incompatible avec un conjoint dans le profil annuel
+actuellement couvert par ce bloc. Les identités sont aussi rapprochées des
+reçus médicaux, des contributions politiques et des fonds de travailleurs.
+Les mêmes contrôles s'appliquent à la sauvegarde sans estimation et au
+rechargement. Ce sont des contrôles de cohérence des profils logiciels,
+sans conclusion générale sur des situations conjugales plus complexes.
+
+La GUI conserve les données familiales, révoque les confirmations après
+modification et permet l'effacement. Une modification des reçus 5S révoque
+aussi la validation du supplément. JSON rétrocompatible : anciens profils
+individuels inchangés, nouveau revenu du conjoint sérialisé en chaîne décimale
+au cent, clés inconnues et valeurs non finies refusées, résultat dérivé non
+persisté, divergence avec l'estimation refusée. Trace et PDF distinguent le
+revenu déclaré, le revenu retenu, la source et le résultat calculé.
+
+Limites logicielles : ACT familial encore à développer; son ancien profil
+individuel ne peut être associé à ce mode familial. Le profil agrégé de frais
+médicaux reste individuel et ne se cumule pas avec le mode familial; utiliser
+5S. Travail autonome, 10400, assurance-salaire, 21500/23100, ajustements PUGE/
+REEI, faillite et décès du demandeur restent hors de ce profil. Le revenu net
+du conjoint provient de sa déclaration vérifiée et peut être négatif avant
+le plancher; le demandeur reste dans les profils de revenus pris en charge.
+Ces limites ne constituent pas des exclusions fiscales générales.
+
+Validation ciblée : **227 passed, 5 warnings**. Suite complète :
+**5308 passed, 8 warnings** (171,49 s). Rendu PDF familial vérifié visuellement.

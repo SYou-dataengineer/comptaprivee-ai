@@ -25,7 +25,7 @@ from typing import Any
 from .tax_tuition_transfer_2025 import TransfertScolariteSortant2025, valider_transfert_scolarite_sortant_2025
 from .tax_tuition_carryforward_2025 import ReportsScolariteFederaux2025, valider_reports_scolarite_federaux_2025
 from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025
-from .tax_medical_supplement_2025 import SupplementMedical2025, valider_supplement_medical_2025
+from .tax_medical_supplement_2025 import SupplementMedical2025, valider_supplement_medical_2025, verifier_famille_supplement_2025
 from .tax_training_credit_2025 import Formation2025, valider_formation_2025
 from .tax_student_loan_interest_2025 import (
     InteretsPretEtudiant2025, valider_interets_pret_etudiant_2025,
@@ -1191,11 +1191,34 @@ def _dons_bienfaisance_depuis_dict(
     return valider_dons_bienfaisance_2025(dons)
 
 
+def _verifier_famille_supplement_stocke(contenu, dossier, medical):
+    p = _frais_medicaux_depuis_dict(contenu.get("frais_medicaux")).supplement
+    if not p.reclamer or not p.mode_familial:
+        return
+    conjoint = _transfert_conjoint_depuis_dict(contenu.get("transfert_conjoint"), dossier.client)
+    resultat = calculer_transfert_conjoint_2025(conjoint, beneficiaire=dossier.client) if conjoint.activer else None
+    fonds = fonds_depuis_dict(contenu.get("fonds_travailleurs"), client=dossier.client, annee=dossier.annee_fiscale)
+    politiques = politiques_depuis_dict(contenu.get("contributions_politiques"), client=dossier.client, annee=dossier.annee_fiscale)
+    verifier_famille_supplement_2025(p, demandeur=dossier.client, medical=medical,
+        conjoint_30300=_montant_conjoint_federal_depuis_dict(contenu.get("montant_conjoint_federal")),
+        personne_30400=_personne_charge_admissible_federale_depuis_dict(contenu.get("personne_charge_admissible_federale")),
+        conjoint_32600=resultat, noms_conjoints=(fonds.conjoint.nom, politiques.nom_conjoint),
+        act_individuel=_allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")).present)
+
+
 def _supplement_medical_depuis_dict(valeur):
     if valeur is None:
         return SupplementMedical2025()
     if not isinstance(valeur, dict) or set(valeur) - set(SupplementMedical2025.__dataclass_fields__):
         raise ValueError("Profil supplément médical ou clés inconnues invalides.")
+    valeur = dict(valeur)
+    revenu = valeur.get("revenu_net_conjoint", "0")
+    if isinstance(revenu, bool) or not isinstance(revenu, (str, int)):
+        raise ValueError("Revenu net du conjoint du supplément médical invalide.")
+    try:
+        valeur["revenu_net_conjoint"] = Decimal(revenu)
+    except InvalidOperation as exc:
+        raise ValueError("Revenu net du conjoint du supplément médical invalide.") from exc
     return valider_supplement_medical_2025(SupplementMedical2025(**valeur))
 
 
@@ -1208,7 +1231,8 @@ def _frais_medicaux_vers_dict(
     valider_frais_medicaux_2025(frais)
 
     return {
-        "supplement": asdict(frais.supplement),
+        "supplement": {**asdict(frais.supplement),
+                       "revenu_net_conjoint": format(frais.supplement.revenu_net_conjoint, ".2f")},
         "montant_admissible_federal": _decimal_texte(
             frais.montant_admissible_federal
         ),
@@ -4016,6 +4040,7 @@ def sauvegarder_dossier_fiscal(
         deduction_22000=pension_alimentaire_effective.deduction_federale_22000)
     verifier_combinaison_medicale_famille(medical_familial,
         _frais_medicaux_depuis_dict(contenu["frais_medicaux"]), act.present)
+    _verifier_famille_supplement_stocke(contenu, dossier, medical_familial)
     temporaire = chemin.with_suffix(chemin.suffix + ".tmp")
     try:
         temporaire.write_text(json.dumps(contenu, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -4365,6 +4390,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
     calculer_medical_familial_2025(medical_familial, demandeur=dossier.client, revenu_net=Decimal(0), annee=dossier.annee_fiscale)
     verifier_combinaison_medicale_famille(medical_familial, frais_medicaux,
         _allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")).present)
+    _verifier_famille_supplement_stocke(contenu, dossier, medical_familial)
     handicap_transfere = transferts_handicap_depuis_dict(contenu.get("transferts_handicap"))
     calculer_transferts_handicap_2025(handicap_transfere,
         beneficiaire=dossier.client, annee=dossier.annee_fiscale,
