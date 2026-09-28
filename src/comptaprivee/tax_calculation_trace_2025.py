@@ -2096,6 +2096,22 @@ def construire_trace_calcul_fiscal_2025(
             "Somme des parts reçues; incluse une fois avant scolarité; aucun effet sur revenus ou Québec",
             estimation.resultat_transferts_handicap.ligne_31800))
 
+    if estimation.frais_medicaux_famille.personnes:
+        p, r = estimation.frais_medicaux_famille, estimation.resultat_medical_familial
+        for personne, calcul in zip(p.personnes, r.personnes):
+            if calcul.ligne == "33199":
+                lignes = _inserer_ligne_avant(lignes, "Base ligne 33500", _ligne(0,
+                    "FRAIS MÉDICAUX FAMILIAUX", "33199 — " + personne.nom,
+                    personne.source_lien_dependance + "; " + personne.source_revenu,
+                    f"max({calcul.frais_nets} - min(3 % × max({calcul.revenu_net}, 0), 2834), 0)", calcul.montant_admissible))
+        for libelle, valeur, formule in (
+            ("Frais médicaux familiaux — 33099", r.ligne_33099, "Somme des reçus nets du demandeur, conjoint et enfants mineurs"),
+            ("Frais médicaux familiaux — 33199", r.ligne_33199, "Somme après seuil propre à chaque autre personne à charge"),
+            ("Frais médicaux familiaux — 33200", r.ligne_33200, f"max(33099 - {r.seuil_demandeur}, 0) + 33199; une inclusion dans 33500"),
+        ):
+            lignes = _inserer_ligne_avant(lignes, "Base ligne 33500", _ligne(0,
+                "FRAIS MÉDICAUX FAMILIAUX", libelle, p.debut_periode + " au " + p.fin_periode + "; reçus validés", formule, valeur))
+
     prochain_ordre = len(lignes) + 1
 
     if final.remboursement_estime > Decimal("0"):

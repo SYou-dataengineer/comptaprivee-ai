@@ -10,6 +10,8 @@ from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, CONFIRMATIONS_REPORTS_DONS
+from .gui_family_medical_2025 import ouvrir_medical_familial_2025
+from .tax_family_medical_2025 import FraisMedicauxFamilleFederaux2025
 from .gui_disability_transfer_2025 import ouvrir_transferts_handicap_2025
 from .tax_disability_transfer_2025 import TransfertsHandicap2025
 from .gui_multigenerational_renovation_2025 import ouvrir_multigenerationnel_2025
@@ -2523,6 +2525,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_demenagement_courants = FraisDemenagement2025()
         pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
         autres_deductions_courantes = AutresDeductions2025()
+        frais_medicaux_famille_courants = FraisMedicauxFamilleFederaux2025()
         transferts_handicap_courants = TransfertsHandicap2025()
         renovations_multigenerationnelles_courantes = RenovationsMultigenerationnelles2025()
         fournitures_educateur_courantes = FournituresEducateur2025()
@@ -3805,6 +3808,16 @@ class ApplicationComptaPrivee(tk.Tk):
 
         # --- Priorité 5B : GUI intérêts sur prêts étudiants ---
 
+        def ouvrir_frais_familiaux_5s_2025():
+            def appliquer(profil):
+                nonlocal frais_medicaux_famille_courants, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                frais_medicaux_famille_courants = profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Frais médicaux familiaux mis à jour; recalculez l'estimation.")
+            ouvrir_medical_familial_2025(fenetre, frais_medicaux_famille_courants, client_fiscal.get().strip(), appliquer)
+
         def ouvrir_handicap_transfere_5r_2025():
             def appliquer(profil):
                 nonlocal transferts_handicap_courants, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
@@ -4656,7 +4669,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
 
         def ouvrir_scolarite_recue_5h_2025():
-            nonlocal transferts_handicap_courants, renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal frais_medicaux_famille_courants, transferts_handicap_courants, renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Scolarité reçue — ligne 32400")
             dimensionner_fenetre(dialogue, 1000, 880)
@@ -5838,6 +5851,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    frais_medicaux_famille=frais_medicaux_famille_courants,
                     transferts_handicap=transferts_handicap_courants,
                     renovations_multigenerationnelles=renovations_multigenerationnelles_courantes,
                     fournitures_educateur=fournitures_educateur_courantes,
@@ -14064,6 +14078,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    frais_medicaux_famille=frais_medicaux_famille_courants,
                     transferts_handicap=transferts_handicap_courants,
                     renovations_multigenerationnelles=renovations_multigenerationnelles_courantes,
                     fournitures_educateur=fournitures_educateur_courantes,
@@ -14131,6 +14146,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    frais_medicaux_famille=frais_medicaux_famille_courants,
                     transferts_handicap=transferts_handicap_courants,
                     renovations_multigenerationnelles=renovations_multigenerationnelles_courantes,
                     fournitures_educateur=fournitures_educateur_courantes,
@@ -14228,7 +14244,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
-            nonlocal transferts_handicap_courants, renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal frais_medicaux_famille_courants, transferts_handicap_courants, renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal interets_pret_etudiant_courants
             nonlocal frais_garde_federaux_courants
@@ -14309,6 +14325,7 @@ class ApplicationComptaPrivee(tk.Tk):
             pension_alimentaire_payee_courante = (
                 enregistrement.pension_alimentaire_payee
             )
+            frais_medicaux_famille_courants = enregistrement.frais_medicaux_famille
             transferts_handicap_courants = enregistrement.transferts_handicap
             renovations_multigenerationnelles_courantes = enregistrement.renovations_multigenerationnelles
             fournitures_educateur_courantes = enregistrement.fournitures_educateur
@@ -14656,6 +14673,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    frais_medicaux_famille=frais_medicaux_famille_courants,
                     transferts_handicap=transferts_handicap_courants,
                     renovations_multigenerationnelles=renovations_multigenerationnelles_courantes,
                     fournitures_educateur=fournitures_educateur_courantes,
@@ -15156,6 +15174,8 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_contributions_politiques_5n_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Rénovations multigénérationnelles 2025 (5Q)",
                    command=ouvrir_renovations_5q_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Frais médicaux familiaux 2025 (5S)",
+                   command=ouvrir_frais_familiaux_5s_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Transferts handicap 2025 (5R)",
                    command=ouvrir_handicap_transfere_5r_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Fournitures éducateur 2025 (5P)",

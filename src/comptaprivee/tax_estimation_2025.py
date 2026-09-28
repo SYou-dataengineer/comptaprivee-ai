@@ -9,6 +9,7 @@ d'estimation soumise à validation comptable.
 """
 
 from .tax_rules_2025 import arrondir_cent
+from .tax_family_medical_2025 import (FraisMedicauxFamilleFederaux2025, ResultatMedicalFamilial2025, calculer_medical_familial_2025, lignes_medical_familial_2025, verifier_combinaison_medicale_famille)
 from .tax_disability_transfer_2025 import (TransfertsHandicap2025, ResultatTransfertsHandicap2025, calculer_transferts_handicap_2025)
 from .tax_disability_transfer_2025 import lignes_transferts_handicap_2025
 from .tax_multigenerational_renovation_2025 import (RenovationsMultigenerationnelles2025, ResultatMultigenerationnel2025, calculer_multigenerationnel_2025, lignes_multigenerationnelles_2025, multigenerationnel_vers_dict, multigenerationnel_depuis_dict)
@@ -351,6 +352,8 @@ class EstimationFiscale2025:
     resultat_reports_dons: ResultatReportsDonsFederaux2025 = ResultatReportsDonsFederaux2025()
     renovations_multigenerationnelles: RenovationsMultigenerationnelles2025 = RenovationsMultigenerationnelles2025()
     transferts_handicap: TransfertsHandicap2025 = TransfertsHandicap2025()
+    frais_medicaux_famille: FraisMedicauxFamilleFederaux2025 = FraisMedicauxFamilleFederaux2025()
+    resultat_medical_familial: ResultatMedicalFamilial2025 = ResultatMedicalFamilial2025()
     resultat_transferts_handicap: ResultatTransfertsHandicap2025 = ResultatTransfertsHandicap2025()
     resultat_multigenerationnel: ResultatMultigenerationnel2025 = ResultatMultigenerationnel2025()
     fournitures_educateur: FournituresEducateur2025 = FournituresEducateur2025()
@@ -437,6 +440,7 @@ def calculer_estimation_fiscale_2025(
     rrq_rpc_confirme: bool = False,
     renovations_multigenerationnelles: RenovationsMultigenerationnelles2025 | None = None,
     transferts_handicap: TransfertsHandicap2025 | None = None,
+    frais_medicaux_famille: FraisMedicauxFamilleFederaux2025 | None = None,
     fournitures_educateur: FournituresEducateur2025 | None = None,
     fonds_travailleurs: FondsTravailleurs2025 | None = None,
     contributions_politiques: ContributionsPolitiques2025 | None = None,
@@ -1419,6 +1423,12 @@ def calculer_estimation_fiscale_2025(
         if any(" ".join(d.nom_etudiant.split()).casefold() == " ".join(resultat_conjoint.nom_conjoint.split()).casefold()
                for d in scolarite_recue.designations):
             raise ValueError("Le même conjoint ne peut être déclaré comme étudiant à 32400 et à 32600.")
+    medical_familial = frais_medicaux_famille if frais_medicaux_famille is not None else FraisMedicauxFamilleFederaux2025()
+    resultat_medical_familial = calculer_medical_familial_2025(medical_familial,
+        demandeur=dossier.client, revenu_net=revenu.revenu_net_federal, annee=dossier.annee_fiscale)
+    verifier_combinaison_medicale_famille(medical_familial, frais_medicaux_effectifs, act.present)
+    base_medicale = (resultat_medical_familial.ligne_33200 if medical_familial.personnes else
+        montant_frais_medicaux_federal_apres_seuil_2025(frais_medicaux_effectifs, revenu.revenu_net_federal))
     credits_complets = calculer_credits_non_remboursables_2025(
         montants_avant_scolarite + (
             (("31900", resultat_pret_etudiant.ligne_31900),)
@@ -1428,8 +1438,7 @@ def calculer_estimation_fiscale_2025(
              else frais_scolarite_effectifs.montant_net_federal),
             *((("32400", montant_ligne_32400_2025(scolarite_recue)),) if scolarite_recue.designations else ()),
             *((("32600", resultat_conjoint.ligne_32600),) if conjoint.activer else ()),
-            ("33200", montant_frais_medicaux_federal_apres_seuil_2025(
-                frais_medicaux_effectifs, revenu.revenu_net_federal)),
+            ("33200", base_medicale),
         ),
         calculer_annexe9_ligne22_2025(montant_dons_federaux_reclames_2025(dons_effectifs)),
         credit_federal_dons_2025(dons_effectifs, revenu.revenu_imposable_federal),
@@ -1501,11 +1510,11 @@ def calculer_estimation_fiscale_2025(
         deduction_21200=cotisations_effectives.montant_federal_admissible,
         deduction_22900=depenses_emploi_effectives.deduction_federale_t777,
         revenu_net=revenu.revenu_net_federal,
-        ligne_33200=montant_frais_medicaux_federal_apres_seuil_2025(frais_medicaux_effectifs, revenu.revenu_net_federal),
+        ligne_33200=base_medicale,
     )
     multigenerationnel = renovations_multigenerationnelles if renovations_multigenerationnelles is not None else RenovationsMultigenerationnelles2025()
     resultat_multigenerationnel = calculer_multigenerationnel_2025(multigenerationnel, annee=dossier.annee_fiscale,
-        autres_frais_reclames=bool(frais_medicaux_effectifs.montant_admissible_federal or accessibilite_domiciliaire_federale_effective.depenses_admissibles))
+        autres_frais_reclames=bool(frais_medicaux_effectifs.montant_admissible_federal or medical_familial.depenses or accessibilite_domiciliaire_federale_effective.depenses_admissibles))
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
         federal,
@@ -1557,6 +1566,7 @@ def calculer_estimation_fiscale_2025(
         dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
     )
     return EstimationFiscale2025(
+        frais_medicaux_famille=medical_familial, resultat_medical_familial=resultat_medical_familial,
         transferts_handicap=handicap_transfere, resultat_transferts_handicap=resultat_handicap_transfere,
         renovations_multigenerationnelles=multigenerationnel, resultat_multigenerationnel=resultat_multigenerationnel,
         fournitures_educateur=educateur, resultat_fournitures_educateur=resultat_educateur,
@@ -1737,6 +1747,7 @@ def formater_estimation_fiscale_2025(
         *lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons),
         *lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite),
         *lignes_handicap_detaille_2025(estimation.credit_deficience),
+        *lignes_medical_familial_2025(estimation.frais_medicaux_famille, estimation.resultat_medical_familial),
         *lignes_transferts_handicap_2025(estimation.transferts_handicap, estimation.resultat_transferts_handicap),
         *lignes_multigenerationnelles_2025(estimation.renovations_multigenerationnelles, estimation.resultat_multigenerationnel),
         *lignes_fournitures_educateur_2025(estimation.fournitures_educateur, estimation.resultat_fournitures_educateur),

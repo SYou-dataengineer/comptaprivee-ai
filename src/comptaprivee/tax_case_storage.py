@@ -1,6 +1,7 @@
 """Persistance locale des dossiers fiscaux validés."""
 
 from __future__ import annotations
+from .tax_family_medical_2025 import (FraisMedicauxFamilleFederaux2025, calculer_medical_familial_2025, medical_familial_vers_dict, medical_familial_depuis_dict, verifier_combinaison_medicale_famille)
 from .tax_disability_transfer_2025 import (TransfertsHandicap2025, calculer_transferts_handicap_2025, transferts_handicap_vers_dict, transferts_handicap_depuis_dict)
 
 from .tax_multigenerational_renovation_2025 import (RenovationsMultigenerationnelles2025, calculer_multigenerationnel_2025, multigenerationnel_vers_dict, multigenerationnel_depuis_dict)
@@ -227,6 +228,7 @@ class DossierFiscalEnregistre:
     rrq_rpc_confirme: bool = False
     renovations_multigenerationnelles: RenovationsMultigenerationnelles2025 = RenovationsMultigenerationnelles2025()
     transferts_handicap: TransfertsHandicap2025 = TransfertsHandicap2025()
+    frais_medicaux_famille: FraisMedicauxFamilleFederaux2025 = FraisMedicauxFamilleFederaux2025()
     fournitures_educateur: FournituresEducateur2025 = FournituresEducateur2025()
     fonds_travailleurs: FondsTravailleurs2025 = FondsTravailleurs2025()
     contributions_politiques: ContributionsPolitiques2025 = ContributionsPolitiques2025()
@@ -3384,6 +3386,7 @@ def sauvegarder_dossier_fiscal(
     autres_deductions: AutresDeductions2025 | None = None,
     renovations_multigenerationnelles: RenovationsMultigenerationnelles2025 | None = None,
     transferts_handicap: TransfertsHandicap2025 | None = None,
+    frais_medicaux_famille: FraisMedicauxFamilleFederaux2025 | None = None,
     fournitures_educateur: FournituresEducateur2025 | None = None,
     fonds_travailleurs: FondsTravailleurs2025 | None = None,
     contributions_politiques: ContributionsPolitiques2025 | None = None,
@@ -3574,10 +3577,15 @@ def sauvegarder_dossier_fiscal(
         elif (dons_bienfaisance.reports_federaux.activer or estimation.dons_bienfaisance.reports_federaux.activer) and dons_bienfaisance != estimation.dons_bienfaisance:
             raise ValueError("Le profil dons/reports diffère de l'estimation.")
 
+    medical_familial = frais_medicaux_famille if frais_medicaux_famille is not None else (estimation.frais_medicaux_famille if estimation else FraisMedicauxFamilleFederaux2025())
+    if estimation is not None and medical_familial != estimation.frais_medicaux_famille:
+        raise ValueError("Profil médical familial divergent de l'estimation.")
+    calculer_medical_familial_2025(medical_familial, demandeur=dossier.client,
+        revenu_net=estimation.revenu.revenu_net_federal if estimation else Decimal(0), annee=dossier.annee_fiscale)
     multigenerationnel = renovations_multigenerationnelles if renovations_multigenerationnelles is not None else (estimation.renovations_multigenerationnelles if estimation else RenovationsMultigenerationnelles2025())
     acces_5q = accessibilite_domiciliaire_federale if accessibilite_domiciliaire_federale is not None else (estimation.accessibilite_domiciliaire_federale if estimation else None)
     calculer_multigenerationnel_2025(multigenerationnel, annee=dossier.annee_fiscale,
-        autres_frais_reclames=bool((frais_medicaux and frais_medicaux.montant_admissible_federal) or (acces_5q and acces_5q.depenses_admissibles)))
+        autres_frais_reclames=bool(medical_familial.depenses or (frais_medicaux and frais_medicaux.montant_admissible_federal) or (acces_5q and acces_5q.depenses_admissibles)))
     if estimation is not None and multigenerationnel != estimation.renovations_multigenerationnelles:
         raise ValueError("Profil multigénérationnel divergent de l'estimation.")
     educateur = fournitures_educateur if fournitures_educateur is not None else (estimation.fournitures_educateur if estimation else FournituresEducateur2025())
@@ -3922,6 +3930,7 @@ def sauvegarder_dossier_fiscal(
         ),
         "renovations_multigenerationnelles": multigenerationnel_vers_dict(multigenerationnel),
         "transferts_handicap": transferts_handicap_vers_dict(handicap_transfere),
+        "frais_medicaux_famille": medical_familial_vers_dict(medical_familial),
         "fournitures_educateur": educateur_vers_dict(educateur),
         "fonds_travailleurs": fonds_vers_dict(fonds),
         "contributions_politiques": politiques_vers_dict(politiques),
@@ -4005,6 +4014,8 @@ def sauvegarder_dossier_fiscal(
         reclame_30400=contenu["personne_charge_admissible_federale"]["reclamer_montant"],
         reclame_30450=contenu["aidant_autre_personne_charge_federal"]["reclamer_montant"],
         deduction_22000=pension_alimentaire_effective.deduction_federale_22000)
+    verifier_combinaison_medicale_famille(medical_familial,
+        _frais_medicaux_depuis_dict(contenu["frais_medicaux"]), act.present)
     temporaire = chemin.with_suffix(chemin.suffix + ".tmp")
     try:
         temporaire.write_text(json.dumps(contenu, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -4350,6 +4361,10 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
     except (TypeError, ValueError) as erreur:
         raise ValueError("Profil reports de pertes enregistré invalide.") from erreur
     verifier_confirmation_reports_pertes_2025(pertes_profil, dossier, capital_profil, frais_profil)
+    medical_familial = medical_familial_depuis_dict(contenu.get("frais_medicaux_famille"))
+    calculer_medical_familial_2025(medical_familial, demandeur=dossier.client, revenu_net=Decimal(0), annee=dossier.annee_fiscale)
+    verifier_combinaison_medicale_famille(medical_familial, frais_medicaux,
+        _allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")).present)
     handicap_transfere = transferts_handicap_depuis_dict(contenu.get("transferts_handicap"))
     calculer_transferts_handicap_2025(handicap_transfere,
         beneficiaire=dossier.client, annee=dossier.annee_fiscale,
@@ -4357,6 +4372,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         reclame_30450=aidant_autre_personne_charge_federal.reclamer_montant,
         deduction_22000=pension_alimentaire_payee.deduction_federale_22000)
     return DossierFiscalEnregistre(
+        frais_medicaux_famille=medical_familial,
         transferts_handicap=handicap_transfere,
         profil_reports_pertes=pertes_profil,
         profil_frais_placement=frais_profil,
@@ -4386,7 +4402,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         frais_demenagement=frais_demenagement,
         pension_alimentaire_payee=pension_alimentaire_payee,
         renovations_multigenerationnelles=multigenerationnel_depuis_dict(contenu.get("renovations_multigenerationnelles"), annee=dossier.annee_fiscale,
-            autres_frais_reclames=bool(frais_medicaux.montant_admissible_federal or accessibilite_domiciliaire_federale.depenses_admissibles)),
+            autres_frais_reclames=bool(medical_familial.depenses or frais_medicaux.montant_admissible_federal or accessibilite_domiciliaire_federale.depenses_admissibles)),
         fournitures_educateur=educateur_depuis_dict(contenu.get("fournitures_educateur"), annee=dossier.annee_fiscale, deduction_t777=depenses_emploi.deduction_federale_t777),
         fonds_travailleurs=fonds_depuis_dict(contenu.get("fonds_travailleurs"), client=dossier.client, annee=dossier.annee_fiscale),
         contributions_politiques=politiques_depuis_dict(contenu.get("contributions_politiques"), client=dossier.client, annee=dossier.annee_fiscale),

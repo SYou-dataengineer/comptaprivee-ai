@@ -3058,3 +3058,74 @@ Validation ciblée finale du bloc : **172 passed, 5 warnings**.
 Suite complète finale : **5159 passed, 8 warnings en 162,62 s**, avec
 `--capture=sys`. Avertissements inchangés : cinq SWIG et trois openpyxl.
 Revue visuelle du PDF actualisé : détail disponible/utilisé/inutilisé lisible.
+
+
+### Audit après 5R — suites de la Priorité 5
+
+L'inventaire d'ouverture de ce document est historique. Les blocs 5A à 5R
+ont livré les crédits et transferts décrits plus bas. L'audit réel après
+`ea0703b` relève encore : frais médicaux familiaux 33099/33199 (le profil
+antérieur exige sans conjoint ni personne à charge), ACT familial,
+supplément médical familial, et les combinaisons restantes de crédits
+personnels à examiner dans l'orchestrateur. La Priorité 5 n'est pas clôturée.
+Le prochain bloc est nommé 5S pour traiter le premier manque constaté;
+les extensions familiales des prestations suivront avant l'audit de clôture.
+Les crédits Québec et profils avancés restent aux Priorités 6 et 7.
+
+### Bloc 5S — frais médicaux familiaux fédéraux, 33099 / 33199 / 33200
+
+Sources officielles 2025 :
+- [ARC, frais médicaux 33099 et 33199](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/lines-33099-33199-eligible-medical-expenses-you-claim-on-your-tax-return.html).
+- [Feuille fédérale 2025, 33199](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-d1/5000-d1-25e.pdf).
+- [LIR 118.2(1), groupes B et D, période commune](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-118.2.html).
+
+Le profil détaillé distingue le demandeur, le conjoint, les enfants mineurs
+au 31 décembre 2025 et les autres personnes à charge. Les petits-enfants
+relèvent de 33199 même mineurs. Les liens admissibles, la dépendance,
+l'admissibilité de chaque reçu et les interactions avec soins/handicap/garde
+sont vérifiés par le comptable. Le moteur ne détermine pas automatiquement
+l'admissibilité médicale. La résidence canadienne à un moment de l'année
+est exigée pour les liens autres qu'enfant et petit-enfant à 33199.
+
+Les reçus sont identifiés, datés, attribués à une personne et regroupés dans
+une même fenêtre d'au plus douze mois se terminant en 2025. Une saisie de
+période plus courte est incluse dans cette fenêtre, sans changer les reçus
+retenus. Les remboursements reçus ou à recevoir sont soustraits, sauf leur
+part imposable non déduite; les parts réclamées ailleurs sont aussi retirées.
+L'absence de double demande entre dossiers ou années exige les pièces.
+Les références dupliquées sont refusées à l'intérieur du profil.
+
+- 33099 = somme des reçus nets du demandeur, conjoint et enfants mineurs.
+- Net 33099 = max(33099 - min(3 % du revenu net du demandeur, 2834), 0).
+- Pour chaque autre personne : max(frais nets - min(3 % de son revenu net, 2834), 0).
+- 33199 = somme de ces résultats individuels; aucun solde négatif d'une personne
+  ne réduit le montant positif d'une autre.
+- 33200 = net 33099 + 33199; une seule inclusion dans 33500/33800/34990/35000.
+
+Le revenu net 23600 des autres personnes est rapproché de leur déclaration
+sur pièces et conserve sa source; il n'est pas un crédit calculé saisi.
+Les revenus négatifs sont bornés à zéro pour le seuil. Revenus imposables,
+revenus nets et calcul Québec du demandeur ne sont pas modifiés par ce crédit.
+Les tests vérifient aussi l'ordre 42900/40500 et l'abattement Québec.
+
+Le profil détaillé remplace la saisie fédérale médicale agrégée : le cumul
+est refusé. Les anciens JSON chargent un profil vide, les nouveaux stockent
+seulement les données brutes. Validation stricte des types, montants finis,
+cents, dates, confirmations, clés JSON et identité du demandeur; refus des
+profils explicites divergents de l'estimation à la sauvegarde. Validation au
+rechargement et recalcul des résultats. Aucun dossier réel n'est transmis.
+
+La GUI gère les personnes et reçus; modifications et changements de période
+révoquent les confirmations. Résumé, trace et PDF montrent les bases, seuils,
+références, parts et périodes. Les anciens profils médicaux restent disponibles.
+Le rapprochement des rénovations multigénérationnelles tient compte des
+nouveaux reçus, même lorsque le crédit médical après seuil est nul.
+
+Limites logicielles de ce bloc : décès et périodes spéciales non couverts;
+Québec familial traité en Priorité 6; ACT et supplément médical familiaux
+encore à étendre. Les combinaisons avec leurs profils individuels sont
+refusées quand le profil médical contient un conjoint ou une personne à
+charge. Ces limites ne signifient pas une exclusion fiscale générale.
+
+Validation ciblée : **228 passed, 5 warnings**. Suite complète :
+**5247 passed, 8 warnings** (178,02 s). Rendu PDF familial vérifié visuellement.
