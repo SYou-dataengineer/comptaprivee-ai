@@ -10,6 +10,7 @@ from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, CONFIRMATIONS_REPORTS_DONS
+from .tax_spouse_transfer_2025 import (TransfertConjointFederal2025, CONFIRMATIONS_TRANSFERT_CONJOINT, instantane_conjoint_2025, calculer_transfert_conjoint_2025, lignes_transfert_conjoint_2025)
 from .tax_tuition_received_2025 import (
     TransfertsScolariteRecus2025, DesignationScolariteRecue2025,
     valider_transferts_scolarite_recus_2025, RELATIONS_SCOLARITE_RECUE, CONFIRMATIONS_SCOLARITE_RECUE,
@@ -2513,6 +2514,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_demenagement_courants = FraisDemenagement2025()
         pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
         autres_deductions_courantes = AutresDeductions2025()
+        transfert_conjoint_courant = TransfertConjointFederal2025()
         transferts_scolarite_recus_courants = TransfertsScolariteRecus2025()
         allocation_travailleurs_courante = AllocationTravailleurs2025()
         interets_pret_etudiant_courants = InteretsPretEtudiant2025()
@@ -3787,8 +3789,91 @@ class ApplicationComptaPrivee(tk.Tk):
 
         # --- Priorité 5B : GUI intérêts sur prêts étudiants ---
 
+        def ouvrir_transfert_conjoint_5k_2025():
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Transfert du conjoint — ligne 32600")
+            dimensionner_fenetre(dialogue, 1000, 850)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(0, weight=1)
+            ttk.Label(cadre, text="Importer le dossier personnel du conjoint avant transfert. "
+                "Les confirmations antérieures d'absence de transfert décrivent ce calcul personnel. "
+                "L'autorisation ci-dessous porte sur le nouveau transfert uniquement. "
+                "Le dossier importé est conservé dans ce dossier; réimportez-le après toute correction. "
+                "Aucune transmission ni lecture automatique des pièces sources.", wraplength=880).grid(row=0, column=0, sticky="ew")
+            instantane = [transfert_conjoint_courant.dossier_conjoint_json]
+            source = tk.StringVar(value=transfert_conjoint_courant.source)
+            identite = tk.StringVar(value="Dossier importé conservé" if instantane[0] else "Aucun dossier importé")
+            ttk.Label(cadre, textvariable=identite).grid(row=1, column=0, sticky="w")
+            ttk.Label(cadre, text="Source et référence de l'autorisation (sans NAS)").grid(row=3, column=0, sticky="w")
+            ttk.Entry(cadre, name="source_5k", textvariable=source).grid(row=4, column=0, sticky="ew")
+            confirmations = {}
+            for row, (nom, libelle) in enumerate(CONFIRMATIONS_TRANSFERT_CONJOINT.items(), 5):
+                v = tk.BooleanVar(value=getattr(transfert_conjoint_courant, nom))
+                confirmations[nom] = v
+                ttk.Checkbutton(cadre, name=nom + "_5k", text=libelle, variable=v).grid(row=row, column=0, sticky="w")
+            apercu = tk.StringVar()
+            for v in confirmations.values():
+                v.trace_add("write", lambda *_: apercu.set(""))
+            ttk.Label(cadre, name="apercu_5k", textvariable=apercu, wraplength=880).grid(row=13, column=0, sticky="ew")
+            def revoquer(*_):
+                apercu.set("")
+                for v in confirmations.values():
+                    v.set(False)
+            source.trace_add("write", revoquer)
+            def importer():
+                import json
+                fichier = filedialog.askopenfilename(parent=dialogue, title="Dossier brut du conjoint 2025",
+                    filetypes=[("Dossier fiscal JSON", "*.json")])
+                if not fichier:
+                    return
+                try:
+                    contenu = json.loads(Path(fichier).read_text(encoding="utf-8"))
+                    nouveau = instantane_conjoint_2025(contenu)
+                except (OSError, ValueError) as erreur:
+                    messagebox.showerror("Dossier du conjoint invalide", str(erreur), parent=dialogue)
+                    return
+                instantane[0] = nouveau
+                identite.set("Dossier importé : " + str(contenu.get("client", "À vérifier")))
+                source.set(Path(fichier).name)
+                revoquer()
+            ttk.Button(cadre, text="Importer le dossier du conjoint", command=importer).grid(row=2, column=0, sticky="w")
+            def construire():
+                if not client_fiscal.get().strip():
+                    raise ValueError("Renseignez le nom du client bénéficiaire dans le dossier fiscal.")
+                p = TransfertConjointFederal2025(activer=True, beneficiaire=client_fiscal.get().strip(), dossier_conjoint_json=instantane[0], source=source.get().strip(),
+                    **{nom: v.get() for nom, v in confirmations.items()})
+                r = calculer_transfert_conjoint_2025(p, beneficiaire=client_fiscal.get())
+                return p, r
+            def calculer_apercu():
+                try:
+                    p, r = construire()
+                except ValueError as erreur:
+                    messagebox.showerror("Transfert du conjoint invalide", str(erreur), parent=dialogue)
+                    return
+                apercu.set("\n".join(lignes_transfert_conjoint_2025(p, r)))
+            ttk.Button(cadre, text="Calculer l'annexe 2", command=calculer_apercu).grid(row=12, column=0, sticky="w")
+            def appliquer(effacer=False):
+                nonlocal transfert_conjoint_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                try:
+                    p = TransfertConjointFederal2025() if effacer else construire()[0]
+                except ValueError as erreur:
+                    messagebox.showerror("Transfert du conjoint invalide", str(erreur), parent=dialogue)
+                    return
+                transfert_conjoint_courant = p
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Transfert du conjoint mis à jour; recalculez l'estimation.")
+                dialogue.destroy()
+            ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer).pack(side="right")
+            ttk.Button(formulaire.actions, text="Retirer le transfert", command=lambda: appliquer(True)).pack(side="right", padx=8)
+            ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
+
         def ouvrir_scolarite_recue_5h_2025():
-            nonlocal transferts_scolarite_recus_courants
+            nonlocal transfert_conjoint_courant, transferts_scolarite_recus_courants
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Scolarité reçue — ligne 32400")
             dimensionner_fenetre(dialogue, 1000, 880)
@@ -4970,6 +5055,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
@@ -13158,6 +13244,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
@@ -13217,6 +13304,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
@@ -13306,7 +13394,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
-            nonlocal transferts_scolarite_recus_courants
+            nonlocal transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal interets_pret_etudiant_courants
             nonlocal frais_garde_federaux_courants
@@ -13387,6 +13475,7 @@ class ApplicationComptaPrivee(tk.Tk):
             pension_alimentaire_payee_courante = (
                 enregistrement.pension_alimentaire_payee
             )
+            transfert_conjoint_courant = enregistrement.transfert_conjoint
             transferts_scolarite_recus_courants = enregistrement.transferts_scolarite_recus
             allocation_travailleurs_courante = enregistrement.allocation_travailleurs
             interets_pret_etudiant_courants = enregistrement.interets_pret_etudiant
@@ -13726,6 +13815,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
@@ -14214,6 +14304,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(zone_actions, text="Allocation travailleurs 2025 (5E)",
                    command=ouvrir_allocation_travailleurs_5e_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Transfert conjoint 2025 (5K)",
+                   command=ouvrir_transfert_conjoint_5k_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Scolarité reçue 2025 (5H)",
                    command=ouvrir_scolarite_recue_5h_2025).pack(side="left", padx=(8, 0))
 

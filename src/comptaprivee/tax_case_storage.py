@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .tax_spouse_transfer_2025 import TransfertConjointFederal2025, valider_transfert_conjoint_2025, calculer_transfert_conjoint_2025
 from .tax_tuition_received_2025 import TransfertsScolariteRecus2025, valider_transferts_scolarite_recus_2025
 from .tax_tuition_received_2025 import DesignationScolariteRecue2025
 from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, valider_reports_dons_federaux_2025
@@ -217,6 +218,7 @@ class DossierFiscalEnregistre:
     profil_pensions: ProfilPensions2025 = ProfilPensions2025()
     psv_confirme: bool = False
     rrq_rpc_confirme: bool = False
+    transfert_conjoint: TransfertConjointFederal2025 = TransfertConjointFederal2025()
     transferts_scolarite_recus: TransfertsScolariteRecus2025 = TransfertsScolariteRecus2025()
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
     interets_pret_etudiant: InteretsPretEtudiant2025 = InteretsPretEtudiant2025()
@@ -3298,6 +3300,17 @@ def _interets_pret_etudiant_depuis_dict(valeur):
     return valider_interets_pret_etudiant_2025(InteretsPretEtudiant2025(**valeurs))
 
 
+def _transfert_conjoint_depuis_dict(valeur, beneficiaire):
+    from dataclasses import fields
+    if valeur is None:
+        return TransfertConjointFederal2025()
+    if not isinstance(valeur, dict) or set(valeur) - {f.name for f in fields(TransfertConjointFederal2025)}:
+        raise ValueError("Champs du transfert du conjoint invalides.")
+    p = valider_transfert_conjoint_2025(TransfertConjointFederal2025(**valeur))
+    calculer_transfert_conjoint_2025(p, beneficiaire=beneficiaire)
+    return p
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
@@ -3309,6 +3322,7 @@ def sauvegarder_dossier_fiscal(
     frais_demenagement: FraisDemenagement2025 | None = None,
     pension_alimentaire_payee: PensionAlimentairePayee2025 | None = None,
     autres_deductions: AutresDeductions2025 | None = None,
+    transfert_conjoint: TransfertConjointFederal2025 | None = None,
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
     interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
@@ -3486,6 +3500,13 @@ def sauvegarder_dossier_fiscal(
         elif (dons_bienfaisance.reports_federaux.activer or estimation.dons_bienfaisance.reports_federaux.activer) and dons_bienfaisance != estimation.dons_bienfaisance:
             raise ValueError("Le profil dons/reports diffère de l'estimation.")
 
+    conjoint = valider_transfert_conjoint_2025(
+        transfert_conjoint if transfert_conjoint is not None
+        else (estimation.transfert_conjoint if estimation else TransfertConjointFederal2025())
+    )
+    if estimation is not None and conjoint != estimation.transfert_conjoint:
+        raise ValueError("Le profil transfert du conjoint diffère de l'estimation.")
+    calculer_transfert_conjoint_2025(conjoint, beneficiaire=dossier.client)
     scolarite_recue = valider_transferts_scolarite_recus_2025(
         transferts_scolarite_recus if transferts_scolarite_recus is not None
         else (estimation.transferts_scolarite_recus if estimation else TransfertsScolariteRecus2025())
@@ -3796,6 +3817,7 @@ def sauvegarder_dossier_fiscal(
         "pension_alimentaire_payee": _pension_alimentaire_payee_vers_dict(
             pension_alimentaire_effective
         ),
+        "transfert_conjoint": {nom: getattr(conjoint, nom) for nom in conjoint.__dataclass_fields__},
         "transferts_scolarite_recus": _scolarite_recue_vers_dict(scolarite_recue),
         "allocation_travailleurs": _allocation_travailleurs_vers_dict(act),
         "interets_pret_etudiant": _interets_pret_etudiant_vers_dict(pret_etudiant),
@@ -3896,6 +3918,11 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         contenu = json.loads(chemin.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as erreur:
         raise ValueError(f"Dossier fiscal illisible : {chemin.name}") from erreur
+    return dossier_fiscal_depuis_contenu(contenu, chemin=chemin)
+
+
+def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documents=True):
+    """Même validation que le chargement fichier; mode sans accès aux pièces sources."""
     if not isinstance(contenu, dict) or contenu.get("schema_version") != SCHEMA_VERSION:
         raise ValueError("Version de dossier fiscal non prise en charge.")
 
@@ -4054,7 +4081,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         )
     )
     rapport = Path(str(contenu["rapport_pdf"])) if contenu.get("rapport_pdf") else None
-    manquants = tuple(x for x in documents if not x.exists())
+    manquants = tuple(x for x in documents if not x.exists()) if verifier_documents else ()
     rpa = _rpa_depuis_dict(contenu["cotisations_rpa"]) if "cotisations_rpa" in contenu else CotisationsRpa2025()
     if rpa.montant_federal:
         verifier_rpa_dossier_2025(dossier, rpa)
@@ -4236,6 +4263,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         depenses_emploi=depenses_emploi,
         frais_demenagement=frais_demenagement,
         pension_alimentaire_payee=pension_alimentaire_payee,
+        transfert_conjoint=_transfert_conjoint_depuis_dict(contenu.get("transfert_conjoint"), dossier.client),
         transferts_scolarite_recus=_scolarite_recue_depuis_dict(contenu.get("transferts_scolarite_recus")),
         allocation_travailleurs=_allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")),
         interets_pret_etudiant=_interets_pret_etudiant_depuis_dict(contenu.get("interets_pret_etudiant")),

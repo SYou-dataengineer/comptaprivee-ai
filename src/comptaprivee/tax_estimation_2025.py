@@ -8,6 +8,7 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_spouse_transfer_2025 import (TransfertConjointFederal2025, ResultatTransfertConjoint2025, calculer_transfert_conjoint_2025, lignes_transfert_conjoint_2025)
 from .tax_tuition_received_2025 import TransfertsScolariteRecus2025, valider_transferts_scolarite_recus_2025, montant_ligne_32400_2025, lignes_transferts_scolarite_recus_2025
 from .tax_donation_carryforward_2025 import ResultatReportsDonsFederaux2025, calculer_reports_dons_federaux_2025, lignes_reports_dons_federaux_2025
 from .tax_donations_2025 import montant_dons_federaux_reclames_2025
@@ -338,6 +339,8 @@ class EstimationFiscale2025:
     resultat_supplement_medical: ResultatSupplementMedical2025 = ResultatSupplementMedical2025()
     resultat_reports_scolarite: ResultatReportsScolariteFederaux2025 = ResultatReportsScolariteFederaux2025()
     resultat_reports_dons: ResultatReportsDonsFederaux2025 = ResultatReportsDonsFederaux2025()
+    transfert_conjoint: TransfertConjointFederal2025 = TransfertConjointFederal2025()
+    resultat_transfert_conjoint: ResultatTransfertConjoint2025 = ResultatTransfertConjoint2025()
     transferts_scolarite_recus: TransfertsScolariteRecus2025 = TransfertsScolariteRecus2025()
 
 
@@ -408,6 +411,7 @@ def calculer_estimation_fiscale_2025(
     profil_pensions: ProfilPensions2025 = ProfilPensions2025(),
     psv_confirme: bool = False,
     rrq_rpc_confirme: bool = False,
+    transfert_conjoint: TransfertConjointFederal2025 | None = None,
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
     interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
@@ -419,6 +423,8 @@ def calculer_estimation_fiscale_2025(
             "uniquement pour l'année 2025."
         )
 
+    conjoint = transfert_conjoint if transfert_conjoint is not None else TransfertConjointFederal2025()
+    resultat_conjoint = calculer_transfert_conjoint_2025(conjoint, beneficiaire=dossier.client)
     scolarite_recue = valider_transferts_scolarite_recus_2025(
         transferts_scolarite_recus if transferts_scolarite_recus is not None else TransfertsScolariteRecus2025()
     )
@@ -1327,6 +1333,21 @@ def calculer_estimation_fiscale_2025(
         federal,
         aidant_enfant_federal_effectif,
     )
+    if conjoint.activer:
+        if resultat_conjoint.enfant_30500 and aidant_enfant_federal_effectif.reclamer_montant:
+            raise ValueError("Deux montants 30500 dans le couple : l'identification de plusieurs enfants n'est pas encore prise en charge.")
+        if resultat_conjoint.revenu_beneficiaire_declare_30300 is not None:
+            if resultat_conjoint.revenu_beneficiaire_declare_30300 != revenu.revenu_net_federal:
+                raise ValueError("Le revenu du bénéficiaire déclaré à 30300 dans le dossier du conjoint diffère du revenu recalculé.")
+            if montant_conjoint_federal_effectif.reclamer_montant:
+                raise ValueError("Les deux conjoints ne peuvent réclamer simultanément 30300.")
+        if montant_conjoint_federal_effectif.reclamer_montant and montant_conjoint_federal_effectif.revenu_net_conjoint_2025 != resultat_conjoint.revenu_net_conjoint:
+            raise ValueError("Le revenu du conjoint pour 30300 diffère du dossier recalculé pour 32600.")
+        if act.present or frais_medicaux_effectifs.supplement.reclamer:
+            raise ValueError("Le transfert 32600 est incompatible avec les crédits du profil individuel sans conjoint.")
+        if any(" ".join(d.nom_etudiant.split()).casefold() == " ".join(resultat_conjoint.nom_conjoint.split()).casefold()
+               for d in scolarite_recue.designations):
+            raise ValueError("Le même conjoint ne peut être déclaré comme étudiant à 32400 et à 32600.")
     credits_complets = calculer_credits_non_remboursables_2025(
         montants_avant_scolarite + (
             (("31900", resultat_pret_etudiant.ligne_31900),)
@@ -1335,6 +1356,7 @@ def calculer_estimation_fiscale_2025(
             ("32300", reports_scolarite.ligne_32300 if frais_scolarite_effectifs.reports_federaux.activer
              else frais_scolarite_effectifs.montant_net_federal),
             *((("32400", montant_ligne_32400_2025(scolarite_recue)),) if scolarite_recue.designations else ()),
+            *((("32600", resultat_conjoint.ligne_32600),) if conjoint.activer else ()),
             ("33200", montant_frais_medicaux_federal_apres_seuil_2025(
                 frais_medicaux_effectifs, revenu.revenu_net_federal)),
         ),
@@ -1453,6 +1475,7 @@ def calculer_estimation_fiscale_2025(
         dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
     )
     return EstimationFiscale2025(
+        transfert_conjoint=conjoint, resultat_transfert_conjoint=resultat_conjoint,
         resultat_reports_dons=reports_dons,
         resultat_reports_scolarite=reports_scolarite,
         transferts_scolarite_recus=scolarite_recue,
@@ -1624,6 +1647,7 @@ def formater_estimation_fiscale_2025(
         ),
         *lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons),
         *lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite),
+        *lignes_transfert_conjoint_2025(estimation.transfert_conjoint, estimation.resultat_transfert_conjoint),
         *lignes_transferts_scolarite_recus_2025(estimation.transferts_scolarite_recus),
         *lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs),
         *lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical),

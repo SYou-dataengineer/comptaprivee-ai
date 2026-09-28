@@ -1992,6 +1992,19 @@ def construire_trace_calcul_fiscal_2025(
             lignes += (_ligne(len(lignes) + 1, "TAUX DES DONS — BLOC 5J", f"Dons {juridiction} — base à {pourcentage}",
                 source, "Répartition selon revenu imposable; composante du crédit pour dons", base_dons),)
 
+    if estimation.transfert_conjoint.activer:
+        r = estimation.resultat_transfert_conjoint
+        for libelle, montant, formule in (
+            ("Conjoint — annexe 2 ligne 6", r.total_ligne_6, "30100 + 30500 + 31400 + 31600 + scolarité désignée 36000"),
+            ("Conjoint — équivalent ligne 7", r.equivalent_ligne_7, "26000 si <= 57375; sinon impôt brut / 14,5 %"),
+            ("Conjoint — base T1 Québec ligne 100", r.base_ligne_100, "Somme T1 lignes 87 à 99; exclut 31900 et montants familiaux"),
+            ("Conjoint — annexe 2 ligne 11", r.total_ligne_11, "30000 + T1 Québec ligne 100 + 32300"),
+            ("Conjoint — réduction 36100", r.reduction_36100, "max(ligne 7 - ligne 11, 0)"),
+            ("Transfert du conjoint — ligne 32600", r.ligne_32600, "max(ligne 6 - 36100, 0); inclus une fois dans 33500"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "TRANSFERT CONJOINT — BLOC 5K", libelle,
+                estimation.transfert_conjoint.source + " — " + r.nom_conjoint, formule, montant),)
+
     prochain_ordre = len(lignes) + 1
 
     if final.remboursement_estime > Decimal("0"):

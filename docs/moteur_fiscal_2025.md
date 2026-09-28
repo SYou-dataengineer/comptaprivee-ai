@@ -2383,7 +2383,7 @@ Revenus et impôt Québec inchangés. Les reports personnels 5F et transferts
 sortants 5G peuvent coexister : leurs montants ne comprennent jamais 32400.
 Les libellés de leurs confirmations distinguent désormais les frais personnels
 des désignations reçues. Le transfert reçu du conjoint, 32600 / annexe 2,
-et les transferts Québec restent à livrer séparément.
+est traité séparément par 5K. Les transferts Québec restent à livrer.
 
 Le JSON persiste uniquement les désignations et confirmations dans
 `transferts_scolarite_recus`; ancien JSON sans ce champ = profil vide.
@@ -2532,3 +2532,59 @@ Validation ciblée après correction : **133 passed, 5 warnings**, incluant
 calculs 30300, profils inactifs, intégration, compensation et stockage.
 
 Suite complète après correctif : **4185 passed, 8 warnings** (`--capture=sys`).
+
+### Bloc 5K livré — transferts fédéraux du conjoint, ligne 32600
+
+Sources 2025 : [annexe 2 Québec 5005-S2](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s2/5005-s2-lp-25e.pdf)
+et [T1 Québec 5005-R, pages 5–6](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-r/5005-r-25e.pdf).
+L'annexe additionne les montants personnels du conjoint 30100, 30500, 31400
+(maximum 2 000 $), 31600 et sa scolarité courante désignée au bénéficiaire.
+Elle soustrait le revenu imposable ajusté : maximum zéro de l'équivalent
+imposable moins 30000, la ligne 100 de la T1 Québec et 32300.
+L'équivalent est 26000 jusqu'à 57 375 $; au-delà, il est l'impôt brut de la
+ligne 77 divisé par 14,5 %, arrondi au cent. La ligne 32600 est le solde
+positif. La ligne 100 additionne les lignes T1 87–99 : elle n'inclut ni
+31900, ni les montants familiaux, ni les frais médicaux, ni les dons.
+Le calcul ne confond pas cette base avec la ligne 105 de l'annexe 11.
+
+Le logiciel importe un instantané des **entrées** du dossier du conjoint
+et les recalcule avec le même moteur. Il retire le résumé d'estimation et
+le chemin du PDF. Aucun montant de crédit dérivé n'est saisi. L'import ne
+lit pas les pièces sources et ne dépend pas du maintien du fichier original.
+Après une correction chez le conjoint, il faut réimporter puis confirmer.
+Les profils personnels et leurs confirmations d'absence de transfert décrivent
+le calcul **avant** le nouveau transfert; l'autorisation 5K constitue une étape
+distincte, avec vérification des deux dossiers et de l'unicité par le comptable.
+Le moteur ne détermine pas automatiquement l'admissibilité détaillée du couple.
+
+Le nom du bénéficiaire est conservé dans l'autorisation et comparé au dossier
+courant. Deux personnes distinctes sont requises. Les revenus déclarés pour
+30300 sont rapprochés des revenus recalculés; deux demandes 30300 simultanées
+sont refusées. Une désignation de scolarité doit viser ce même conjoint et
+respecter le maximum recalculé par 5G. Les reports antérieurs de scolarité ne
+sont pas transférés. Le même conjoint ne peut être inscrit à la fois à 32400
+et à 32600. La base est ajoutée une seule fois à 33500, après la scolarité
+personnelle; 33800, 34990, 35000 et l'abattement sont recalculés. Aucun revenu
+ou crédit Québec n'est modifié par ce transfert fédéral.
+
+Périmètre logiciel actuel : deux dossiers 2025 résidents du Canada toute
+l'année et du Québec en fin d'année, sans décès/faillite ni traitement
+spécialisé omis. L'absence de rupture pendant au moins 90 jours comprenant
+le 31 décembre doit être confirmée selon l'annexe 2. Les transferts 32600
+imbriqués/réciproques, les doubles montants 30500 nécessitant d'identifier
+plusieurs enfants et les combinaisons avec les profils individuels ACT ou
+supplément médical restent refusés. Ces limites logicielles ne constituent
+pas des exclusions fiscales générales. Les autres limites du moteur restent
+appliquées aux deux dossiers. Les combinaisons familiales plus générales
+restent à poursuivre dans la roadmap.
+
+JSON rétrocompatible : profil absent = profil vide; champs et booléens nouveaux
+validés strictement; profil explicite différent de l'estimation refusé.
+Seuls l'instantané brut, le bénéficiaire, la source et les confirmations sont
+persistés. GUI : import, aperçu calculé en lecture seule, application et retrait;
+import ou modification de source révoque les confirmations. Trace et PDF montrent
+les lignes de l'annexe 2, les réductions, les sources et le résultat 32600.
+
+Validation ciblée : **240 passed, 5 warnings**. Aucun test existant modifié.
+
+Suite complète 5K : **4252 passed, 8 warnings** (`--capture=sys`).
