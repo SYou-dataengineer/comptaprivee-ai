@@ -1902,6 +1902,18 @@ def construire_trace_calcul_fiscal_2025(
             lignes = lignes + (_ligne(len(lignes) + 1, "FORMATION 2025 — BLOC 5C", libelle,
                 frais_scolarite.formation.source, formule, montant),)
 
+    if frais_medicaux.supplement.reclamer:
+        r = estimation.resultat_supplement_medical
+        for libelle, montant, formule in (
+            ("Revenu de travail pour 45200", r.revenu_travail, "max(10100 - 20700 - 21200 - 22900, 0); autres postes exclus du profil; minimum 4390"),
+            ("Revenu familial ajusté 45200", r.revenu_familial_ajuste, "23600, profil individuel sans ajustements PUGE/REEI"),
+            ("Plafond médical avant réduction", r.montant_avant_reduction, "min(1504, 33200 × 25 %); 21500 exclu"),
+            ("Réduction du supplément médical", r.reduction_revenu, "max(revenu familial - 33294, 0) × 5 %"),
+            ("Supplément médical remboursable 45200", r.ligne_45200, "Si revenu travail >= 4390 : max(plafond - réduction, 0), sinon 0"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "SUPPLÉMENT MÉDICAL — BLOC 5D", libelle,
+                frais_medicaux.supplement.source, formule, montant),)
+
     prochain_ordre = len(lignes) + 1
 
     if final.remboursement_estime > Decimal("0"):
@@ -1930,6 +1942,11 @@ def construire_trace_calcul_fiscal_2025(
         formule = ("Retenues + remboursements cotisations + crédit formation 45350 - impôt total"
                    if final.remboursement_estime else
                    "Impôt total - retenues - remboursements cotisations - crédit formation 45350")
+
+    if final.supplement_medical_ligne_45200:
+        formule = ("Retenues + remboursements cotisations + crédits 45350/45200 - impôt total"
+                   if final.remboursement_estime else
+                   "Impôt total - retenues - remboursements cotisations - crédits 45350/45200")
 
     lignes += (
         _ligne(

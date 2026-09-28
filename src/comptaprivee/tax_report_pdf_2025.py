@@ -5,6 +5,7 @@ from decimal import Decimal
 import re
 import textwrap
 import fitz
+from .tax_medical_supplement_2025 import lignes_supplement_medical_2025
 from .tax_training_credit_2025 import lignes_formation_2025
 from .tax_student_loan_interest_2025 import lignes_resume_interets_pret_etudiant_2025
 from .tax_federal_top_up_2025 import lignes_resume_credit_compensatoire_2025
@@ -1966,6 +1967,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_resume_credit_compensatoire_2025(
         estimation.federal.credits_federaux_complets
     ))
+    lignes.extend(lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical))
     lignes.extend(lignes_formation_2025(estimation.frais_scolarite.formation))
     lignes.extend(lignes_resume_interets_pret_etudiant_2025(
         estimation.interets_pret_etudiant, estimation.resultat_interets_pret_etudiant

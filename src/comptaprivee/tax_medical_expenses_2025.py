@@ -2,13 +2,14 @@
 
 Portée volontairement limitée : particulier sans conjoint ni personne à
 charge, frais admissibles déjà vérifiés, remboursements soustraits, reçus
-confirmés et période de 12 mois se terminant en 2025. Aucun crédit
-remboursable ni règle spéciale n'est traité ici.
+confirmés et période de 12 mois se terminant en 2025. Le supplément remboursable
+45200 est traité séparément par le bloc 5D; les autres règles spéciales restent exclues.
 """
 
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_medical_supplement_2025 import SupplementMedical2025, valider_supplement_medical_2025
 from .tax_federal_2025 import ImpotFederalPreliminaire2025
 from .tax_quebec_2025 import ImpotQuebecPreliminaire2025
 from .tax_rules_2025 import arrondir_cent
@@ -32,6 +33,7 @@ class FraisMedicaux2025:
     periode_12_mois_fin_2025_confirmee: bool = False
     aucune_periode_deja_reclamee: bool = False
     profil_individuel_sans_conjoint_dependant: bool = False
+    supplement: SupplementMedical2025 = SupplementMedical2025()
 
 
 def aucun_frais_medical_2025() -> FraisMedicaux2025:
@@ -39,6 +41,7 @@ def aucun_frais_medical_2025() -> FraisMedicaux2025:
 
 
 def valider_frais_medicaux_2025(frais: FraisMedicaux2025) -> FraisMedicaux2025:
+    valider_supplement_medical_2025(frais.supplement)
     fed = frais.montant_admissible_federal
     qc = frais.montant_admissible_quebec
 

@@ -11,6 +11,7 @@ d'estimation soumise à validation comptable.
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_medical_supplement_2025 import (ResultatSupplementMedical2025, calculer_supplement_medical_2025, lignes_supplement_medical_2025)
 from .tax_training_credit_2025 import credit_formation_2025, lignes_formation_2025
 from .tax_student_loan_interest_2025 import (
     InteretsPretEtudiant2025, ResultatInteretsPretEtudiant2025,
@@ -318,6 +319,7 @@ class EstimationFiscale2025:
     prestations_rrq_rpc: PrestationsRrqRpc2025 = PrestationsRrqRpc2025()
     interets_pret_etudiant: InteretsPretEtudiant2025 = InteretsPretEtudiant2025()
     resultat_interets_pret_etudiant: ResultatInteretsPretEtudiant2025 = ResultatInteretsPretEtudiant2025()
+    resultat_supplement_medical: ResultatSupplementMedical2025 = ResultatSupplementMedical2025()
 
 
 def calculer_estimation_fiscale_2025(
@@ -1342,11 +1344,26 @@ def calculer_estimation_fiscale_2025(
         )
     )
 
+    if frais_medicaux_effectifs.supplement.reclamer and any(p.reclamer_montant for p in (
+        montant_conjoint_federal_effectif, personne_charge_admissible_federale_effective,
+        aidant_30425_effectif, aidant_30450_effectif, aidant_enfant_federal_effectif,
+    )):
+        raise ValueError("Supplément médical 5D : combinaison familiale hors du profil individuel pris en charge.")
+
+    supplement_medical = calculer_supplement_medical_2025(
+        frais_medicaux_effectifs.supplement, emploi=base.revenu_emploi_federal,
+        deduction_20700=rpa_effectives.montant_federal,
+        deduction_21200=cotisations_effectives.montant_federal_admissible,
+        deduction_22900=depenses_emploi_effectives.deduction_federale_t777,
+        revenu_net=revenu.revenu_net_federal,
+        ligne_33200=montant_frais_medicaux_federal_apres_seuil_2025(frais_medicaux_effectifs, revenu.revenu_net_federal),
+    )
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
         federal,
         quebec,
         credit_formation=credit_formation_2025(frais_scolarite_effectifs.formation),
+        supplement_medical=supplement_medical.ligne_45200,
         prestations_rqap=prestations_rqap,
         prestations_ae=prestations_ae,
         pensions=pensions,
@@ -1386,6 +1403,7 @@ def calculer_estimation_fiscale_2025(
         dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
     )
     return EstimationFiscale2025(
+        resultat_supplement_medical=supplement_medical,
         interets_pret_etudiant=pret_etudiant,
         resultat_interets_pret_etudiant=resultat_pret_etudiant,
         ae_confirme=ae_confirme,
@@ -1550,6 +1568,7 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_pension_alimentaire_payee_2025(
             estimation.pension_alimentaire_payee
         ),
+        *lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical),
         *lignes_formation_2025(estimation.frais_scolarite.formation),
         *lignes_resume_interets_pret_etudiant_2025(
             estimation.interets_pret_etudiant, estimation.resultat_interets_pret_etudiant

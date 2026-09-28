@@ -69,6 +69,7 @@ class RapprochementFiscal2025:
     remboursements_cotisations_totaux: Decimal = ZERO
     credit_etranger_ligne_40500: Decimal = ZERO
     credit_formation_ligne_45350: Decimal = ZERO
+    supplement_medical_ligne_45200: Decimal = ZERO
 
     @property
     def impot_federal_apres_credit_etranger(self) -> Decimal:
@@ -129,10 +130,12 @@ def calculer_rapprochement_fiscal_2025(
     remplacement: PrestationsRemplacement2025 = PrestationsRemplacement2025(),
     retraits: Retraits2025 = Retraits2025(),
     credit_formation: Decimal = ZERO,
+    supplement_medical: Decimal = ZERO,
 ) -> RapprochementFiscal2025:
     """Calcule une estimation de base du remboursement ou du solde."""
     _verifier_coherence(base, federal, quebec)
     credit_formation = montant_decimal_2025(credit_formation, "Crédit formation 45350")
+    supplement_medical = montant_decimal_2025(supplement_medical, "Supplément médical 45200")
 
     abattement = arrondir_cent(
         federal.impot_federal_de_base
@@ -193,6 +196,7 @@ def calculer_rapprochement_fiscal_2025(
         retenues_totales
         + remboursements_cotisations_totaux
         + credit_formation
+        + supplement_medical
         - impot_total
     )
 
@@ -340,6 +344,7 @@ def calculer_rapprochement_fiscal_2025(
 
     return RapprochementFiscal2025(
         credit_formation_ligne_45350=credit_formation,
+        supplement_medical_ligne_45200=supplement_medical,
         client=base.client,
         annee_fiscale=base.annee_fiscale,
         province=base.province,

@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .tax_medical_supplement_2025 import SupplementMedical2025, valider_supplement_medical_2025
 from .tax_training_credit_2025 import Formation2025, valider_formation_2025
 from .tax_student_loan_interest_2025 import (
     InteretsPretEtudiant2025, valider_interets_pret_etudiant_2025,
@@ -1135,6 +1136,14 @@ def _dons_bienfaisance_depuis_dict(
     return valider_dons_bienfaisance_2025(dons)
 
 
+def _supplement_medical_depuis_dict(valeur):
+    if valeur is None:
+        return SupplementMedical2025()
+    if not isinstance(valeur, dict) or set(valeur) - set(SupplementMedical2025.__dataclass_fields__):
+        raise ValueError("Profil supplément médical ou clés inconnues invalides.")
+    return valider_supplement_medical_2025(SupplementMedical2025(**valeur))
+
+
 def _frais_medicaux_vers_dict(
     frais: FraisMedicaux2025 | None,
 ):
@@ -1144,6 +1153,7 @@ def _frais_medicaux_vers_dict(
     valider_frais_medicaux_2025(frais)
 
     return {
+        "supplement": asdict(frais.supplement),
         "montant_admissible_federal": _decimal_texte(
             frais.montant_admissible_federal
         ),
@@ -1181,6 +1191,7 @@ def _frais_medicaux_depuis_dict(
         )
 
     frais = FraisMedicaux2025(
+        supplement=_supplement_medical_depuis_dict(valeur.get("supplement")),
         montant_admissible_federal=_decimal_depuis_json(
             valeur.get("montant_admissible_federal", "0"),
             "frais_medicaux.montant_admissible_federal",
@@ -3339,6 +3350,14 @@ def sauvegarder_dossier_fiscal(
         raise ValueError(
             "La pension alimentaire diffère de l'estimation."
         )
+
+    if estimation is not None:
+        if frais_medicaux is None:
+            frais_medicaux = estimation.frais_medicaux
+        elif (frais_medicaux.supplement != SupplementMedical2025()
+              or estimation.frais_medicaux.supplement != SupplementMedical2025()):
+            if frais_medicaux != estimation.frais_medicaux:
+                raise ValueError("Le profil médical/supplément diffère de l'estimation.")
 
     if estimation is not None:
         if frais_scolarite is None:

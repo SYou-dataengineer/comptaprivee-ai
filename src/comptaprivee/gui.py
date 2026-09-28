@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
+from .tax_medical_supplement_2025 import SupplementMedical2025, CONFIRMATIONS_SUPPLEMENT
 from .tax_training_credit_2025 import Formation2025, CONFIRMATIONS_FORMATION
 from .tax_student_loan_interest_2025 import (
     InteretsPretEtudiant2025, valider_interets_pret_etudiant_2025, CONFIRMATIONS_5B,
@@ -4440,7 +4441,42 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=(12, 8),
             )
 
+            supplement = frais_medicaux_courants.supplement
+            age_5d = tk.StringVar(value=str(supplement.age_fin_2025 or ""))
+            source_5d = tk.StringVar(value=supplement.source)
+            demande_5d = tk.BooleanVar(value=supplement.reclamer)
+            confirmations_5d = {nom: tk.BooleanVar(value=getattr(supplement, nom))
+                                for nom in CONFIRMATIONS_SUPPLEMENT}
+            ttk.Label(cadre, text="Supplément médical remboursable — ligne 45200",
+                      font=("Segoe UI", 12, "bold")).grid(row=13, column=0, columnspan=2, sticky="w", pady=12)
+            for ligne, (nom, libelle, variable) in enumerate((
+                ("age_fin_2025", "Âge au 31 décembre 2025 :", age_5d),
+                ("source", "Source / validation du supplément :", source_5d),
+            ), start=14):
+                ttk.Label(cadre, text=libelle).grid(row=ligne, column=0, sticky="w", pady=5)
+                ttk.Entry(cadre, name=nom + "_5d", textvariable=variable).grid(
+                    row=ligne, column=1, sticky="ew", padx=(12, 0))
+            ttk.Checkbutton(cadre, name="reclamer_5d", text="Demander le supplément calculé par le moteur",
+                            variable=demande_5d).grid(row=16, column=0, columnspan=2, sticky="w")
+            for ligne, (nom, libelle) in enumerate(CONFIRMATIONS_SUPPLEMENT.items(), start=17):
+                ttk.Checkbutton(cadre, name=nom + "_5d", text=libelle,
+                                variable=confirmations_5d[nom]).grid(
+                                    row=ligne, column=0, columnspan=2, sticky="w", pady=4)
+
+            def revoquer_medical(*_args) -> None:
+                for _, variable in confirmations:
+                    variable.set(False)
+                for variable in confirmations_5d.values():
+                    variable.set(False)
+
+            for variable in (fed_var, qc_var, source_fed_var, source_qc_var,
+                             age_5d, source_5d, demande_5d):
+                variable.trace_add("write", revoquer_medical)
+
             def effacer() -> None:
+                age_5d.set("")
+                source_5d.set("")
+                demande_5d.set(False)
                 fed_var.set("")
                 qc_var.set("")
                 source_fed_var.set("")
@@ -4458,6 +4494,11 @@ class ApplicationComptaPrivee(tk.Tk):
 
                 try:
                     nouveaux_frais = FraisMedicaux2025(
+                        supplement=SupplementMedical2025(
+                            reclamer=demande_5d.get(), age_fin_2025=int(age_5d.get().strip() or "0"),
+                            source=source_5d.get().strip(),
+                            **{nom: variable.get() for nom, variable in confirmations_5d.items()},
+                        ),
                         montant_admissible_federal=decimal_depuis_champ(
                             fed_var.get(),
                             "Montant fédéral frais médicaux",

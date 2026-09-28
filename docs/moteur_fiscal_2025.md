@@ -2151,3 +2151,44 @@ même si aucun impôt n'est disponible.
 Validation 5C : **171 passed, 5 warnings** en ciblé; suite complète
 **3648 passed, 8 warnings** (`pytest --capture=sys -q`). Aucun test existant
 modifié, aucun skip/xfail ajouté, configuration pytest inchangée.
+
+
+### Bloc 5D livré — supplément remboursable pour frais médicaux, ligne 45200
+
+Sources officielles 2025 :
+- [Feuille fédérale 5000-D1, page 9](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-d1/5000-d1-25e.pdf).
+- [ARC, ligne 45200](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-45200-refundable-medical-expense-supplement.html).
+
+Règles : au moins 18 ans fin 2025, résidence au Canada toute l'année,
+base 21500 ou 33200 positive, revenu de travail admissible d'au moins
+4 390 $. Le supplément est le minimum de 1 504 $ et de 25 % de la base
+médicale, diminué de 5 % du revenu familial ajusté dépassant 33 294 $,
+avec plancher zéro. Les mêmes frais restent admissibles au crédit médical
+non remboursable. Les calculs utilisent Decimal et l'arrondi au cent.
+
+Périmètre logiciel de ce sous-bloc : individu sans conjoint ni personne à
+charge, revenu de travail limité à 10100 moins 20700, 21200 et 22900,
+sans assurance-salaire, travail autonome, ajustements PUGE/REEI, lignes
+21500/23100, décès ou faillite. Ces restrictions ne constituent pas des
+exclusions fiscales générales. Les crédits familiaux actifs incompatibles
+avec ce profil sont refusés. Les conditions et pièces sont confirmées par
+le comptable; le moteur ne déduit pas automatiquement l'admissibilité.
+
+Le revenu familial du profil est 23600; la base médicale provient de 33200
+calculée après seuil, et non des frais bruts. 45200 rejoint une seule fois
+les paiements du rapprochement, cumulable avec 45350. Revenus, impôt brut,
+33800/34990/35000, 40500 et abattement Québec restent inchangés par 45200.
+
+La GUI médicale ajoute âge, source, choix de demande et confirmations.
+Toute modification révoque les confirmations. Aucun crédit dérivé n'est
+saisi. JSON conserve `frais_medicaux.supplement`, uniquement les entrées;
+ancien JSON sans profil = profil vide. Types/confirmations/clés inconnues
+et divergence profil-estimation sont contrôlés. Trace et PDF montrent les
+opérandes, seuils, plafond, réduction, résultat et source comptable.
+
+Validation ciblée : **274 passed, 5 warnings**. Tests des seuils, arrondis,
+entrées invalides, interactions formation/crédit étranger, ancien JSON,
+contradictions familiales, GUI et limites de page PDF. Aucun test existant
+modifié et aucune modification de la configuration pytest.
+
+Suite complète 5D : **3733 passed, 8 warnings** avec `--capture=sys`.
