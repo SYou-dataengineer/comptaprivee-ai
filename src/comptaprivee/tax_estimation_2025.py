@@ -11,6 +11,7 @@ d'estimation soumise à validation comptable.
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_training_credit_2025 import credit_formation_2025, lignes_formation_2025
 from .tax_student_loan_interest_2025 import (
     InteretsPretEtudiant2025, ResultatInteretsPretEtudiant2025,
     valider_interets_pret_etudiant_2025, repartir_interets_pret_etudiant_2025,
@@ -1291,7 +1292,7 @@ def calculer_estimation_fiscale_2025(
             (("31900", resultat_pret_etudiant.ligne_31900),)
             if resultat_pret_etudiant.ligne_31900 else ()
         ) + (
-            ("32300", frais_scolarite_effectifs.montant_admissible_federal),
+            ("32300", frais_scolarite_effectifs.montant_net_federal),
             ("33200", montant_frais_medicaux_federal_apres_seuil_2025(
                 frais_medicaux_effectifs, revenu.revenu_net_federal)),
         ),
@@ -1345,6 +1346,7 @@ def calculer_estimation_fiscale_2025(
         base,
         federal,
         quebec,
+        credit_formation=credit_formation_2025(frais_scolarite_effectifs.formation),
         prestations_rqap=prestations_rqap,
         prestations_ae=prestations_ae,
         pensions=pensions,
@@ -1548,6 +1550,7 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_pension_alimentaire_payee_2025(
             estimation.pension_alimentaire_payee
         ),
+        *lignes_formation_2025(estimation.frais_scolarite.formation),
         *lignes_resume_interets_pret_etudiant_2025(
             estimation.interets_pret_etudiant, estimation.resultat_interets_pret_etudiant
         ),

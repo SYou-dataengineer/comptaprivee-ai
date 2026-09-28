@@ -4,7 +4,7 @@ Portée volontairement limitée :
 - frais admissibles payés pour 2025 seulement;
 - aucun report d'années antérieures;
 - aucun transfert à un parent ou grand-parent;
-- aucun crédit canadien pour la formation réclamé;
+- crédit canadien pour la formation via le profil dédié 5C;
 - pièces justificatives et admissibilité déjà vérifiées;
 - résident du Québec/Canada dans le profil simple de ComptaPrivée.
 
@@ -14,12 +14,13 @@ Références de calcul visées :
 
 Cette première version calcule les crédits non remboursables associés aux
 montants admissibles validés. Elle ne calcule pas encore les reports, les
-transferts ni le crédit canadien pour la formation.
+transferts. Le crédit formation est intégré séparément en 5C.
 """
 
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_training_credit_2025 import Formation2025, credit_formation_2025, valider_formation_2025
 from .tax_federal_top_up_2025 import valider_scolarite_sans_report_2025
 from .tax_federal_2025 import ImpotFederalPreliminaire2025
 from .tax_quebec_2025 import ImpotQuebecPreliminaire2025
@@ -52,6 +53,16 @@ class FraisScolarite2025:
     aucun_transfert: bool = False
     credit_canadien_formation_non_reclame: bool = False
     profil_resident_quebec_simple: bool = False
+    formation: Formation2025 = Formation2025()
+
+    @property
+    def montant_net_federal(self) -> Decimal:
+        return self.montant_admissible_federal - credit_formation_2025(self.formation)
+
+    @property
+    def montant_net_quebec(self) -> Decimal:
+        return self.montant_admissible_quebec - credit_formation_2025(self.formation)
+
 
 
 def aucun_frais_scolarite_2025() -> FraisScolarite2025:
@@ -61,6 +72,14 @@ def aucun_frais_scolarite_2025() -> FraisScolarite2025:
 def valider_frais_scolarite_2025(
     frais: FraisScolarite2025,
 ) -> FraisScolarite2025:
+    valider_formation_2025(frais.formation)
+    ccf = credit_formation_2025(frais.formation)
+    if frais.formation.frais_canadiens and frais.formation.frais_canadiens > frais.montant_admissible_federal:
+        raise ValueError("Les frais canadiens formation doivent être inclus dans les frais fédéraux bruts.")
+    if ccf and ccf > frais.montant_admissible_quebec:
+        raise ValueError("CCF supérieur aux frais Québec : combinaison hors profil 5C, validation spécialisée nécessaire.")
+    if ccf and frais.credit_canadien_formation_non_reclame:
+        raise ValueError("Confirmation contradictoire : formation réclamée et non réclamée.")
     fed = frais.montant_admissible_federal
     qc = frais.montant_admissible_quebec
 
@@ -136,7 +155,7 @@ def valider_frais_scolarite_2025(
             "de scolarité à une autre personne."
         )
 
-    if not frais.credit_canadien_formation_non_reclame:
+    if not frais.credit_canadien_formation_non_reclame and not ccf:
         raise ValueError(
             "Cette version exige qu'aucun crédit canadien pour la formation "
             "ne soit réclamé sur les mêmes frais."
@@ -166,7 +185,7 @@ def credit_federal_frais_scolarite_2025(
 ) -> Decimal:
     valider_frais_scolarite_2025(frais)
     return arrondir_cent(
-        frais.montant_admissible_federal
+        frais.montant_net_federal
         * TAUX_CREDIT_FEDERAL_SCOLARITE_2025
     )
 
@@ -176,7 +195,7 @@ def credit_quebec_frais_scolarite_2025(
 ) -> Decimal:
     valider_frais_scolarite_2025(frais)
     return arrondir_cent(
-        frais.montant_admissible_quebec
+        frais.montant_net_quebec
         * TAUX_CREDIT_QUEBEC_SCOLARITE_2025
     )
 
@@ -194,7 +213,7 @@ def appliquer_credit_federal_frais_scolarite_2025(
 
     if base_ligne105 is not None:
         valider_scolarite_sans_report_2025(
-            frais.montant_admissible_federal, impot.revenu_imposable,
+            frais.montant_net_federal, impot.revenu_imposable,
             impot.impot_brut, base_ligne105,
         )
     elif credit > impot.impot_federal_de_base:

@@ -18,6 +18,7 @@ autonomes, plusieurs employeurs et autres situations particulières.
 from dataclasses import dataclass
 from decimal import Decimal
 
+from .tax_federal_top_up_2025 import montant_decimal_2025
 from .tax_capital_gains_2025 import GainsCapital2025
 from .tax_dividend_income_2025 import Dividendes2025
 from .tax_interest_income_2025 import Interets2025
@@ -67,6 +68,7 @@ class RapprochementFiscal2025:
     remboursement_rqap_excedentaire: Decimal = ZERO
     remboursements_cotisations_totaux: Decimal = ZERO
     credit_etranger_ligne_40500: Decimal = ZERO
+    credit_formation_ligne_45350: Decimal = ZERO
 
     @property
     def impot_federal_apres_credit_etranger(self) -> Decimal:
@@ -126,9 +128,11 @@ def calculer_rapprochement_fiscal_2025(
     placement_etranger: PlacementEtranger2025 = PlacementEtranger2025(),
     remplacement: PrestationsRemplacement2025 = PrestationsRemplacement2025(),
     retraits: Retraits2025 = Retraits2025(),
+    credit_formation: Decimal = ZERO,
 ) -> RapprochementFiscal2025:
     """Calcule une estimation de base du remboursement ou du solde."""
     _verifier_coherence(base, federal, quebec)
+    credit_formation = montant_decimal_2025(credit_formation, "Crédit formation 45350")
 
     abattement = arrondir_cent(
         federal.impot_federal_de_base
@@ -188,6 +192,7 @@ def calculer_rapprochement_fiscal_2025(
     difference = arrondir_cent(
         retenues_totales
         + remboursements_cotisations_totaux
+        + credit_formation
         - impot_total
     )
 
@@ -334,6 +339,7 @@ def calculer_rapprochement_fiscal_2025(
         )
 
     return RapprochementFiscal2025(
+        credit_formation_ligne_45350=credit_formation,
         client=base.client,
         annee_fiscale=base.annee_fiscale,
         province=base.province,

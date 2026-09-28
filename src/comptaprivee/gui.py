@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
+from .tax_training_credit_2025 import Formation2025, CONFIRMATIONS_FORMATION
 from .tax_student_loan_interest_2025 import (
     InteretsPretEtudiant2025, valider_interets_pret_etudiant_2025, CONFIRMATIONS_5B,
 )
@@ -5803,7 +5804,48 @@ class ApplicationComptaPrivee(tk.Tk):
                 pady=(12, 8),
             )
 
+            # Bloc 5C : données brutes; le crédit 45350 n'est jamais saisi.
+            ccf = frais_scolarite_courants.formation
+            ccf_vars = {}
+            ttk.Label(cadre, text="Formation 2025 — ligne 45350 (5C)", font=("Segoe UI", 12, "bold")).grid(
+                row=17, column=0, columnspan=2, sticky="w", pady=8)
+            ttk.Label(cadre, text="Saisir les frais de scolarité bruts avant CCF ci-dessus. Le CCF réduit les deux bases. "
+                "Le choix ci-dessous réclame le maximum calculé; aucune optimisation ni accumulation future.",
+                wraplength=680).grid(row=18, column=0, columnspan=2, sticky="w")
+            for row, (nom, libelle) in enumerate((
+                ("frais_canadiens", "Part des frais fédéraux admissible au CCF (Canada)"),
+                ("plafond_avis_2025", "Plafond CCF 2025 du dernier avis ARC"),
+                ("age_fin_2025", "Âge au 31 décembre 2025"),
+                ("source", "Source des frais et de l'avis ARC"),
+            ), 19):
+                valeur = getattr(ccf, nom)
+                var = tk.StringVar(value=str(valeur) if valeur else "")
+                ccf_vars[nom] = var
+                ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w")
+                ttk.Entry(cadre, name=nom + "_5c", textvariable=var).grid(row=row, column=1, sticky="ew")
+            ccf_max = tk.BooleanVar(value=ccf.reclamer_maximum)
+            ttk.Checkbutton(cadre, name="reclamer_maximum_5c", text="Réclamer le maximum CCF calculé (26 à 65 ans)",
+                variable=ccf_max).grid(row=23, column=0, columnspan=2, sticky="w")
+            ccf_confirmations = {}
+            for row, (nom, libelle) in enumerate(CONFIRMATIONS_FORMATION.items(), 24):
+                var = tk.BooleanVar(value=getattr(ccf, nom))
+                ccf_confirmations[nom] = var
+                ttk.Checkbutton(cadre, name=nom + "_5c", text=libelle, variable=var).grid(
+                    row=row, column=0, columnspan=2, sticky="w")
+
+            def revoquer_scolarite_et_formation(*_):
+                for _, var in confirmations:
+                    var.set(False)
+                for var in ccf_confirmations.values():
+                    var.set(False)
+            for var in (fed_var, qc_var, source_fed_var, source_qc_var, *ccf_vars.values(), ccf_max):
+                var.trace_add("write", revoquer_scolarite_et_formation)
+
             def effacer() -> None:
+                for var in ccf_vars.values():
+                    var.set("")
+                ccf_max.set(False)
+                revoquer_scolarite_et_formation()
                 fed_var.set("")
                 qc_var.set("")
                 source_fed_var.set("")
@@ -5824,7 +5866,18 @@ class ApplicationComptaPrivee(tk.Tk):
                 nonlocal derniere_estimation, dernier_rapport_pdf
 
                 try:
+                    age_texte = ccf_vars["age_fin_2025"].get().strip()
+                    if age_texte and not age_texte.isdecimal():
+                        raise ValueError("L'âge doit être un entier.")
+                    profil_formation = Formation2025(
+                        frais_canadiens=decimal_depuis_champ(ccf_vars["frais_canadiens"].get(), "Frais CCF"),
+                        plafond_avis_2025=decimal_depuis_champ(ccf_vars["plafond_avis_2025"].get(), "Plafond CCF"),
+                        age_fin_2025=int(age_texte or "0"), source=ccf_vars["source"].get().strip(),
+                        reclamer_maximum=ccf_max.get(),
+                        **{nom: var.get() for nom, var in ccf_confirmations.items()},
+                    )
                     nouveaux_frais = FraisScolarite2025(
+                        formation=profil_formation,
                         montant_admissible_federal=decimal_depuis_champ(
                             fed_var.get(),
                             "Montant fédéral scolarité",

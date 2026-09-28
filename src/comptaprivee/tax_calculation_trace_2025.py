@@ -1893,6 +1893,15 @@ def construire_trace_calcul_fiscal_2025(
         for libelle, valeur, formule in audit:
             lignes = _inserer_ligne_avant(lignes, "Base ligne 33500", _ligne(0, section, libelle, pret.source, formule, valeur))
 
+    if final.credit_formation_ligne_45350:
+        for libelle, montant, formule in (
+            ("Frais fédéraux nets après CCF", frais_scolarite.montant_net_federal, "Frais fédéraux bruts moins 45350; annexe 11 ligne 6"),
+            ("Frais Québec nets après CCF", frais_scolarite.montant_net_quebec, "Annexe T : 40.6 moins 40.7"),
+            ("Crédit formation remboursable 45350", final.credit_formation_ligne_45350, "min(plafond avis ARC, frais canadiens × 50 %); ajouté une fois aux paiements, après impôt"),
+        ):
+            lignes = lignes + (_ligne(len(lignes) + 1, "FORMATION 2025 — BLOC 5C", libelle,
+                frais_scolarite.formation.source, formule, montant),)
+
     prochain_ordre = len(lignes) + 1
 
     if final.remboursement_estime > Decimal("0"):
@@ -1916,6 +1925,11 @@ def construire_trace_calcul_fiscal_2025(
     else:
         montant = Decimal("0")
         formule = "Retenues totales = impôt total préliminaire"
+
+    if final.credit_formation_ligne_45350:
+        formule = ("Retenues + remboursements cotisations + crédit formation 45350 - impôt total"
+                   if final.remboursement_estime else
+                   "Impôt total - retenues - remboursements cotisations - crédit formation 45350")
 
     lignes += (
         _ligne(

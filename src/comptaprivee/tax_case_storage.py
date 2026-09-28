@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .tax_training_credit_2025 import Formation2025, valider_formation_2025
 from .tax_student_loan_interest_2025 import (
     InteretsPretEtudiant2025, valider_interets_pret_etudiant_2025,
 )
@@ -1218,6 +1219,25 @@ def _frais_medicaux_depuis_dict(
     return valider_frais_medicaux_2025(frais)
 
 
+def _formation_vers_dict(profil):
+    valider_formation_2025(profil)
+    valeurs = asdict(profil)
+    for nom in ("frais_canadiens", "plafond_avis_2025"):
+        valeurs[nom] = format(valeurs[nom], ".2f")
+    return valeurs
+
+
+def _formation_depuis_dict(valeur):
+    if valeur is None:
+        return Formation2025()
+    if not isinstance(valeur, dict) or set(valeur) - set(Formation2025.__dataclass_fields__):
+        raise ValueError("Profil formation ou clés inconnues invalides.")
+    valeurs = dict(valeur)
+    for nom in ("frais_canadiens", "plafond_avis_2025"):
+        valeurs[nom] = _decimal_depuis_json(valeurs.get(nom, "0"), "formation." + nom)
+    return valider_formation_2025(Formation2025(**valeurs))
+
+
 def _frais_scolarite_vers_dict(
     frais: FraisScolarite2025 | None,
 ):
@@ -1227,6 +1247,7 @@ def _frais_scolarite_vers_dict(
     valider_frais_scolarite_2025(frais)
 
     return {
+        "formation": _formation_vers_dict(frais.formation),
         "montant_admissible_federal": _decimal_texte(
             frais.montant_admissible_federal
         ),
@@ -1268,6 +1289,7 @@ def _frais_scolarite_depuis_dict(
         )
 
     frais = FraisScolarite2025(
+        formation=_formation_depuis_dict(valeur.get("formation")),
         montant_admissible_federal=_decimal_depuis_json(
             valeur.get("montant_admissible_federal", "0"),
             "frais_scolarite.montant_admissible_federal",
@@ -3317,6 +3339,14 @@ def sauvegarder_dossier_fiscal(
         raise ValueError(
             "La pension alimentaire diffère de l'estimation."
         )
+
+    if estimation is not None:
+        if frais_scolarite is None:
+            frais_scolarite = estimation.frais_scolarite
+        elif (frais_scolarite.formation != Formation2025()
+              or estimation.frais_scolarite.formation != Formation2025()):
+            if frais_scolarite != estimation.frais_scolarite:
+                raise ValueError("Le profil scolarité/formation diffère de l'estimation.")
 
     pret_etudiant = valider_interets_pret_etudiant_2025(
         interets_pret_etudiant if interets_pret_etudiant is not None

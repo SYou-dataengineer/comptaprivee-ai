@@ -24,8 +24,9 @@ Fichiers de référence : `tax_engine_input_2025.py`, `tax_income_2025.py`,
 
 ## Principaux manques et ordre proposé
 
-Chaque ligne représente une famille à découper en blocs vérifiables. Arrêt
-après chaque bloc pour bilan et accord utilisateur; aucune suite automatique.
+Chaque ligne représente une famille à découper en blocs vérifiables. La mission
+de finalisation autorise désormais leur enchaînement autonome après validation,
+commit et push; arrêt seulement pour une décision ou un blocage réel.
 
 | Priorité | Famille | Fonctionnalités et dépendances à traiter |
 | --- | --- | --- |
@@ -2104,3 +2105,49 @@ les soldes non réclamés et les incidences calculées.
 Validation ciblée : **369 passed, 5 warnings**, dont **84 nouveaux tests 5B**.
 Elle couvre également 5A, la scolarité, le stockage, le PDF, l'estimation et
 le correctif 40500/42900. Aucun test existant n'a été assoupli.
+
+
+### Bloc 5C livré — crédit canadien pour la formation, ligne 45350
+
+Sources 2025 vérifiées :
+- [ARC 45350](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-45350-canada-training-credit.html).
+- [Annexe 11 Québec 2025, lignes 1 à 17](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s11/5005-s11-25e.pdf).
+- [LIR 122.91](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-122.91.html), disposition introduite en 2019 : plafond annuel basé sur l'année antérieure, accumulation maximale de 250 $ par an.
+- [Annexe T 2025, lignes 40.6 et 40.7](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.T%282025-12%29.pdf).
+
+Le CCF est remboursable. Le contribuable doit avoir de 26 à 65 ans à la fin
+2025, résider au Canada toute l'année et produire sa déclaration. Frais
+canadiens admissibles et plafond du dernier avis ARC sont documentés et
+confirmés. Le moteur ne reconstitue pas l'admissibilité des établissements
+ou l'historique ARC. Le plafond maximal possible en 2025 est de 1 500 $,
+déduit des six accumulations annuelles possibles; le plafond à vie de
+5 000 $ n'est pas un solde disponible présumé pour 2025.
+
+Décision de périmètre : choisir de réclamer le maximum calculé, ou ne rien
+réclamer. Les réclamations partielles choisies, décès, faillites, reports et
+transferts nécessitent des blocs ultérieurs. Ces limites logicielles ne sont
+pas des exclusions fiscales. Les frais admissibles restent validés selon le
+profil simple scolarité existant; une combinaison où le CCF dépasse les frais
+Québec saisis est refusée plutôt que traitée implicitement.
+
+Formule : minimum du plafond confirmé et de 50 % des frais canadiens.
+Les frais bruts restent persistés. 45350 réduit les frais disponibles pour
+32300 et la base Québec 398; le seuil de 100 $ reste vérifié sur les frais
+bruts. 33800 et 34990 sont recalculés à partir de la base fédérale réduite.
+45350 est ensuite ajouté une seule fois aux paiements du rapprochement,
+après le calcul de l'impôt; il ne réduit ni le revenu ni directement 42900.
+Le principe de l'abattement 44000 sur 42900 avant 40500 reste inchangé.
+
+La GUI scolarité contient les champs formation et le choix de réclamation.
+Une modification des frais, sources, âge, plafond ou choix révoque les
+confirmations scolarité et formation. Aucun crédit calculé n'est saisi.
+La section JSON imbriquée `frais_scolarite.formation` conserve seulement les
+entrées; ancien JSON sans cette section = profil vide. Les clés inconnues,
+confirmations non booléennes, montants non finis/négatifs et divergences avec
+l'estimation sont refusés. Trace et PDF présentent 45350, sa source et la
+réduction des frais dans les deux juridictions. Le crédit reste remboursable
+même si aucun impôt n'est disponible.
+
+Validation 5C : **171 passed, 5 warnings** en ciblé; suite complète
+**3648 passed, 8 warnings** (`pytest --capture=sys -q`). Aucun test existant
+modifié, aucun skip/xfail ajouté, configuration pytest inchangée.
