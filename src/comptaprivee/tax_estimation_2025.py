@@ -149,6 +149,7 @@ from .tax_engine_input_2025 import (
     consolider_base_fiscale_emploi_2025,
 )
 from .tax_federal_home_accessibility_2025 import (
+    description_partage_31285_2025,
     DepensesAccessibiliteDomiciliaireFederal2025,
     appliquer_credit_federal_ligne_31285_2025,
     credit_federal_ligne_31285_2025,
@@ -2020,7 +2021,7 @@ def formater_estimation_fiscale_2025(
                 "Accessibilité / mobilité / réduction du risque : confirmée",
                 "Travaux et biens de 2025 uniquement : oui",
                 "Aucune part entreprise/location : oui",
-                "Aucun partage de la demande 31285 : oui",
+                description_partage_31285_2025(estimation.accessibilite_domiciliaire_federale),
                 "Fournisseurs liés : règles confirmées",
                 "Dépenses non admissibles exclues : oui",
                 "Pièces justificatives conservées : oui",

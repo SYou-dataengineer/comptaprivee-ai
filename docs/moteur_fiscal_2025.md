@@ -3523,3 +3523,46 @@ encore présente, l'exception handicap, sans affaiblir les tests de plafond.
 Validation ciblée moteur, stockage, trace/PDF et GUI : **96 passed, 5 warnings**.
 PDF synthétique du partage vérifié visuellement; aucun artefact de test livré.
 Suite complète : **5610 passed, 8 warnings** (175,47 s), avec `--capture=sys`.
+
+### Bloc 5AA — partage des dépenses d'accessibilité, ligne 31285
+
+Sources : [ARC, ligne 31285, année 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-31285-home-accessibility-expenses.html),
+[feuille fédérale 2025, page 4](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-d1/5000-d1-25e.pdf),
+[LIR 118.041, version couvrant 2025](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-118.041-20220623.html).
+La feuille plafonne d'abord les dépenses admissibles à 20000 $, puis retranche
+les demandes des autres particuliers déterminés et admissibles du même logement.
+Le plafond est commun, même si plusieurs particuliers déterminés y habitent.
+Le plafond annuel par particulier déterminé demeure applicable à plusieurs logements.
+
+Périmètre logiciel du nouveau mode : demande pour soi-même, contribuable de
+65 ans ou plus ou admissible au CIPH, propriétaire et occupant du logement au
+Canada. Tous les participants habitent le même logement; il s'agit du seul
+logement admissible en 2025 pour tous les particuliers déterminés concernés.
+Cette restriction aux logements uniques évite de prétendre gérer les plafonds
+croisés en cas de déménagement. Demandes pour autrui, autres logements et
+ventilation entreprise/location restent hors de ce mode, sans être déclarés
+fiscalement inadmissibles. L'admissibilité des participants, leurs montants et
+l'entente de tous sont confirmés avec une référence du logement et une source.
+Le comptable rapproche les dossiers externes : aucun rapprochement automatique
+ni optimisation du partage. Les justificatifs des travaux restent obligatoires.
+
+Formule : `31285 = min(dépenses communes admissibles, 20000) − demandes ailleurs`.
+Exemple : 25000 $ de dépenses, 4000 $ ailleurs donnent 16000 $ dans le dossier
+et 2320 $ de crédit à 14,5 %. Une attribution intégrale ailleurs donne zéro;
+une somme supérieure aux dépenses plafonnées est refusée. Les dépenses brutes
+peuvent dépasser 20000 $ dans ce mode; limite technique 999999999,99 $, montants
+Decimal finis, non négatifs et au cent près. Le profil historique sans partage
+conserve son contrat. Les lignes 33500/33800, 34990/35000 puis 42900/40500 utilisent
+le solde calculé; revenus et Québec inchangés. Le cumul avec les frais médicaux
+reste permis pour une dépense admissible aux deux crédits en **2025**, selon
+118.041(4) alors applicable; aucune transposition de sa suppression en 2026.
+
+JSON : données brutes du partage, champs absents compatibles, types et clés
+stricts pour le nouveau profil; inférence depuis l'estimation et divergence
+explicite refusée. GUI : solde en lecture seule, révocation de l'entente, des
+confirmations du partage et de la validation comptable après modification.
+Trace et PDF : dépenses brutes, plafond, demandes ailleurs, solde et sources.
+
+Validation ciblée moteur, ancien profil, stockage, GUI, trace et PDF :
+**109 passed, 5 warnings**. PDF synthétique vérifié visuellement.
+Suite complète : **5655 passed, 8 warnings** (195,84 s), avec `--capture=sys`.

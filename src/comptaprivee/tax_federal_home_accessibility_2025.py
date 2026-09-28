@@ -12,7 +12,7 @@ Première version volontairement limitée au profil simple :
 - la rénovation est durable, fait partie intégrante du logement et vise
   l'accessibilité, la mobilité/fonctionnalité ou la réduction du risque
   de blessure;
-- aucun partage de la demande;
+- partage documenté possible pour un logement unique en 2025 (bloc 5AA);
 - aucune ventilation entreprise/location dans cette première version;
 - les dépenses non admissibles ont été exclues;
 - pièces justificatives conservées et validation comptable.
@@ -29,7 +29,7 @@ Source :
 ARC — ligne 31285, dépenses pour l'accessibilité domiciliaire — 2025.
 """
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, replace
 from decimal import Decimal
 
 from .tax_federal_2025 import ImpotFederalPreliminaire2025
@@ -69,6 +69,12 @@ class DepensesAccessibiliteDomiciliaireFederal2025:
     pieces_justificatives_conservees: bool = False
     valide_par_comptable: bool = False
     source_renovation: str = ""
+    partage_31285_confirme: bool = False
+    montant_reclame_autres: Decimal = ZERO
+    autres_participants_admissibles_confirmes: bool = False
+    logement_unique_2025_confirme: bool = False
+    reference_logement: str = ""
+    source_partage: str = ""
 
 
 def aucune_depense_accessibilite_domiciliaire_2025(
@@ -79,13 +85,41 @@ def aucune_depense_accessibilite_domiciliaire_2025(
 def valider_depenses_accessibilite_domiciliaire_2025(
     profil: DepensesAccessibiliteDomiciliaireFederal2025,
 ) -> DepensesAccessibiliteDomiciliaireFederal2025:
+    for nom in ("partage_31285_confirme", "autres_participants_admissibles_confirmes", "logement_unique_2025_confirme"):
+        if type(getattr(profil, nom)) is not bool:
+            raise ValueError("Confirmation de partage 31285 invalide : " + nom)
+    autres = profil.montant_reclame_autres
+    if (not isinstance(autres, Decimal) or not autres.is_finite()
+            or not ZERO <= autres <= MAXIMUM_DEPENSES_ACCESSIBILITE_2025 or autres != arrondir_cent(autres)):
+        raise ValueError("Les demandes des autres participants doivent être en cents, entre 0 et 20000 $.")
+    if type(profil.reference_logement) is not str or type(profil.source_partage) is not str:
+        raise ValueError("Référence et source du partage 31285 invalides.")
+    if profil.partage_31285_confirme:
+        for champ in fields(profil):
+            v, defaut = getattr(profil, champ.name), champ.default
+            if isinstance(defaut, (bool, str)) and type(v) is not type(defaut):
+                raise ValueError("Type du profil partagé 31285 invalide : " + champ.name)
+            if isinstance(defaut, Decimal) and (not isinstance(v, Decimal) or not v.is_finite()
+                    or not ZERO <= v <= Decimal("999999999.99") or v != arrondir_cent(v)):
+                raise ValueError("Montant du profil partagé 31285 invalide : " + champ.name)
+        if not profil.reclamer_montant or profil.aucun_partage_de_la_demande:
+            raise ValueError("Partage 31285 contradictoire : activer la demande et désactiver aucun partage.")
+        if not profil.autres_participants_admissibles_confirmes or not profil.logement_unique_2025_confirme:
+            raise ValueError("Confirmer l'admissibilité de tous les participants habitant le même logement et leur logement admissible unique en 2025.")
+        if not profil.reference_logement.strip() or not profil.source_partage.strip():
+            raise ValueError("Le partage 31285 exige la référence du logement et l'entente de tous les participants.")
+        if autres > min(profil.depenses_admissibles, MAXIMUM_DEPENSES_ACCESSIBILITE_2025):
+            raise ValueError("Les demandes des autres participants dépassent les dépenses communes plafonnées.")
+    elif (autres != ZERO or profil.autres_participants_admissibles_confirmes or profil.logement_unique_2025_confirme
+            or profil.reference_logement or profil.source_partage):
+        raise ValueError("Données de partage 31285 sans entente confirmée.")
     if profil.depenses_admissibles < ZERO:
         raise ValueError(
             "Les dépenses admissibles de la ligne 31285 "
             "ne peuvent pas être négatives."
         )
 
-    if profil.depenses_admissibles > MAXIMUM_DEPENSES_ACCESSIBILITE_2025:
+    if profil.depenses_admissibles > MAXIMUM_DEPENSES_ACCESSIBILITE_2025 and not profil.partage_31285_confirme:
         raise ValueError(
             "Les dépenses admissibles de la ligne 31285 "
             "ne peuvent pas dépasser 20 000 $ en 2025."
@@ -163,7 +197,7 @@ def valider_depenses_accessibilite_domiciliaire_2025(
             "de cette première version."
         )
 
-    if not profil.aucun_partage_de_la_demande:
+    if not profil.aucun_partage_de_la_demande and not profil.partage_31285_confirme:
         raise ValueError(
             "Le partage de la demande ligne 31285 est hors du profil "
             "simple de cette première version."
@@ -208,7 +242,17 @@ def montant_ligne_31285_2025(
     valider_depenses_accessibilite_domiciliaire_2025(profil)
     if not profil.reclamer_montant:
         return ZERO
-    return arrondir_cent(profil.depenses_admissibles)
+    return arrondir_cent(min(profil.depenses_admissibles, MAXIMUM_DEPENSES_ACCESSIBILITE_2025) - profil.montant_reclame_autres)
+
+
+def description_partage_31285_2025(profil: DepensesAccessibiliteDomiciliaireFederal2025) -> str:
+    if not profil.partage_31285_confirme:
+        return "Aucun partage de la demande ligne 31285 : oui; aucun partage"
+    montant = montant_ligne_31285_2025(profil)
+    return (f"Partage 31285 — logement {profil.reference_logement}; logement unique en 2025 pour les participants; "
+        f"dépenses communes {profil.depenses_admissibles:.2f} $; plafond 20000 $; "
+        f"autres demandes {profil.montant_reclame_autres:.2f} $; solde {montant:.2f} $; "
+        f"participants admissibles confirmés; entente : {profil.source_partage}")
 
 
 def credit_federal_ligne_31285_2025(

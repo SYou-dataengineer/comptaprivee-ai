@@ -7716,11 +7716,11 @@ class ApplicationComptaPrivee(tk.Tk):
 
             ttk.Label(
                 cadre,
-                text="Dépenses admissibles — maximum 20 000 $",
+                text="Dépenses admissibles — maximum 20 000 $ (sans partage); total commun brut si partage",
             ).grid(row=3, column=0, sticky="w", pady=3)
             ttk.Entry(
                 cadre,
-                textvariable=depenses_var,
+                name="depenses_31285", textvariable=depenses_var,
                 width=28,
             ).grid(row=3, column=1, sticky="ew", pady=3)
 
@@ -7803,7 +7803,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     cadre,
                     wraplength=680, anchor="w", justify="left",
                     text=texte,
-                    variable=variables[champ],
+                    name=champ + "_5aa", variable=variables[champ],
                 ).grid(
                     row=ligne,
                     column=0,
@@ -7824,7 +7824,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             ttk.Entry(
                 cadre,
-                textvariable=source_var,
+                name="source_31285", textvariable=source_var,
                 width=58,
             ).grid(
                 row=ligne,
@@ -7850,12 +7850,71 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             ligne += 1
 
+            courant = accessibilite_domiciliaire_federale_courante
+            mode_partage = tk.BooleanVar(value=courant.partage_31285_confirme)
+            entente = tk.BooleanVar(value=courant.partage_31285_confirme)
+            admissibles = tk.BooleanVar(value=courant.autres_participants_admissibles_confirmes)
+            unique = tk.BooleanVar(value=courant.logement_unique_2025_confirme)
+            autres = tk.StringVar(value=str(courant.montant_reclame_autres))
+            reference = tk.StringVar(value=courant.reference_logement)
+            source_partage = tk.StringVar(value=courant.source_partage)
+            resultat_partage = tk.StringVar()
+            for nom, texte, var in (
+                ("mode_partage_31285", "Partager les dépenses communes du logement", mode_partage),
+                ("admissibles_31285", "Autres participants admissibles à 31285 et habitant ce même logement", admissibles),
+                ("unique_31285", "Seul logement admissible en 2025 pour tous les particuliers déterminés concernés", unique),
+                ("entente_31285", "Entente de tous les participants vérifiée, toutes leurs demandes prises en compte", entente),
+            ):
+                tk.Checkbutton(cadre, name=nom, text=texte, variable=var, wraplength=680,
+                    anchor="w", justify="left").grid(row=ligne, column=0, columnspan=2, sticky="w")
+                ligne += 1
+            for nom, texte, var in (
+                ("reference_31285", "Référence du logement", reference),
+                ("autres_31285", "Total réclamé à 31285 par les autres participants", autres),
+                ("source_partage_31285", "Source de l'entente et de leur admissibilité", source_partage),
+                ("resultat_31285", "Montant calculé pour ce dossier", resultat_partage),
+            ):
+                ttk.Label(cadre, text=texte).grid(row=ligne, column=0, sticky="w")
+                ttk.Entry(cadre, name=nom, textvariable=var, width=50,
+                    state="readonly" if nom == "resultat_31285" else "normal").grid(row=ligne, column=1, sticky="ew")
+                ligne += 1
+
+            def recalculer_partage(*_args):
+                try:
+                    total = Decimal(depenses_var.get().replace(" ", "").replace(",", ".") or "0")
+                    ailleurs = Decimal(autres.get().replace(" ", "").replace(",", ".") or "0") if mode_partage.get() else Decimal(0)
+                    if not total.is_finite() or not ailleurs.is_finite() or not 0 <= total <= Decimal("999999999.99"):
+                        raise ValueError("Montant invalide")
+                    resultat_partage.set(str(min(total, Decimal(20000)) - ailleurs))
+                except (InvalidOperation, ValueError):
+                    resultat_partage.set("Saisie à vérifier")
+
+            def revoquer_partage(*_args):
+                variables["valide_par_comptable"].set(False)
+                entente.set(False)
+                admissibles.set(False)
+                unique.set(False)
+                recalculer_partage()
+
+            for var in (reclamer_var, depenses_var, source_var, mode_partage, autres, reference, source_partage):
+                var.trace_add("write", revoquer_partage)
+            for nom, var in variables.items():
+                if nom != "valide_par_comptable":
+                    var.trace_add("write", revoquer_partage)
+            for var in (entente, admissibles, unique):
+                var.trace_add("write", lambda *_: variables["valide_par_comptable"].set(False))
+            recalculer_partage()
+
             cadre.columnconfigure(1, weight=1)
 
             def effacer() -> None:
                 reclamer_var.set(False)
                 depenses_var.set("0")
                 source_var.set("")
+                mode_partage.set(False)
+                autres.set("0")
+                reference.set("")
+                source_partage.set("")
                 for variable in variables.values():
                     variable.set(False)
 
@@ -7869,7 +7928,15 @@ class ApplicationComptaPrivee(tk.Tk):
                         texte_depenses.replace(" ", "").replace(",", ".")
                     )
 
+                    if mode_partage.get() and not entente.get():
+                        raise ValueError("L'entente de partage 31285 doit être confirmée.")
                     profil = DepensesAccessibiliteDomiciliaireFederal2025(
+                        partage_31285_confirme=mode_partage.get(),
+                        montant_reclame_autres=Decimal(autres.get().replace(" ", "").replace(",", ".") or "0") if mode_partage.get() else Decimal(0),
+                        autres_participants_admissibles_confirmes=admissibles.get() if mode_partage.get() else False,
+                        logement_unique_2025_confirme=unique.get() if mode_partage.get() else False,
+                        reference_logement=reference.get().strip() if mode_partage.get() else "",
+                        source_partage=source_partage.get().strip() if mode_partage.get() else "",
                         reclamer_montant=reclamer_var.get(),
                         depenses_admissibles=depenses,
                         demande_pour_soi_meme=variables[

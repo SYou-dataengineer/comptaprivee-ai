@@ -2532,6 +2532,12 @@ def _accessibilite_domiciliaire_federale_vers_dict(
         ),
         "valide_par_comptable": bool(profil.valide_par_comptable),
         "source_renovation": profil.source_renovation,
+        "partage_31285_confirme": profil.partage_31285_confirme,
+        "montant_reclame_autres": _decimal_texte(profil.montant_reclame_autres),
+        "autres_participants_admissibles_confirmes": profil.autres_participants_admissibles_confirmes,
+        "logement_unique_2025_confirme": profil.logement_unique_2025_confirme,
+        "reference_logement": profil.reference_logement,
+        "source_partage": profil.source_partage,
     }
 
 
@@ -2547,7 +2553,24 @@ def _accessibilite_domiciliaire_federale_depuis_dict(
             "ligne 31285 enregistrées sont invalides."
         )
 
+    nouveaux = {"partage_31285_confirme", "montant_reclame_autres", "autres_participants_admissibles_confirmes", "logement_unique_2025_confirme", "reference_logement", "source_partage"}
+    if nouveaux.intersection(valeur):
+        defaults = DepensesAccessibiliteDomiciliaireFederal2025()
+        if set(valeur) - {f.name for f in fields(defaults)}:
+            raise ValueError("Clé inconnue dans le profil 31285.")
+        for nom, v in valeur.items():
+            defaut = getattr(defaults, nom)
+            if isinstance(defaut, (bool, str)) and type(v) is not type(defaut):
+                raise ValueError("Type JSON 31285 invalide : " + nom)
+            if isinstance(defaut, Decimal) and type(v) not in (str, int):
+                raise ValueError("Montant JSON 31285 invalide : " + nom)
+
     profil = DepensesAccessibiliteDomiciliaireFederal2025(
+        partage_31285_confirme=valeur.get("partage_31285_confirme", False),
+        montant_reclame_autres=_decimal_depuis_json(valeur.get("montant_reclame_autres", "0"), "Autres demandes 31285"),
+        autres_participants_admissibles_confirmes=valeur.get("autres_participants_admissibles_confirmes", False),
+        logement_unique_2025_confirme=valeur.get("logement_unique_2025_confirme", False),
+        reference_logement=valeur.get("reference_logement", ""), source_partage=valeur.get("source_partage", ""),
         reclamer_montant=bool(valeur.get("reclamer_montant", False)),
         depenses_admissibles=_decimal_depuis_json(
             valeur.get("depenses_admissibles", "0"),
@@ -3620,6 +3643,14 @@ def sauvegarder_dossier_fiscal(
             achat_habitation_federal = estimation.achat_habitation_federal
         elif achat_habitation_federal != estimation.achat_habitation_federal:
             raise ValueError("Profil partagé 31270 divergent de l'estimation.")
+
+    if estimation is not None and (estimation.accessibilite_domiciliaire_federale.partage_31285_confirme or (
+        accessibilite_domiciliaire_federale is not None and accessibilite_domiciliaire_federale.partage_31285_confirme
+    )):
+        if accessibilite_domiciliaire_federale is None:
+            accessibilite_domiciliaire_federale = estimation.accessibilite_domiciliaire_federale
+        elif accessibilite_domiciliaire_federale != estimation.accessibilite_domiciliaire_federale:
+            raise ValueError("Profil partagé 31285 divergent de l'estimation.")
 
     celiapp_effectif = (
         deduction_celiapp

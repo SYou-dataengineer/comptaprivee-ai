@@ -32,6 +32,7 @@ from .tax_age_retirement_2025 import (
     reduction_annexe_b_age_retraite_2025,
 )
 from .tax_federal_home_accessibility_2025 import (
+    description_partage_31285_2025,
     credit_federal_ligne_31285_2025,
     montant_ligne_31285_2025,
 )
@@ -1281,7 +1282,8 @@ def construire_trace_calcul_fiscal_2025(
                     + "rénovation durable et intégrante; "
                     + "accessibilité / mobilité / réduction du risque; "
                     + "travaux et biens 2025 uniquement; "
-                    + "aucun partage; aucune part entreprise/location; "
+                    + description_partage_31285_2025(accessibilite_domiciliaire_federale)
+                    + "; aucune part entreprise/location; "
                     + "règles fournisseurs liés confirmées; "
                     + "dépenses non admissibles exclues; "
                     + "pièces justificatives conservées"

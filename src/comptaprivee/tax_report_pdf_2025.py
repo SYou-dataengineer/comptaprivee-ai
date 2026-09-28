@@ -70,6 +70,7 @@ from .tax_federal_spouse_2025 import (
     montant_ligne_30300_2025,
 )
 from .tax_federal_home_accessibility_2025 import (
+    description_partage_31285_2025,
     credit_federal_ligne_31285_2025,
     montant_ligne_31285_2025,
 )
@@ -668,7 +669,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                 ),
                 "Travaux et biens de 2025 uniquement : oui",
                 "Aucune part entreprise/location : oui",
-                "Aucun partage de la demande ligne 31285 : oui",
+                description_partage_31285_2025(accessibilite_domiciliaire_federale),
                 "Fournisseurs liés : règles confirmées",
                 "Dépenses non admissibles exclues : oui",
                 "Pièces justificatives conservées : oui",
@@ -681,9 +682,8 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     "Ligne 34990 : calcul automatique intégré (2025)."
                 ),
                 (
-                    "Profil simple : demande pour soi-même; partage et "
-                    "ventilation entreprise/location non pris en charge "
-                    "dans cette première version."
+                    "Profil simple : demande pour soi-même; partage selon une entente validée; "
+                    "ventilation entreprise/location hors de ce profil."
                 ),
             ]
         )
