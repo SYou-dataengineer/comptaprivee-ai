@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
+from .tax_tuition_carryforward_2025 import ReportsScolariteFederaux2025, CONFIRMATIONS_REPORTS_SCOLARITE
 from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025, CONFIRMATIONS_ACT
 from .tax_medical_supplement_2025 import SupplementMedical2025, CONFIRMATIONS_SUPPLEMENT
 from .tax_training_credit_2025 import Formation2025, CONFIRMATIONS_FORMATION
@@ -5923,9 +5924,8 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Label(
                 cadre,
                 text=(
-                    "Le moteur actuel refuse les dossiers nécessitant "
-                    "un report ou un transfert afin de ne perdre aucun "
-                    "montant de scolarité inutilisé."
+                    "Activer le bloc 5F ci-dessous pour les reports fédéraux. "
+                    "Les transferts et reports Québec restent hors de ce formulaire."
                 ),
                 foreground="#92400e",
                 wraplength=710,
@@ -5966,15 +5966,39 @@ class ApplicationComptaPrivee(tk.Tk):
                 ttk.Checkbutton(cadre, name=nom + "_5c", text=libelle, variable=var).grid(
                     row=row, column=0, columnspan=2, sticky="w")
 
+            reports = frais_scolarite_courants.reports_federaux
+            reports_activer = tk.BooleanVar(value=reports.activer)
+            report_solde = tk.StringVar(value=str(reports.report_avis_2024 or ""))
+            report_source = tk.StringVar(value=reports.source)
+            reports_confirmations = {}
+            ttk.Label(cadre, text="Reports fédéraux de scolarité — 5F", font=("Segoe UI", 12, "bold")).grid(
+                row=30, column=0, columnspan=2, sticky="w", pady=8)
+            ttk.Checkbutton(cadre, name="activer_5f", text="Calculer l'utilisation et le report fédéral futur",
+                            variable=reports_activer).grid(row=31, column=0, columnspan=2, sticky="w")
+            for row, (nom, libelle, variable) in enumerate((
+                ("report_avis_2024", "Report fédéral du dernier avis ARC 2024", report_solde),
+                ("source", "Source / validation du report fédéral", report_source),
+            ), 32):
+                ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w")
+                ttk.Entry(cadre, name=nom + "_5f", textvariable=variable).grid(row=row, column=1, sticky="ew")
+            for row, (nom, libelle) in enumerate(CONFIRMATIONS_REPORTS_SCOLARITE.items(), 34):
+                variable = tk.BooleanVar(value=getattr(reports, nom))
+                reports_confirmations[nom] = variable
+                ttk.Checkbutton(cadre, name=nom + "_5f", text=libelle, variable=variable).grid(
+                    row=row, column=0, columnspan=2, sticky="w")
+
             def revoquer_scolarite_et_formation(*_):
                 for _, var in confirmations:
                     var.set(False)
-                for var in ccf_confirmations.values():
+                for var in (*ccf_confirmations.values(), *reports_confirmations.values()):
                     var.set(False)
-            for var in (fed_var, qc_var, source_fed_var, source_qc_var, *ccf_vars.values(), ccf_max):
+            for var in (fed_var, qc_var, source_fed_var, source_qc_var, *ccf_vars.values(), ccf_max, reports_activer, report_solde, report_source):
                 var.trace_add("write", revoquer_scolarite_et_formation)
 
             def effacer() -> None:
+                reports_activer.set(False)
+                report_solde.set("")
+                report_source.set("")
                 for var in ccf_vars.values():
                     var.set("")
                 ccf_max.set(False)
@@ -6010,6 +6034,12 @@ class ApplicationComptaPrivee(tk.Tk):
                         **{nom: var.get() for nom, var in ccf_confirmations.items()},
                     )
                     nouveaux_frais = FraisScolarite2025(
+                        reports_federaux=ReportsScolariteFederaux2025(
+                            activer=reports_activer.get(),
+                            report_avis_2024=decimal_depuis_champ(report_solde.get(), "Report fédéral"),
+                            source=report_source.get().strip(),
+                            **{nom: var.get() for nom, var in reports_confirmations.items()},
+                        ),
                         formation=profil_formation,
                         montant_admissible_federal=decimal_depuis_champ(
                             fed_var.get(),

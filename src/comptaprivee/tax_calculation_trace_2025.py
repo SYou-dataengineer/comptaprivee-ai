@@ -1058,11 +1058,11 @@ def construire_trace_calcul_fiscal_2025(
                     + " — validation comptable"
                 ),
                 (
-                    "Montant admissible 2025 × 14,5 % — "
-                    "aucun report/transfert dans ce profil"
+                    "32300 utilisé selon annexe 11 × 14,5 %" if frais_scolarite.reports_federaux.activer else
+                    "Montant admissible 2025 × 14,5 % — aucun report/transfert dans ce profil"
                 ),
                 credit_federal_frais_scolarite_2025(
-                    frais_scolarite
+                    frais_scolarite, resultat_reports=estimation.resultat_reports_scolarite
                 ),
             ),
         )
@@ -1929,6 +1929,19 @@ def construire_trace_calcul_fiscal_2025(
         ):
             lignes += (_ligne(len(lignes) + 1, "ACT QUÉBEC — BLOC 5E", libelle,
                 estimation.allocation_travailleurs.source, formule, montant),)
+
+    if frais_scolarite.reports_federaux.activer:
+        r = estimation.resultat_reports_scolarite
+        for libelle, montant, formule in (
+            ("Report scolarité antérieur disponible", frais_scolarite.reports_federaux.report_avis_2024, "Dernier avis ARC 2024, annexe 11 ligne 9"),
+            ("Capacité scolarité annexe 11", r.capacite_annexe11, "max(26000 si <=57375, sinon brut / 14.5 %, moins ligne 105; 0)"),
+            ("Report scolarité antérieur utilisé", r.report_anterieur_utilise, "min(report disponible, capacité), utilisé en premier"),
+            ("Frais 2025 utilisés", r.frais_2025_utilises, "min(frais nets après CCF, capacité restante)"),
+            ("Scolarité réclamée 32300", r.ligne_32300, "Report utilisé + frais 2025 utilisés; intégré une seule fois à 33500"),
+            ("Report scolarité fédéral futur", r.report_futur, "Report antérieur + frais 2025 nets - 32300; aucun transfert"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "REPORTS SCOLARITÉ — BLOC 5F", libelle,
+                frais_scolarite.reports_federaux.source, formule, montant),)
 
     prochain_ordre = len(lignes) + 1
 

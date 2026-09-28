@@ -2,7 +2,7 @@
 
 Portée volontairement limitée :
 - frais admissibles payés pour 2025 seulement;
-- aucun report d'années antérieures;
+- reports fédéraux via le profil dédié 5F; reports Québec hors profil;
 - aucun transfert à un parent ou grand-parent;
 - crédit canadien pour la formation via le profil dédié 5C;
 - pièces justificatives et admissibilité déjà vérifiées;
@@ -13,13 +13,14 @@ Références de calcul visées :
 - Québec : annexe T, ligne 398.
 
 Cette première version calcule les crédits non remboursables associés aux
-montants admissibles validés. Elle ne calcule pas encore les reports, les
+montants admissibles validés. Les reports fédéraux sont traités séparément en 5F, sans
 transferts. Le crédit formation est intégré séparément en 5C.
 """
 
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_tuition_carryforward_2025 import ReportsScolariteFederaux2025, ResultatReportsScolariteFederaux2025, valider_reports_scolarite_federaux_2025
 from .tax_training_credit_2025 import Formation2025, credit_formation_2025, valider_formation_2025
 from .tax_federal_top_up_2025 import valider_scolarite_sans_report_2025
 from .tax_federal_2025 import ImpotFederalPreliminaire2025
@@ -54,6 +55,7 @@ class FraisScolarite2025:
     credit_canadien_formation_non_reclame: bool = False
     profil_resident_quebec_simple: bool = False
     formation: Formation2025 = Formation2025()
+    reports_federaux: ReportsScolariteFederaux2025 = ReportsScolariteFederaux2025()
 
     @property
     def montant_net_federal(self) -> Decimal:
@@ -76,6 +78,9 @@ def valider_frais_scolarite_2025(
         montant = getattr(frais, nom)
         if not isinstance(montant, Decimal) or not montant.is_finite():
             raise ValueError(f"{nom} doit être un Decimal fini.")
+    valider_reports_scolarite_federaux_2025(frais.reports_federaux)
+    if frais.reports_federaux.report_avis_2024 and frais.aucun_report_anterieur:
+        raise ValueError("Confirmation contradictoire : report fédéral présent et aucun report antérieur.")
     valider_formation_2025(frais.formation)
     ccf = credit_formation_2025(frais.formation)
     if frais.formation.frais_canadiens and frais.formation.frais_canadiens > frais.montant_admissible_federal:
@@ -147,7 +152,7 @@ def valider_frais_scolarite_2025(
             "payés pour 2025."
         )
 
-    if not frais.aucun_report_anterieur:
+    if not frais.aucun_report_anterieur and not frais.reports_federaux.activer:
         raise ValueError(
             "Cette version n'accepte pas encore les montants reportés "
             "d'années antérieures."
@@ -186,8 +191,13 @@ def valider_frais_scolarite_2025(
 
 def credit_federal_frais_scolarite_2025(
     frais: FraisScolarite2025,
+    *, resultat_reports: ResultatReportsScolariteFederaux2025 | None = None,
 ) -> Decimal:
     valider_frais_scolarite_2025(frais)
+    if frais.reports_federaux.activer:
+        if resultat_reports is None:
+            raise ValueError("Le crédit avec reports fédéraux nécessite le calcul complet de l'annexe 11.")
+        return resultat_reports.credit_federal
     return arrondir_cent(
         frais.montant_net_federal
         * TAUX_CREDIT_FEDERAL_SCOLARITE_2025

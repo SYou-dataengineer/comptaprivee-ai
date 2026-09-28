@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .tax_tuition_carryforward_2025 import ReportsScolariteFederaux2025, valider_reports_scolarite_federaux_2025
 from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025
 from .tax_medical_supplement_2025 import SupplementMedical2025, valider_supplement_medical_2025
 from .tax_training_credit_2025 import Formation2025, valider_formation_2025
@@ -1232,6 +1233,22 @@ def _frais_medicaux_depuis_dict(
     return valider_frais_medicaux_2025(frais)
 
 
+def _reports_scolarite_federaux_vers_dict(profil):
+    valeurs = asdict(valider_reports_scolarite_federaux_2025(profil))
+    valeurs["report_avis_2024"] = format(profil.report_avis_2024, ".2f")
+    return valeurs
+
+
+def _reports_scolarite_federaux_depuis_dict(valeur):
+    if valeur is None:
+        return ReportsScolariteFederaux2025()
+    if not isinstance(valeur, dict) or set(valeur) - set(ReportsScolariteFederaux2025.__dataclass_fields__):
+        raise ValueError("Profil reports scolarité ou clés inconnues invalides.")
+    valeurs = dict(valeur)
+    valeurs["report_avis_2024"] = _decimal_depuis_json(valeurs.get("report_avis_2024", "0"), "Report scolarité")
+    return valider_reports_scolarite_federaux_2025(ReportsScolariteFederaux2025(**valeurs))
+
+
 def _formation_vers_dict(profil):
     valider_formation_2025(profil)
     valeurs = asdict(profil)
@@ -1260,6 +1277,7 @@ def _frais_scolarite_vers_dict(
     valider_frais_scolarite_2025(frais)
 
     return {
+        "reports_federaux": _reports_scolarite_federaux_vers_dict(frais.reports_federaux),
         "formation": _formation_vers_dict(frais.formation),
         "montant_admissible_federal": _decimal_texte(
             frais.montant_admissible_federal
@@ -1302,6 +1320,7 @@ def _frais_scolarite_depuis_dict(
         )
 
     frais = FraisScolarite2025(
+        reports_federaux=_reports_scolarite_federaux_depuis_dict(valeur.get("reports_federaux")),
         formation=_formation_depuis_dict(valeur.get("formation")),
         montant_admissible_federal=_decimal_depuis_json(
             valeur.get("montant_admissible_federal", "0"),
@@ -3384,7 +3403,9 @@ def sauvegarder_dossier_fiscal(
         if frais_scolarite is None:
             frais_scolarite = estimation.frais_scolarite
         elif (frais_scolarite.formation != Formation2025()
-              or estimation.frais_scolarite.formation != Formation2025()):
+              or estimation.frais_scolarite.formation != Formation2025()
+              or frais_scolarite.reports_federaux != ReportsScolariteFederaux2025()
+              or estimation.frais_scolarite.reports_federaux != ReportsScolariteFederaux2025()):
             if frais_scolarite != estimation.frais_scolarite:
                 raise ValueError("Le profil scolarité/formation diffère de l'estimation.")
 

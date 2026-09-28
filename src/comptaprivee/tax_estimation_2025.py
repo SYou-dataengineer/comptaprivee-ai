@@ -11,6 +11,10 @@ d'estimation soumise à validation comptable.
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_tuition_carryforward_2025 import (
+    ResultatReportsScolariteFederaux2025, calculer_reports_scolarite_federaux_2025,
+    lignes_reports_scolarite_federaux_2025,
+)
 from .tax_workers_benefit_2025 import (
     AllocationTravailleurs2025, ResultatAllocationTravailleurs2025,
     valider_allocation_travailleurs_2025, calculer_allocation_travailleurs_2025,
@@ -115,6 +119,7 @@ from .tax_medical_expenses_2025 import (
     credit_quebec_frais_medicaux_2025,
 )
 from .tax_tuition_2025 import (
+    valider_frais_scolarite_2025,
     FraisScolarite2025,
     appliquer_credit_federal_frais_scolarite_2025,
     appliquer_credit_quebec_frais_scolarite_2025,
@@ -327,6 +332,7 @@ class EstimationFiscale2025:
     interets_pret_etudiant: InteretsPretEtudiant2025 = InteretsPretEtudiant2025()
     resultat_interets_pret_etudiant: ResultatInteretsPretEtudiant2025 = ResultatInteretsPretEtudiant2025()
     resultat_supplement_medical: ResultatSupplementMedical2025 = ResultatSupplementMedical2025()
+    resultat_reports_scolarite: ResultatReportsScolariteFederaux2025 = ResultatReportsScolariteFederaux2025()
 
 
 def calculer_estimation_fiscale_2025(
@@ -886,6 +892,7 @@ def calculer_estimation_fiscale_2025(
         if frais_scolarite is not None
         else FraisScolarite2025()
     )
+    valider_frais_scolarite_2025(frais_scolarite_effectifs)
 
     credit_deficience_effectif = (
         credit_deficience
@@ -1249,6 +1256,12 @@ def calculer_estimation_fiscale_2025(
         ("31600", MONTANT_FEDERAL_HANDICAP_2025 if credit_deficience_effectif.reclamer_federal else Decimal("0")),
     )
     base_ligne105 = calculer_base_33500_2025(montants_avant_scolarite)
+    reports_scolarite = calculer_reports_scolarite_federaux_2025(
+        frais_scolarite_effectifs.reports_federaux,
+        frais_nets_2025=frais_scolarite_effectifs.montant_net_federal,
+        revenu_imposable=revenu.revenu_imposable_federal,
+        impot_brut=federal.impot_brut, base_ligne105=base_ligne105,
+    )
     federal = appliquer_credit_federal_dons_2025(
         federal,
         dons_effectifs,
@@ -1259,11 +1272,12 @@ def calculer_estimation_fiscale_2025(
         frais_medicaux_effectifs,
         revenu.revenu_net_federal,
     )
-    federal = appliquer_credit_federal_frais_scolarite_2025(
-        federal,
-        frais_scolarite_effectifs,
-        base_ligne105=base_ligne105,
-    )
+    if not frais_scolarite_effectifs.reports_federaux.activer:
+        federal = appliquer_credit_federal_frais_scolarite_2025(
+            federal,
+            frais_scolarite_effectifs,
+            base_ligne105=base_ligne105,
+        )
     federal = appliquer_credit_federal_handicap_2025(
         federal,
         credit_deficience_effectif,
@@ -1305,7 +1319,8 @@ def calculer_estimation_fiscale_2025(
             (("31900", resultat_pret_etudiant.ligne_31900),)
             if resultat_pret_etudiant.ligne_31900 else ()
         ) + (
-            ("32300", frais_scolarite_effectifs.montant_net_federal),
+            ("32300", reports_scolarite.ligne_32300 if frais_scolarite_effectifs.reports_federaux.activer
+             else frais_scolarite_effectifs.montant_net_federal),
             ("33200", montant_frais_medicaux_federal_apres_seuil_2025(
                 frais_medicaux_effectifs, revenu.revenu_net_federal)),
         ),
@@ -1424,6 +1439,7 @@ def calculer_estimation_fiscale_2025(
         dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
     )
     return EstimationFiscale2025(
+        resultat_reports_scolarite=reports_scolarite,
         allocation_travailleurs=act, resultat_allocation_travailleurs=resultat_act,
         resultat_supplement_medical=supplement_medical,
         interets_pret_etudiant=pret_etudiant,
@@ -1590,6 +1606,7 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_pension_alimentaire_payee_2025(
             estimation.pension_alimentaire_payee
         ),
+        *lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite),
         *lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs),
         *lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical),
         *lignes_formation_2025(estimation.frais_scolarite.formation),
@@ -1694,7 +1711,7 @@ def formater_estimation_fiscale_2025(
                 "Montant admissible fédéral : "
                 f"{formater_montant_estimation(estimation.frais_scolarite.montant_admissible_federal)}",
                 "Crédit fédéral — ligne 32300 : "
-                f"{formater_montant_estimation(credit_federal_frais_scolarite_2025(estimation.frais_scolarite))}",
+                f"{formater_montant_estimation(credit_federal_frais_scolarite_2025(estimation.frais_scolarite, resultat_reports=estimation.resultat_reports_scolarite))}",
                 "Source fédérale : "
                 f"{estimation.frais_scolarite.source_federale}",
                 "Montant admissible Québec : "

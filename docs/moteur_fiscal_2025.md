@@ -2255,3 +2255,44 @@ Régression avant correctif : **32 failed, 2 passed**. Après correctif et
 non-régression ciblée : **299 passed, 5 warnings**. Aucun test existant modifié.
 
 Suite complète du correctif : **3855 passed, 8 warnings** (`--capture=sys`).
+
+
+### Bloc 5F livré — reports fédéraux de scolarité, annexe 11 / ligne 32300
+
+Source : [annexe 11 Québec 2025, lignes 8–17 et 18–25](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s11/5005-s11-25e.pdf).
+Le solde antérieur provient du dernier avis ARC 2024, y compris les anciens
+montants d'études/manuels qui y figurent. La capacité est le revenu imposable
+26000 jusqu'à 57 375 $, sinon l'impôt brut divisé par 14,5 %, moins le
+sous-total T1 ligne 105, avec plancher zéro. Le report antérieur est utilisé
+en premier, puis les frais de 2025 nets du CCF. Leur somme donne 32300;
+l'excédent disponible est reporté. La ligne 105 précède 31900 : les intérêts
+étudiants ne sont pas soustraits de cette capacité. La réclamation déterminée
+par l'annexe n'est pas un montant librement saisi dans le formulaire.
+
+Le profil `reports_federaux` s'active explicitement. Un solde antérieur nul
+permet de reporter des frais courants inutilisables. Sans activation, les
+anciens garde-fous sont conservés. Solde, avis et source sont validés par le
+comptable; aucune reconstitution automatique du compte ARC. Le report futur
+est dérivé et doit être rapproché de l'avis ARC après cotisation.
+
+Périmètre 5F : reports fédéraux uniquement, sans transfert entrant/sortant,
+sans décès/faillite, ni report Québec. Les deux banques québécoises à 20 %
+et 8 % et les transferts sont des fonctions distinctes à venir. Cette limite
+logicielle ne nie pas leur admissibilité fiscale. Les frais Québec de 2025
+continuent d'exiger une utilisation complète dans le profil antérieur.
+
+L'estimation inclut uniquement le montant utilisé à 32300, une seule fois
+dans 33500; 33800/34990/35000 sont recalculés. Revenus et base Québec restent
+inchangés. Le CCF réduit les frais courants avant répartition, sans réduire
+le solde antérieur. Un dossier contenant seulement un report reste accepté.
+
+GUI : activation, solde de l'avis, source et confirmations; modification de
+la scolarité, du CCF ou du report = révocation des confirmations. Aucun solde
+futur saisi. JSON ne persiste que les entrées, rétrocompatible si le profil
+est absent, avec validation stricte du nouveau profil et contrôle de divergence
+avec l'estimation. Trace/PDF distinguent disponible, utilisé et report futur.
+
+Validation ciblée : **281 passed, 5 warnings**, comprenant formation, ACT,
+scolarité existante, stockage, trace, PDF et GUI. Aucun test existant modifié.
+
+Suite complète 5F : **3902 passed, 8 warnings** avec `--capture=sys`.
