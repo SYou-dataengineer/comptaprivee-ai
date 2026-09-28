@@ -8,6 +8,8 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_quebec_home_buyers_2025 import (AchatHabitationQuebec2025, ResultatAchatQuebec2025,
+    calculer_achat_quebec_2025, appliquer_achat_quebec_2025, lignes_achat_quebec_2025)
 from .tax_quebec_student_interest_2025 import (InteretsEtudiantsQuebec2025, ResultatInteretsQuebec2025,
     calculer_interets_quebec_2025, appliquer_interets_quebec_2025, lignes_interets_quebec_2025)
 from .tax_medical_expenses_2025 import montant_frais_medicaux_quebec_apres_seuil_2025
@@ -356,6 +358,8 @@ class EstimationFiscale2025:
     prestations_rrq_rpc: PrestationsRrqRpc2025 = PrestationsRrqRpc2025()
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
     resultat_allocation_travailleurs: ResultatAllocationTravailleurs2025 = ResultatAllocationTravailleurs2025()
+    achat_habitation_quebec: AchatHabitationQuebec2025 = AchatHabitationQuebec2025()
+    resultat_achat_quebec: ResultatAchatQuebec2025 = ResultatAchatQuebec2025()
     interets_etudiants_quebec: InteretsEtudiantsQuebec2025 = InteretsEtudiantsQuebec2025()
     resultat_interets_quebec: ResultatInteretsQuebec2025 = ResultatInteretsQuebec2025()
     interets_pret_etudiant: InteretsPretEtudiant2025 = InteretsPretEtudiant2025()
@@ -462,6 +466,7 @@ def calculer_estimation_fiscale_2025(
     transfert_conjoint: TransfertConjointFederal2025 | None = None,
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
+    achat_habitation_quebec: AchatHabitationQuebec2025 | None = None,
     interets_etudiants_quebec: InteretsEtudiantsQuebec2025 | None = None,
     interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
 ) -> EstimationFiscale2025:
@@ -1499,6 +1504,14 @@ def calculer_estimation_fiscale_2025(
             quebec,
             montants_age_retraite_effectifs,
         )
+    achat_quebec = achat_habitation_quebec if achat_habitation_quebec is not None else AchatHabitationQuebec2025()
+    ligne_361 = (annexe_b_combinee.ligne_361 if annexe_b_combinee is not None else
+        montant_ligne_361_age_retraite_2025(montants_age_retraite_effectifs)
+        + montant_ligne_361_personne_vivant_seule_2025(personne_vivant_seule_effective))
+    resultat_achat_quebec = calculer_achat_quebec_2025(achat_quebec, impot_401=quebec.impot_brut,
+        montant_359=quebec.montant_personnel_base - remplacement.ligne_358, montant_361=ligne_361,
+        credit_397=credit_quebec_cotisations_2025(cotisations_effectives))
+    quebec = appliquer_achat_quebec_2025(quebec, achat_quebec, resultat_achat_quebec)
     federal, quebec = appliquer_credits_dividendes_2025(federal, quebec, dividendes)
     federal, quebec = appliquer_credit_impot_etranger_2025(
         federal, quebec, credit_impot_etranger
@@ -1615,6 +1628,7 @@ def calculer_estimation_fiscale_2025(
         transferts_scolarite_recus=scolarite_recue,
         allocation_travailleurs=act, resultat_allocation_travailleurs=resultat_act,
         resultat_supplement_medical=supplement_medical,
+        achat_habitation_quebec=achat_quebec, resultat_achat_quebec=resultat_achat_quebec,
         interets_etudiants_quebec=pret_quebec, resultat_interets_quebec=resultat_pret_quebec,
         interets_pret_etudiant=pret_etudiant,
         resultat_interets_pret_etudiant=resultat_pret_etudiant,
@@ -1799,6 +1813,7 @@ def formater_estimation_fiscale_2025(
         *lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs),
         *lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical),
         *lignes_formation_2025(estimation.frais_scolarite.formation),
+        *lignes_achat_quebec_2025(estimation.achat_habitation_quebec, estimation.resultat_achat_quebec),
         *lignes_interets_quebec_2025(estimation.interets_etudiants_quebec, estimation.resultat_interets_quebec),
         *lignes_resume_interets_pret_etudiant_2025(
             estimation.interets_pret_etudiant, estimation.resultat_interets_pret_etudiant

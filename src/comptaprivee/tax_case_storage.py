@@ -28,6 +28,8 @@ from .tax_tuition_carryforward_2025 import ReportsScolariteFederaux2025, valider
 from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025
 from .tax_medical_supplement_2025 import SupplementMedical2025, valider_supplement_medical_2025, verifier_famille_supplement_2025
 from .tax_training_credit_2025 import Formation2025, valider_formation_2025
+from .tax_quebec_home_buyers_2025 import (AchatHabitationQuebec2025, valider_achat_quebec_2025,
+    achat_quebec_vers_dict, achat_quebec_depuis_dict)
 from .tax_quebec_student_interest_2025 import (InteretsEtudiantsQuebec2025, valider_interets_quebec_2025,
     interets_quebec_vers_dict, interets_quebec_depuis_dict)
 from .tax_student_loan_interest_2025 import (
@@ -243,6 +245,7 @@ class DossierFiscalEnregistre:
     transfert_conjoint: TransfertConjointFederal2025 = TransfertConjointFederal2025()
     transferts_scolarite_recus: TransfertsScolariteRecus2025 = TransfertsScolariteRecus2025()
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
+    achat_habitation_quebec: AchatHabitationQuebec2025 = AchatHabitationQuebec2025()
     interets_etudiants_quebec: InteretsEtudiantsQuebec2025 = InteretsEtudiantsQuebec2025()
     interets_pret_etudiant: InteretsPretEtudiant2025 = InteretsPretEtudiant2025()
 
@@ -3576,6 +3579,7 @@ def sauvegarder_dossier_fiscal(
     transfert_conjoint: TransfertConjointFederal2025 | None = None,
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
+    achat_habitation_quebec: AchatHabitationQuebec2025 | None = None,
     interets_etudiants_quebec: InteretsEtudiantsQuebec2025 | None = None,
     interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
     cotisations_syndicales: (
@@ -3872,6 +3876,10 @@ def sauvegarder_dossier_fiscal(
     )
     if estimation is not None and act != estimation.allocation_travailleurs:
         raise ValueError("Le profil ACT diffère de l'estimation.")
+    achat_quebec = valider_achat_quebec_2025(achat_habitation_quebec if achat_habitation_quebec is not None
+        else estimation.achat_habitation_quebec if estimation is not None else AchatHabitationQuebec2025())
+    if estimation is not None and achat_quebec != estimation.achat_habitation_quebec:
+        raise ValueError("Profil achat habitation Québec divergent de l'estimation.")
     pret_quebec = valider_interets_quebec_2025(interets_etudiants_quebec if interets_etudiants_quebec is not None
         else estimation.interets_etudiants_quebec if estimation is not None else InteretsEtudiantsQuebec2025())
     if estimation is not None and pret_quebec != estimation.interets_etudiants_quebec:
@@ -4185,6 +4193,7 @@ def sauvegarder_dossier_fiscal(
         "transfert_conjoint": {nom: getattr(conjoint, nom) for nom in conjoint.__dataclass_fields__},
         "transferts_scolarite_recus": _scolarite_recue_vers_dict(scolarite_recue),
         "allocation_travailleurs": _allocation_travailleurs_vers_dict(act),
+        "achat_habitation_quebec": achat_quebec_vers_dict(achat_quebec),
         "interets_etudiants_quebec": interets_quebec_vers_dict(pret_quebec),
         "interets_pret_etudiant": _interets_pret_etudiant_vers_dict(pret_etudiant),
         "autres_deductions": _autres_deductions_vers_dict(
@@ -4666,6 +4675,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         transfert_conjoint=_transfert_conjoint_depuis_dict(contenu.get("transfert_conjoint"), dossier.client),
         transferts_scolarite_recus=_scolarite_recue_depuis_dict(contenu.get("transferts_scolarite_recus")),
         allocation_travailleurs=_allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")),
+        achat_habitation_quebec=achat_quebec_depuis_dict(contenu.get("achat_habitation_quebec")),
         interets_etudiants_quebec=interets_quebec_depuis_dict(contenu.get("interets_etudiants_quebec")),
         interets_pret_etudiant=_interets_pret_etudiant_depuis_dict(contenu.get("interets_pret_etudiant")),
         autres_deductions=autres_deductions,

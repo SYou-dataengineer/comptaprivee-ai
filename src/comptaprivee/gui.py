@@ -35,6 +35,8 @@ from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_alloca
 from .tax_family_workers_benefit_2025 import FamilleAllocation2025, CONFIRMATIONS_FAMILLE_ACT
 from .tax_medical_supplement_2025 import (SupplementMedical2025, CONFIRMATIONS_SUPPLEMENT, SITUATIONS_SUPPLEMENT, LIBELLE_FAMILLE_SUPPLEMENT)
 from .tax_training_credit_2025 import Formation2025, CONFIRMATIONS_FORMATION
+from .tax_quebec_home_buyers_2025 import AchatHabitationQuebec2025
+from .gui_quebec_home_buyers_2025 import ouvrir_achat_quebec_2025
 from .tax_quebec_student_interest_2025 import InteretsEtudiantsQuebec2025
 from .gui_quebec_student_interest_2025 import ouvrir_interets_quebec_2025
 from .tax_student_loan_interest_2025 import (
@@ -2539,6 +2541,7 @@ class ApplicationComptaPrivee(tk.Tk):
         transfert_conjoint_courant = TransfertConjointFederal2025()
         transferts_scolarite_recus_courants = TransfertsScolariteRecus2025()
         allocation_travailleurs_courante = AllocationTravailleurs2025()
+        achat_habitation_quebec_courant = AchatHabitationQuebec2025()
         interets_etudiants_quebec_courants = InteretsEtudiantsQuebec2025()
         interets_pret_etudiant_courants = InteretsPretEtudiant2025()
         cotisations_syndicales_courantes = (
@@ -4937,6 +4940,16 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer).pack(side="right")
             ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
 
+        def ouvrir_achat_quebec_6c():
+            def enregistrer(p):
+                nonlocal achat_habitation_quebec_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                achat_habitation_quebec_courant = p
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Achat habitation Québec validé; recalculez l'estimation.")
+            ouvrir_achat_quebec_2025(fenetre, achat_habitation_quebec_courant, enregistrer)
+
         def ouvrir_interets_quebec_6b():
             def enregistrer(p):
                 nonlocal interets_etudiants_quebec_courants, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
@@ -5968,6 +5981,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
+                    achat_habitation_quebec=achat_habitation_quebec_courant,
                     interets_etudiants_quebec=interets_etudiants_quebec_courants,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
                     cotisations_rpa=cotisations_rpa_courantes,
@@ -14493,6 +14507,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
+                    achat_habitation_quebec=achat_habitation_quebec_courant,
                     interets_etudiants_quebec=interets_etudiants_quebec_courants,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
                             cotisations_syndicales=(
@@ -14562,6 +14577,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
+                    achat_habitation_quebec=achat_habitation_quebec_courant,
                     interets_etudiants_quebec=interets_etudiants_quebec_courants,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
                     cotisations_syndicales=(
@@ -14652,6 +14668,7 @@ class ApplicationComptaPrivee(tk.Tk):
         def charger_enregistrement_dans_interface(enregistrement) -> None:
             nonlocal frais_medicaux_famille_courants, transferts_handicap_courants, renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
+            nonlocal achat_habitation_quebec_courant
             nonlocal interets_etudiants_quebec_courants
             nonlocal interets_pret_etudiant_courants
             nonlocal frais_garde_federaux_courants
@@ -14743,6 +14760,7 @@ class ApplicationComptaPrivee(tk.Tk):
             transfert_conjoint_courant = enregistrement.transfert_conjoint
             transferts_scolarite_recus_courants = enregistrement.transferts_scolarite_recus
             allocation_travailleurs_courante = enregistrement.allocation_travailleurs
+            achat_habitation_quebec_courant = enregistrement.achat_habitation_quebec
             interets_etudiants_quebec_courants = enregistrement.interets_etudiants_quebec
             interets_pret_etudiant_courants = enregistrement.interets_pret_etudiant
             autres_deductions_courantes = (
@@ -15092,6 +15110,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
+                    achat_habitation_quebec=achat_habitation_quebec_courant,
                     interets_etudiants_quebec=interets_etudiants_quebec_courants,
                     interets_pret_etudiant=interets_pret_etudiant_courants,
                     cotisations_syndicales=(
@@ -15600,6 +15619,8 @@ class ApplicationComptaPrivee(tk.Tk):
         ttk.Button(zone_actions, text="Scolarité reçue 2025 (5H)",
                    command=ouvrir_scolarite_recue_5h_2025).pack(side="left", padx=(8, 0))
 
+        ttk.Button(zone_actions, text="Achat habitation Québec 2025 (6C)",
+                   command=ouvrir_achat_quebec_6c).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Intérêts étudiants Québec 2025 (6B)",
                    command=ouvrir_interets_quebec_6b).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Intérêts prêts étudiants 2025 (5B)",

@@ -3768,3 +3768,60 @@ Journal précédent 6A : commit `a619366`, 13 fichiers, suites avant/après comm
 
 Journal 6B : suite complète avant commit **5781 passed, 8 warnings**
 (`--capture=sys`, 193,19 s), diff sans erreur, PDF synthétique vérifié visuellement.
+
+
+### Bloc 6C livré — achat d’une première habitation Québec, ligne 396
+
+Références : [RQ, ligne 396 pour 2025](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/350-a-398-1-credits-dimpot-non-remboursables/ligne-396/)
+et [TP-752.HA, version 2025-10](https://www.revenuquebec.ca/documents/fr/formulaires/tp/TP-752.HA%282025-10%29.pdf).
+Le plafond de 1 400 $ est un crédit partagé par habitation. Le formulaire
+limite aussi la demande à son propre plafond fiscal :
+`max(401 - arrondi((359 + 361 + 367) × 14 %) - 391 - 397, 0)`.
+La ligne 396 est le minimum de ce plafond et de `1400 - autres demandes 396`.
+Elle ne doit pas être fixée automatiquement à 1 400 $.
+
+Les sources exigent une habitation admissible au Québec, acquise par le
+contribuable ou son conjoint, avec droit publié et habitation habitable.
+Pour la première habitation, ni le contribuable ni son conjoint ne doivent
+avoir possédé une habitation qu’il occupait depuis le 1er janvier 2021 jusqu’à
+l’acquisition. L’intention d’en faire la résidence principale dans l’année
+suivant l’acquisition est confirmée. Les parts des autres demandeurs admissibles
+sont documentées; chaque demandeur doit établir son propre formulaire.
+
+Périmètre logiciel 6C : première habitation acquise en 2025, contribuable vivant,
+résident Québec/Canada toute l’année, sans faillite ni transfert de crédit.
+L’exception handicap et les autres cas spéciaux restent à traiter séparément;
+ces exclusions logicielles ne signifient pas une inadmissibilité fiscale.
+La référence de l’habitation, date réelle, acte, critères et entente de partage
+font l’objet de validations comptables. Aucune admissibilité détaillée automatique.
+
+Le moteur reçoit les composantes fiscales recalculées : 359 inclut le
+redressement 358, 361 inclut l’annexe B commune, et 397 le crédit de cotisations.
+Les paramètres 367 et 391 sont prévus dans la fonction pure mais restent nuls
+dans l’orchestrateur jusqu’à livraison de ces blocs. Leur future intégration
+doit alimenter ce plafond. Le crédit final est appliqué une fois, avant les
+crédits dividendes/étranger, avec plancher d’impôt zéro. Handicap, médical,
+scolarité et dons ne sont pas soustraits pour déterminer le plafond spécifique
+de TP-752.HA, même s’ils réduisent l’impôt final. Le fédéral et les revenus
+restent inchangés; son profil 31270 est distinct.
+
+Exemples synthétiques vérifiés : impôt 401 de 5 000 $, base 359 de 18 571 $,
+autres parts de 400 $ → plafond fiscal 2 400,06 $, part disponible 1 000 $,
+ligne 396 de 1 000 $. Avec impôt 401 de 3 000 $ et aucun partage, la ligne 396
+est limitée à 400,06 $. L’impôt final peut déjà être nul à cause du médical :
+le crédit calculé demeure traçable, mais ne crée aucun remboursement supplémentaire.
+
+JSON rétrocompatible : ancien dossier sans profil = profil vide; seuls les
+faits et parts convenues sont persistés. Types, cents, date et clés contrôlés;
+refus des profils divergents de l’estimation. GUI dédiée, réouverture, effacement,
+révocation des confirmations après modification; aucun crédit propre saisi.
+Résumé, trace et PDF affichent les deux plafonds, leur minimum, les sources,
+la validation et les limites. Tests ciblés avec régressions 5Z/6A/6B :
+**202 passed, 5 warnings**; couvrent seuils, partage, impôt nul, 358/361/397,
+combinaison médicale, indépendance fédérale, JSON, GUI, trace et PDF.
+
+Journal précédent 6B : commit `5bdb095`, 11 fichiers; suites complètes avant et
+après commit **5781 passed, 8 warnings**; push réussi, dépôt propre avant 6C.
+
+Journal 6C : suite complète avant commit **5843 passed, 8 warnings**
+(`--capture=sys`, 184,28 s), diff sans erreur et PDF synthétique vérifié visuellement.

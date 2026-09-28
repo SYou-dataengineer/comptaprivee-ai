@@ -382,6 +382,8 @@ def construire_trace_calcul_fiscal_2025(
         )
 
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
+    if estimation.achat_habitation_quebec.reclamer:
+        formule_impot_quebec += " - crédit achat habitation Québec ligne 396"
     if estimation.resultat_interets_quebec.ligne_385:
         formule_impot_quebec += " - ajout intérêts étudiants Québec au crédit 389 (base 385)"
     if personne_vivant_seule.combinaison_annexe_b_confirmee:
@@ -1908,6 +1910,16 @@ def construire_trace_calcul_fiscal_2025(
         for ligne_audit in audit:
             lignes = _inserer_ligne_avant(lignes, "Impôt fédéral de base", ligne_audit)
 
+    if estimation.achat_habitation_quebec.reclamer:
+        ra = estimation.resultat_achat_quebec
+        for libelle, montant, formule in (
+            ("Achat habitation — plafond fiscal", ra.plafond_impot_ligne_30, "401 - (359 + 361 + 367) × 14 % - 391 - 397; plancher zéro"),
+            ("Achat habitation — disponible partagé", ra.disponible_ligne_37, "1400 - crédits 396 demandés ailleurs pour la même habitation"),
+            ("Achat habitation Québec — ligne 396", ra.credit_ligne_396, "Minimum des deux plafonds TP-752.HA, non remboursable"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "ACHAT HABITATION QUÉBEC", libelle,
+                estimation.achat_habitation_quebec.reference_habitation + "; " + estimation.achat_habitation_quebec.source
+                + "; RQ TP-752.HA 2025; validation comptable confirmée", formule, montant),)
     rq = estimation.resultat_interets_quebec
     if rq.disponible_ligne_52:
         for libelle, montant, formule in (
