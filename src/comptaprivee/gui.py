@@ -4647,6 +4647,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 p = TransfertConjointFederal2025(activer=True, beneficiaire=client_fiscal.get().strip(), dossier_conjoint_json=instantane[0], source=source.get().strip(),
                     **{nom: v.get() for nom, v in confirmations.items()})
                 r = calculer_transfert_conjoint_2025(p, beneficiaire=client_fiscal.get())
+                from .tax_federal_caregiver_child_2025 import verifier_attribution_enfants_conjoints_30500_2025
+                verifier_attribution_enfants_conjoints_30500_2025(aidant_enfant_federal_courant, r)
                 return p, r
             def calculer_apercu():
                 try:

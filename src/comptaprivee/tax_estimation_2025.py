@@ -9,7 +9,7 @@ d'estimation soumise à validation comptable.
 """
 
 from .tax_rules_2025 import arrondir_cent
-from .tax_federal_caregiver_child_2025 import verifier_combinaison_30400_30500_2025
+from .tax_federal_caregiver_child_2025 import verifier_combinaison_30400_30500_2025, verifier_attribution_enfants_conjoints_30500_2025
 from .tax_family_workers_benefit_2025 import verifier_concordance_act_familial_2025
 from .tax_family_medical_2025 import (FraisMedicauxFamilleFederaux2025, ResultatMedicalFamilial2025, calculer_medical_familial_2025, lignes_medical_familial_2025, verifier_combinaison_medicale_famille)
 from .tax_disability_transfer_2025 import (TransfertsHandicap2025, ResultatTransfertsHandicap2025, calculer_transferts_handicap_2025)
@@ -1407,8 +1407,7 @@ def calculer_estimation_fiscale_2025(
         aidant_enfant_federal_effectif,
     )
     if conjoint.activer:
-        if resultat_conjoint.enfant_30500 and aidant_enfant_federal_effectif.reclamer_montant:
-            raise ValueError("Deux montants 30500 dans le couple : l'identification de plusieurs enfants n'est pas encore prise en charge.")
+        verifier_attribution_enfants_conjoints_30500_2025(aidant_enfant_federal_effectif, resultat_conjoint)
         for valeur in (resultat_conjoint.revenu_beneficiaire_declare_45200, resultat_conjoint.revenu_beneficiaire_declare_act):
             if valeur is not None and valeur != revenu.revenu_net_federal:
                 raise ValueError("Le revenu du bénéficiaire déclaré dans les prestations familiales du conjoint diffère du revenu recalculé.")

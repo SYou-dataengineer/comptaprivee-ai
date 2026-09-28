@@ -355,3 +355,18 @@ def details_enfants_30500_2025(profil):
         f"Source : {e.profil.source_enfant}. Deux parents toute l'année; attribution unique, "
         "infirmité, aide accrue, preuve médicale et validation comptable confirmées."
         for e in profil.enfants_detailles)
+
+
+def verifier_attribution_enfants_conjoints_30500_2025(profil, resultat_conjoint):
+    """5AB : deux demandes 30500 doivent viser des enfants identifiés distincts."""
+    valider_aidant_naturel_enfant_moins18_federal_2025(profil)
+    if not profil.reclamer_montant or not resultat_conjoint.enfant_30500:
+        return
+    if not profil.enfants_detailles or not resultat_conjoint.enfants_30500:
+        raise ValueError("Deux montants 30500 : utiliser les fiches identifiées des enfants dans les deux dossiers.")
+    normaliser = lambda s: " ".join(s.casefold().split())
+    references = {normaliser(ref) for ref, nom, naissance in resultat_conjoint.enfants_30500}
+    identites = {(normaliser(nom), naissance) for ref, nom, naissance in resultat_conjoint.enfants_30500}
+    for enfant in profil.enfants_detailles:
+        if normaliser(enfant.reference) in references or (normaliser(enfant.nom), enfant.naissance) in identites:
+            raise ValueError("Même enfant 30500 réclamé dans les deux dossiers du couple : attribution unique obligatoire.")

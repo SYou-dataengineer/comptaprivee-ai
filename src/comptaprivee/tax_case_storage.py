@@ -4239,6 +4239,7 @@ def sauvegarder_dossier_fiscal(
         _frais_medicaux_depuis_dict(contenu["frais_medicaux"]), act.present and not act.famille.activer)
     _verifier_prestations_familiales_stockees(contenu, dossier, medical_familial)
     _verifier_enfant_5v_stocke(contenu)
+    _verifier_enfants_conjoints_5ab_stockes(contenu, dossier)
     temporaire = chemin.with_suffix(chemin.suffix + ".tmp")
     try:
         temporaire.write_text(json.dumps(contenu, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -4590,6 +4591,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
     verifier_combinaison_medicale_famille(medical_familial, frais_medicaux, act.present and not act.famille.activer)
     _verifier_prestations_familiales_stockees(contenu, dossier, medical_familial)
     _verifier_enfant_5v_stocke(contenu)
+    _verifier_enfants_conjoints_5ab_stockes(contenu, dossier)
     handicap_transfere = transferts_handicap_depuis_dict(contenu.get("transferts_handicap"))
     calculer_transferts_handicap_2025(handicap_transfere,
         beneficiaire=dossier.client, annee=dossier.annee_fiscale,
@@ -4692,3 +4694,13 @@ def _verifier_enfant_5v_stocke(contenu):
     aidant = _aidant_enfant_federal_depuis_dict(contenu.get("aidant_enfant_federal"))
     if personne.enfant_infirmite_ligne30500 or aidant.enfant_reclame_30400 or aidant.enfants_detailles:
         verifier_combinaison_30400_30500_2025(personne, aidant)
+
+
+def _verifier_enfants_conjoints_5ab_stockes(contenu, dossier):
+    from .tax_federal_caregiver_child_2025 import verifier_attribution_enfants_conjoints_30500_2025
+    aidant = _aidant_enfant_federal_depuis_dict(contenu.get("aidant_enfant_federal"))
+    if not aidant.reclamer_montant or not contenu.get("transfert_conjoint", {}).get("activer", False):
+        return
+    conjoint = _transfert_conjoint_depuis_dict(contenu.get("transfert_conjoint"), dossier.client)
+    resultat = calculer_transfert_conjoint_2025(conjoint, beneficiaire=dossier.client)
+    verifier_attribution_enfants_conjoints_30500_2025(aidant, resultat)

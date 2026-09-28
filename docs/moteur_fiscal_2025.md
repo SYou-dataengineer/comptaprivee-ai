@@ -2571,8 +2571,8 @@ Périmètre logiciel actuel : deux dossiers 2025 résidents du Canada toute
 l'année et du Québec en fin d'année, sans décès/faillite ni traitement
 spécialisé omis. L'absence de rupture pendant au moins 90 jours comprenant
 le 31 décembre doit être confirmée selon l'annexe 2. Les transferts 32600
-imbriqués/réciproques, les doubles montants 30500 nécessitant d'identifier
-plusieurs enfants et les combinaisons avec les profils individuels ACT ou
+imbriqués/réciproques, les doubles montants 30500 sans fiches identifiées
+(enfants distincts désormais couverts par 5AB) et les combinaisons avec les profils individuels ACT ou
 supplément médical restent refusés. Ces limites logicielles ne constituent
 pas des exclusions fiscales générales. Les autres limites du moteur restent
 appliquées aux deux dossiers. Les combinaisons familiales plus générales
@@ -3369,7 +3369,7 @@ Périmètre logiciel : une seule personne adulte, admissibilité du profil
 30450 existant confirmée, sans pension alimentaire ni réclamation 30300/30400
 pour la même personne. Enfants/petits-enfants : exception de résidence de
 118(6)a); les autres liens nécessitent la résidence au Canada dans l'année.
-Plusieurs personnes à charge restent à intégrer dans un bloc distinct.
+Les fiches de plusieurs personnes à charge ont ensuite été intégrées par 5X.
 
 Calcul : plafond = min(8601, max(28798 - revenu 23600, 0)).
 Part du dossier = plafond - somme attribuée aux autres soutiens.
@@ -3566,3 +3566,85 @@ Trace et PDF : dépenses brutes, plafond, demandes ailleurs, solde et sources.
 Validation ciblée moteur, ancien profil, stockage, GUI, trace et PDF :
 **109 passed, 5 warnings**. PDF synthétique vérifié visuellement.
 Suite complète : **5655 passed, 8 warnings** (195,84 s), avec `--capture=sys`.
+
+### Bloc 5AB — enfants distincts à 30500 et transfert du conjoint à 32600
+
+Sources : [ARC, ligne 30500, année 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-30499-30500-canada-caregiver-infirm-children-under-18-years.html),
+[annexe 2 Québec 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s2/5005-s2-25e.pdf).
+Un enfant ne peut être réclamé qu'une fois à 30500; un montant inutilisé peut
+être transféré au conjoint selon l'annexe 2. Le refus historique de deux
+demandes 30500 a été reproduit avec deux enfants distincts, puis remplacé par
+un contrôle des fiches nominatives 5Y dans les deux dossiers.
+
+Périmètre : enfants biologiques/adoptés, infirmité et preuve validées, vivant
+avec leurs deux parents toute l'année, sans garde partagée ni pension. Les
+conditions 5K du couple et de l'autorisation demeurent obligatoires. Lorsque
+les deux dossiers réclament 30500, ils doivent utiliser les fiches identifiées;
+une référence commune ou une identité commune (nom normalisé et naissance)
+bloquent le calcul, même si le solde transférable est nul. Le comptable confirme
+les identités réelles, l'attribution unique et les dossiers externes. Les profils
+historiques sans identité restent utilisables lorsqu'un seul conjoint réclame
+30500, selon leur contrat antérieur; ils ne permettent pas deux demandes.
+
+Les confirmations historiques d'absence de transfert décrivent le dossier
+personnel **avant** l'autorisation séparée 5K, comme prévu depuis ce bloc.
+Chaque enfant propre donne 2687 $ à 30500; les enfants du conjoint alimentent
+la ligne 2 de son annexe 2, puis son solde inutilisé à 32600. Aucun enfant du
+conjoint n'est ajouté une seconde fois à la ligne 30500 du bénéficiaire.
+Pour un seul enfant chez le conjoint, avec uniquement des intérêts et le
+montant personnel de 16129 $ : revenu de 10000 $ → transfert de 2687 $;
+17000 $ → réduction de 871 $ et transfert de 1816 $; 18816 $ → transfert nul.
+Les autres montants de l'annexe 2 restent traités par sa formule complète.
+
+JSON : les fiches brutes dans l'instantané existant sont conservées; aucun
+nouveau résultat dérivé persisté. Vérification de l'attribution aussi à la
+sauvegarde et au rechargement sans estimation. GUI : listes 5Y et import 5K
+réutilisés, refus du doublon dès l'aperçu/application, noms et dates du conjoint
+dans l'aperçu, la trace et le PDF. Les modifications de source révoquent toujours
+les confirmations; une correction chez le conjoint impose sa réimportation.
+Revenus et Québec inchangés; 33500/33800/34990/35000 et 42900/40500 recalculés.
+
+Validation ciblée, dont attributions inversées, transferts maximal/partiel/nul,
+plusieurs enfants, doublons, anciens profils, JSON injecté, GUI et PDF :
+**123 passed, 5 warnings**. PDF synthétique vérifié visuellement.
+Suite complète : **5674 passed, 8 warnings** (180,21 s), avec `--capture=sys`.
+
+### Audit de fin du périmètre courant de la Priorité 5
+
+L'inventaire d'ouverture et les audits intermédiaires ci-dessus décrivent
+l'historique. Les familles prévues à la Priorité 5 ont désormais un parcours
+calculé, persisté et vérifié pour les profils bornés décrits dans chaque bloc :
+
+| Famille | Livraison |
+| --- | --- |
+| Calcul fédéral complet des crédits, 34990 et hauts revenus | 5A, 5J |
+| Prêts étudiants, formation, scolarité et reports/transferts | 5B, 5C, 5F à 5H, 5K |
+| Dons monétaires et reports | 5I, 5J |
+| ACT et supplément médical, individuels et familiaux | 5D, 5E, 5T, 5U et arbitrage étudiant |
+| Autres crédits documentés : bénévoles, adoption, contributions politiques, fonds, éducateur, rénovation multigénérationnelle | 5L à 5Q |
+| Handicap et transferts; frais médicaux familiaux | 5R, 5S |
+| Combinaisons, personnes à charge multiples et partage des crédits personnels | 5V à 5AB |
+
+Les anciens blocages de première tranche ont été retirés de l'orchestrateur
+par 5A; les anciennes fonctions de compatibilité ne pilotent plus ce refus.
+Les refus globaux du partage 30450, 31270, 31285 et des deux demandes 30500
+ont été remplacés dans les nouveaux parcours par les contrôles documentés.
+Recherche des mentions TODO, non pris en charge, garde-fou, provisoire,
+hors périmètre et à intégrer effectuée : les mentions historiques ne prouvent
+pas une absence actuelle de fonctionnalité; l'entrée 5W devenue obsolète est
+corrigée pour renvoyer à 5X.
+
+Cette clôture des familles courantes ne signifie pas une T1 universelle.
+Les contextes avancés encore refusés comprennent notamment garde partagée,
+pensions alimentaires et changements d'union dans les crédits familiaux,
+transferts 32600 réciproques, certains profils de dons non monétaires,
+plusieurs logements pour le partage 31285, résidence partielle, décès/faillite
+et combinaisons de revenus hors des parcours existants. Ils restent des limites
+logicielles explicites à reprendre dans l'audit des profils avancés (Priorité 7),
+sans être présentés comme des interdictions fiscales. Aucune garde nécessaire
+n'a été retirée pour déclarer la suite verte.
+
+La suite complète 5AB ci-dessus valide cet état. La Priorité 6 prend la suite :
+annexe B combinée, puis autres familles de crédits Québec prévues à la roadmap,
+avec leurs propres sources Revenu Québec. Le produit n'est pas encore déclaré
+prêt pour la version 1.0 : Priorités 6 et 7 et audit global restent à réaliser.

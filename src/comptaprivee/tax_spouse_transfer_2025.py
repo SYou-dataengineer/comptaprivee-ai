@@ -67,6 +67,7 @@ class ResultatTransfertConjoint2025:
     ciph_conjoint_act_confirme: bool = False
     attribution_enfants_act: tuple[tuple[str, str], tuple[str, str]] | None = None
     etudiants_act: tuple[bool, bool] | None = None
+    enfants_30500: tuple[tuple[str, str, str], ...] = ()
 
 
 def _montant(valeur, nom):
@@ -198,6 +199,7 @@ def calculer_transfert_conjoint_2025(p, *, beneficiaire):
         scolarite_designee=transfert.montant_designe,
     )
     return replace(r, nom_conjoint=conjoint.dossier.client, revenu_net_conjoint=conjoint.revenu.revenu_net_federal,
+        enfants_30500=tuple((e.reference, e.nom, e.naissance) for e in conjoint.aidant_enfant_federal.enfants_detailles),
         revenu_beneficiaire_declare_45200=(max(supp.revenu_net_conjoint, ZERO) if supp.reclamer else None),
         revenu_beneficiaire_declare_act=(max(act.famille.conjoint_revenu_net, ZERO) if act.famille.activer else None),
         travail_beneficiaire_declare_act=(act.famille.conjoint_revenu_travail if act.famille.activer else None),
@@ -220,6 +222,8 @@ def lignes_transfert_conjoint_2025(p, r):
         f"Conjoint : {r.nom_conjoint}; source : {p.source}; validation comptable confirmée",
         "Dossier personnel du conjoint recalculé avant transfert; aucune lecture des pièces sources.",
         f"30100 : {r.age_30100:.2f}; 30500 : {r.enfant_30500:.2f}; 31400 : {r.pension_31400:.2f}; 31600 : {r.handicap_31600:.2f} $",
+        *(f"Enfant à 30500 du conjoint : {ref} — {nom}, naissance {naissance}; attribution au conjoint avant transfert."
+          for ref, nom, naissance in r.enfants_30500),
         f"Scolarité désignée 36000 : {r.scolarite_36000:.2f}; total annexe 2 ligne 6 : {r.total_ligne_6:.2f} $",
         f"Équivalent imposable ligne 7 (26000 ou impôt brut / 14,5 %) : {r.equivalent_ligne_7:.2f} $",
         f"30000 : {r.personnel_30000:.2f}; T1 Québec ligne 100 : {r.base_ligne_100:.2f}; 32300 : {r.scolarite_32300:.2f} $",

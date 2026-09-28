@@ -2032,6 +2032,11 @@ def construire_trace_calcul_fiscal_2025(
 
     if estimation.transfert_conjoint.activer:
         r = estimation.resultat_transfert_conjoint
+        for reference, nom, naissance in r.enfants_30500:
+            lignes += (_ligne(len(lignes) + 1, "ENFANTS DU CONJOINT — BLOC 5AB",
+                "Enfant 30500 du conjoint — " + nom, estimation.transfert_conjoint.source,
+                f"Référence {reference}; naissance {naissance}; attribution au conjoint avant annexe 2; "
+                "enfant distinct de ceux réclamés à 30500 par le bénéficiaire", Decimal("2687")),)
         for libelle, montant, formule in (
             ("Conjoint — annexe 2 ligne 6", r.total_ligne_6, "30100 + 30500 + 31400 + 31600 + scolarité désignée 36000"),
             ("Conjoint — équivalent ligne 7", r.equivalent_ligne_7, "26000 si <= 57375; sinon impôt brut / 14,5 %"),
