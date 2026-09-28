@@ -8,6 +8,7 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_volunteers_2025 import Benevoles2025, ResultatBenevoles2025, calculer_benevoles_2025, lignes_benevoles_2025
 from .tax_spouse_transfer_2025 import (TransfertConjointFederal2025, ResultatTransfertConjoint2025, calculer_transfert_conjoint_2025, lignes_transfert_conjoint_2025)
 from .tax_tuition_received_2025 import TransfertsScolariteRecus2025, valider_transferts_scolarite_recus_2025, montant_ligne_32400_2025, lignes_transferts_scolarite_recus_2025
 from .tax_donation_carryforward_2025 import ResultatReportsDonsFederaux2025, calculer_reports_dons_federaux_2025, lignes_reports_dons_federaux_2025
@@ -339,6 +340,8 @@ class EstimationFiscale2025:
     resultat_supplement_medical: ResultatSupplementMedical2025 = ResultatSupplementMedical2025()
     resultat_reports_scolarite: ResultatReportsScolariteFederaux2025 = ResultatReportsScolariteFederaux2025()
     resultat_reports_dons: ResultatReportsDonsFederaux2025 = ResultatReportsDonsFederaux2025()
+    benevoles: Benevoles2025 = Benevoles2025()
+    resultat_benevoles: ResultatBenevoles2025 = ResultatBenevoles2025()
     transfert_conjoint: TransfertConjointFederal2025 = TransfertConjointFederal2025()
     resultat_transfert_conjoint: ResultatTransfertConjoint2025 = ResultatTransfertConjoint2025()
     transferts_scolarite_recus: TransfertsScolariteRecus2025 = TransfertsScolariteRecus2025()
@@ -411,6 +414,7 @@ def calculer_estimation_fiscale_2025(
     profil_pensions: ProfilPensions2025 = ProfilPensions2025(),
     psv_confirme: bool = False,
     rrq_rpc_confirme: bool = False,
+    benevoles: Benevoles2025 | None = None,
     transfert_conjoint: TransfertConjointFederal2025 | None = None,
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
@@ -423,6 +427,8 @@ def calculer_estimation_fiscale_2025(
             "uniquement pour l'année 2025."
         )
 
+    benevoles_effectifs = benevoles if benevoles is not None else Benevoles2025()
+    resultat_benevoles = calculer_benevoles_2025(benevoles_effectifs, dossier)
     conjoint = transfert_conjoint if transfert_conjoint is not None else TransfertConjointFederal2025()
     resultat_conjoint = calculer_transfert_conjoint_2025(conjoint, beneficiaire=dossier.client)
     scolarite_recue = valider_transferts_scolarite_recus_2025(
@@ -624,6 +630,8 @@ def calculer_estimation_fiscale_2025(
         prestations_rrq_rpc = consolider_prestations_rrq_rpc_2025(dossier, rrq_rpc_confirme)
     sans_emploi = (parcours_interets_dividendes or parcours_etranger or parcours_capital or parcours_dividendes or parcours_interets or parcours_remplacement or parcours_retraits or parcours_pensions or parcours_psv or parcours_rrq_rpc) and not any(d.type_document in {"T4", "RL-1"} for d in dossier.donnees_validees)
     base = base_sans_emploi_rrq_rpc_2025(dossier) if sans_emploi else consolider_base_fiscale_emploi_2025(dossier)
+    if resultat_benevoles.reintegration_10100:
+        base = replace(base, revenu_emploi_federal=base.revenu_emploi_federal + resultat_benevoles.reintegration_10100)
 
     cotisations_excedentaires_effectives = (
         cotisations_excedentaires
@@ -1263,6 +1271,7 @@ def calculer_estimation_fiscale_2025(
         ("31200", federal.assurance_emploi_admissible),
         ("31205", federal.rqap_admissible),
         ("31260", federal.montant_canadien_emploi),
+        *(((resultat_benevoles.ligne_credit, resultat_benevoles.base_credit),) if resultat_benevoles.ligne_credit else ()),
         ("30100", montant_age_federal_2025(credits_federaux_age_pension_effectifs)),
         ("31400", montant_pension_federal_2025(credits_federaux_age_pension_effectifs)),
         ("30300", montant_ligne_30300_2025(montant_conjoint_federal_effectif)),
@@ -1475,6 +1484,7 @@ def calculer_estimation_fiscale_2025(
         dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
     )
     return EstimationFiscale2025(
+        benevoles=benevoles_effectifs, resultat_benevoles=resultat_benevoles,
         transfert_conjoint=conjoint, resultat_transfert_conjoint=resultat_conjoint,
         resultat_reports_dons=reports_dons,
         resultat_reports_scolarite=reports_scolarite,
@@ -1647,6 +1657,7 @@ def formater_estimation_fiscale_2025(
         ),
         *lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons),
         *lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite),
+        *lignes_benevoles_2025(estimation.benevoles, estimation.resultat_benevoles),
         *lignes_transfert_conjoint_2025(estimation.transfert_conjoint, estimation.resultat_transfert_conjoint),
         *lignes_transferts_scolarite_recus_2025(estimation.transferts_scolarite_recus),
         *lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs),

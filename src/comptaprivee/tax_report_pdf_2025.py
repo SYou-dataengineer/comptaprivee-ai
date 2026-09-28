@@ -1,5 +1,6 @@
 """Export PDF local du rapport d'estimation fiscale 2025."""
 
+from .tax_volunteers_2025 import lignes_benevoles_2025
 from .tax_spouse_transfer_2025 import lignes_transfert_conjoint_2025
 from .tax_donation_carryforward_2025 import lignes_reports_dons_federaux_2025
 from .tax_donations_2025 import lignes_credits_dons_2025
@@ -1977,6 +1978,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons))
     lignes.extend(lignes_credits_dons_2025(estimation.dons_bienfaisance,
         estimation.revenu.revenu_imposable_federal, estimation.revenu.revenu_imposable_quebec))
+    lignes.extend(lignes_benevoles_2025(estimation.benevoles, estimation.resultat_benevoles))
     lignes.extend(lignes_transfert_conjoint_2025(estimation.transfert_conjoint, estimation.resultat_transfert_conjoint))
     lignes.extend(lignes_transferts_scolarite_recus_2025(estimation.transferts_scolarite_recus))
     lignes.extend(lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs))

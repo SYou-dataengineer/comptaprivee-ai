@@ -10,6 +10,7 @@ from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, CONFIRMATIONS_REPORTS_DONS
+from .tax_volunteers_2025 import (Benevoles2025, ActiviteBenevole2025, CHOIX_BENEVOLES, CONFIRMATIONS_BENEVOLES, valider_benevoles_2025, valider_activites_benevoles_2025)
 from .tax_spouse_transfer_2025 import (TransfertConjointFederal2025, CONFIRMATIONS_TRANSFERT_CONJOINT, instantane_conjoint_2025, calculer_transfert_conjoint_2025, lignes_transfert_conjoint_2025)
 from .tax_tuition_received_2025 import (
     TransfertsScolariteRecus2025, DesignationScolariteRecue2025,
@@ -2514,6 +2515,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_demenagement_courants = FraisDemenagement2025()
         pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
         autres_deductions_courantes = AutresDeductions2025()
+        benevoles_courants = Benevoles2025()
         transfert_conjoint_courant = TransfertConjointFederal2025()
         transferts_scolarite_recus_courants = TransfertsScolariteRecus2025()
         allocation_travailleurs_courante = AllocationTravailleurs2025()
@@ -3789,6 +3791,133 @@ class ApplicationComptaPrivee(tk.Tk):
 
         # --- Priorité 5B : GUI intérêts sur prêts étudiants ---
 
+        def ouvrir_benevoles_5l_2025():
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Services bénévoles — 31220 / 31240 / 10105")
+            dimensionner_fenetre(dialogue, 1050, 900)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(1, weight=1)
+            ttk.Label(cadre, text="Choisir l'exonération OU un crédit. Pour un crédit : au moins 200 heures admissibles "
+                "combinées et des heures dans l'activité choisie; la case 87 validée est ajoutée à 10100. "
+                "Les heures saisies doivent provenir des certificats vérifiés. "
+                "Les organismes non admissibles et services rémunérés similaires sont exclus. "
+                "Aucune admissibilité détaillée n'est déduite automatiquement.", wraplength=920).grid(row=0, column=0, columnspan=2, sticky="ew")
+            choix = tk.StringVar(value=benevoles_courants.choix)
+            source = tk.StringVar(value=benevoles_courants.source)
+            ttk.Label(cadre, text="Choix fiscal (exoneration / pompiers / sauvetage)").grid(row=1, column=0, sticky="w")
+            ttk.Combobox(cadre, name="choix_5l", textvariable=choix, values=CHOIX_BENEVOLES, state="readonly").grid(row=1, column=1, sticky="ew")
+            ttk.Label(cadre, text="Source du choix et des feuillets vérifiés").grid(row=2, column=0, sticky="w")
+            ttk.Entry(cadre, name="source_5l", textvariable=source).grid(row=2, column=1, sticky="ew")
+            activites = list(benevoles_courants.activites)
+            tableau = ttk.Treeview(cadre, name="activites_5l", columns=("organisme", "nature", "heures"), show="headings", height=4)
+            for nom in ("organisme", "nature", "heures"):
+                tableau.heading(nom, text=nom.capitalize())
+            tableau.grid(row=3, column=0, columnspan=2, sticky="ew")
+            variables = {}
+            for row, (nom, libelle) in enumerate((("organisme", "Service / organisme"), ("nature", "Nature du service"),
+                    ("heures", "Heures certifiées"), ("source", "Source du certificat / relevé d'heures")), 4):
+                v = tk.StringVar()
+                variables[nom] = v
+                ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w")
+                w = (ttk.Combobox(cadre, name=nom + "_activite_5l", textvariable=v, values=("pompiers", "sauvetage"), state="readonly")
+                    if nom == "nature" else ttk.Entry(cadre, name=nom + "_activite_5l", textvariable=v))
+                w.grid(row=row, column=1, sticky="ew")
+            admissible = tk.BooleanVar()
+            remunere = tk.BooleanVar()
+            ttk.Checkbutton(cadre, name="admissible_5l", text="Service incendie admissible / organisme de sauvetage reconnu, vérifié sur pièces", variable=admissible).grid(row=8, column=0, columnspan=2, sticky="w")
+            ttk.Checkbutton(cadre, name="remunere_5l", text="Même organisme : services similaires également rémunérés (heures exclues)", variable=remunere).grid(row=9, column=0, columnspan=2, sticky="w")
+            confirmations = {}
+            for row, (nom, libelle) in enumerate(CONFIRMATIONS_BENEVOLES.items(), 11):
+                v = tk.BooleanVar(value=getattr(benevoles_courants, nom))
+                confirmations[nom] = v
+                ttk.Checkbutton(cadre, name=nom + "_5l", text=libelle, variable=v).grid(row=row, column=0, columnspan=2, sticky="w")
+            selection = [None]
+            modifie = [False]
+            def revoquer(*_):
+                for v in confirmations.values():
+                    v.set(False)
+            def modifier(*_):
+                modifie[0] = True
+                revoquer()
+            choix.trace_add("write", revoquer)
+            source.trace_add("write", revoquer)
+            for v in (*variables.values(), admissible, remunere):
+                v.trace_add("write", modifier)
+            def rafraichir():
+                for iid in tableau.get_children():
+                    tableau.delete(iid)
+                for i, a in enumerate(activites):
+                    tableau.insert("", "end", iid=str(i), values=(a.organisme, a.nature, str(a.heures)))
+            def nouveau():
+                selection[0] = None
+                for v in variables.values():
+                    v.set("")
+                admissible.set(False)
+                remunere.set(False)
+                modifie[0] = False
+            def charger():
+                if not tableau.selection():
+                    return
+                selection[0] = int(tableau.selection()[0])
+                a = activites[selection[0]]
+                for nom, v in variables.items():
+                    v.set(str(getattr(a, nom)))
+                admissible.set(a.organisme_admissible)
+                remunere.set(a.services_similaires_remuneres)
+                modifie[0] = False
+            def enregistrer():
+                try:
+                    a = ActiviteBenevole2025(organisme=variables["organisme"].get().strip(), nature=variables["nature"].get(),
+                        heures=Decimal(variables["heures"].get().strip().replace(",", ".")), source=variables["source"].get().strip(),
+                        organisme_admissible=admissible.get(), services_similaires_remuneres=remunere.get())
+                    lignes = list(activites)
+                    if selection[0] is None:
+                        lignes.append(a)
+                    else:
+                        lignes[selection[0]] = a
+                    valider_activites_benevoles_2025(tuple(lignes))
+                except (ValueError, InvalidOperation) as erreur:
+                    messagebox.showerror("Activité bénévole invalide", str(erreur), parent=dialogue)
+                    return
+                activites[:] = lignes
+                nouveau()
+                rafraichir()
+            def retirer():
+                if tableau.selection():
+                    del activites[int(tableau.selection()[0])]
+                    nouveau()
+                    rafraichir()
+            actions = ttk.Frame(cadre)
+            actions.grid(row=10, column=0, columnspan=2, sticky="ew")
+            for libelle, commande in (("Nouvelle activité", nouveau), ("Modifier la sélection", charger),
+                    ("Enregistrer l'activité", enregistrer), ("Retirer la sélection", retirer)):
+                ttk.Button(actions, text=libelle, command=commande).pack(side="left", padx=4)
+            def appliquer(effacer=False):
+                nonlocal benevoles_courants, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                try:
+                    if not effacer and modifie[0]:
+                        raise ValueError("Enregistrez l'activité modifiée avant d'appliquer.")
+                    p = Benevoles2025() if effacer else Benevoles2025(choix=choix.get(), source=source.get().strip(), activites=tuple(activites),
+                        **{nom: v.get() for nom, v in confirmations.items()})
+                    valider_benevoles_2025(p)
+                    # Les cases 87 seront rapprochées du choix lors du calcul du dossier.
+                except ValueError as erreur:
+                    messagebox.showerror("Services bénévoles invalides", str(erreur), parent=dialogue)
+                    return
+                benevoles_courants = p
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Services bénévoles mis à jour; recalculez l'estimation.")
+                dialogue.destroy()
+            ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer).pack(side="right")
+            ttk.Button(formulaire.actions, text="Effacer le profil", command=lambda: appliquer(True)).pack(side="right", padx=8)
+            ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
+            rafraichir()
+
         def ouvrir_transfert_conjoint_5k_2025():
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Transfert du conjoint — ligne 32600")
@@ -3873,7 +4002,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
 
         def ouvrir_scolarite_recue_5h_2025():
-            nonlocal transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Scolarité reçue — ligne 32400")
             dimensionner_fenetre(dialogue, 1000, 880)
@@ -5055,6 +5184,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    benevoles=benevoles_courants,
                     transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
@@ -13244,6 +13374,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    benevoles=benevoles_courants,
                     transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
@@ -13304,6 +13435,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    benevoles=benevoles_courants,
                     transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
@@ -13394,7 +13526,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
-            nonlocal transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal interets_pret_etudiant_courants
             nonlocal frais_garde_federaux_courants
@@ -13475,6 +13607,7 @@ class ApplicationComptaPrivee(tk.Tk):
             pension_alimentaire_payee_courante = (
                 enregistrement.pension_alimentaire_payee
             )
+            benevoles_courants = enregistrement.benevoles
             transfert_conjoint_courant = enregistrement.transfert_conjoint
             transferts_scolarite_recus_courants = enregistrement.transferts_scolarite_recus
             allocation_travailleurs_courante = enregistrement.allocation_travailleurs
@@ -13815,6 +13948,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    benevoles=benevoles_courants,
                     transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
                     allocation_travailleurs=allocation_travailleurs_courante,
@@ -14304,6 +14438,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(zone_actions, text="Allocation travailleurs 2025 (5E)",
                    command=ouvrir_allocation_travailleurs_5e_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Services bénévoles 2025 (5L)",
+                   command=ouvrir_benevoles_5l_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Transfert conjoint 2025 (5K)",
                    command=ouvrir_transfert_conjoint_5k_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Scolarité reçue 2025 (5H)",

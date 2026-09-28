@@ -465,7 +465,7 @@ def construire_trace_calcul_fiscal_2025(
     lignes = (
         _ligne(
             1, "REVENU FÉDÉRAL", "Revenu d'emploi fédéral",
-            "T4 case 14 — valeur validée",
+            "T4 cases 14 + 87 — crédit bénévoles choisi" if estimation.resultat_benevoles.reintegration_10100 else "T4 case 14 — valeur validée",
             "Somme des revenus d'emploi fédéraux validés",
             base.revenu_emploi_federal,
         ),
@@ -2004,6 +2004,19 @@ def construire_trace_calcul_fiscal_2025(
         ):
             lignes += (_ligne(len(lignes) + 1, "TRANSFERT CONJOINT — BLOC 5K", libelle,
                 estimation.transfert_conjoint.source + " — " + r.nom_conjoint, formule, montant),)
+
+    if estimation.benevoles.choix:
+        r = estimation.resultat_benevoles
+        for libelle, montant, formule in (
+            ("Bénévoles — heures admissibles", r.heures_pompiers + r.heures_sauvetage, "Heures certifiées, organismes admissibles; services rémunérés similaires exclus"),
+            ("Case 87 réintégrée à 10100", r.reintegration_10100, "Crédit choisi : somme des cases 87 ajoutée aux cases 14"),
+            ("Revenu exonéré — ligne 10105", r.exemption_10105, "Exonération choisie : cases 87, sans crédit 31220/31240"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "SERVICES BÉNÉVOLES — BLOC 5L", libelle,
+                estimation.benevoles.source, formule, montant),)
+        if r.ligne_credit:
+            lignes += (_ligne(len(lignes) + 1, "SERVICES BÉNÉVOLES — BLOC 5L", "Base bénévoles — ligne " + r.ligne_credit,
+                estimation.benevoles.source, "6000 $; au moins 200 heures; inclus une fois avant 32300 dans 33500", r.base_credit),)
 
     prochain_ordre = len(lignes) + 1
 

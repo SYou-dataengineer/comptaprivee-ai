@@ -25,6 +25,7 @@ class DonneeFiscaleExtraite:
 
 
 REGLES_T4 = (
+    ("87", "Exemption des volontaires des services d’urgence (choix fiscal requis)", (r"\b(?:case|box|code)\s*87\b",)),
     *( (c, "Allocation de retraite (profil à vérifier)", (rf"\b(?:case|box|code)\s*{c}\b",)) for c in ("66", "67") ),
     ("20", "Cotisations à un RPA", (r"\bcase\s*20\b", r"\bbox\s*20\b")),
     ("74", "RPA services avant 1990 (cotisant)", (r"\b(?:case|box|code)\s*74\b",)),

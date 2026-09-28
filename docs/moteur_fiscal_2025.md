@@ -2588,3 +2588,60 @@ les lignes de l'annexe 2, les réductions, les sources et le résultat 32600.
 Validation ciblée : **240 passed, 5 warnings**. Aucun test existant modifié.
 
 Suite complète 5K : **4252 passed, 8 warnings** (`--capture=sys`).
+
+### Bloc 5L livré — pompiers volontaires et recherche-sauvetage, 31220 / 31240
+
+Sources officielles : [ARC, lignes 31220 et 31240, année 2025](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/sujets/tout-votre-declaration-revenus/declaration-revenus/remplir-declaration-revenus/deductions-credits-depenses/ligne-31220-montant-pompiers-volontaires-ligne-31240-montant-volontaires-recherche-sauvetage.html)
+et [ARC, revenu exonéré des volontaires, ligne 10105](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-10100-employment-income/tax-exempt-income-for-emergency-services-volunteers.html).
+Le montant admissible est **6 000 $**, sur une seule des lignes 31220 ou 31240.
+Il faut au moins 200 heures admissibles combinées de services de pompier
+volontaire et de recherche-sauvetage, avec des services dans l'activité choisie.
+Les heures auprès d'un organisme où des services similaires sont également
+rémunérés sont exclues; l'admissibilité du service ou de l'organisme doit être
+vérifiée. Les heures proviennent des certificats du chef, de son délégué ou
+du responsable compétent; le moteur ne classe pas automatiquement les tâches
+ni ne détermine l'admissibilité détaillée des heures.
+
+Le choix fiscal est explicite : `exoneration`, `pompiers` ou `sauvetage`.
+La case 87 du T4 est extraite, validée sur pièces et rapprochée de la case 14
+du même document. Une case 87 positive sans choix est refusée. Montants non
+finis, négatifs, hors cents, supérieurs à 1 000 $ par employeur admissible,
+doublons, documents absents et valeurs non validées sont refusés.
+Avec l'exonération, la case 87 va à 10105 et aucun crédit n'est appliqué.
+Avec un crédit, toutes les cases 87 sont ajoutées une seule fois aux revenus
+d'emploi 10100 et 10105 est nul : aucun double avantage.
+
+La réintégration précède les calculs de revenu net, plafonds, réductions et
+crédits. Elle alimente aussi les revenus utilisés pour l'ACT et le supplément
+médical. Les gains assurables/admissibles et retenues restent ceux des feuillets
+validés; ce bloc ne reconstitue pas une paie ni une nouvelle assujettissabilité.
+La base 31220/31240 entre dans 33500 **avant** la scolarité personnelle;
+33800, 34990, 35000 et l'abattement sont recalculés. Le dossier du conjoint
+5K reprend ces lignes dans sa base T1 Québec ligne 100. Aucun revenu, crédit
+ou exonération Québec n'est déduit de la règle fédérale.
+
+Le profil `benevoles` conserve le choix, la source, les activités par organisme,
+les heures et leurs certificats ainsi que les confirmations. Les calculs dérivés
+et montants des cases 87 ne sont pas dupliqués dans ce profil : les cases restent
+dans les données fiscales validées. Ancien JSON sans profil = profil vide;
+clés inconnues, types invalides et divergences profil/estimation sont refusés.
+Les anciens dossiers sans ce bloc restent chargeables, y compris d'autres années.
+
+GUI : choix fiscal, liste d'activités, ajout/modification/retrait, contrôles
+d'organisme et de rémunération, confirmations puis application ou effacement.
+Toute modification du choix, de la source ou d'une activité révoque les
+confirmations. Aucun crédit calculé n'est saisi. Trace et PDF montrent les
+heures retenues/exclues, sources, case 87, réintégration 10100, exemption 10105
+et base du crédit. Le revenu fédéral de la trace identifie désormais les
+cases 14 **et** 87 lorsque la réintégration est appliquée.
+
+Périmètre : règles des organismes et certificats vérifiées par le comptable;
+profils d'emploi et combinaisons déjà admis par le moteur. Le garde-fou général
+d'un T4 et d'un RL-1 demeure; les employeurs multiples relèvent de la priorité 7.
+Le crédit Québec des volontaires reste à traiter séparément en priorité 6.
+
+Validation ciblée : **332 passed, 5 warnings**, incluant seuil 199,99/200/200,01,
+services exclus, choix exclusifs, données invalides, extraction, stockage ancien,
+GUI, scolarité, ACT, transfert conjoint, trace et PDF. Aucun test existant modifié.
+
+Suite complète 5L : **4321 passed, 8 warnings** (`--capture=sys`).
