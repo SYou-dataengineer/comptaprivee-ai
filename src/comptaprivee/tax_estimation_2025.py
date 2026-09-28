@@ -9,6 +9,7 @@ d'estimation soumise à validation comptable.
 """
 
 from .tax_rules_2025 import arrondir_cent
+from .tax_multigenerational_renovation_2025 import (RenovationsMultigenerationnelles2025, ResultatMultigenerationnel2025, calculer_multigenerationnel_2025, lignes_multigenerationnelles_2025, multigenerationnel_vers_dict, multigenerationnel_depuis_dict)
 from .tax_educator_supplies_2025 import (FournituresEducateur2025, ResultatFournituresEducateur2025, calculer_fournitures_educateur_2025, lignes_fournitures_educateur_2025)
 from .tax_labour_funds_2025 import (FondsTravailleurs2025, ResultatFondsTravailleurs2025, calculer_fonds_travailleurs_2025, fonds_vers_dict, fonds_depuis_dict, verifier_fonds_conjoint_2025, lignes_fonds_travailleurs_2025)
 from .tax_political_contributions_2025 import (ContributionsPolitiques2025, ResultatContributionsPolitiques2025, calculer_contributions_politiques_2025, lignes_contributions_politiques_2025, politiques_depuis_dict, verifier_recus_politiques_conjoint_2025)
@@ -345,6 +346,8 @@ class EstimationFiscale2025:
     resultat_supplement_medical: ResultatSupplementMedical2025 = ResultatSupplementMedical2025()
     resultat_reports_scolarite: ResultatReportsScolariteFederaux2025 = ResultatReportsScolariteFederaux2025()
     resultat_reports_dons: ResultatReportsDonsFederaux2025 = ResultatReportsDonsFederaux2025()
+    renovations_multigenerationnelles: RenovationsMultigenerationnelles2025 = RenovationsMultigenerationnelles2025()
+    resultat_multigenerationnel: ResultatMultigenerationnel2025 = ResultatMultigenerationnel2025()
     fournitures_educateur: FournituresEducateur2025 = FournituresEducateur2025()
     fonds_travailleurs: FondsTravailleurs2025 = FondsTravailleurs2025()
     contributions_politiques: ContributionsPolitiques2025 = ContributionsPolitiques2025()
@@ -427,6 +430,7 @@ def calculer_estimation_fiscale_2025(
     profil_pensions: ProfilPensions2025 = ProfilPensions2025(),
     psv_confirme: bool = False,
     rrq_rpc_confirme: bool = False,
+    renovations_multigenerationnelles: RenovationsMultigenerationnelles2025 | None = None,
     fournitures_educateur: FournituresEducateur2025 | None = None,
     fonds_travailleurs: FondsTravailleurs2025 | None = None,
     contributions_politiques: ContributionsPolitiques2025 | None = None,
@@ -1485,6 +1489,9 @@ def calculer_estimation_fiscale_2025(
         revenu_net=revenu.revenu_net_federal,
         ligne_33200=montant_frais_medicaux_federal_apres_seuil_2025(frais_medicaux_effectifs, revenu.revenu_net_federal),
     )
+    multigenerationnel = renovations_multigenerationnelles if renovations_multigenerationnelles is not None else RenovationsMultigenerationnelles2025()
+    resultat_multigenerationnel = calculer_multigenerationnel_2025(multigenerationnel, annee=dossier.annee_fiscale,
+        autres_frais_reclames=bool(frais_medicaux_effectifs.montant_admissible_federal or accessibilite_domiciliaire_federale_effective.depenses_admissibles))
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
         federal,
@@ -1493,6 +1500,7 @@ def calculer_estimation_fiscale_2025(
         supplement_medical=supplement_medical.ligne_45200,
         allocation_travailleurs=resultat_act.ligne_45300,
         avances_act=resultat_act.ligne_41500,
+        credit_multigenerationnel=resultat_multigenerationnel.ligne_45355,
         credit_educateur=resultat_educateur.ligne_46900,
         credit_fonds=resultat_fonds.ligne_41400,
         credit_politique=resultat_politiques.ligne_41000,
@@ -1535,6 +1543,7 @@ def calculer_estimation_fiscale_2025(
         dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
     )
     return EstimationFiscale2025(
+        renovations_multigenerationnelles=multigenerationnel, resultat_multigenerationnel=resultat_multigenerationnel,
         fournitures_educateur=educateur, resultat_fournitures_educateur=resultat_educateur,
         fonds_travailleurs=fonds, resultat_fonds_travailleurs=resultat_fonds,
         contributions_politiques=politiques, resultat_contributions_politiques=resultat_politiques,
@@ -1712,6 +1721,7 @@ def formater_estimation_fiscale_2025(
         ),
         *lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons),
         *lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite),
+        *lignes_multigenerationnelles_2025(estimation.renovations_multigenerationnelles, estimation.resultat_multigenerationnel),
         *lignes_fournitures_educateur_2025(estimation.fournitures_educateur, estimation.resultat_fournitures_educateur),
         *lignes_fonds_travailleurs_2025(estimation.fonds_travailleurs, estimation.resultat_fonds_travailleurs, estimation.rapprochement),
         *lignes_contributions_politiques_2025(estimation.contributions_politiques, estimation.resultat_contributions_politiques, estimation.rapprochement),

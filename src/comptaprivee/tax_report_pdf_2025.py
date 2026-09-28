@@ -1,5 +1,6 @@
 """Export PDF local du rapport d'estimation fiscale 2025."""
 
+from .tax_multigenerational_renovation_2025 import lignes_multigenerationnelles_2025
 from .tax_educator_supplies_2025 import (lignes_fournitures_educateur_2025)
 from .tax_labour_funds_2025 import (FondsTravailleurs2025, ResultatFondsTravailleurs2025, calculer_fonds_travailleurs_2025, fonds_vers_dict, fonds_depuis_dict, verifier_fonds_conjoint_2025, lignes_fonds_travailleurs_2025)
 from .tax_political_contributions_2025 import lignes_contributions_politiques_2025
@@ -1982,6 +1983,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons))
     lignes.extend(lignes_credits_dons_2025(estimation.dons_bienfaisance,
         estimation.revenu.revenu_imposable_federal, estimation.revenu.revenu_imposable_quebec))
+    lignes.extend(lignes_multigenerationnelles_2025(estimation.renovations_multigenerationnelles, estimation.resultat_multigenerationnel))
     lignes.extend(lignes_fournitures_educateur_2025(estimation.fournitures_educateur, estimation.resultat_fournitures_educateur))
     lignes.extend(lignes_fonds_travailleurs_2025(estimation.fonds_travailleurs, estimation.resultat_fonds_travailleurs, estimation.rapprochement))
     lignes.extend(lignes_contributions_politiques_2025(estimation.contributions_politiques, estimation.resultat_contributions_politiques, estimation.rapprochement))

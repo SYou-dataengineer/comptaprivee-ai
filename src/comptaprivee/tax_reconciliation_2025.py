@@ -20,6 +20,7 @@ from decimal import Decimal
 
 from .tax_federal_top_up_2025 import montant_decimal_2025
 from .tax_political_contributions_2025 import montant_politique_2025
+from .tax_multigenerational_renovation_2025 import montant_multigenerationnel_2025
 from .tax_educator_supplies_2025 import montant_educateur_2025
 from .tax_labour_funds_2025 import montant_fonds_2025
 from .tax_capital_gains_2025 import GainsCapital2025
@@ -76,6 +77,7 @@ class RapprochementFiscal2025:
     allocation_travailleurs_ligne_45300: Decimal = ZERO
     avances_act_ligne_41500: Decimal = ZERO
     credit_politique_ligne_41000: Decimal = ZERO
+    credit_multigenerationnel_ligne_45355: Decimal = ZERO
     credit_educateur_ligne_46900: Decimal = ZERO
     credit_fonds_ligne_41400: Decimal = ZERO
 
@@ -159,6 +161,7 @@ def calculer_rapprochement_fiscal_2025(
     allocation_travailleurs: Decimal = ZERO,
     avances_act: Decimal = ZERO,
     credit_politique: Decimal = ZERO,
+    credit_multigenerationnel: Decimal = ZERO,
     credit_educateur: Decimal = ZERO,
     credit_fonds: Decimal = ZERO,
 ) -> RapprochementFiscal2025:
@@ -171,6 +174,7 @@ def calculer_rapprochement_fiscal_2025(
     credit_politique = montant_politique_2025(credit_politique, "Crédit politique 41000")
     if credit_politique > Decimal(650):
         raise ValueError("Le crédit politique 41000 ne peut pas dépasser 650 $.")
+    credit_multigenerationnel = montant_multigenerationnel_2025(credit_multigenerationnel, "Crédit multigénérationnel 45355")
     credit_educateur = montant_educateur_2025(credit_educateur, "Crédit éducateur 46900")
     if credit_educateur > Decimal(250):
         raise ValueError("Le crédit éducateur ne peut dépasser 250 $.")
@@ -241,6 +245,7 @@ def calculer_rapprochement_fiscal_2025(
         + credit_formation
         + supplement_medical
         + allocation_travailleurs
+        + credit_multigenerationnel
         + credit_educateur
         - impot_total
     )
@@ -393,6 +398,7 @@ def calculer_rapprochement_fiscal_2025(
         allocation_travailleurs_ligne_45300=allocation_travailleurs,
         avances_act_ligne_41500=avances_act,
         credit_politique_ligne_41000=credit_politique,
+        credit_multigenerationnel_ligne_45355=credit_multigenerationnel,
         credit_educateur_ligne_46900=credit_educateur,
         credit_fonds_ligne_41400=credit_fonds,
         client=base.client,

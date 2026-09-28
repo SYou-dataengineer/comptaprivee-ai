@@ -2030,6 +2030,19 @@ def construire_trace_calcul_fiscal_2025(
             lignes = _inserer_ligne_avant(lignes, "Impôt fédéral après abattement",
                 _ligne(0, "CONTRIBUTIONS POLITIQUES — BLOC 5N", libelle, p.source, formule, montant))
 
+    if estimation.renovations_multigenerationnelles.renovations:
+        p, r = estimation.renovations_multigenerationnelles, estimation.resultat_multigenerationnel
+        for projet, calcul in zip(p.renovations, r.renovations):
+            lignes += (_ligne(len(lignes) + 1, "RÉNOVATION MULTIGÉNÉRATIONNELLE — BLOC 5Q",
+                projet.logement + " — " + projet.unite, projet.source,
+                f"min({calcul.depenses_nettes}, 50000 - {calcul.autres_demandes})", calcul.base_retenue),)
+        for libelle, montant, formule in (
+            ("Base multigénérationnelle — 45354", r.ligne_45354, "Somme des bases retenues par rénovation après partage"),
+            ("Crédit multigénérationnel remboursable — 45355", r.ligne_45355, "45354 × 14,5 %; ajouté une fois aux paiements sans plafond d'impôt"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "RÉNOVATION MULTIGÉNÉRATIONNELLE — BLOC 5Q", libelle,
+                "; ".join(x.source for x in p.renovations), formule, montant),)
+
     if estimation.fournitures_educateur.depenses:
         p, r = estimation.fournitures_educateur, estimation.resultat_fournitures_educateur
         for libelle, montant, formule in (
@@ -2102,10 +2115,10 @@ def construire_trace_calcul_fiscal_2025(
                    if final.remboursement_estime else
                    "Impôt total incluant 41500 - retenues - remboursements cotisations - crédits 45200/45300/45350")
 
-    if final.credit_educateur_ligne_46900:
-        formule = ("Retenues + remboursements cotisations + crédits 45200/45300/45350/46900 - impôt total incluant 41500"
+    if final.credit_educateur_ligne_46900 or final.credit_multigenerationnel_ligne_45355:
+        formule = ("Retenues + remboursements cotisations + crédits 45200/45300/45350/45355/46900 - impôt total incluant 41500"
                    if final.remboursement_estime else
-                   "Impôt total incluant 41500 - retenues - remboursements cotisations - crédits 45200/45300/45350/46900")
+                   "Impôt total incluant 41500 - retenues - remboursements cotisations - crédits 45200/45300/45350/45355/46900")
 
     lignes += (
         _ligne(

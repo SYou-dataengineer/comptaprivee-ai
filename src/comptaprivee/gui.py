@@ -10,6 +10,8 @@ from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, CONFIRMATIONS_REPORTS_DONS
+from .gui_multigenerational_renovation_2025 import ouvrir_multigenerationnel_2025
+from .tax_multigenerational_renovation_2025 import RenovationsMultigenerationnelles2025
 from .tax_educator_supplies_2025 import (FournituresEducateur2025, DepenseEducateur2025, CATEGORIES_FOURNITURES, PROVINCES_EMPLOI, CONFIRMATIONS_EDUCATEUR, calculer_fournitures_educateur_2025, valider_depenses_educateur_2025)
 from .tax_labour_funds_2025 import (FondsTravailleurs2025, SituationFonds2025, AcquisitionFonds2025, FONDS_ADMIS, REGIMES_ADMIS, CONFIRMATIONS_FONDS, calculer_fonds_travailleurs_2025, valider_acquisitions_fonds_2025)
 from .tax_political_contributions_2025 import (ContributionsPolitiques2025, RecuPolitique2025, TYPES_BENEFICIAIRES_POLITIQUES, CONFIRMATIONS_POLITIQUES, calculer_contributions_politiques_2025, valider_recus_politiques_2025)
@@ -2519,6 +2521,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_demenagement_courants = FraisDemenagement2025()
         pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
         autres_deductions_courantes = AutresDeductions2025()
+        renovations_multigenerationnelles_courantes = RenovationsMultigenerationnelles2025()
         fournitures_educateur_courantes = FournituresEducateur2025()
         fonds_travailleurs_courants = FondsTravailleurs2025()
         contributions_politiques_courantes = ContributionsPolitiques2025()
@@ -3799,6 +3802,16 @@ class ApplicationComptaPrivee(tk.Tk):
 
         # --- Priorité 5B : GUI intérêts sur prêts étudiants ---
 
+        def ouvrir_renovations_5q_2025():
+            def appliquer(profil):
+                nonlocal renovations_multigenerationnelles_courantes, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                renovations_multigenerationnelles_courantes = profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Rénovations multigénérationnelles mises à jour; recalculez l'estimation.")
+            ouvrir_multigenerationnel_2025(fenetre, renovations_multigenerationnelles_courantes, appliquer)
+
         def ouvrir_fournitures_educateur_5p_2025():
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Fournitures scolaires d'éducateur — 46800 / 46900")
@@ -4630,7 +4643,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
 
         def ouvrir_scolarite_recue_5h_2025():
-            nonlocal fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Scolarité reçue — ligne 32400")
             dimensionner_fenetre(dialogue, 1000, 880)
@@ -5812,6 +5825,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    renovations_multigenerationnelles=renovations_multigenerationnelles_courantes,
                     fournitures_educateur=fournitures_educateur_courantes,
                     fonds_travailleurs=fonds_travailleurs_courants,
                     contributions_politiques=contributions_politiques_courantes,
@@ -14006,6 +14020,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    renovations_multigenerationnelles=renovations_multigenerationnelles_courantes,
                     fournitures_educateur=fournitures_educateur_courantes,
                     fonds_travailleurs=fonds_travailleurs_courants,
                     contributions_politiques=contributions_politiques_courantes,
@@ -14071,6 +14086,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    renovations_multigenerationnelles=renovations_multigenerationnelles_courantes,
                     fournitures_educateur=fournitures_educateur_courantes,
                     fonds_travailleurs=fonds_travailleurs_courants,
                     contributions_politiques=contributions_politiques_courantes,
@@ -14166,7 +14182,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
-            nonlocal fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal interets_pret_etudiant_courants
             nonlocal frais_garde_federaux_courants
@@ -14247,6 +14263,7 @@ class ApplicationComptaPrivee(tk.Tk):
             pension_alimentaire_payee_courante = (
                 enregistrement.pension_alimentaire_payee
             )
+            renovations_multigenerationnelles_courantes = enregistrement.renovations_multigenerationnelles
             fournitures_educateur_courantes = enregistrement.fournitures_educateur
             fonds_travailleurs_courants = enregistrement.fonds_travailleurs
             contributions_politiques_courantes = enregistrement.contributions_politiques
@@ -14592,6 +14609,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    renovations_multigenerationnelles=renovations_multigenerationnelles_courantes,
                     fournitures_educateur=fournitures_educateur_courantes,
                     fonds_travailleurs=fonds_travailleurs_courants,
                     contributions_politiques=contributions_politiques_courantes,
@@ -15088,6 +15106,8 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_allocation_travailleurs_5e_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Contributions politiques 2025 (5N)",
                    command=ouvrir_contributions_politiques_5n_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Rénovations multigénérationnelles 2025 (5Q)",
+                   command=ouvrir_renovations_5q_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Fournitures éducateur 2025 (5P)",
                    command=ouvrir_fournitures_educateur_5p_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Fonds de travailleurs 2025 (5O)",

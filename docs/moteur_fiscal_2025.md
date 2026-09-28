@@ -2884,3 +2884,64 @@ Validation ciblée : **281 passed, 5 warnings**. Aucun test existant affaibli.
 
 Suite complète 5P : **4831 passed, 8 warnings** (`--capture=sys`).
 Rapport PDF synthétique vérifié visuellement.
+
+### Bloc 5Q livré — rénovation multigénérationnelle, 45354 / 45355
+
+Sources normatives : [annexe 12 fédérale 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-s12/5000-s12-25e.pdf),
+[LIR 122.92](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-122.92.html),
+[L.C. 2022, ch. 19, article 19(2)](https://laws-lois.justice.gc.ca/eng/AnnualStatutes/2022_19/FullText.html).
+La disposition d'application et l'annexe 12 confirment la date de début
+de 2023; la date de 2024 figurant sur la page explicative des dépenses ARC
+consultée n'est pas retenue. Les dernières modifications de 122.92 datent
+de 2024; le taux est celui du formulaire **2025**, soit **14,5 %**.
+
+Pour chaque rénovation terminée en 2025, le moteur retient le moindre des
+dépenses personnelles nettes d'aides et de 50 000 $ moins les bases réclamées
+par les autres particuliers admissibles. Les bases sont additionnées à
+45354; 45355 est calculée à 14,5 %, arrondie après cette addition.
+Le plafond est propre à la rénovation, même si plusieurs particuliers
+déterminés occupent le même logement secondaire. Plusieurs rénovations
+distinctes pour des particuliers déterminés distincts sont possibles.
+Le crédit remboursable est ajouté une seule fois aux paiements, sans
+modifier les revenus, les crédits non remboursables ni l'abattement Québec.
+
+Le particulier déterminé doit avoir 65 ans à la fin de 2025, ou au moins
+18 ans et être admissible au CIPH. Son proche occupant doit être adulte
+et avoir un lien familial énuméré avec lui ou son conjoint. Les rôles du
+demandeur, la propriété canadienne, l'occupation attendue sous 12 mois,
+la conformité du nouveau logement secondaire et l'historique d'une seule
+rénovation à vie exigent des pièces et une validation comptable explicite.
+Le logiciel ne détermine pas automatiquement cette admissibilité.
+
+Les dépenses gardent fournisseur, description, date de pièce/contrat,
+date du bien/service, date de paiement, montant, aides et source. Les
+biens/services et paiements doivent être postérieurs à 2022; l'engagement
+doit précéder l'achèvement. Un paiement postérieur à l'achèvement n'est pas
+rejeté pour ce seul motif. La réalité des dates et paiements est validée.
+Un fournisseur lié exige une référence d'inscription TPS/TVH. Une
+attribution de fiducie exige sa notification et sa ventilation documentées.
+Entretien courant, appareils ménagers, divertissement, entretien extérieur,
+financement, travail personnel et autres dépenses non admissibles sont
+exclus avant saisie, sous contrôle comptable.
+
+Les mêmes portions ne peuvent servir aux frais médicaux fédéraux ni à
+l'accessibilité domiciliaire. Avec ces profils actifs, une référence de
+rapprochement est obligatoire. Les factures externes ne sont pas rapprochées
+automatiquement : les doublons connus sont refusés, la ventilation entre
+dossiers reste contrôlée par le comptable. Les autres demandes conservent
+leur base de dépenses et leur accord de partage, sans saisir un crédit calculé.
+
+JSON : profil absent = vide; données brutes seules, reconstruction des
+résultats, refus des clés inconnues, types invalides et montants non finis.
+La divergence entre profil explicite et estimation est refusée.
+Moteur, estimation, stockage, trace, PDF et interface sont raccordés.
+La GUI propose l'ajout, la modification et le retrait de projets, de dépenses
+et de parts d'autres demandeurs. Annuler conserve les données initiales;
+modifier révoque les confirmations. Aucun crédit calculé n'est saisi.
+Validation ciblée : **306 passed, 5 warnings**, complétée par un contrôle
+de lisibilité des confirmations GUI : **1 passed, 5 warnings**.
+Le rapport PDF synthétique a été vérifié visuellement.
+Suite complète : **4993 passed, 8 warnings** (`--capture=sys`), avant
+l'ajout du contrôle de lisibilité précité; celui-ci passe séparément.
+Faillite et décès restent des limites logicielles à traiter en priorité 7,
+et non des exclusions générales de la loi.

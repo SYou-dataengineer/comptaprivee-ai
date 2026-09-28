@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .tax_multigenerational_renovation_2025 import (RenovationsMultigenerationnelles2025, calculer_multigenerationnel_2025, multigenerationnel_vers_dict, multigenerationnel_depuis_dict)
 from .tax_educator_supplies_2025 import (FournituresEducateur2025, calculer_fournitures_educateur_2025, educateur_vers_dict, educateur_depuis_dict)
 from .tax_labour_funds_2025 import (FondsTravailleurs2025, ResultatFondsTravailleurs2025, calculer_fonds_travailleurs_2025, fonds_vers_dict, fonds_depuis_dict, verifier_fonds_conjoint_2025, lignes_fonds_travailleurs_2025)
 from .tax_political_contributions_2025 import ContributionsPolitiques2025, calculer_contributions_politiques_2025, politiques_vers_dict, politiques_depuis_dict
@@ -223,6 +224,7 @@ class DossierFiscalEnregistre:
     profil_pensions: ProfilPensions2025 = ProfilPensions2025()
     psv_confirme: bool = False
     rrq_rpc_confirme: bool = False
+    renovations_multigenerationnelles: RenovationsMultigenerationnelles2025 = RenovationsMultigenerationnelles2025()
     fournitures_educateur: FournituresEducateur2025 = FournituresEducateur2025()
     fonds_travailleurs: FondsTravailleurs2025 = FondsTravailleurs2025()
     contributions_politiques: ContributionsPolitiques2025 = ContributionsPolitiques2025()
@@ -3363,6 +3365,7 @@ def sauvegarder_dossier_fiscal(
     frais_demenagement: FraisDemenagement2025 | None = None,
     pension_alimentaire_payee: PensionAlimentairePayee2025 | None = None,
     autres_deductions: AutresDeductions2025 | None = None,
+    renovations_multigenerationnelles: RenovationsMultigenerationnelles2025 | None = None,
     fournitures_educateur: FournituresEducateur2025 | None = None,
     fonds_travailleurs: FondsTravailleurs2025 | None = None,
     contributions_politiques: ContributionsPolitiques2025 | None = None,
@@ -3546,6 +3549,12 @@ def sauvegarder_dossier_fiscal(
         elif (dons_bienfaisance.reports_federaux.activer or estimation.dons_bienfaisance.reports_federaux.activer) and dons_bienfaisance != estimation.dons_bienfaisance:
             raise ValueError("Le profil dons/reports diffère de l'estimation.")
 
+    multigenerationnel = renovations_multigenerationnelles if renovations_multigenerationnelles is not None else (estimation.renovations_multigenerationnelles if estimation else RenovationsMultigenerationnelles2025())
+    acces_5q = accessibilite_domiciliaire_federale if accessibilite_domiciliaire_federale is not None else (estimation.accessibilite_domiciliaire_federale if estimation else None)
+    calculer_multigenerationnel_2025(multigenerationnel, annee=dossier.annee_fiscale,
+        autres_frais_reclames=bool((frais_medicaux and frais_medicaux.montant_admissible_federal) or (acces_5q and acces_5q.depenses_admissibles)))
+    if estimation is not None and multigenerationnel != estimation.renovations_multigenerationnelles:
+        raise ValueError("Profil multigénérationnel divergent de l'estimation.")
     educateur = fournitures_educateur if fournitures_educateur is not None else (estimation.fournitures_educateur if estimation else FournituresEducateur2025())
     calculer_fournitures_educateur_2025(educateur, annee=dossier.annee_fiscale, deduction_t777=depenses_emploi_effectives.deduction_federale_t777)
     if estimation is not None and educateur != estimation.fournitures_educateur:
@@ -3883,6 +3892,7 @@ def sauvegarder_dossier_fiscal(
         "pension_alimentaire_payee": _pension_alimentaire_payee_vers_dict(
             pension_alimentaire_effective
         ),
+        "renovations_multigenerationnelles": multigenerationnel_vers_dict(multigenerationnel),
         "fournitures_educateur": educateur_vers_dict(educateur),
         "fonds_travailleurs": fonds_vers_dict(fonds),
         "contributions_politiques": politiques_vers_dict(politiques),
@@ -4334,6 +4344,8 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         depenses_emploi=depenses_emploi,
         frais_demenagement=frais_demenagement,
         pension_alimentaire_payee=pension_alimentaire_payee,
+        renovations_multigenerationnelles=multigenerationnel_depuis_dict(contenu.get("renovations_multigenerationnelles"), annee=dossier.annee_fiscale,
+            autres_frais_reclames=bool(frais_medicaux.montant_admissible_federal or accessibilite_domiciliaire_federale.depenses_admissibles)),
         fournitures_educateur=educateur_depuis_dict(contenu.get("fournitures_educateur"), annee=dossier.annee_fiscale, deduction_t777=depenses_emploi.deduction_federale_t777),
         fonds_travailleurs=fonds_depuis_dict(contenu.get("fonds_travailleurs"), client=dossier.client, annee=dossier.annee_fiscale),
         contributions_politiques=politiques_depuis_dict(contenu.get("contributions_politiques"), client=dossier.client, annee=dossier.annee_fiscale),
