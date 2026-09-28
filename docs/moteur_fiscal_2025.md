@@ -1859,3 +1859,48 @@ Contrat technique livré :
 
 Validation ciblée finale avant suite complète : **164 tests réussis**,
 avec **5 avertissements de dépréciation existants** non bloquants.
+
+### Bloc 4F livré — autres déductions simples, ligne 23200 / ligne 250 code 17
+
+Le bloc 4F applique uniquement des montants déjà établis et validés par le
+comptable. Le moteur ne détermine pas automatiquement l'admissibilité détaillée
+d'une catégorie de déduction.
+
+Périmètre livré :
+
+- fédéral : déduction à la ligne 23200;
+- Québec : déduction à la ligne 250, code 17 à la case 249;
+- nature et source documentées séparément pour chaque juridiction concernée;
+- validation comptable obligatoire et confirmation des montants déjà établis;
+- confirmation qu'aucune autre ligne ou aucun bloc spécialisé ne s'applique;
+- application séparée aux revenus net et imposable fédéraux et québécois,
+  avec un plancher à zéro et sans modification du revenu total.
+
+Le pipeline comprend un garde-fou anti-double-comptage de la ligne 23200 :
+un montant fédéral 4F positif est refusé lorsque cette ligne est déjà utilisée
+par les remboursements AE/RQAP ou le bloc des retraits.
+
+Les situations suivantes sont exclues du périmètre 4F simple : remboursements
+AE/RQAP, récupération de prestations sociales à la ligne 23500, retraits
+REER/T3012A, frais juridiques, remboursement de pension alimentaire,
+transferts ou cotisations inutilisées à un régime, soutien aux personnes
+handicapées, montants CELIAPP déjà inclus, abris fiscaux, revenu fractionné
+et autres traitements spécialisés ou déductions disposant d'une ligne ou
+d'un bloc dédié.
+
+Contrat technique livré :
+
+1. profil immuable `AutresDeductions2025` et validation des montants finis
+   et non négatifs, des sources, des natures et des confirmations;
+2. intégration dans l'estimation fiscale après le bloc 4E;
+3. persistance JSON rétrocompatible : un ancien dossier sans
+   `autres_deductions` reçoit un profil vide; validation au rechargement et
+   refus d'une divergence entre le profil sauvegardé et l'estimation;
+4. formulaire GUI dédié, avec révocation des confirmations après modification;
+5. trace de calcul distincte pour la ligne 23200 et la ligne 250 code 17,
+   avec nature et source par juridiction;
+6. rapport PDF présentant les montants, les natures, les sources et les lignes
+   fiscales concernées, dont la case 249;
+7. tests moteur, estimation, trace, stockage, GUI et PDF.
+
+Validation ciblée finale 21g avant suite complète : **176 passed, 5 warnings**.

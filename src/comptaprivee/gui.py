@@ -170,6 +170,10 @@ from .tax_support_payments_2025 import (
     PensionAlimentairePayee2025,
     valider_pension_alimentaire_payee_2025,
 )
+from .tax_other_deductions_2025 import (
+    AutresDeductions2025,
+    valider_autres_deductions_2025,
+)
 from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
@@ -2492,6 +2496,7 @@ class ApplicationComptaPrivee(tk.Tk):
         depenses_emploi_courantes = DepensesEmploi2025()
         frais_demenagement_courants = FraisDemenagement2025()
         pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
+        autres_deductions_courantes = AutresDeductions2025()
         cotisations_syndicales_courantes = (
             CotisationsSyndicalesProfessionnelles2025()
         )
@@ -2781,6 +2786,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 mettre_a_jour_bouton_depenses_emploi()
                 mettre_a_jour_bouton_frais_demenagement()
                 mettre_a_jour_bouton_pension_alimentaire()
+                mettre_a_jour_bouton_autres_deductions()
                 self.statut.set(
                     "Frais de garde 4B validés; recalculez l'estimation."
                 )
@@ -3043,6 +3049,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 mettre_a_jour_bouton_depenses_emploi()
                 mettre_a_jour_bouton_frais_demenagement()
                 mettre_a_jour_bouton_pension_alimentaire()
+                mettre_a_jour_bouton_autres_deductions()
                 self.statut.set(
                     "Dépenses d'emploi 4C validées; recalculez l'estimation."
                 )
@@ -3382,6 +3389,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 rapport_fiscal_a_reexporter = True
                 mettre_a_jour_bouton_frais_demenagement()
                 mettre_a_jour_bouton_pension_alimentaire()
+                mettre_a_jour_bouton_autres_deductions()
                 self.statut.set(
                     "Frais de déménagement 4D validés; "
                     "recalculez l'estimation."
@@ -3733,8 +3741,316 @@ class ApplicationComptaPrivee(tk.Tk):
                 dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
                 mettre_a_jour_bouton_pension_alimentaire()
+                mettre_a_jour_bouton_autres_deductions()
                 self.statut.set(
                     "Pension alimentaire 4E validée; recalculez l'estimation."
+                )
+                dialogue.destroy()
+
+            ttk.Button(
+                formulaire.actions,
+                text="Effacer",
+                command=effacer,
+            ).pack(side="left")
+            ttk.Button(
+                formulaire.actions,
+                text="Valider et appliquer",
+                command=appliquer,
+            ).pack(side="right")
+            ttk.Button(
+                formulaire.actions,
+                text="Fermer",
+                command=dialogue.destroy,
+            ).pack(side="right", padx=(0, 8))
+            organiser_boutons(formulaire.actions)
+
+
+
+        # --- Priorité 4F : GUI autres déductions ---
+
+        def mettre_a_jour_bouton_autres_deductions() -> None:
+            fed = autres_deductions_courantes.deduction_federale_23200
+            qc = autres_deductions_courantes.deduction_quebec_250_code17
+            if fed > Decimal("0") or qc > Decimal("0"):
+                bouton_autres_deductions_4f.configure(
+                    text=(
+                        "Autres déductions 2025 (4F) — F "
+                        + formater_montant_estimation(fed)
+                        + " / QC "
+                        + formater_montant_estimation(qc)
+                    )
+                )
+            else:
+                bouton_autres_deductions_4f.configure(
+                    text="Autres déductions 2025 (4F)"
+                )
+
+        def ouvrir_autres_deductions_4f_2025() -> None:
+            nonlocal autres_deductions_courantes
+            nonlocal derniere_estimation, dernier_rapport_pdf
+            nonlocal rapport_fiscal_a_reexporter
+
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title(
+                "Autres déductions 2025 — Bloc 4F — ComptaPrivée AI"
+            )
+            dimensionner_fenetre(dialogue, 930, 860)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(1, weight=1)
+
+            ttk.Label(
+                cadre,
+                text="Autres déductions 2025 — Bloc 4F",
+                font=("Segoe UI", 16, "bold"),
+            ).grid(
+                row=0, column=0, columnspan=2,
+                sticky="w", pady=(0, 8),
+            )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "Profil simple : montants déjà établis et validés par le "
+                    "comptable, sans autre ligne ni bloc spécialisé applicable. "
+                    "Fédéral : ligne 23200. Québec : ligne 250, code 17 à la case 249."
+                ),
+                foreground="#166534",
+                wraplength=820,
+                justify="left",
+            ).grid(
+                row=1, column=0, columnspan=2,
+                sticky="w", pady=(0, 12),
+            )
+
+            def montant_texte(valeur: Decimal) -> str:
+                return "" if valeur == Decimal("0") else format(valeur, "f")
+
+            fed_var = tk.StringVar(
+                value=montant_texte(
+                    autres_deductions_courantes.deduction_federale_23200
+                )
+            )
+            nature_fed_var = tk.StringVar(
+                value=autres_deductions_courantes.nature_federale
+            )
+            source_fed_var = tk.StringVar(
+                value=autres_deductions_courantes.source_federale
+            )
+            qc_var = tk.StringVar(
+                value=montant_texte(
+                    autres_deductions_courantes.deduction_quebec_250_code17
+                )
+            )
+            nature_qc_var = tk.StringVar(
+                value=autres_deductions_courantes.nature_quebec
+            )
+            source_qc_var = tk.StringVar(
+                value=autres_deductions_courantes.source_quebec
+            )
+
+            comptable_var = tk.BooleanVar(
+                value=autres_deductions_courantes.valide_par_comptable
+            )
+            montant_fed_confirme_var = tk.BooleanVar(
+                value=(
+                    autres_deductions_courantes
+                    .montant_federal_deja_etabli_confirme
+                )
+            )
+            montant_qc_confirme_var = tk.BooleanVar(
+                value=(
+                    autres_deductions_courantes
+                    .montant_quebec_deja_etabli_confirme
+                )
+            )
+            aucun_autre_bloc_var = tk.BooleanVar(
+                value=(
+                    autres_deductions_courantes
+                    .aucune_autre_ligne_ou_bloc_applicable_confirme
+                )
+            )
+
+            champs = (
+                ("Déduction fédérale — ligne 23200 :", "deduction_federale_23200_4f", fed_var),
+                ("Nature fédérale :", "nature_federale_4f", nature_fed_var),
+                ("Source fédérale :", "source_federale_4f", source_fed_var),
+                ("Déduction Québec — ligne 250, code 17 :", "deduction_quebec_250_code17_4f", qc_var),
+                ("Nature Québec :", "nature_quebec_4f", nature_qc_var),
+                ("Source Québec :", "source_quebec_4f", source_qc_var),
+            )
+            for row, (libelle, nom, variable) in enumerate(champs, start=2):
+                ttk.Label(cadre, text=libelle).grid(
+                    row=row, column=0, sticky="w", pady=5
+                )
+                ttk.Entry(
+                    cadre, name=nom, textvariable=variable
+                ).grid(
+                    row=row, column=1, sticky="ew",
+                    padx=(12, 0), pady=5,
+                )
+
+            confirmations = (
+                (
+                    "confirmation_comptable_autres_deductions_4f",
+                    comptable_var,
+                    "Je confirme la validation comptable des montants.",
+                ),
+                (
+                    "confirmation_montant_federal_23200_4f",
+                    montant_fed_confirme_var,
+                    "Je confirme que le montant fédéral ligne 23200 est déjà établi.",
+                ),
+                (
+                    "confirmation_montant_quebec_250_code17_4f",
+                    montant_qc_confirme_var,
+                    "Je confirme que le montant Québec ligne 250 code 17 est déjà établi.",
+                ),
+                (
+                    "confirmation_aucun_autre_bloc_4f",
+                    aucun_autre_bloc_var,
+                    "Je confirme qu'aucune autre ligne ni aucun bloc fiscal dédié ne s'applique.",
+                ),
+            )
+            for row, (nom, variable, texte) in enumerate(
+                confirmations, start=8
+            ):
+                tk.Checkbutton(
+                    cadre,
+                    name=nom,
+                    variable=variable,
+                    text=texte,
+                    wraplength=820,
+                    anchor="w",
+                    justify="left",
+                ).grid(
+                    row=row, column=0, columnspan=2,
+                    sticky="w", pady=3,
+                )
+
+            ttk.Label(
+                cadre,
+                text=(
+                    "⚠ Hors périmètre 4F simple : remboursements AE/RQAP, "
+                    "récupération de prestations sociales 23500, retraits REER/T3012A, "
+                    "frais juridiques, remboursement de pension alimentaire, "
+                    "transferts ou cotisations inutilisées de régimes, soutien à une "
+                    "personne handicapée, CELIAPP déjà inclus, abris fiscaux, revenu "
+                    "fractionné ou autre traitement spécialisé."
+                ),
+                foreground="#92400e",
+                wraplength=820,
+                justify="left",
+            ).grid(
+                row=12, column=0, columnspan=2,
+                sticky="w", pady=(8, 12),
+            )
+
+            def revoquer_confirmations(*_args) -> None:
+                for variable in (
+                    comptable_var,
+                    montant_fed_confirme_var,
+                    montant_qc_confirme_var,
+                    aucun_autre_bloc_var,
+                ):
+                    variable.set(False)
+
+            for variable in (
+                fed_var,
+                nature_fed_var,
+                source_fed_var,
+                qc_var,
+                nature_qc_var,
+                source_qc_var,
+            ):
+                variable.trace_add("write", revoquer_confirmations)
+
+            def decimal_depuis_champ(
+                texte: str,
+                libelle: str,
+            ) -> Decimal:
+                nettoye = (
+                    texte.strip()
+                    .replace("\u00a0", "")
+                    .replace(" ", "")
+                    .replace(",", ".")
+                    .replace("$", "")
+                )
+                if not nettoye:
+                    return Decimal("0")
+                try:
+                    valeur = Decimal(nettoye)
+                except (InvalidOperation, ValueError) as erreur:
+                    raise ValueError(
+                        f"{libelle} : montant invalide."
+                    ) from erreur
+                if not valeur.is_finite():
+                    raise ValueError(
+                        f"{libelle} : montant non fini."
+                    )
+                return valeur
+
+            def effacer() -> None:
+                for variable in (
+                    fed_var,
+                    nature_fed_var,
+                    source_fed_var,
+                    qc_var,
+                    nature_qc_var,
+                    source_qc_var,
+                ):
+                    variable.set("")
+                revoquer_confirmations()
+
+            def appliquer() -> None:
+                nonlocal autres_deductions_courantes
+                nonlocal derniere_estimation, dernier_rapport_pdf
+                nonlocal rapport_fiscal_a_reexporter
+
+                try:
+                    profil = AutresDeductions2025(
+                        deduction_federale_23200=decimal_depuis_champ(
+                            fed_var.get(),
+                            "Déduction fédérale ligne 23200",
+                        ),
+                        deduction_quebec_250_code17=decimal_depuis_champ(
+                            qc_var.get(),
+                            "Déduction Québec ligne 250 code 17",
+                        ),
+                        nature_federale=nature_fed_var.get().strip(),
+                        nature_quebec=nature_qc_var.get().strip(),
+                        source_federale=source_fed_var.get().strip(),
+                        source_quebec=source_qc_var.get().strip(),
+                        valide_par_comptable=comptable_var.get(),
+                        montant_federal_deja_etabli_confirme=(
+                            montant_fed_confirme_var.get()
+                        ),
+                        montant_quebec_deja_etabli_confirme=(
+                            montant_qc_confirme_var.get()
+                        ),
+                        aucune_autre_ligne_ou_bloc_applicable_confirme=(
+                            aucun_autre_bloc_var.get()
+                        ),
+                    )
+                    profil = valider_autres_deductions_2025(profil)
+                except ValueError as erreur:
+                    messagebox.showerror(
+                        "Autres déductions invalides",
+                        str(erreur),
+                        parent=dialogue,
+                    )
+                    return
+
+                autres_deductions_courantes = profil
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                mettre_a_jour_bouton_autres_deductions()
+                self.statut.set(
+                    "Autres déductions 4F validées; recalculez l'estimation."
                 )
                 dialogue.destroy()
 
@@ -4303,6 +4619,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     depenses_emploi=depenses_emploi_courantes,
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
+                    autres_deductions=autres_deductions_courantes,
                     cotisations_rpa=cotisations_rpa_courantes,
                     cotisations_syndicales=cotisations_syndicales_courantes,
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
@@ -11391,6 +11708,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
                 mettre_a_jour_bouton_frais_demenagement()
                 mettre_a_jour_bouton_pension_alimentaire()
+                mettre_a_jour_bouton_autres_deductions()
                 self.statut.set(
                     "Ajustements fiscaux 2025 mis à jour"
                 )
@@ -12200,6 +12518,7 @@ class ApplicationComptaPrivee(tk.Tk):
             mettre_a_jour_bouton_depenses_emploi()
             mettre_a_jour_bouton_frais_demenagement()
             mettre_a_jour_bouton_pension_alimentaire()
+            mettre_a_jour_bouton_autres_deductions()
             statut_dossier.set(dossier.statut)
             mettre_a_jour_etat_dossier_valide()
             self.statut.set(
@@ -12318,6 +12637,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     depenses_emploi=depenses_emploi_courantes,
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
+                    autres_deductions=autres_deductions_courantes,
                             cotisations_syndicales=(
                                 cotisations_syndicales_courantes
                             ),
@@ -12373,6 +12693,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     depenses_emploi=depenses_emploi_courantes,
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
+                    autres_deductions=autres_deductions_courantes,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -12463,6 +12784,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal depenses_emploi_courantes
             nonlocal frais_demenagement_courants
             nonlocal pension_alimentaire_payee_courante
+            nonlocal autres_deductions_courantes
             nonlocal rapport_fiscal_a_reexporter
             nonlocal derniere_estimation, dernier_rapport_pdf
             nonlocal ajustement_reer_courant
@@ -12535,6 +12857,9 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             pension_alimentaire_payee_courante = (
                 enregistrement.pension_alimentaire_payee
+            )
+            autres_deductions_courantes = (
+                enregistrement.autres_deductions
             )
             cotisations_syndicales_courantes = (
                 enregistrement.cotisations_syndicales
@@ -12609,6 +12934,7 @@ class ApplicationComptaPrivee(tk.Tk):
             mettre_a_jour_bouton_depenses_emploi()
             mettre_a_jour_bouton_frais_demenagement()
             mettre_a_jour_bouton_pension_alimentaire()
+            mettre_a_jour_bouton_autres_deductions()
             rafraichir_documents()
             statut_dossier.set("Validé — dossier rouvert localement")
             mettre_a_jour_etat_dossier_valide()
@@ -12867,6 +13193,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     depenses_emploi=depenses_emploi_courantes,
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
+                    autres_deductions=autres_deductions_courantes,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -13350,6 +13677,16 @@ class ApplicationComptaPrivee(tk.Tk):
             padx=(8, 0),
         )
 
+        bouton_autres_deductions_4f = ttk.Button(
+            zone_actions,
+            text="Autres déductions 2025 (4F)",
+            command=ouvrir_autres_deductions_4f_2025,
+        )
+        bouton_autres_deductions_4f.pack(
+            side="left",
+            padx=(8, 0),
+        )
+
         bouton_ajustements_fiscaux = ttk.Button(
             zone_actions,
             text="Ajustements fiscaux",
@@ -13395,6 +13732,7 @@ class ApplicationComptaPrivee(tk.Tk):
         mettre_a_jour_bouton_depenses_emploi()
         mettre_a_jour_bouton_frais_demenagement()
         mettre_a_jour_bouton_pension_alimentaire()
+        mettre_a_jour_bouton_autres_deductions()
         mettre_a_jour_etat_dossier_valide()
         champ_client.focus_set()
 

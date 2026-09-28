@@ -1074,3 +1074,191 @@ def test_trace_pension_alimentaire_4e_formules_identifient_deductions():
 
     assert "pension alimentaire déductible / ligne 22000" in revenu_federal.formule
     assert "pension alimentaire déductible / ligne 225" in revenu_quebec.formule
+
+
+# --- Priorité 4F : intégration estimation autres déductions ---
+
+from src.comptaprivee.tax_other_deductions_2025 import (
+    AutresDeductions2025,
+)
+from src.comptaprivee.tax_rrsp_withdrawals_2025 import (
+    ProfilRetraits2025,
+    Retraits2025,
+)
+import src.comptaprivee.tax_estimation_2025 as tax_estimation_module
+
+
+def _autres_deductions_4f(
+    federal="1200",
+    quebec="900",
+):
+    return AutresDeductions2025(
+        deduction_federale_23200=Decimal(federal),
+        deduction_quebec_250_code17=Decimal(quebec),
+        nature_federale="Autre montant déductible validé",
+        nature_quebec="Autre déduction validée code 17",
+        source_federale="Pièce fédérale 2025 validée",
+        source_quebec="Pièce Québec 2025 validée",
+        valide_par_comptable=True,
+        montant_federal_deja_etabli_confirme=True,
+        montant_quebec_deja_etabli_confirme=True,
+        aucune_autre_ligne_ou_bloc_applicable_confirme=True,
+    )
+
+
+def test_pipeline_sans_autres_deductions_4f_reste_identique():
+    e = calculer_estimation_fiscale_2025(_dossier_52000())
+    assert e.autres_deductions == AutresDeductions2025()
+    assert e.revenu.revenu_net_federal == Decimal("51515.00")
+    assert e.revenu.revenu_net_quebec == Decimal("50095.00")
+
+
+def test_pipeline_autres_deductions_4f_reduit_chaque_juridiction():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        autres_deductions=_autres_deductions_4f(),
+    )
+    assert e.revenu.revenu_total_federal == Decimal("52000")
+    assert e.revenu.revenu_total_quebec == Decimal("52000")
+    assert e.revenu.revenu_net_federal == Decimal("50315.00")
+    assert e.revenu.revenu_imposable_federal == Decimal("50315.00")
+    assert e.revenu.revenu_net_quebec == Decimal("49195.00")
+    assert e.revenu.revenu_imposable_quebec == Decimal("49195.00")
+
+
+def test_pipeline_autres_deductions_4f_recalcule_les_impots():
+    base = calculer_estimation_fiscale_2025(_dossier_52000())
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        autres_deductions=_autres_deductions_4f(),
+    )
+    assert e.federal.impot_federal_de_base < base.federal.impot_federal_de_base
+    assert e.quebec.impot_quebec_preliminaire < base.quebec.impot_quebec_preliminaire
+    assert e.rapprochement.remboursement_estime > base.rapprochement.remboursement_estime
+
+
+def test_resume_affiche_autres_deductions_4f():
+    texte = formater_estimation_fiscale_2025(
+        calculer_estimation_fiscale_2025(
+            _dossier_52000(),
+            autres_deductions=_autres_deductions_4f(),
+        )
+    )
+    assert "AUTRES DÉDUCTIONS 2025 VALIDÉES — BLOC 4F" in texte
+    assert "ligne 23200" in texte
+    assert "ligne 250, code 17" in texte
+    assert "case 249" in texte
+    assert "1200.00 $" in texte
+    assert "900.00 $" in texte
+
+
+def test_pipeline_4f_refuse_double_emploi_23200_avec_retraits(
+    monkeypatch,
+):
+    profil = _autres_deductions_4f()
+    retraits = ProfilRetraits2025(
+        nature="COTISATIONS_INUTILISEES",
+        source="T4RSP + RL-2 + T3012A",
+        confirme=True,
+    )
+
+    monkeypatch.setattr(
+        tax_estimation_module,
+        "consolider_retraits_2025",
+        lambda dossier, profil_retraits: Retraits2025(
+            ligne_23200=Decimal("500"),
+            present=True,
+        ),
+    )
+
+    with pytest.raises(ValueError, match="23200 est déjà utilisée"):
+        calculer_estimation_fiscale_2025(
+            _dossier_52000(),
+            autres_deductions=profil,
+            profil_retraits=retraits,
+        )
+
+
+def test_pipeline_4a_4b_4c_4d_4e_4f_se_combinent():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        deduction_celiapp=_celiapp_5000(),
+        frais_garde_federaux=_frais_garde_6000(),
+        depenses_emploi=_depenses_emploi_4c(),
+        frais_demenagement=_frais_demenagement_4d(),
+        pension_alimentaire_payee=_pension_alimentaire_4e(),
+        autres_deductions=_autres_deductions_4f(),
+    )
+    assert e.revenu.revenu_total_federal == Decimal("52000")
+    assert e.revenu.revenu_total_quebec == Decimal("52000")
+    assert e.revenu.revenu_net_federal == Decimal("29915.00")
+    assert e.revenu.revenu_imposable_federal == Decimal("29915.00")
+    assert e.revenu.revenu_net_quebec == Decimal("35395.00")
+    assert e.revenu.revenu_imposable_quebec == Decimal("35395.00")
+
+
+# --- Priorité 4F : trace autres déductions ---
+
+
+def test_trace_autres_deductions_4f_ajoute_23200_et_250_code17():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        autres_deductions=_autres_deductions_4f(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    federal = next(
+        x for x in trace.lignes
+        if x.libelle == "Autres déductions 4F — ligne 23200"
+    )
+    quebec = next(
+        x for x in trace.lignes
+        if x.libelle == "Autres déductions 4F — ligne 250 code 17"
+    )
+
+    assert federal.section == "REVENU FÉDÉRAL"
+    assert federal.montant == Decimal("1200")
+    assert "Pièce fédérale 2025 validée" in federal.source
+    assert "Autre montant déductible validé" in federal.formule
+
+    assert quebec.section == "REVENU QUÉBEC"
+    assert quebec.montant == Decimal("900")
+    assert "case 249 code 17" in quebec.source
+    assert "Autre déduction validée code 17" in quebec.formule
+
+
+def test_trace_autres_deductions_4f_est_avant_revenus_imposables():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        autres_deductions=_autres_deductions_4f(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+    libelles = [x.libelle for x in trace.lignes]
+
+    assert libelles.index(
+        "Autres déductions 4F — ligne 23200"
+    ) < libelles.index("Revenu imposable fédéral")
+    assert libelles.index(
+        "Autres déductions 4F — ligne 250 code 17"
+    ) < libelles.index("Revenu imposable Québec")
+
+
+def test_trace_autres_deductions_4f_formules_identifient_deductions():
+    e = calculer_estimation_fiscale_2025(
+        _dossier_52000(),
+        autres_deductions=_autres_deductions_4f(),
+    )
+    trace = construire_trace_calcul_fiscal_2025(e)
+
+    revenu_federal = next(
+        x for x in trace.lignes if x.libelle == "Revenu imposable fédéral"
+    )
+    revenu_quebec = next(
+        x for x in trace.lignes if x.libelle == "Revenu imposable Québec"
+    )
+
+    assert "autres déductions validées / ligne 23200" in revenu_federal.formule
+    assert (
+        "autres déductions validées / ligne 250 code 17"
+        in revenu_quebec.formule
+    )

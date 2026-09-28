@@ -729,3 +729,122 @@ def test_stockage_pension_alimentaire_4e_invalide_refuse_au_rechargement(
     )
     with pytest.raises(ValueError, match="hors périmètre 4E"):
         charger_dossier_fiscal(p)
+
+
+# --- Priorité 4F : persistance autres déductions ---
+
+from src.comptaprivee.tax_other_deductions_2025 import (
+    AutresDeductions2025,
+)
+
+
+def _autres_deductions_4f_stockage():
+    return AutresDeductions2025(
+        deduction_federale_23200=Decimal("1200"),
+        deduction_quebec_250_code17=Decimal("900"),
+        nature_federale="Autre montant déductible validé",
+        nature_quebec="Autre déduction validée code 17",
+        source_federale="Pièce fédérale 2025 validée",
+        source_quebec="Pièce Québec 2025 validée",
+        valide_par_comptable=True,
+        montant_federal_deja_etabli_confirme=True,
+        montant_quebec_deja_etabli_confirme=True,
+        aucune_autre_ligne_ou_bloc_applicable_confirme=True,
+    )
+
+
+def test_stockage_autres_deductions_4f_roundtrip_direct(tmp_path):
+    profil = _autres_deductions_4f_stockage()
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        autres_deductions=profil,
+        destination=tmp_path / "d.json",
+    )
+    assert charger_dossier_fiscal(p).autres_deductions == profil
+
+
+def test_stockage_autres_deductions_4f_depuis_estimation(tmp_path):
+    d = _dossier()
+    profil = _autres_deductions_4f_stockage()
+    estimation = calculer_estimation_fiscale_2025(
+        d,
+        autres_deductions=profil,
+    )
+    p = sauvegarder_dossier_fiscal(
+        d,
+        estimation=estimation,
+        destination=tmp_path / "d.json",
+    )
+    charge = charger_dossier_fiscal(p)
+    assert charge.autres_deductions == profil
+    assert charge.estimation is not None
+
+
+def test_stockage_autres_deductions_4f_refuse_profil_different_estimation(
+    tmp_path,
+):
+    d = _dossier()
+    profil = _autres_deductions_4f_stockage()
+    estimation = calculer_estimation_fiscale_2025(
+        d,
+        autres_deductions=profil,
+    )
+    autre = replace(
+        profil,
+        deduction_federale_23200=Decimal("1000"),
+    )
+    with pytest.raises(ValueError, match="autres déductions diffèrent"):
+        sauvegarder_dossier_fiscal(
+            d,
+            estimation=estimation,
+            autres_deductions=autre,
+            destination=tmp_path / "d.json",
+        )
+
+
+def test_stockage_ancien_json_sans_autres_deductions_4f_reste_compatible(
+    tmp_path,
+):
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        destination=tmp_path / "d.json",
+    )
+    brut = json.loads(p.read_text(encoding="utf-8"))
+    brut.pop("autres_deductions", None)
+    p.write_text(
+        json.dumps(brut, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    assert (
+        charger_dossier_fiscal(p).autres_deductions
+        == AutresDeductions2025()
+    )
+
+
+def test_stockage_autres_deductions_4f_invalide_refuse_au_rechargement(
+    tmp_path,
+):
+    p = sauvegarder_dossier_fiscal(
+        _dossier(),
+        destination=tmp_path / "d.json",
+    )
+    brut = json.loads(p.read_text(encoding="utf-8"))
+    brut["autres_deductions"] = {
+        "deduction_federale_23200": "1200",
+        "deduction_quebec_250_code17": "900",
+        "nature_federale": "Autre montant déductible validé",
+        "nature_quebec": "Autre déduction validée code 17",
+        "source_federale": "Pièce fédérale 2025 validée",
+        "source_quebec": "Pièce Québec 2025 validée",
+        "valide_par_comptable": True,
+        "montant_federal_deja_etabli_confirme": True,
+        "montant_quebec_deja_etabli_confirme": True,
+        "aucune_autre_ligne_ou_bloc_applicable_confirme": True,
+        "frais_juridiques": True,
+    }
+    p.write_text(
+        json.dumps(brut, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="hors périmètre 4F"):
+        charger_dossier_fiscal(p)

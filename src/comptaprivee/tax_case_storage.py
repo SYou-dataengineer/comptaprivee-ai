@@ -34,6 +34,10 @@ from .tax_support_payments_2025 import (
     PensionAlimentairePayee2025,
     valider_pension_alimentaire_payee_2025,
 )
+from .tax_other_deductions_2025 import (
+    AutresDeductions2025,
+    valider_autres_deductions_2025,
+)
 from .tax_union_dues_2025 import (
     CotisationsSyndicalesProfessionnelles2025,
     valider_cotisations_syndicales_2025,
@@ -169,6 +173,7 @@ class DossierFiscalEnregistre:
     depenses_emploi: DepensesEmploi2025
     frais_demenagement: FraisDemenagement2025
     pension_alimentaire_payee: PensionAlimentairePayee2025
+    autres_deductions: AutresDeductions2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
@@ -831,6 +836,159 @@ def _pension_alimentaire_payee_depuis_dict(
         ),
     )
     return valider_pension_alimentaire_payee_2025(profil)
+
+
+
+def _autres_deductions_vers_dict(
+    profil: AutresDeductions2025 | None,
+):
+    if profil is None:
+        profil = AutresDeductions2025()
+
+    profil = valider_autres_deductions_2025(profil)
+    return {
+        "deduction_federale_23200": _decimal_texte(
+            profil.deduction_federale_23200
+        ),
+        "deduction_quebec_250_code17": _decimal_texte(
+            profil.deduction_quebec_250_code17
+        ),
+        "nature_federale": profil.nature_federale,
+        "nature_quebec": profil.nature_quebec,
+        "source_federale": profil.source_federale,
+        "source_quebec": profil.source_quebec,
+        "valide_par_comptable": bool(profil.valide_par_comptable),
+        "montant_federal_deja_etabli_confirme": bool(
+            profil.montant_federal_deja_etabli_confirme
+        ),
+        "montant_quebec_deja_etabli_confirme": bool(
+            profil.montant_quebec_deja_etabli_confirme
+        ),
+        "aucune_autre_ligne_ou_bloc_applicable_confirme": bool(
+            profil.aucune_autre_ligne_ou_bloc_applicable_confirme
+        ),
+        "remboursement_ae_ou_rqap": bool(
+            profil.remboursement_ae_ou_rqap
+        ),
+        "recuperation_prestations_sociales_23500": bool(
+            profil.recuperation_prestations_sociales_23500
+        ),
+        "retrait_reer_ou_t3012a": bool(
+            profil.retrait_reer_ou_t3012a
+        ),
+        "frais_juridiques": bool(profil.frais_juridiques),
+        "remboursement_pension_alimentaire": bool(
+            profil.remboursement_pension_alimentaire
+        ),
+        "transfert_ou_cotisations_inutilisees_regime": bool(
+            profil.transfert_ou_cotisations_inutilisees_regime
+        ),
+        "soutien_personne_handicapee": bool(
+            profil.soutien_personne_handicapee
+        ),
+        "celiapp_montant_deja_inclus": bool(
+            profil.celiapp_montant_deja_inclus
+        ),
+        "abri_fiscal_ou_revenu_fractionne": bool(
+            profil.abri_fiscal_ou_revenu_fractionne
+        ),
+        "autre_traitement_specialise": bool(
+            profil.autre_traitement_specialise
+        ),
+    }
+
+
+def _autres_deductions_depuis_dict(
+    valeur: Any,
+) -> AutresDeductions2025:
+    if valeur is None:
+        return AutresDeductions2025()
+
+    if not isinstance(valeur, dict):
+        raise ValueError(
+            "Les autres déductions enregistrées sont invalides."
+        )
+
+    autorises = set(AutresDeductions2025.__dataclass_fields__)
+    inconnus = set(valeur) - autorises
+    if inconnus:
+        raise ValueError(
+            "Champs autres déductions inconnus : "
+            + ", ".join(sorted(inconnus))
+        )
+
+    profil = AutresDeductions2025(
+        deduction_federale_23200=_decimal_depuis_json(
+            valeur.get("deduction_federale_23200", "0"),
+            "autres_deductions.deduction_federale_23200",
+        ),
+        deduction_quebec_250_code17=_decimal_depuis_json(
+            valeur.get("deduction_quebec_250_code17", "0"),
+            "autres_deductions.deduction_quebec_250_code17",
+        ),
+        nature_federale=str(valeur.get("nature_federale", "")),
+        nature_quebec=str(valeur.get("nature_quebec", "")),
+        source_federale=str(valeur.get("source_federale", "")),
+        source_quebec=str(valeur.get("source_quebec", "")),
+        valide_par_comptable=bool(
+            valeur.get("valide_par_comptable", False)
+        ),
+        montant_federal_deja_etabli_confirme=bool(
+            valeur.get(
+                "montant_federal_deja_etabli_confirme",
+                False,
+            )
+        ),
+        montant_quebec_deja_etabli_confirme=bool(
+            valeur.get(
+                "montant_quebec_deja_etabli_confirme",
+                False,
+            )
+        ),
+        aucune_autre_ligne_ou_bloc_applicable_confirme=bool(
+            valeur.get(
+                "aucune_autre_ligne_ou_bloc_applicable_confirme",
+                False,
+            )
+        ),
+        remboursement_ae_ou_rqap=bool(
+            valeur.get("remboursement_ae_ou_rqap", False)
+        ),
+        recuperation_prestations_sociales_23500=bool(
+            valeur.get(
+                "recuperation_prestations_sociales_23500",
+                False,
+            )
+        ),
+        retrait_reer_ou_t3012a=bool(
+            valeur.get("retrait_reer_ou_t3012a", False)
+        ),
+        frais_juridiques=bool(
+            valeur.get("frais_juridiques", False)
+        ),
+        remboursement_pension_alimentaire=bool(
+            valeur.get("remboursement_pension_alimentaire", False)
+        ),
+        transfert_ou_cotisations_inutilisees_regime=bool(
+            valeur.get(
+                "transfert_ou_cotisations_inutilisees_regime",
+                False,
+            )
+        ),
+        soutien_personne_handicapee=bool(
+            valeur.get("soutien_personne_handicapee", False)
+        ),
+        celiapp_montant_deja_inclus=bool(
+            valeur.get("celiapp_montant_deja_inclus", False)
+        ),
+        abri_fiscal_ou_revenu_fractionne=bool(
+            valeur.get("abri_fiscal_ou_revenu_fractionne", False)
+        ),
+        autre_traitement_specialise=bool(
+            valeur.get("autre_traitement_specialise", False)
+        ),
+    )
+    return valider_autres_deductions_2025(profil)
 
 
 def _cotisations_syndicales_vers_dict(
@@ -2975,6 +3133,7 @@ def sauvegarder_dossier_fiscal(
     depenses_emploi: DepensesEmploi2025 | None = None,
     frais_demenagement: FraisDemenagement2025 | None = None,
     pension_alimentaire_payee: PensionAlimentairePayee2025 | None = None,
+    autres_deductions: AutresDeductions2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
@@ -3123,6 +3282,26 @@ def sauvegarder_dossier_fiscal(
     ):
         raise ValueError(
             "La pension alimentaire diffère de l'estimation."
+        )
+
+    autres_deductions_effectives = (
+        autres_deductions
+        if autres_deductions is not None
+        else (
+            estimation.autres_deductions
+            if estimation is not None
+            else AutresDeductions2025()
+        )
+    )
+    autres_deductions_effectives = valider_autres_deductions_2025(
+        autres_deductions_effectives
+    )
+    if (
+        estimation is not None
+        and autres_deductions_effectives != estimation.autres_deductions
+    ):
+        raise ValueError(
+            "Les autres déductions diffèrent de l'estimation."
         )
 
     pertes_effectif = profil_reports_pertes if profil_reports_pertes is not None else (estimation.profil_reports_pertes if estimation else ProfilReportsPertes2025())
@@ -3396,6 +3575,9 @@ def sauvegarder_dossier_fiscal(
         "pension_alimentaire_payee": _pension_alimentaire_payee_vers_dict(
             pension_alimentaire_effective
         ),
+        "autres_deductions": _autres_deductions_vers_dict(
+            autres_deductions_effectives
+        ),
         "cotisations_syndicales": _cotisations_syndicales_vers_dict(
             cotisations_syndicales
         ),
@@ -3580,6 +3762,9 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
     )
     pension_alimentaire_payee = _pension_alimentaire_payee_depuis_dict(
         contenu.get("pension_alimentaire_payee")
+    )
+    autres_deductions = _autres_deductions_depuis_dict(
+        contenu.get("autres_deductions")
     )
     cotisations_syndicales = _cotisations_syndicales_depuis_dict(
         contenu.get("cotisations_syndicales")
@@ -3827,6 +4012,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         depenses_emploi=depenses_emploi,
         frais_demenagement=frais_demenagement,
         pension_alimentaire_payee=pension_alimentaire_payee,
+        autres_deductions=autres_deductions,
         cotisations_syndicales=cotisations_syndicales,
         dons_bienfaisance=dons_bienfaisance,
         frais_medicaux=frais_medicaux,

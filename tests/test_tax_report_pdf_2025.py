@@ -367,3 +367,67 @@ def test_pdf_pension_alimentaire_4e_reduit_federal_et_quebec(tmp_path):
     assert "45 515,00 $" in texte
     assert "Revenu net Québec" in texte
     assert "44 095,00 $" in texte
+
+
+# --- Priorité 4F : PDF autres déductions ---
+
+from src.comptaprivee.tax_other_deductions_2025 import (
+    AutresDeductions2025,
+)
+
+
+def _estimation_autres_deductions_4f():
+    base = _estimation()
+    return calculer_estimation_fiscale_2025(
+        base.dossier,
+        autres_deductions=AutresDeductions2025(
+            deduction_federale_23200=Decimal("1200"),
+            deduction_quebec_250_code17=Decimal("900"),
+            nature_federale="Autre montant déductible validé",
+            nature_quebec="Autre déduction validée code 17",
+            source_federale="Pièce fédérale 2025 validée",
+            source_quebec="Pièce Québec 2025 validée",
+            valide_par_comptable=True,
+            montant_federal_deja_etabli_confirme=True,
+            montant_quebec_deja_etabli_confirme=True,
+            aucune_autre_ligne_ou_bloc_applicable_confirme=True,
+        ),
+    )
+
+
+def test_pdf_autres_deductions_4f_contient_lignes_natures_sources(tmp_path):
+    path = exporter_rapport_fiscal_pdf_2025(
+        _estimation_autres_deductions_4f(),
+        tmp_path / "rapport_autres_deductions_4f.pdf",
+    )
+    texte = _texte(path).replace("\xa0", " ")
+
+    assert "AUTRES DÉDUCTIONS 2025 VALIDÉES" in texte
+    assert "BLOC 4F" in texte
+    assert "ligne 23200" in texte
+    assert "ligne 250, code 17" in texte
+    assert "case 249" in texte
+    assert "1200.00 $" in texte
+    assert "900.00 $" in texte
+    assert "Autre montant déductible validé" in texte
+    assert "Autre déduction validée code 17" in texte
+    assert "Pièce fédérale 2025 validée" in texte
+    assert "Pièce Québec 2025 validée" in texte
+
+
+def test_pdf_autres_deductions_4f_reduit_federal_et_quebec(tmp_path):
+    estimation = _estimation_autres_deductions_4f()
+
+    assert estimation.revenu.revenu_net_federal == Decimal("50315.00")
+    assert estimation.revenu.revenu_net_quebec == Decimal("49195.00")
+
+    path = exporter_rapport_fiscal_pdf_2025(
+        estimation,
+        tmp_path / "rapport_autres_deductions_4f_revenus.pdf",
+    )
+    texte = _texte(path).replace("\xa0", " ")
+
+    assert "Revenu net fédéral" in texte
+    assert "50 315,00 $" in texte
+    assert "Revenu net Québec" in texte
+    assert "49 195,00 $" in texte

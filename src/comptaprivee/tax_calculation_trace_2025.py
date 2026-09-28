@@ -167,6 +167,7 @@ def construire_trace_calcul_fiscal_2025(
     depenses_emploi = estimation.depenses_emploi
     frais_demenagement = estimation.frais_demenagement
     pension_alimentaire = estimation.pension_alimentaire_payee
+    autres_deductions = estimation.autres_deductions
     cotisations = estimation.cotisations_syndicales
     dons = estimation.dons_bienfaisance
     frais_medicaux = estimation.frais_medicaux
@@ -263,6 +264,15 @@ def construire_trace_calcul_fiscal_2025(
     if pension_alimentaire.deduction_quebec_225 > Decimal("0"):
         formule_revenu_quebec += (
             " - pension alimentaire déductible / ligne 225"
+        )
+
+    if autres_deductions.deduction_federale_23200 > Decimal("0"):
+        formule_revenu_federal += (
+            " - autres déductions validées / ligne 23200"
+        )
+    if autres_deductions.deduction_quebec_250_code17 > Decimal("0"):
+        formule_revenu_quebec += (
+            " - autres déductions validées / ligne 250 code 17"
         )
 
     if cotisations.montant_federal_admissible > Decimal("0"):
@@ -839,6 +849,50 @@ def construire_trace_calcul_fiscal_2025(
                     "rétroactifs et anciens régimes exclus du Bloc 4E simple"
                 ),
                 pension_alimentaire.deduction_quebec_225,
+            ),
+        )
+
+    if autres_deductions.deduction_federale_23200 > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable fédéral",
+            _ligne(
+                0,
+                "REVENU FÉDÉRAL",
+                "Autres déductions 4F — ligne 23200",
+                (
+                    "ARC ligne 23200 — "
+                    + autres_deductions.source_federale
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant déjà établi et validé; nature : "
+                    + autres_deductions.nature_federale
+                    + "; aucune autre ligne ou bloc dédié applicable confirmé"
+                ),
+                autres_deductions.deduction_federale_23200,
+            ),
+        )
+
+    if autres_deductions.deduction_quebec_250_code17 > Decimal("0"):
+        lignes = _inserer_ligne_avant(
+            lignes,
+            "Revenu imposable Québec",
+            _ligne(
+                0,
+                "REVENU QUÉBEC",
+                "Autres déductions 4F — ligne 250 code 17",
+                (
+                    "Revenu Québec ligne 250 / case 249 code 17 — "
+                    + autres_deductions.source_quebec
+                    + " — validation comptable"
+                ),
+                (
+                    "Montant déjà établi et validé; nature : "
+                    + autres_deductions.nature_quebec
+                    + "; autres codes spécialisés exclus du Bloc 4F simple"
+                ),
+                autres_deductions.deduction_quebec_250_code17,
             ),
         )
 

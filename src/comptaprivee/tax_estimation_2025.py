@@ -50,6 +50,11 @@ from .tax_support_payments_2025 import (
     appliquer_pension_alimentaire_payee_2025,
     lignes_resume_pension_alimentaire_payee_2025,
 )
+from .tax_other_deductions_2025 import (
+    AutresDeductions2025,
+    appliquer_autres_deductions_2025,
+    lignes_resume_autres_deductions_2025,
+)
 from .tax_contribution_overpayments_2025 import (
     CotisationsExcedentaires2025,
     calculer_remboursements_cotisations_2025,
@@ -256,6 +261,7 @@ class EstimationFiscale2025:
     depenses_emploi: DepensesEmploi2025
     frais_demenagement: FraisDemenagement2025
     pension_alimentaire_payee: PensionAlimentairePayee2025
+    autres_deductions: AutresDeductions2025
     cotisations_syndicales: CotisationsSyndicalesProfessionnelles2025
     dons_bienfaisance: DonsBienfaisance2025
     frais_medicaux: FraisMedicaux2025
@@ -312,6 +318,7 @@ def calculer_estimation_fiscale_2025(
     depenses_emploi: DepensesEmploi2025 | None = None,
     frais_demenagement: FraisDemenagement2025 | None = None,
     pension_alimentaire_payee: PensionAlimentairePayee2025 | None = None,
+    autres_deductions: AutresDeductions2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
@@ -763,6 +770,29 @@ def calculer_estimation_fiscale_2025(
     revenu = appliquer_pension_alimentaire_payee_2025(
         revenu,
         pension_alimentaire_payee_effective,
+    )
+
+    autres_deductions_effectives = (
+        autres_deductions
+        if autres_deductions is not None
+        else AutresDeductions2025()
+    )
+
+    if autres_deductions_effectives.deduction_federale_23200 > Decimal("0"):
+        conflits_23200 = (
+            getattr(prestations_rqap, "remboursement", Decimal("0")),
+            getattr(prestations_ae, "remboursement", Decimal("0")),
+            getattr(retraits, "ligne_23200", Decimal("0")),
+        )
+        if any(montant > Decimal("0") for montant in conflits_23200):
+            raise ValueError(
+                "Bloc 4F simple : la ligne fédérale 23200 est déjà utilisée "
+                "par un autre bloc du dossier. Une double déduction est refusée."
+            )
+
+    revenu = appliquer_autres_deductions_2025(
+        revenu,
+        autres_deductions_effectives,
     )
 
     cotisations_effectives = (
@@ -1445,6 +1475,7 @@ def calculer_estimation_fiscale_2025(
         depenses_emploi=depenses_emploi_effectives,
         frais_demenagement=frais_demenagement_effectifs,
         pension_alimentaire_payee=pension_alimentaire_payee_effective,
+        autres_deductions=autres_deductions_effectives,
         cotisations_syndicales=cotisations_effectives,
         dons_bienfaisance=dons_effectifs,
         frais_medicaux=frais_medicaux_effectifs,
@@ -1564,6 +1595,9 @@ def formater_estimation_fiscale_2025(
         ),
         *lignes_resume_pension_alimentaire_payee_2025(
             estimation.pension_alimentaire_payee
+        ),
+        *lignes_resume_autres_deductions_2025(
+            estimation.autres_deductions
         ),
         *(
             [
