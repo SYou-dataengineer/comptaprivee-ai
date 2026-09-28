@@ -34,6 +34,14 @@ class ImpotFederalPreliminaire2025:
     taux_credit: Decimal
     top_up_credit: Decimal
     limitations: tuple[str, ...]
+    # impot_federal_de_base conserve la ligne 42900, avant le crédit 40500.
+    credit_etranger_ligne_40500: Decimal = ZERO
+
+    @property
+    def impot_federal_apres_credit_etranger(self) -> Decimal:
+        return max(arrondir_cent(
+            self.impot_federal_de_base - self.credit_etranger_ligne_40500
+        ), ZERO)
 
 
 def _verifier(base: BaseFiscaleEmploi2025, revenu: RevenuNetImposable2025) -> None:

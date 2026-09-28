@@ -345,7 +345,9 @@ def test_appliquer_credits_non_remboursables():
         placement, profil_credit("100.00", "50.00")
     )
     f2, q2 = appliquer_credit_impot_etranger_2025(f, q, c)
-    assert f2.impot_federal_de_base == D("0")
+    assert f2.impot_federal_de_base == D("80")
+    assert f2.credit_etranger_ligne_40500 == D("80")
+    assert f2.impot_federal_apres_credit_etranger == D("0")
     assert q2.impot_quebec_preliminaire == D("0")
 
 
@@ -407,8 +409,8 @@ def test_integration_estimation_3g_avec_emploi_et_credits():
     assert avec_credit.revenu.revenu_total_federal == D("62000.00")
     assert avec_credit.revenu.revenu_total_quebec == D("62000.00")
     assert (
-        sans_credit.federal.impot_federal_de_base
-        - avec_credit.federal.impot_federal_de_base
+        sans_credit.federal.impot_federal_apres_credit_etranger
+        - avec_credit.federal.impot_federal_apres_credit_etranger
         == D("100.00")
     )
     assert (

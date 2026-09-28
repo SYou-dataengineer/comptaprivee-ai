@@ -66,6 +66,13 @@ class RapprochementFiscal2025:
     remboursement_ae_excedentaire: Decimal = ZERO
     remboursement_rqap_excedentaire: Decimal = ZERO
     remboursements_cotisations_totaux: Decimal = ZERO
+    credit_etranger_ligne_40500: Decimal = ZERO
+
+    @property
+    def impot_federal_apres_credit_etranger(self) -> Decimal:
+        return max(arrondir_cent(
+            self.impot_federal_de_base - self.credit_etranger_ligne_40500
+        ), ZERO)
 
 
 def _verifier_coherence(
@@ -128,11 +135,10 @@ def calculer_rapprochement_fiscal_2025(
         * QUEBEC_ABATEMENT_RATE
     )
 
-    federal_apres_abattement = max(
-        arrondir_cent(
-            federal.impot_federal_de_base - abattement
-        ),
-        ZERO,
+    # L'abattement 44000 est remboursable : ne pas plafonner sa valeur
+    # au solde après 40500. La base reste exclusivement la ligne 42900.
+    federal_apres_abattement = arrondir_cent(
+        federal.impot_federal_apres_credit_etranger - abattement
     )
 
     if cotisation_assurance_medicaments < ZERO:
@@ -332,6 +338,7 @@ def calculer_rapprochement_fiscal_2025(
         annee_fiscale=base.annee_fiscale,
         province=base.province,
         impot_federal_de_base=federal.impot_federal_de_base,
+        credit_etranger_ligne_40500=federal.credit_etranger_ligne_40500,
         abattement_quebec=abattement,
         impot_federal_apres_abattement=federal_apres_abattement,
         impot_quebec_preliminaire=quebec.impot_quebec_preliminaire,

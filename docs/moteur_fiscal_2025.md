@@ -1904,3 +1904,31 @@ Contrat technique livré :
 7. tests moteur, estimation, trace, stockage, GUI et PDF.
 
 Validation ciblée finale 21g avant suite complète : **176 passed, 5 warnings**.
+
+### Correctif préalable 5A — lignes 42900 / 40500 / 44000
+
+Sources officielles 2025 revérifiées :
+
+- [T1 Québec 2025, pages 7 et 8](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-r/5005-r-25f.pdf).
+- [Guide ARC 2025, ligne 44000](https://www.canada.ca/en/revenue-agency/services/forms-publications/tax-packages-years/general-income-tax-benefit-package/non-residents/5013-g/guide-non-residents-deemed-residents-federal-non-refundable-tax-credits.html).
+  Le guide confirme le facteur de 16,5 % sur 42900; le périmètre logiciel demeure
+  celui des résidents du Québec déjà supportés, sans ajout des profils du guide.
+
+`impot_federal_de_base` conserve la ligne 42900 après les crédits ordinaires
+et le crédit dividendes 40425, avant 40500. `credit_etranger_ligne_40500`
+contient le crédit confirmé utilisable, limité à 42900; la propriété
+`impot_federal_apres_credit_etranger` expose le solde avec plancher zéro.
+Le rapprochement calcule 44000 sur 42900 exclusivement et retranche cet
+abattement remboursable du solde après 40500, sans perdre sa portion remboursable.
+Les retenues étrangères ne deviennent pas des retenues canadiennes.
+
+Régression corrigée : pour 42900 = 6 100,30 $, un 40500 utilisable de 100 $
+laisse 44000 à 1 006,55 $. Le solde après 40500 est 6 000,30 $ et le résultat
+final diminue de 100 $, au lieu de 83,50 $. Trace, résumé et PDF distinguent
+les étapes. Aucun changement du schéma JSON : les résultats restent dérivés.
+
+Validation ciblée : **381 passed, 5 warnings**. Tests des bornes du crédit,
+de l'abattement remboursable, du dossier sans crédit étranger, de la trace,
+du PDF et du rechargement JSON inclus.
+
+Validation complète du préalable : **3465 passed, 8 warnings in 118.44s**.

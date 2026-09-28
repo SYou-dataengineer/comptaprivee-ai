@@ -1892,6 +1892,12 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     x.impot_federal_de_base
                 )}"
             ),
+            *([
+                "Ligne 42900 avant crédit étranger : " + formater_montant_estimation(x.impot_federal_de_base),
+                "Crédit étranger utilisable 40500 : " + formater_montant_estimation(x.credit_etranger_ligne_40500),
+                "Impôt fédéral après ligne 40500 : " + formater_montant_estimation(x.impot_federal_apres_credit_etranger),
+                "Base de l'abattement 44000 : ligne 42900 avant 40500.",
+            ] if estimation.credit_impot_etranger.present else []),
             (
                 "Abattement Québec (16,5 %) : -"
                 f"{formater_montant_estimation(x.abattement_quebec)}"

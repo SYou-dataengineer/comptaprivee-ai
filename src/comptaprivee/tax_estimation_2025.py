@@ -2198,6 +2198,11 @@ def formater_estimation_fiscale_2025(
         f"Impôt fédéral brut : {formater_montant_estimation(federal.impot_brut)}",
         f"Crédits non remboursables inclus : {formater_montant_estimation(federal.credits_non_remboursables)}",
         f"Impôt fédéral de base : {formater_montant_estimation(final.impot_federal_de_base)}",
+        *([
+            f"Ligne 42900 avant crédit étranger : {formater_montant_estimation(final.impot_federal_de_base)}",
+            f"Crédit étranger utilisable 40500 : {formater_montant_estimation(final.credit_etranger_ligne_40500)}",
+            f"Impôt fédéral après ligne 40500 : {formater_montant_estimation(final.impot_federal_apres_credit_etranger)}",
+        ] if estimation.credit_impot_etranger.present else []),
         f"Abattement Québec (16,5 %) : -{formater_montant_estimation(final.abattement_quebec)}",
         f"Impôt fédéral après abattement : {formater_montant_estimation(final.impot_federal_apres_abattement)}",
         "",

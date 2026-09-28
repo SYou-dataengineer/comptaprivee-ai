@@ -422,8 +422,9 @@ def appliquer_credit_impot_etranger_2025(
 
     federal_apres = replace(
         federal,
-        impot_federal_de_base=max(
-            ZERO, federal.impot_federal_de_base - credit.ligne_40500
+        # 40500 suit 42900; il ne réduit pas la base de l'abattement 44000.
+        credit_etranger_ligne_40500=min(
+            federal.impot_federal_de_base, credit.ligne_40500
         ),
     )
     quebec_apres = replace(

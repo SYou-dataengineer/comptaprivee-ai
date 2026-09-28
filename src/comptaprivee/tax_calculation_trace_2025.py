@@ -405,7 +405,6 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_federal += " - crédit dividendes 40425, plancher zéro avant abattement"
         formule_impot_quebec += " - crédit dividendes 415, plancher zéro"
     if estimation.credit_impot_etranger.present:
-        formule_impot_federal += " - crédit impôt étranger 40500 confirmé via T2209"
         formule_impot_quebec += " - crédit impôt étranger 409 confirmé via TP-772"
     formule_impot_total = (
         "Impôt fédéral après abattement + impôt Québec"
@@ -504,19 +503,19 @@ def construire_trace_calcul_fiscal_2025(
         _ligne(
             9, "FÉDÉRAL", "Impôt fédéral de base",
             "Moteur fiscal local 2025",
-            formule_impot_federal,
+            formule_impot_federal + " = ligne 42900, avant 40500",
             final.impot_federal_de_base,
         ),
         _ligne(
             10, "FÉDÉRAL", "Abattement Québec",
             "Rapprochement fiscal 2025",
-            "16,5 % de l'impôt fédéral de base",
+            "16,5 % de la ligne 42900, avant crédit étranger 40500",
             final.abattement_quebec,
         ),
         _ligne(
             11, "FÉDÉRAL", "Impôt fédéral après abattement",
             "Rapprochement fiscal 2025",
-            "Impôt fédéral de base - abattement Québec",
+            "Impôt fédéral après 40500 - abattement Québec remboursable 44000",
             final.impot_federal_apres_abattement,
         ),
         _ligne(
@@ -580,12 +579,18 @@ def construire_trace_calcul_fiscal_2025(
                 p.revenu_brut_quebec,
             ),
             (
-                "Impôt fédéral de base",
+                "Abattement Québec",
                 "FÉDÉRAL",
                 "Crédit impôt étranger ligne 40500",
                 "T2209 — " + cc.source_t2209,
-                "Montant T2209 2025 confirmé; crédit non remboursable",
-                c.ligne_40500,
+                "Minimum du T2209 confirmé et de 42900; sans effet sur la base de 44000",
+                federal.credit_etranger_ligne_40500,
+            ),
+            (
+                "Abattement Québec", "FÉDÉRAL",
+                "Impôt fédéral après ligne 40500", "T1 Québec 2025, partie C",
+                "max(ligne 42900 - crédit 40500 utilisable, 0)",
+                federal.impot_federal_apres_credit_etranger,
             ),
             (
                 "Impôt Québec préliminaire",
