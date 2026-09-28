@@ -10,6 +10,7 @@ from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, CONFIRMATIONS_REPORTS_DONS
+from .tax_political_contributions_2025 import (ContributionsPolitiques2025, RecuPolitique2025, TYPES_BENEFICIAIRES_POLITIQUES, CONFIRMATIONS_POLITIQUES, calculer_contributions_politiques_2025, valider_recus_politiques_2025)
 from .tax_adoption_2025 import (Adoption2025, EnfantAdopte2025, DepenseAdoption2025, CATEGORIES_ADOPTION, CONFIRMATIONS_ADOPTION, calculer_adoption_2025, calculer_enfants_adoptes_2025)
 from .tax_volunteers_2025 import (Benevoles2025, ActiviteBenevole2025, CHOIX_BENEVOLES, CONFIRMATIONS_BENEVOLES, valider_benevoles_2025, valider_activites_benevoles_2025)
 from .tax_spouse_transfer_2025 import (TransfertConjointFederal2025, CONFIRMATIONS_TRANSFERT_CONJOINT, instantane_conjoint_2025, calculer_transfert_conjoint_2025, lignes_transfert_conjoint_2025)
@@ -2516,6 +2517,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_demenagement_courants = FraisDemenagement2025()
         pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
         autres_deductions_courantes = AutresDeductions2025()
+        contributions_politiques_courantes = ContributionsPolitiques2025()
         adoption_courante = Adoption2025()
         benevoles_courants = Benevoles2025()
         transfert_conjoint_courant = TransfertConjointFederal2025()
@@ -3793,6 +3795,136 @@ class ApplicationComptaPrivee(tk.Tk):
 
         # --- Priorité 5B : GUI intérêts sur prêts étudiants ---
 
+        def ouvrir_contributions_politiques_5n_2025():
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Contributions politiques fédérales — 40900 / 41000")
+            dimensionner_fenetre(dialogue, 1100, 900)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(1, weight=1)
+            ttk.Label(cadre, text="Reçus monétaires fédéraux de 2025 seulement. Le bénéficiaire et les avantages doivent être "
+                "vérifiés par le comptable. Les reçus du conjoint sont permis si ce dernier ne les réclame pas. "
+                "Aucune contribution en nature ni crédit Québec dans ce profil. Le crédit calculé est non remboursable, "
+                "sans report; maximum 650 $.", wraplength=980).grid(row=0, column=0, columnspan=2, sticky="ew")
+            source = tk.StringVar(value=contributions_politiques_courantes.source)
+            conjoint = tk.StringVar(value=contributions_politiques_courantes.nom_conjoint)
+            for row, (nom, libelle, v) in enumerate((("source", "Source de validation et du choix des reçus", source),
+                    ("nom_conjoint", "Nom du conjoint (seulement si ses reçus sont réclamés)", conjoint)), 1):
+                ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w")
+                ttk.Entry(cadre, name=nom + "_5n", textvariable=v).grid(row=row, column=1, sticky="ew")
+            recus = list(contributions_politiques_courantes.recus)
+            tableau = ttk.Treeview(cadre, name="recus_5n", columns=("donateur", "beneficiaire", "montant", "avantage"), show="headings", height=4)
+            for nom in ("donateur", "beneficiaire", "montant", "avantage"):
+                tableau.heading(nom, text=nom.capitalize())
+                tableau.column(nom, width=200)
+            tableau.grid(row=3, column=0, columnspan=2, sticky="ew")
+            variables = {}
+            for row, (nom, libelle) in enumerate((("date_paiement", "Paiement en 2025 (AAAA-MM-JJ)"),
+                    ("donateur", "Contribuable ou conjoint"), ("nom_donateur", "Nom du donateur sur le reçu"),
+                    ("beneficiaire", "Nom du bénéficiaire fédéral"), ("type_beneficiaire", "Type de bénéficiaire vérifié"),
+                    ("montant", "Paiement monétaire ($)"), ("avantage", "Valeur des avantages reçus ou attendus ($)"),
+                    ("source", "Référence unique du reçu officiel")), 4):
+                v = tk.StringVar()
+                variables[nom] = v
+                ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w")
+                choix = {"donateur": ("contribuable", "conjoint"), "type_beneficiaire": TYPES_BENEFICIAIRES_POLITIQUES}.get(nom)
+                w = (ttk.Combobox(cadre, name=nom + "_recu_5n", textvariable=v, values=choix, state="readonly")
+                    if choix else ttk.Entry(cadre, name=nom + "_recu_5n", textvariable=v))
+                w.grid(row=row, column=1, sticky="ew")
+            confirmations = {}
+            for row, (nom, libelle) in enumerate(CONFIRMATIONS_POLITIQUES.items(), 13):
+                v = tk.BooleanVar(value=getattr(contributions_politiques_courantes, nom))
+                confirmations[nom] = v
+                ttk.Checkbutton(cadre, name=nom + "_5n", text=libelle, variable=v).grid(row=row, column=0, columnspan=2, sticky="w")
+            selection = [None]
+            modifie = [False]
+            def revoquer(*_):
+                for v in confirmations.values():
+                    v.set(False)
+            def modifier(*_):
+                modifie[0] = True
+                revoquer()
+            for v in (source, conjoint):
+                v.trace_add("write", revoquer)
+            for v in variables.values():
+                v.trace_add("write", modifier)
+            def rafraichir():
+                for iid in tableau.get_children():
+                    tableau.delete(iid)
+                for i, r in enumerate(recus):
+                    tableau.insert("", "end", iid=str(i), values=(r.nom_donateur, r.beneficiaire, str(r.montant), str(r.avantage)))
+            def nouveau():
+                selection[0] = None
+                for v in variables.values():
+                    v.set("")
+                variables["donateur"].set("contribuable")
+                variables["avantage"].set("0")
+                modifie[0] = False
+            def charger():
+                if tableau.selection():
+                    selection[0] = int(tableau.selection()[0])
+                    for nom, v in variables.items():
+                        v.set(str(getattr(recus[selection[0]], nom)))
+                    modifie[0] = False
+            def enregistrer():
+                try:
+                    brut = {nom: v.get().strip() for nom, v in variables.items()}
+                    for nom in ("montant", "avantage"):
+                        brut[nom] = Decimal(brut[nom].replace(",", "."))
+                    r = RecuPolitique2025(**brut)
+                    lignes = list(recus)
+                    if selection[0] is None:
+                        lignes.append(r)
+                    else:
+                        lignes[selection[0]] = r
+                    valider_recus_politiques_2025(tuple(lignes))
+                except (ValueError, InvalidOperation) as erreur:
+                    messagebox.showerror("Reçu politique invalide", str(erreur), parent=dialogue)
+                    return
+                recus[:] = lignes
+                nouveau()
+                rafraichir()
+            def retirer():
+                if tableau.selection():
+                    del recus[int(tableau.selection()[0])]
+                    nouveau()
+                    rafraichir()
+            actions = ttk.Frame(cadre)
+            actions.grid(row=12, column=0, columnspan=2, sticky="ew")
+            for libelle, commande in (("Nouveau reçu", nouveau), ("Modifier le reçu", charger),
+                    ("Enregistrer le reçu", enregistrer), ("Retirer le reçu", retirer)):
+                ttk.Button(actions, text=libelle, command=commande).pack(side="left", padx=4)
+            def appliquer(effacer=False):
+                nonlocal contributions_politiques_courantes, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                try:
+                    if not effacer and modifie[0]:
+                        raise ValueError("Enregistrez le reçu modifié avant d'appliquer.")
+                    p = ContributionsPolitiques2025() if effacer else ContributionsPolitiques2025(
+                        recus=tuple(recus), nom_conjoint=conjoint.get().strip(), source=source.get().strip(),
+                        **{nom: v.get() for nom, v in confirmations.items()})
+                    calculer_contributions_politiques_2025(p, client=client_fiscal.get().strip())
+                except ValueError as erreur:
+                    messagebox.showerror("Contributions politiques invalides", str(erreur), parent=dialogue)
+                    return
+                contributions_politiques_courantes = p
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Contributions politiques mises à jour; recalculez l'estimation.")
+                dialogue.destroy()
+            ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer).pack(side="right")
+            ttk.Button(formulaire.actions, text="Effacer le profil", command=lambda: appliquer(True)).pack(side="right", padx=8)
+            ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
+            # Initialiser les champs sans révoquer un profil déjà confirmé.
+            variables["donateur"].set("contribuable")
+            variables["avantage"].set("0")
+            modifie[0] = False
+            for nom, v in confirmations.items():
+                v.set(getattr(contributions_politiques_courantes, nom))
+            rafraichir()
+
         def ouvrir_adoption_5m_2025():
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Frais d'adoption — ligne 31300")
@@ -4187,7 +4319,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
 
         def ouvrir_scolarite_recue_5h_2025():
-            nonlocal adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Scolarité reçue — ligne 32400")
             dimensionner_fenetre(dialogue, 1000, 880)
@@ -5369,6 +5501,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    contributions_politiques=contributions_politiques_courantes,
                     adoption=adoption_courante,
                     benevoles=benevoles_courants,
                     transfert_conjoint=transfert_conjoint_courant,
@@ -13560,6 +13693,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    contributions_politiques=contributions_politiques_courantes,
                     adoption=adoption_courante,
                     benevoles=benevoles_courants,
                     transfert_conjoint=transfert_conjoint_courant,
@@ -13622,6 +13756,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    contributions_politiques=contributions_politiques_courantes,
                     adoption=adoption_courante,
                     benevoles=benevoles_courants,
                     transfert_conjoint=transfert_conjoint_courant,
@@ -13714,7 +13849,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
-            nonlocal adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal interets_pret_etudiant_courants
             nonlocal frais_garde_federaux_courants
@@ -13795,6 +13930,7 @@ class ApplicationComptaPrivee(tk.Tk):
             pension_alimentaire_payee_courante = (
                 enregistrement.pension_alimentaire_payee
             )
+            contributions_politiques_courantes = enregistrement.contributions_politiques
             adoption_courante = enregistrement.adoption
             benevoles_courants = enregistrement.benevoles
             transfert_conjoint_courant = enregistrement.transfert_conjoint
@@ -14137,6 +14273,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    contributions_politiques=contributions_politiques_courantes,
                     adoption=adoption_courante,
                     benevoles=benevoles_courants,
                     transfert_conjoint=transfert_conjoint_courant,
@@ -14628,6 +14765,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(zone_actions, text="Allocation travailleurs 2025 (5E)",
                    command=ouvrir_allocation_travailleurs_5e_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Contributions politiques 2025 (5N)",
+                   command=ouvrir_contributions_politiques_5n_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Frais d'adoption 2025 (5M)",
                    command=ouvrir_adoption_5m_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Services bénévoles 2025 (5L)",

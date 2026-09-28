@@ -2697,3 +2697,57 @@ Validation ciblée : **291 passed, 5 warnings**. Aucun test existant modifié.
 
 Suite complète 5M : **4425 passed, 8 warnings** (`--capture=sys`).
 Rendu du rapport PDF synthétique vérifié visuellement.
+
+### Bloc 5N livré — contributions politiques fédérales, 40900 / 41000
+
+Sources : [ARC, crédit politique, année 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/federal-political-contributions-line-40900-total-contributions-line-41000-tax-credit.html),
+[feuille fédérale 2025, page 8](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-d1/5000-d1-25e.pdf),
+[LIR 127(3), (3.1) et (4.1)](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/page-109.html),
+[T1 Québec 2025, pages 7 et 8](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-r/5005-r-25e.pdf).
+
+Les paiements monétaires de 2025 à un parti fédéral enregistré, une association
+enregistrée ou un candidat fédéral sont saisis par reçu officiel. Le donateur,
+le bénéficiaire, la date, le paiement, les avantages reçus ou attendus et la
+référence sont conservés. Les reçus du conjoint peuvent être réclamés si ce
+dernier ne les réclame pas. Le comptable vérifie l'admissibilité, l'autorisation
+du signataire, la concordance du montant net avec les reçus et l'absence de
+double demande, notamment parmi les dons de bienfaisance.
+
+40900 = paiements moins avantages. 41000 = 75 % des premiers 400 $, puis 50 %
+des 350 $ suivants, puis **un tiers** de l'excédent, maximum **650 $**.
+Le moteur conserve le taux exact prévu par 127(3), puis arrondit au cent;
+la feuille papier affiche le troisième taux arrondi à 33,33 %. Ce choix de
+précision est explicite et testé aux seuils, dont 1 274,99 / 1 275 $.
+Les contributions en nature et les exclusions de 127(4.1), dont certains
+avantages financiers publics et paiements en qualité d'agent, ne sont pas admises.
+Le profil demande confirmation de leur absence.
+
+Le crédit est appliqué après 40500 : dans ce profil, 41600 contient 41000,
+puis 41700 = max(40600 - 41600, 0). Les avances ACT 41500 sont ajoutées ensuite.
+L'inutilisé est montré, sans remboursement ni report propre à ce crédit.
+Les bases 33500, 33800, 34990, 35000 et 42900 restent inchangées, tout comme
+44000 = 16,5 % de 42900. L'abattement demeure remboursable même si 41700 est nul.
+Aucun revenu ou crédit Québec n'est modifié. Le crédit politique n'entre pas
+dans les montants transférables de l'annexe 2.
+
+Périmètre logiciel : reçus personnels monétaires; les attributions T5003/T5013
+de sociétés de personnes restent à traiter avec les profils avancés. Les
+contributions du conjoint combinées aux profils actuellement individuels ACT
+ou supplément médical sont refusées en attendant leur extension familiale.
+Ces restrictions logicielles ne sont pas des exclusions fiscales générales.
+Avec un dossier conjoint importé par 5K, les identités et références des reçus
+réclamés sont rapprochées pour refuser une double demande connue. Sans dossier
+importé, le choix du conjoint est validé sur pièces, sans recherche externe.
+
+Stockage rétrocompatible : profil absent = vide; seuls reçus, sources et
+confirmations sont persistés. Clés inconnues, types invalides, dates hors 2025,
+Decimal non finis/négatifs/hors cents et profils explicites divergents sont
+refusés. GUI : ajout, modification, retrait des reçus, confirmation du choix;
+les modifications révoquent les validations et aucun crédit calculé n'est saisi.
+Trace, résumé et PDF montrent les contributions, avantages, formule, crédit
+utilisé/inutilisé et ordre 40500 → 41000/41600 → 41700 → 41500, avec 44000 séparé.
+
+Validation ciblée : **330 passed, 5 warnings**. Aucun test existant modifié.
+
+Suite complète 5N : **4537 passed, 8 warnings** (`--capture=sys`).
+Rapport PDF synthétique vérifié visuellement.

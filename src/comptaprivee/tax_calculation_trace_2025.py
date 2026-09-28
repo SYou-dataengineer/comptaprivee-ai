@@ -526,7 +526,8 @@ def construire_trace_calcul_fiscal_2025(
         _ligne(
             11, "FÉDÉRAL", "Impôt fédéral après abattement",
             "Rapprochement fiscal 2025",
-            ("Impôt fédéral après 40500 + avances ACT 41500 - abattement Québec remboursable 44000"
+            ("max(impôt après 40500 - crédit politique 41000, 0) + avances ACT 41500 - abattement 44000"
+             if final.credit_politique_ligne_41000 else "Impôt fédéral après 40500 + avances ACT 41500 - abattement Québec remboursable 44000"
              if final.avances_act_ligne_41500 else "Impôt fédéral après 40500 - abattement Québec remboursable 44000"),
             final.impot_federal_apres_abattement,
         ),
@@ -2017,6 +2018,17 @@ def construire_trace_calcul_fiscal_2025(
         if r.ligne_credit:
             lignes += (_ligne(len(lignes) + 1, "SERVICES BÉNÉVOLES — BLOC 5L", "Base bénévoles — ligne " + r.ligne_credit,
                 estimation.benevoles.source, "6000 $; au moins 200 heures; inclus une fois avant 32300 dans 33500", r.base_credit),)
+
+    if estimation.contributions_politiques.recus:
+        p, r = estimation.contributions_politiques, estimation.resultat_contributions_politiques
+        for libelle, montant, formule in (
+            ("Contributions politiques — 40900", r.ligne_40900, "Paiements monétaires moins avantages, reçus validés une seule fois"),
+            ("Crédit politique — 41000", r.ligne_41000, "75 % jusqu'à 400; 50 % des 350 suivants; 1/3 au-delà; maximum 650"),
+            ("Impôt fédéral — 41700", final.impot_federal_ligne_41700, "max(40600 - 41600, 0); 41600 = 41000 dans ce profil"),
+            ("Crédit politique utilisé", final.credit_politique_utilise, "min(41000, 40600); aucun report de l'inutilisé"),
+        ):
+            lignes = _inserer_ligne_avant(lignes, "Impôt fédéral après abattement",
+                _ligne(0, "CONTRIBUTIONS POLITIQUES — BLOC 5N", libelle, p.source, formule, montant))
 
     for e, r in zip(estimation.adoption.enfants, estimation.resultat_adoption.enfants):
         source = e.source + " — " + e.nom
