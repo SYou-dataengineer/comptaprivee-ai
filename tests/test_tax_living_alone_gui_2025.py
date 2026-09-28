@@ -62,7 +62,7 @@ def test_gui_saisit_additionnel_monoparental():
     assert "famille monoparentale" in texte
     assert "Enfant majeur aux études admissible confirmé" in texte
     assert "Allocation famille pour décembre 2025" in texte
-    assert "Nombre de mois d'Allocation famille reçus en 2025" in texte
+    assert "Nombre de mois donnant droit à l'Allocation famille en 2025" in texte
 
 
 def test_gui_construit_et_valide_profil():

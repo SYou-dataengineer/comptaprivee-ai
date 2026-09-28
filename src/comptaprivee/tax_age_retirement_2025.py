@@ -11,17 +11,16 @@ Références 2025 (annexe B, ligne 361) :
 Première version volontairement limitée au contribuable lui-même :
 - aucun conjoint au 31 décembre 2025;
 - résidence Québec/Canada toute l'année;
-- aucune combinaison avec le montant pour personne vivant seule;
+- combinaison avec le montant pour personne vivant seule via le moteur commun 6A;
 - aucun transfert de revenus de retraite entre conjoints;
 - revenus de retraite admissibles seulement;
 - situation validée par le comptable.
 
-La combinaison avec le montant pour personne vivant seule devra être
-traitée dans une étape ultérieure avec un calcul unique de la réduction
-de l'annexe B, afin d'éviter toute double réduction.
+La combinaison confirmée est traitée par tax_quebec_schedule_b_2025 avec
+une réduction unique. Le calcul isolé refuse ce mode.
 """
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, replace
 from decimal import Decimal
 
 from .tax_quebec_2025 import (
@@ -71,6 +70,7 @@ class MontantsAgeRetraite2025:
     valide_par_comptable: bool = False
     source_age: str = ""
     source_retraite: str = ""
+    combinaison_annexe_b_confirmee: bool = False
 
 
 def aucun_montant_age_retraite_2025() -> MontantsAgeRetraite2025:
@@ -92,6 +92,18 @@ def _montants_retraite(profil: MontantsAgeRetraite2025) -> tuple[Decimal, ...]:
 def valider_montants_age_retraite_2025(
     profil: MontantsAgeRetraite2025,
 ) -> MontantsAgeRetraite2025:
+    if type(profil.combinaison_annexe_b_confirmee) is not bool:
+        raise ValueError("Confirmation annexe B combinée invalide.")
+    if profil.combinaison_annexe_b_confirmee:
+        for champ in fields(profil):
+            v, defaut = getattr(profil, champ.name), champ.default
+            if isinstance(defaut, (bool, str, int)) and type(v) is not type(defaut):
+                raise ValueError("Type annexe B combinée invalide : " + champ.name)
+            if isinstance(defaut, Decimal) and (not isinstance(v, Decimal) or not v.is_finite()
+                    or not ZERO <= v <= Decimal("999999999.99") or v != arrondir_cent(v)):
+                raise ValueError("Montant annexe B combinée invalide : " + champ.name)
+        if not (profil.reclamer_age or profil.reclamer_revenus_retraite) or profil.aucun_montant_personne_vivant_seule:
+            raise ValueError("Annexe B combinée : activer le montant et désactiver la confirmation d'absence de l'autre montant.")
     if profil.revenu_familial_net < ZERO:
         raise ValueError(
             "Le revenu familial net ne peut pas être négatif."
@@ -125,7 +137,7 @@ def valider_montants_age_retraite_2025(
             "sans conjoint au 31 décembre 2025."
         )
 
-    if not profil.aucun_montant_personne_vivant_seule:
+    if not profil.aucun_montant_personne_vivant_seule and not profil.combinaison_annexe_b_confirmee:
         raise ValueError(
             "Cette première version ne combine pas encore les montants "
             "pour âge ou retraite avec le montant pour personne vivant "
@@ -287,6 +299,8 @@ def reduction_annexe_b_age_retraite_2025(
 def montant_ligne_361_age_retraite_2025(
     profil: MontantsAgeRetraite2025,
 ) -> Decimal:
+    if profil.combinaison_annexe_b_confirmee:
+        raise ValueError("Utiliser le calcul commun de l'annexe B pour la ligne 361 combinée.")
     valider_montants_age_retraite_2025(profil)
 
     if not (profil.reclamer_age or profil.reclamer_revenus_retraite):

@@ -14,7 +14,7 @@ locale; il ne constitue pas encore une déclaration T1/TP-1 complète.
 | Impôt de base | Barèmes fédéral/Québec, montants personnels, crédit canadien pour emploi, cotisations sociales fédérales, abattement Québec et rapprochement des retenues | Profil salarié simple; pas de calcul général d'impôt minimum ou d'impôt étranger |
 | Crédits personnels fédéraux | Âge, conjoint, personne à charge admissible, aidants 30425/30450/enfant, achat d'habitation, accessibilité | Garde-fous au-delà de la première tranche faute de ligne 34990; plusieurs combinaisons familiales refusées |
 | Crédits fédéraux et Québec | Frais médicaux, scolarité, handicap/déficience, dons | Admissibilité et montants confirmés; reports, transferts et cas avancés incomplets |
-| Québec | Cotisations professionnelles, personne vivant seule, âge/retraite, assurance médicaments, excédents RRQ/AE/RQAP | Annexe B combinée non prise en charge; assurance médicaments limitée à certains profils |
+| Québec | Cotisations professionnelles, personne vivant seule, âge/retraite, assurance médicaments, excédents RRQ/AE/RQAP | Annexe B combinée sans conjoint livrée en 6A; combinaison avec conjoint à intégrer; assurance médicaments limitée à certains profils |
 | Pensions | Fonctions de calcul de crédits présentes | La ligne fédérale 31400 est explicitement bloquée dans l'orchestrateur : les revenus de pension ne sont pas encore intégrés; présence du module ≠ prise en charge d'un retraité |
 | Chaîne applicative | Validation humaine, dossier verrouillé, sauvegarde JSON/rechargement, résumé, trace et PDF, tests Tkinter | L'extraction initiale concerne les cases reconnues du T4/RL-1; les autres feuillets nécessitent de futurs blocs |
 
@@ -3648,3 +3648,63 @@ La suite complète 5AB ci-dessus valide cet état. La Priorité 6 prend la suite
 annexe B combinée, puis autres familles de crédits Québec prévues à la roadmap,
 avec leurs propres sources Revenu Québec. Le produit n'est pas encore déclaré
 prêt pour la version 1.0 : Priorités 6 et 7 et audit global restent à réaliser.
+
+
+### Bloc 6A livré — annexe B combinée sans conjoint, ligne 361
+
+Les montants pour personne vivant seule et pour âge/retraite peuvent désormais
+être combinés dans un calcul commun. Selon l’[annexe B officielle 2025, parties A/B](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.B%282025-12%29.pdf),
+on additionne les composantes des lignes 20 à 28 avant de soustraire **une seule**
+réduction de 18,75 % de l’excédent du revenu familial sur 42 090 $.
+Le résultat, au minimum zéro, constitue la ligne 361; le crédit non remboursable
+est de 14 %. Dans ce périmètre sans conjoint, le revenu familial est le revenu
+net Québec recalculé du contribuable, et aucune part n’est attribuée à un conjoint.
+
+Composantes conservées : personne seule 2 128 $, âge 3 906 $ si naissance avant
+1961, retraite admissible nette × 1,25 plafonnée à 3 470 $. L’additionnel
+monoparental conserve les conditions du [guide RQ, ligne 361](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/350-a-398-1-credits-dimpot-non-remboursables/ligne-361/) :
+2 627 $ moins 218,92 $ par mois donnant droit à l’Allocation famille, enfant
+majeur aux études admissible et aucun droit à cette allocation en décembre.
+Le libellé GUI précise le droit mensuel, plutôt que la date de paiement.
+
+Exemple synthétique vérifié : revenu net Québec 50 000 $, personne seule,
+âge admissible et pension admissible de 50 000 $. Total ligne 30 =
+2 128 + 3 906 + 3 470 = 9 504 $; réduction ligne 31 = 1 483,13 $;
+ligne 361 = **8 020,87 $**; crédit = **1 122,92 $**. Les revenus et l’impôt
+fédéral restent inchangés; l’impôt Québec et le rapprochement appliquent ce
+crédit une seule fois, avec plancher d’impôt à zéro.
+
+Périmètre logiciel : les deux profils doivent confirmer la combinaison et
+présenter le même revenu net. Les anciennes confirmations d’absence de l’autre
+montant doivent être désactivées. Sans ces confirmations communes, l’ancienne
+protection contre une combinaison non validée reste active. Les fonctions de
+calcul isolées refusent le mode combiné, afin d’empêcher deux réductions.
+Résidence Québec/Canada toute l’année, absence de conjoint, habitation,
+conditions d’âge et nature des revenus restent soumis aux validations existantes.
+La résidence partielle, les décès, les transferts entre conjoints et les règles
+particulières hors profils existants ne sont pas étendus par 6A. Ce sont des
+limites de prise en charge, et non une déclaration d’inadmissibilité fiscale.
+
+Le JSON ajoute une confirmation brute dans chacun des deux profils : ancienne
+absence du champ = mode historique. Les résultats sont recalculés, non saisis.
+Les types et clés du nouveau format, la cohérence entre profils et la divergence
+avec l’estimation sont contrôlés. La GUI conserve les données justificatives,
+révoque la combinaison et la validation comptable après changement, et exige
+une confirmation dans chaque dialogue. Trace, résumé et PDF présentent une
+section commune avec les composantes, réduction, crédit et sources, sans
+additionner les anciens crédits séparés.
+
+Validation ciblée 6A et régressions : **251 passed, 5 warnings**. Tests couvrant
+seuils, revenus nuls/positifs, extinction, composantes facultatives, supplément
+mensuel, confirmations contradictoires, types, JSON ancien/nouveau, feuillets
+pensions, rapprochement, GUI, trace et PDF. Les avertissements ciblés proviennent
+de la dépendance SWIG. La suite complète et la publication sont consignées au
+journal de mission après exécution.
+
+Journal 6A : suite complète avant commit **5710 passed, 8 warnings**
+(`--capture=sys`, 190,79 s). Les deux anciennes assertions de libellés GUI ont
+été actualisées pour la combinaison désormais autorisée et le droit mensuel à
+l’allocation; le test GUI exécuté confirme le comportement. Aucun test supprimé
+ni désactivé. Les 8 warnings restent ceux de SWIG et de la copie de police
+openpyxl déjà présents. Fichiers : moteur commun, profils âge/retraite et
+personne seule, estimation, stockage, GUI, trace, PDF, documentation et tests.

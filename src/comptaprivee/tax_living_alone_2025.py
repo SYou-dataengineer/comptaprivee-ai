@@ -13,16 +13,16 @@ Profil volontairement limité :
 - résident Québec/Canada toute l'année;
 - aucun conjoint au 31 décembre 2025;
 - habitation admissible maintenue pendant toute l'année;
-- aucun montant pour âge ou revenus de retraite combiné à la ligne 361;
+- combinaison âge/retraite confirmée via le moteur commun 6A, sinon calcul isolé;
 - documents et situation validés par le comptable.
 
 Le montant additionnel monoparental est supporté uniquement pour le cas
 simple d'un enfant majeur aux études admissible. Il est réduit de 218,92 $
-par mois d'Allocation famille reçu en 2025 et exige l'absence de droit à
+par mois donnant droit à l'Allocation famille en 2025 et exige l'absence de droit à
 l'Allocation famille en décembre 2025.
 """
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, replace
 from decimal import Decimal
 
 from .tax_quebec_2025 import (
@@ -63,6 +63,7 @@ class PersonneVivantSeule2025:
     documents_justificatifs_confirmes: bool = False
     valide_par_comptable: bool = False
     source: str = ""
+    combinaison_annexe_b_confirmee: bool = False
 
 
 def aucun_montant_personne_vivant_seule_2025() -> PersonneVivantSeule2025:
@@ -72,6 +73,18 @@ def aucun_montant_personne_vivant_seule_2025() -> PersonneVivantSeule2025:
 def valider_personne_vivant_seule_2025(
     profil: PersonneVivantSeule2025,
 ) -> PersonneVivantSeule2025:
+    if type(profil.combinaison_annexe_b_confirmee) is not bool:
+        raise ValueError("Confirmation annexe B combinée invalide.")
+    if profil.combinaison_annexe_b_confirmee:
+        for champ in fields(profil):
+            v, defaut = getattr(profil, champ.name), champ.default
+            if isinstance(defaut, (bool, str, int)) and type(v) is not type(defaut):
+                raise ValueError("Type annexe B combinée invalide : " + champ.name)
+            if isinstance(defaut, Decimal) and (not isinstance(v, Decimal) or not v.is_finite()
+                    or not ZERO <= v <= Decimal("999999999.99") or v != arrondir_cent(v)):
+                raise ValueError("Montant annexe B combinée invalide : " + champ.name)
+        if not profil.reclamer_montant or profil.aucun_montant_age_ou_retraite:
+            raise ValueError("Annexe B combinée : activer le montant et désactiver la confirmation d'absence de l'autre montant.")
     if profil.revenu_familial_net < ZERO:
         raise ValueError(
             "Le revenu familial net ne peut pas être négatif."
@@ -116,7 +129,7 @@ def valider_personne_vivant_seule_2025(
             "personnes permises par la règle de la personne vivant seule."
         )
 
-    if not profil.aucun_montant_age_ou_retraite:
+    if not profil.aucun_montant_age_ou_retraite and not profil.combinaison_annexe_b_confirmee:
         raise ValueError(
             "Cette version ne combine pas encore la ligne 361 avec "
             "les montants pour âge ou revenus de retraite."
@@ -193,6 +206,8 @@ def montant_additionnel_monoparental_2025(
 def montant_ligne_361_personne_vivant_seule_2025(
     profil: PersonneVivantSeule2025,
 ) -> Decimal:
+    if profil.combinaison_annexe_b_confirmee:
+        raise ValueError("Utiliser le calcul commun de l'annexe B pour la ligne 361 combinée.")
     valider_personne_vivant_seule_2025(profil)
 
     if not profil.reclamer_montant:

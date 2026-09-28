@@ -1,5 +1,6 @@
 """Export PDF local du rapport d'estimation fiscale 2025."""
 
+from .tax_quebec_schedule_b_2025 import calculer_annexe_b_combinee_2025, lignes_annexe_b_combinee_2025
 from .tax_disability_transfer_2025 import lignes_transferts_handicap_2025
 from .tax_multigenerational_renovation_2025 import lignes_multigenerationnelles_2025
 from .tax_family_medical_2025 import lignes_medical_familial_2025
@@ -1320,7 +1321,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
             "Ligne 34990 : calcul automatique intégré (2025)."
         )
 
-    if (
+    if not montants_age_retraite.combinaison_annexe_b_confirmee and (
         montants_age_retraite.reclamer_age
         or montants_age_retraite.reclamer_revenus_retraite
     ):
@@ -1506,7 +1507,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                 f"{montants_age_retraite.source_retraite}"
             )
 
-    if personne_vivant_seule.reclamer_montant:
+    if personne_vivant_seule.reclamer_montant and not personne_vivant_seule.combinaison_annexe_b_confirmee:
         montant_ligne_361 = (
             montant_ligne_361_personne_vivant_seule_2025(
                 personne_vivant_seule
@@ -2013,6 +2014,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_contributions_politiques_2025(estimation.contributions_politiques, estimation.resultat_contributions_politiques, estimation.rapprochement))
     lignes.extend(lignes_adoption_2025(estimation.adoption, estimation.resultat_adoption))
     lignes.extend(lignes_benevoles_2025(estimation.benevoles, estimation.resultat_benevoles))
+    lignes.extend(lignes_annexe_b_combinee_2025(personne_vivant_seule, montants_age_retraite))
     lignes.extend(lignes_transfert_conjoint_2025(estimation.transfert_conjoint, estimation.resultat_transfert_conjoint))
     lignes.extend(lignes_transferts_scolarite_recus_2025(estimation.transferts_scolarite_recus))
     lignes.extend(lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs))

@@ -1800,6 +1800,7 @@ def _personne_vivant_seule_vers_dict(
     valider_personne_vivant_seule_2025(profil)
 
     return {
+        "combinaison_annexe_b_confirmee": profil.combinaison_annexe_b_confirmee,
         "reclamer_montant": bool(profil.reclamer_montant),
         "revenu_familial_net": _decimal_texte(
             profil.revenu_familial_net
@@ -1865,7 +1866,9 @@ def _personne_vivant_seule_depuis_dict(
             "est invalide."
         ) from erreur
 
+    _verifier_types_annexe_b_6a(valeur, PersonneVivantSeule2025())
     profil = PersonneVivantSeule2025(
+        combinaison_annexe_b_confirmee=valeur.get("combinaison_annexe_b_confirmee", False),
         reclamer_montant=bool(
             valeur.get("reclamer_montant", False)
         ),
@@ -3262,6 +3265,7 @@ def _montants_age_retraite_vers_dict(
     valider_montants_age_retraite_2025(profil)
 
     return {
+        "combinaison_annexe_b_confirmee": profil.combinaison_annexe_b_confirmee,
         "reclamer_age": bool(profil.reclamer_age),
         "ne_avant_1_janvier_1961": bool(
             profil.ne_avant_1_janvier_1961
@@ -3327,7 +3331,9 @@ def _montants_age_retraite_depuis_dict(
             "Le profil âge/retraite enregistré est invalide."
         )
 
+    _verifier_types_annexe_b_6a(valeur, MontantsAgeRetraite2025())
     profil = MontantsAgeRetraite2025(
+        combinaison_annexe_b_confirmee=valeur.get("combinaison_annexe_b_confirmee", False),
         reclamer_age=bool(
             valeur.get("reclamer_age", False)
         ),
@@ -3651,6 +3657,17 @@ def sauvegarder_dossier_fiscal(
             accessibilite_domiciliaire_federale = estimation.accessibilite_domiciliaire_federale
         elif accessibilite_domiciliaire_federale != estimation.accessibilite_domiciliaire_federale:
             raise ValueError("Profil partagé 31285 divergent de l'estimation.")
+
+    if estimation is not None and any(p is not None and p.combinaison_annexe_b_confirmee for p in (
+        personne_vivant_seule, montants_age_retraite, estimation.personne_vivant_seule, estimation.montants_age_retraite)):
+        if personne_vivant_seule is None:
+            personne_vivant_seule = estimation.personne_vivant_seule
+        elif personne_vivant_seule != estimation.personne_vivant_seule:
+            raise ValueError("Profil personne seule de l'annexe B divergent de l'estimation.")
+        if montants_age_retraite is None:
+            montants_age_retraite = estimation.montants_age_retraite
+        elif montants_age_retraite != estimation.montants_age_retraite:
+            raise ValueError("Profil âge/retraite de l'annexe B divergent de l'estimation.")
 
     celiapp_effectif = (
         deduction_celiapp
@@ -4239,6 +4256,7 @@ def sauvegarder_dossier_fiscal(
         _frais_medicaux_depuis_dict(contenu["frais_medicaux"]), act.present and not act.famille.activer)
     _verifier_prestations_familiales_stockees(contenu, dossier, medical_familial)
     _verifier_enfant_5v_stocke(contenu)
+    _verifier_annexe_b_6a_stockee(contenu)
     _verifier_enfants_conjoints_5ab_stockes(contenu, dossier)
     temporaire = chemin.with_suffix(chemin.suffix + ".tmp")
     try:
@@ -4591,6 +4609,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
     verifier_combinaison_medicale_famille(medical_familial, frais_medicaux, act.present and not act.famille.activer)
     _verifier_prestations_familiales_stockees(contenu, dossier, medical_familial)
     _verifier_enfant_5v_stocke(contenu)
+    _verifier_annexe_b_6a_stockee(contenu)
     _verifier_enfants_conjoints_5ab_stockes(contenu, dossier)
     handicap_transfere = transferts_handicap_depuis_dict(contenu.get("transferts_handicap"))
     calculer_transferts_handicap_2025(handicap_transfere,
@@ -4704,3 +4723,23 @@ def _verifier_enfants_conjoints_5ab_stockes(contenu, dossier):
     conjoint = _transfert_conjoint_depuis_dict(contenu.get("transfert_conjoint"), dossier.client)
     resultat = calculer_transfert_conjoint_2025(conjoint, beneficiaire=dossier.client)
     verifier_attribution_enfants_conjoints_30500_2025(aidant, resultat)
+
+
+def _verifier_types_annexe_b_6a(valeur, defaults):
+    if "combinaison_annexe_b_confirmee" not in valeur:
+        return
+    if set(valeur) - {f.name for f in fields(defaults)}:
+        raise ValueError("Clé inconnue dans l'annexe B.")
+    for nom, v in valeur.items():
+        defaut = getattr(defaults, nom)
+        if isinstance(defaut, (bool, str, int)) and type(v) is not type(defaut):
+            raise ValueError("Type JSON annexe B invalide : " + nom)
+        if isinstance(defaut, Decimal) and type(v) not in (str, int):
+            raise ValueError("Montant JSON annexe B invalide : " + nom)
+
+
+def _verifier_annexe_b_6a_stockee(contenu):
+    from .tax_quebec_schedule_b_2025 import calculer_annexe_b_combinee_2025
+    seule = _personne_vivant_seule_depuis_dict(contenu.get("personne_vivant_seule"))
+    age = _montants_age_retraite_depuis_dict(contenu.get("montants_age_retraite"))
+    calculer_annexe_b_combinee_2025(seule, age)

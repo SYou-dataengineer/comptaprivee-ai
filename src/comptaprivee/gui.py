@@ -10703,8 +10703,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 text=(
                     "Annexe B / ligne 361. Version sécurisée : "
                     "personne sans conjoint, aucun transfert entre "
-                    "conjoints et aucune combinaison avec le montant "
-                    "pour personne vivant seule."
+                    "conjoints. La combinaison avec le montant pour personne "
+                    "vivant seule exige la confirmation dans les deux profils."
                 ),
                 foreground="#166534",
                 wraplength=820,
@@ -10837,7 +10837,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 wraplength=680, anchor="w", justify="left",
                 text="Réclamer le montant en raison de l'âge",
-                variable=reclamer_age_var,
+                name="reclamer_age_var_6a", variable=reclamer_age_var,
             ).grid(
                 row=3,
                 column=0,
@@ -10850,7 +10850,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 wraplength=680, anchor="w", justify="left",
                 text="Né avant le 1er janvier 1961",
-                variable=naissance_var,
+                name="naissance_var_6a", variable=naissance_var,
             ).grid(
                 row=4,
                 column=0,
@@ -10865,7 +10865,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ).grid(row=5, column=0, sticky="w", pady=5)
             ttk.Entry(
                 cadre,
-                textvariable=source_age_var,
+                name="source_age_var_6a", textvariable=source_age_var,
                 width=54,
             ).grid(
                 row=5,
@@ -10890,7 +10890,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 wraplength=680, anchor="w", justify="left",
                 text="Réclamer le montant pour revenus de retraite",
-                variable=reclamer_retraite_var,
+                name="reclamer_retraite_var_6a", variable=reclamer_retraite_var,
             ).grid(
                 row=7,
                 column=0,
@@ -10965,7 +10965,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ).grid(row=16, column=0, sticky="w", pady=5)
             ttk.Entry(
                 cadre,
-                textvariable=source_retraite_var,
+                name="source_retraite_var_6a", textvariable=source_retraite_var,
                 width=54,
             ).grid(
                 row=16,
@@ -11019,6 +11019,28 @@ class ApplicationComptaPrivee(tk.Tk):
                     pady=3,
                 )
 
+            combinaison_var = tk.BooleanVar(value=montants_age_retraite_courants.combinaison_annexe_b_confirmee)
+
+            def revoquer_combinaison(*_args):
+                validation_var.set(False)
+                combinaison_var.set(False)
+
+            def choisir_combinaison():
+                active = combinaison_var.get()
+                if active:
+                    sans_personne_seule_var.set(False)
+                combinaison_var.set(active)
+
+            tk.Checkbutton(cadre, name="combinaison_6a", variable=combinaison_var,
+                text="Combiner personne vivant seule et âge/retraite : une seule réduction de l'annexe B",
+                command=choisir_combinaison, wraplength=680, anchor="w", justify="left").grid(
+                row=23, column=0, columnspan=2, sticky="w")
+            ttk.Label(cadre, text="Confirmez aussi la combinaison dans l'autre profil. Le revenu net Québec doit être identique dans les deux.",
+                wraplength=680).grid(row=24, column=0, columnspan=2, sticky="w")
+            for var in (reclamer_age_var, naissance_var, reclamer_retraite_var, ligne122_var, ligne123_var, deduction2504_var, deduction2506_var, deduction293_var, deduction297_var, transfert245_var, revenu_familial_var, sans_conjoint_var, resident_var, sans_personne_seule_var, admissibles_var, exclus_var, source_age_var, source_retraite_var,):
+                var.trace_add("write", revoquer_combinaison)
+            combinaison_var.trace_add("write", lambda *_: validation_var.set(False))
+
             def lire_montant(
                 variable: tk.StringVar,
                 libelle: str,
@@ -11047,6 +11069,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 return montant
 
             def effacer() -> None:
+                combinaison_var.set(False)
                 reclamer_age_var.set(False)
                 naissance_var.set(False)
                 reclamer_retraite_var.set(False)
@@ -11073,6 +11096,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
                 try:
                     nouveau_profil = MontantsAgeRetraite2025(
+                        combinaison_annexe_b_confirmee=combinaison_var.get(),
                         reclamer_age=reclamer_age_var.get(),
                         ne_avant_1_janvier_1961=naissance_var.get(),
                         reclamer_revenus_retraite=(
@@ -11146,12 +11170,11 @@ class ApplicationComptaPrivee(tk.Tk):
                             or nouveau_profil.reclamer_revenus_retraite
                         )
                         and personne_vivant_seule_courante.reclamer_montant
+                        and not nouveau_profil.combinaison_annexe_b_confirmee
                     ):
                         raise ValueError(
-                            "Désactivez d'abord le profil personne vivant "
-                            "seule 2025. Les deux profils utilisent la "
-                            "même réduction de l'annexe B et ne sont pas "
-                            "encore combinés dans cette version."
+                            "Confirmez la combinaison annexe B dans les deux profils, "
+                            "ou désactivez le profil personne vivant seule."
                         )
 
                 except ValueError as erreur:
@@ -11334,7 +11357,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 wraplength=680, anchor="w", justify="left",
                 text="Réclamer le montant pour personne vivant seule",
-                variable=reclamer_var,
+                name="reclamer_var_6a", variable=reclamer_var,
             ).grid(
                 row=2,
                 column=0,
@@ -11354,7 +11377,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             ttk.Entry(
                 cadre,
-                textvariable=revenu_var,
+                name="revenu_var_6a", textvariable=revenu_var,
                 width=24,
             ).grid(
                 row=3,
@@ -11419,7 +11442,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 wraplength=680, anchor="w", justify="left",
                 text="Réclamer le montant additionnel pour famille monoparentale",
-                variable=additionnel_var,
+                name="additionnel_var_6a", variable=additionnel_var,
             ).grid(
                 row=10,
                 column=0,
@@ -11432,7 +11455,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 wraplength=680, anchor="w", justify="left",
                 text="Enfant majeur aux études admissible confirmé",
-                variable=enfant_etudes_var,
+                name="enfant_etudes_var_6a", variable=enfant_etudes_var,
             ).grid(
                 row=11,
                 column=0,
@@ -11445,7 +11468,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 wraplength=680, anchor="w", justify="left",
                 text="Aucun droit à l'Allocation famille pour décembre 2025",
-                variable=sans_allocation_dec_var,
+                name="sans_allocation_dec_var_6a", variable=sans_allocation_dec_var,
             ).grid(
                 row=12,
                 column=0,
@@ -11456,7 +11479,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
             ttk.Label(
                 cadre,
-                text="Nombre de mois d'Allocation famille reçus en 2025 :",
+                text="Nombre de mois donnant droit à l'Allocation famille en 2025 :",
             ).grid(
                 row=13,
                 column=0,
@@ -11465,7 +11488,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             ttk.Entry(
                 cadre,
-                textvariable=mois_allocation_var,
+                name="mois_allocation_var_6a", textvariable=mois_allocation_var,
                 width=12,
             ).grid(
                 row=13,
@@ -11490,7 +11513,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 wraplength=680, anchor="w", justify="left",
                 text="Aucun montant pour âge ou revenus de retraite combiné",
-                variable=sans_age_retraite_var,
+                name="sans_age_retraite_var_6a", variable=sans_age_retraite_var,
             ).grid(
                 row=15,
                 column=0,
@@ -11503,7 +11526,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 wraplength=680, anchor="w", justify="left",
                 text="Documents justificatifs confirmés",
-                variable=documents_var,
+                name="documents_var_6a", variable=documents_var,
             ).grid(
                 row=16,
                 column=0,
@@ -11516,7 +11539,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 wraplength=680, anchor="w", justify="left",
                 text="Situation validée par le comptable",
-                variable=validation_var,
+                name="validation_var_6a", variable=validation_var,
             ).grid(
                 row=17,
                 column=0,
@@ -11536,7 +11559,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
             ttk.Entry(
                 cadre,
-                textvariable=source_var,
+                name="source_var_6a", textvariable=source_var,
                 width=55,
             ).grid(
                 row=18,
@@ -11563,6 +11586,28 @@ class ApplicationComptaPrivee(tk.Tk):
                 sticky="w",
                 pady=(12, 8),
             )
+
+            combinaison_var = tk.BooleanVar(value=personne_vivant_seule_courante.combinaison_annexe_b_confirmee)
+
+            def revoquer_combinaison(*_args):
+                validation_var.set(False)
+                combinaison_var.set(False)
+
+            def choisir_combinaison():
+                active = combinaison_var.get()
+                if active:
+                    sans_age_retraite_var.set(False)
+                combinaison_var.set(active)
+
+            tk.Checkbutton(cadre, name="combinaison_6a", variable=combinaison_var,
+                text="Combiner personne vivant seule et âge/retraite : une seule réduction de l'annexe B",
+                command=choisir_combinaison, wraplength=680, anchor="w", justify="left").grid(
+                row=20, column=0, columnspan=2, sticky="w")
+            ttk.Label(cadre, text="Confirmez aussi la combinaison dans l'autre profil. Le revenu net Québec doit être identique dans les deux.",
+                wraplength=680).grid(row=21, column=0, columnspan=2, sticky="w")
+            for var in (reclamer_var, revenu_var, seule_annee_var, habitation_var, personnes_autorisees_var, sans_conjoint_var, resident_var, additionnel_var, enfant_etudes_var, sans_allocation_dec_var, mois_allocation_var, sans_age_retraite_var, documents_var, source_var,):
+                var.trace_add("write", revoquer_combinaison)
+            combinaison_var.trace_add("write", lambda *_: validation_var.set(False))
 
             def lire_decimal(
                 variable: tk.StringVar,
@@ -11604,6 +11649,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 return valeur
 
             def effacer() -> None:
+                combinaison_var.set(False)
                 reclamer_var.set(False)
                 revenu_var.set("0")
                 seule_annee_var.set(False)
@@ -11627,6 +11673,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
                 try:
                     nouveau_profil = PersonneVivantSeule2025(
+                        combinaison_annexe_b_confirmee=combinaison_var.get(),
                         reclamer_montant=reclamer_var.get(),
                         revenu_familial_net=lire_decimal(
                             revenu_var,

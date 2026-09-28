@@ -23,6 +23,7 @@ def construire_trace_fractionnement_2025(r):
         'Solde de chaque conjoint = impôts fédéral + Québec + FSS - retenues après répartition.',
     )
 
+from .tax_quebec_schedule_b_2025 import calculer_annexe_b_combinee_2025, lignes_annexe_b_combinee_2025
 from .tax_family_workers_benefit_2025 import trace_act_familial_2025
 from .tax_age_retirement_2025 import (
     credit_quebec_age_retraite_2025,
@@ -381,6 +382,8 @@ def construire_trace_calcul_fiscal_2025(
         )
 
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
+    if personne_vivant_seule.combinaison_annexe_b_confirmee:
+        formule_impot_quebec += " - crédit annexe B combinée ligne 361 (réduction unique)"
     if cotisations.montant_quebec_admissible > Decimal("0"):
         formule_impot_quebec += (
             " - crédit cotisations syndicales/professionnelles (10 %)"
@@ -397,11 +400,11 @@ def construire_trace_calcul_fiscal_2025(
         formule_impot_quebec += (
             " - crédit déficience ligne 376"
         )
-    if personne_vivant_seule.reclamer_montant:
+    if personne_vivant_seule.reclamer_montant and not personne_vivant_seule.combinaison_annexe_b_confirmee:
         formule_impot_quebec += (
             " - crédit personne vivant seule ligne 361"
         )
-    if (
+    if not montants_age_retraite.combinaison_annexe_b_confirmee and (
         montants_age_retraite.reclamer_age
         or montants_age_retraite.reclamer_revenus_retraite
     ):
@@ -1531,7 +1534,7 @@ def construire_trace_calcul_fiscal_2025(
             ),
         )
 
-    if (
+    if not montants_age_retraite.combinaison_annexe_b_confirmee and (
         montants_age_retraite.reclamer_age
         or montants_age_retraite.reclamer_revenus_retraite
     ):
@@ -1585,7 +1588,7 @@ def construire_trace_calcul_fiscal_2025(
             ),
         )
 
-    if personne_vivant_seule.reclamer_montant:
+    if personne_vivant_seule.reclamer_montant and not personne_vivant_seule.combinaison_annexe_b_confirmee:
         montant_ligne_361 = (
             montant_ligne_361_personne_vivant_seule_2025(
                 personne_vivant_seule
@@ -2029,6 +2032,14 @@ def construire_trace_calcul_fiscal_2025(
         for base_dons, pourcentage in zip((ventilation.base_premiers_200, ventilation.base_taux_intermediaire, ventilation.base_taux_superieur), taux):
             lignes += (_ligne(len(lignes) + 1, "TAUX DES DONS — BLOC 5J", f"Dons {juridiction} — base à {pourcentage}",
                 source, "Répartition selon revenu imposable; composante du crédit pour dons", base_dons),)
+
+    annexe_b = calculer_annexe_b_combinee_2025(personne_vivant_seule, montants_age_retraite)
+    if annexe_b is not None:
+        lignes += (_ligne(len(lignes) + 1, "QUÉBEC — ANNEXE B COMBINÉE", "Annexe B combinée — ligne 361",
+            "RQ TP-1.D.B 2025; " + personne_vivant_seule.source + "; " + montants_age_retraite.source_age + "; " + montants_age_retraite.source_retraite,
+            " | ".join(lignes_annexe_b_combinee_2025(personne_vivant_seule, montants_age_retraite)[2:]), annexe_b.ligne_361),)
+        lignes += (_ligne(len(lignes) + 1, "QUÉBEC — ANNEXE B COMBINÉE", "Crédit Québec — annexe B combinée",
+            "RQ TP-1 2025", "Ligne 361 × 14 %, une seule fois", annexe_b.credit),)
 
     if estimation.transfert_conjoint.activer:
         r = estimation.resultat_transfert_conjoint

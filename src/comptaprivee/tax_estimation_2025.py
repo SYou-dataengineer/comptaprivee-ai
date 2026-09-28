@@ -9,6 +9,7 @@ d'estimation soumise à validation comptable.
 """
 
 from .tax_rules_2025 import arrondir_cent
+from .tax_quebec_schedule_b_2025 import calculer_annexe_b_combinee_2025, appliquer_annexe_b_combinee_2025, lignes_annexe_b_combinee_2025
 from .tax_federal_caregiver_child_2025 import verifier_combinaison_30400_30500_2025, verifier_attribution_enfants_conjoints_30500_2025
 from .tax_family_workers_benefit_2025 import verifier_concordance_act_familial_2025
 from .tax_family_medical_2025 import (FraisMedicauxFamilleFederaux2025, ResultatMedicalFamilial2025, calculer_medical_familial_2025, lignes_medical_familial_2025, verifier_combinaison_medicale_famille)
@@ -1056,9 +1057,12 @@ def calculer_estimation_fiscale_2025(
             "ce dossier."
         )
 
+    annexe_b_combinee = calculer_annexe_b_combinee_2025(personne_vivant_seule_effective,
+        montants_age_retraite_effectifs, revenu_net=revenu.revenu_net_quebec)
     if (
         age_retraite_actif
         and personne_vivant_seule_effective.reclamer_montant
+        and annexe_b_combinee is None
     ):
         raise ValueError(
             "Cette version ne peut pas combiner le montant pour "
@@ -1474,14 +1478,17 @@ def calculer_estimation_fiscale_2025(
         quebec,
         credit_deficience_effectif,
     )
-    quebec = appliquer_credit_quebec_personne_vivant_seule_2025(
-        quebec,
-        personne_vivant_seule_effective,
-    )
-    quebec = appliquer_credit_quebec_age_retraite_2025(
-        quebec,
-        montants_age_retraite_effectifs,
-    )
+    if annexe_b_combinee is not None:
+        quebec = appliquer_annexe_b_combinee_2025(quebec, annexe_b_combinee)
+    else:
+        quebec = appliquer_credit_quebec_personne_vivant_seule_2025(
+            quebec,
+            personne_vivant_seule_effective,
+        )
+        quebec = appliquer_credit_quebec_age_retraite_2025(
+            quebec,
+            montants_age_retraite_effectifs,
+        )
     federal, quebec = appliquer_credits_dividendes_2025(federal, quebec, dividendes)
     federal, quebec = appliquer_credit_impot_etranger_2025(
         federal, quebec, credit_impot_etranger
@@ -1775,6 +1782,7 @@ def formater_estimation_fiscale_2025(
         *lignes_contributions_politiques_2025(estimation.contributions_politiques, estimation.resultat_contributions_politiques, estimation.rapprochement),
         *lignes_adoption_2025(estimation.adoption, estimation.resultat_adoption),
         *lignes_benevoles_2025(estimation.benevoles, estimation.resultat_benevoles),
+        *lignes_annexe_b_combinee_2025(estimation.personne_vivant_seule, estimation.montants_age_retraite),
         *lignes_transfert_conjoint_2025(estimation.transfert_conjoint, estimation.resultat_transfert_conjoint),
         *lignes_transferts_scolarite_recus_2025(estimation.transferts_scolarite_recus),
         *lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs),
@@ -1986,7 +1994,7 @@ def formater_estimation_fiscale_2025(
                 "Source : "
                 f"{estimation.personne_vivant_seule.source}",
             ]
-            if estimation.personne_vivant_seule.reclamer_montant
+            if estimation.personne_vivant_seule.reclamer_montant and not estimation.personne_vivant_seule.combinaison_annexe_b_confirmee
             else []
         ),
         *(
@@ -2360,7 +2368,7 @@ def formater_estimation_fiscale_2025(
                 "Crédit Québec : "
                 f"{formater_montant_estimation(credit_quebec_age_retraite_2025(estimation.montants_age_retraite))}",
             ]
-            if (
+            if not estimation.montants_age_retraite.combinaison_annexe_b_confirmee and (
                 estimation.montants_age_retraite.reclamer_age
                 or (
                     estimation.montants_age_retraite

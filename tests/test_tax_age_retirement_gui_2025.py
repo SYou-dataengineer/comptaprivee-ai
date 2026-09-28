@@ -70,10 +70,11 @@ def test_gui_construit_et_valide_age_retraite():
     assert "valider_montants_age_retraite_2025(" in texte
 
 
-def test_gui_bloque_combinaison_personne_vivant_seule():
+def test_gui_bloque_combinaison_personne_vivant_seule_non_confirmee():
     texte = _source()
     assert "personne_vivant_seule_courante.reclamer_montant" in texte
-    assert "même réduction de l'annexe B" in texte
+    assert "and not nouveau_profil.combinaison_annexe_b_confirmee" in texte
+    assert "Confirmez la combinaison annexe B dans les deux profils" in texte
 
 
 def test_gui_recharge_age_retraite():
