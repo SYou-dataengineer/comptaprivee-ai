@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .tax_adoption_2025 import Adoption2025, calculer_adoption_2025, adoption_vers_dict, adoption_depuis_dict
 from .tax_volunteers_2025 import Benevoles2025, ActiviteBenevole2025, calculer_benevoles_2025
 from .tax_spouse_transfer_2025 import TransfertConjointFederal2025, valider_transfert_conjoint_2025, calculer_transfert_conjoint_2025
 from .tax_tuition_received_2025 import TransfertsScolariteRecus2025, valider_transferts_scolarite_recus_2025
@@ -219,6 +220,7 @@ class DossierFiscalEnregistre:
     profil_pensions: ProfilPensions2025 = ProfilPensions2025()
     psv_confirme: bool = False
     rrq_rpc_confirme: bool = False
+    adoption: Adoption2025 = Adoption2025()
     benevoles: Benevoles2025 = Benevoles2025()
     transfert_conjoint: TransfertConjointFederal2025 = TransfertConjointFederal2025()
     transferts_scolarite_recus: TransfertsScolariteRecus2025 = TransfertsScolariteRecus2025()
@@ -3355,6 +3357,7 @@ def sauvegarder_dossier_fiscal(
     frais_demenagement: FraisDemenagement2025 | None = None,
     pension_alimentaire_payee: PensionAlimentairePayee2025 | None = None,
     autres_deductions: AutresDeductions2025 | None = None,
+    adoption: Adoption2025 | None = None,
     benevoles: Benevoles2025 | None = None,
     transfert_conjoint: TransfertConjointFederal2025 | None = None,
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
@@ -3534,6 +3537,10 @@ def sauvegarder_dossier_fiscal(
         elif (dons_bienfaisance.reports_federaux.activer or estimation.dons_bienfaisance.reports_federaux.activer) and dons_bienfaisance != estimation.dons_bienfaisance:
             raise ValueError("Le profil dons/reports diffère de l'estimation.")
 
+    adoption_effective = adoption if adoption is not None else (estimation.adoption if estimation else Adoption2025())
+    calculer_adoption_2025(adoption_effective, dossier.annee_fiscale)
+    if estimation is not None and adoption_effective != estimation.adoption:
+        raise ValueError("Le profil adoption diffère de celui de l'estimation.")
     benevoles_effectifs = benevoles if benevoles is not None else (estimation.benevoles if estimation else Benevoles2025())
     calculer_benevoles_2025(benevoles_effectifs, dossier)
     if estimation is not None and benevoles_effectifs != estimation.benevoles:
@@ -3855,6 +3862,7 @@ def sauvegarder_dossier_fiscal(
         "pension_alimentaire_payee": _pension_alimentaire_payee_vers_dict(
             pension_alimentaire_effective
         ),
+        "adoption": adoption_vers_dict(adoption_effective),
         "benevoles": _benevoles_vers_dict(benevoles_effectifs),
         "transfert_conjoint": {nom: getattr(conjoint, nom) for nom in conjoint.__dataclass_fields__},
         "transferts_scolarite_recus": _scolarite_recue_vers_dict(scolarite_recue),
@@ -4302,6 +4310,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         depenses_emploi=depenses_emploi,
         frais_demenagement=frais_demenagement,
         pension_alimentaire_payee=pension_alimentaire_payee,
+        adoption=adoption_depuis_dict(contenu.get("adoption"), dossier.annee_fiscale),
         benevoles=_benevoles_depuis_dict(contenu.get("benevoles"), dossier),
         transfert_conjoint=_transfert_conjoint_depuis_dict(contenu.get("transfert_conjoint"), dossier.client),
         transferts_scolarite_recus=_scolarite_recue_depuis_dict(contenu.get("transferts_scolarite_recus")),

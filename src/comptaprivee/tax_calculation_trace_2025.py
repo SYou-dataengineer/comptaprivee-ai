@@ -2018,6 +2018,17 @@ def construire_trace_calcul_fiscal_2025(
             lignes += (_ligne(len(lignes) + 1, "SERVICES BÉNÉVOLES — BLOC 5L", "Base bénévoles — ligne " + r.ligne_credit,
                 estimation.benevoles.source, "6000 $; au moins 200 heures; inclus une fois avant 32300 dans 33500", r.base_credit),)
 
+    for e, r in zip(estimation.adoption.enfants, estimation.resultat_adoption.enfants):
+        source = e.source + " — " + e.nom
+        for libelle, montant, formule in (
+            ("Dépenses d'adoption", r.depenses, f"Somme des frais payés, engagés du {r.debut} au {r.fin}"),
+            ("Aides à retrancher", r.aides_deductibles, "Aides reçues ou à recevoir moins exception imposable non déductible"),
+            ("Base d'adoption plafonnée", r.base_plafonnee, "min(19580, max(dépenses - aides à retrancher, 0))"),
+            ("Adoption — ligne 31300", r.montant_31300, f"Base plafonnée × part convenue {r.part_pourcentage} %; avant scolarité et dans 33500"),
+            ("Adoption — solde maximal des autres demandeurs", r.reste_autres_demandeurs, "Base plafonnée moins part du demandeur"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "FRAIS D'ADOPTION — BLOC 5M", libelle, source, formule, montant),)
+
     prochain_ordre = len(lignes) + 1
 
     if final.remboursement_estime > Decimal("0"):

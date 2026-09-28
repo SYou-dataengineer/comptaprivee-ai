@@ -8,6 +8,7 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_adoption_2025 import Adoption2025, ResultatAdoption2025, calculer_adoption_2025, lignes_adoption_2025
 from .tax_volunteers_2025 import Benevoles2025, ResultatBenevoles2025, calculer_benevoles_2025, lignes_benevoles_2025
 from .tax_spouse_transfer_2025 import (TransfertConjointFederal2025, ResultatTransfertConjoint2025, calculer_transfert_conjoint_2025, lignes_transfert_conjoint_2025)
 from .tax_tuition_received_2025 import TransfertsScolariteRecus2025, valider_transferts_scolarite_recus_2025, montant_ligne_32400_2025, lignes_transferts_scolarite_recus_2025
@@ -340,6 +341,8 @@ class EstimationFiscale2025:
     resultat_supplement_medical: ResultatSupplementMedical2025 = ResultatSupplementMedical2025()
     resultat_reports_scolarite: ResultatReportsScolariteFederaux2025 = ResultatReportsScolariteFederaux2025()
     resultat_reports_dons: ResultatReportsDonsFederaux2025 = ResultatReportsDonsFederaux2025()
+    adoption: Adoption2025 = Adoption2025()
+    resultat_adoption: ResultatAdoption2025 = ResultatAdoption2025()
     benevoles: Benevoles2025 = Benevoles2025()
     resultat_benevoles: ResultatBenevoles2025 = ResultatBenevoles2025()
     transfert_conjoint: TransfertConjointFederal2025 = TransfertConjointFederal2025()
@@ -414,6 +417,7 @@ def calculer_estimation_fiscale_2025(
     profil_pensions: ProfilPensions2025 = ProfilPensions2025(),
     psv_confirme: bool = False,
     rrq_rpc_confirme: bool = False,
+    adoption: Adoption2025 | None = None,
     benevoles: Benevoles2025 | None = None,
     transfert_conjoint: TransfertConjointFederal2025 | None = None,
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
@@ -427,10 +431,17 @@ def calculer_estimation_fiscale_2025(
             "uniquement pour l'année 2025."
         )
 
+    adoption_effective = adoption if adoption is not None else Adoption2025()
+    resultat_adoption = calculer_adoption_2025(adoption_effective, dossier.annee_fiscale)
     benevoles_effectifs = benevoles if benevoles is not None else Benevoles2025()
     resultat_benevoles = calculer_benevoles_2025(benevoles_effectifs, dossier)
     conjoint = transfert_conjoint if transfert_conjoint is not None else TransfertConjointFederal2025()
     resultat_conjoint = calculer_transfert_conjoint_2025(conjoint, beneficiaire=dossier.client)
+    if conjoint.activer and adoption_effective.enfants:
+        import json
+        from .tax_adoption_2025 import adoption_depuis_dict, verifier_partage_adoption_2025
+        adoption_conjoint = adoption_depuis_dict(json.loads(conjoint.dossier_conjoint_json).get("adoption"))
+        verifier_partage_adoption_2025(adoption_effective, adoption_conjoint)
     scolarite_recue = valider_transferts_scolarite_recus_2025(
         transferts_scolarite_recus if transferts_scolarite_recus is not None else TransfertsScolariteRecus2025()
     )
@@ -1281,6 +1292,7 @@ def calculer_estimation_fiscale_2025(
         ("30500", montant_ligne_30500_2025(aidant_enfant_federal_effectif)),
         ("31270", montant_ligne_31270_2025(achat_habitation_federal_effectif)),
         ("31285", montant_ligne_31285_2025(accessibilite_domiciliaire_federale_effective)),
+        ("31300", resultat_adoption.montant_31300),
         ("31600", MONTANT_FEDERAL_HANDICAP_2025 if credit_deficience_effectif.reclamer_federal else Decimal("0")),
     )
     base_ligne105 = calculer_base_33500_2025(montants_avant_scolarite)
@@ -1484,6 +1496,7 @@ def calculer_estimation_fiscale_2025(
         dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
     )
     return EstimationFiscale2025(
+        adoption=adoption_effective, resultat_adoption=resultat_adoption,
         benevoles=benevoles_effectifs, resultat_benevoles=resultat_benevoles,
         transfert_conjoint=conjoint, resultat_transfert_conjoint=resultat_conjoint,
         resultat_reports_dons=reports_dons,
@@ -1657,6 +1670,7 @@ def formater_estimation_fiscale_2025(
         ),
         *lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons),
         *lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite),
+        *lignes_adoption_2025(estimation.adoption, estimation.resultat_adoption),
         *lignes_benevoles_2025(estimation.benevoles, estimation.resultat_benevoles),
         *lignes_transfert_conjoint_2025(estimation.transfert_conjoint, estimation.resultat_transfert_conjoint),
         *lignes_transferts_scolarite_recus_2025(estimation.transferts_scolarite_recus),

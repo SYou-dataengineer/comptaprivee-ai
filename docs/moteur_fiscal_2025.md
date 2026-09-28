@@ -2645,3 +2645,55 @@ services exclus, choix exclusifs, données invalides, extraction, stockage ancie
 GUI, scolarité, ACT, transfert conjoint, trace et PDF. Aucun test existant modifié.
 
 Suite complète 5L : **4321 passed, 8 warnings** (`--capture=sys`).
+
+### Bloc 5M livré — frais d'adoption fédéraux, ligne 31300
+
+Sources : [ARC, ligne 31300, année 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-31300-adoption-expenses.html),
+[LIR 118.01](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/page-89.html)
+et [T1 Québec 2025, page 6](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-r/5005-r-25e.pdf).
+
+La période commence à la première demande d'inscription au ministère/agence
+agréée ou à la cour canadienne, et finit à la dernière des dates d'ordonnance
+reconnue au Canada et de résidence permanente avec le demandeur. Sa fin doit
+être en 2025; l'enfant doit avoir moins de 18 ans à l'ordonnance. Les dépenses
+payées, engagées pendant cette période, peuvent concerner plusieurs années.
+Catégories : agence, frais judiciaires/juridiques/administratifs, voyage/séjour
+raisonnable et nécessaire, traduction, institution étrangère obligatoire,
+immigration obligatoire et autres frais obligatoires admissibles.
+
+Par enfant : frais moins aides reçues ou à recevoir par quiconque, plancher zéro,
+puis plafond **19 580 $**, puis part convenue du demandeur. LIR 118.01(2) exclut
+de la réduction les aides déjà incluses au revenu du demandeur et non déductibles
+de son revenu imposable. Ce traitement doit être justifié sur pièces; le bloc
+ne crée pas une inclusion au revenu. Le solde maximal des autres demandeurs
+est présenté pour contrôler le partage, y compris les arrondis au cent.
+
+Le moteur vérifie dates, âge, références dupliquées, Decimal finis non négatifs,
+cents et pourcentages. Il ne détermine pas l'admissibilité détaillée : organismes,
+caractère raisonnable/obligatoire, paiements, aides et partage exigent une validation
+comptable explicite. Les sources identifient chaque facture ou portion ventilée.
+Une même référence réutilisée est refusée; les portions distinctes d'une facture
+commune doivent avoir des références distinctes et un total vérifié.
+
+31300 entre une seule fois dans 33500 avant la scolarité personnelle. 33800,
+34990, 35000 et l'abattement sont recalculés; les revenus et le calcul Québec
+restent inchangés. L'annexe 2 du conjoint reprend 31300 dans sa ligne 100.
+Quand son dossier brut est importé par 5K, les demandes pour le même enfant
+(nom normalisé et date de naissance) sont rapprochées du maximum commun.
+Sans ce dossier, le partage reste une validation sur pièces; aucune autre
+déclaration n'est recherchée automatiquement. Le crédit Québec est distinct
+et reste à traiter en priorité 6.
+
+JSON : seules les données brutes, sources et confirmations sont enregistrées;
+ancien profil absent = vide. Champs inconnus, types invalides et divergence
+profil/estimation sont refusés. Les résultats sont recalculés au chargement
+et lors de l'estimation. GUI : enfants et dépenses ajoutables, modifiables et
+retirables, part convenue saisie en pourcentage, aucun crédit calculé saisi.
+Les modifications révoquent les confirmations; une dépense non enregistrée
+bloque l'application. Trace et PDF détaillent période, frais, aides, plafond,
+partage, sources et total 31300.
+
+Validation ciblée : **291 passed, 5 warnings**. Aucun test existant modifié.
+
+Suite complète 5M : **4425 passed, 8 warnings** (`--capture=sys`).
+Rendu du rapport PDF synthétique vérifié visuellement.

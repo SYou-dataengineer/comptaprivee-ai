@@ -10,6 +10,7 @@ from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, CONFIRMATIONS_REPORTS_DONS
+from .tax_adoption_2025 import (Adoption2025, EnfantAdopte2025, DepenseAdoption2025, CATEGORIES_ADOPTION, CONFIRMATIONS_ADOPTION, calculer_adoption_2025, calculer_enfants_adoptes_2025)
 from .tax_volunteers_2025 import (Benevoles2025, ActiviteBenevole2025, CHOIX_BENEVOLES, CONFIRMATIONS_BENEVOLES, valider_benevoles_2025, valider_activites_benevoles_2025)
 from .tax_spouse_transfer_2025 import (TransfertConjointFederal2025, CONFIRMATIONS_TRANSFERT_CONJOINT, instantane_conjoint_2025, calculer_transfert_conjoint_2025, lignes_transfert_conjoint_2025)
 from .tax_tuition_received_2025 import (
@@ -2515,6 +2516,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_demenagement_courants = FraisDemenagement2025()
         pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
         autres_deductions_courantes = AutresDeductions2025()
+        adoption_courante = Adoption2025()
         benevoles_courants = Benevoles2025()
         transfert_conjoint_courant = TransfertConjointFederal2025()
         transferts_scolarite_recus_courants = TransfertsScolariteRecus2025()
@@ -3791,6 +3793,189 @@ class ApplicationComptaPrivee(tk.Tk):
 
         # --- Priorité 5B : GUI intérêts sur prêts étudiants ---
 
+        def ouvrir_adoption_5m_2025():
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Frais d'adoption — ligne 31300")
+            dimensionner_fenetre(dialogue, 1080, 800)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            ttk.Label(cadre, text="Chaque enfant a sa période d'adoption, ses frais payés et ses aides. "
+                "Le plafond fédéral 2025 est de 19 580 $ par enfant, avant partage. "
+                "Le comptable vérifie l'admissibilité et la part convenue avec tous les demandeurs. "
+                "Aucun crédit Québec n'est calculé ici.", wraplength=980).pack(fill="x")
+            enfants = list(adoption_courante.enfants)
+            tableau = ttk.Treeview(cadre, name="enfants_5m", columns=("nom", "part"), show="headings", height=5)
+            tableau.heading("nom", text="Enfant")
+            tableau.heading("part", text="Part convenue (%)")
+            tableau.pack(fill="x", pady=8)
+            confirmations = {}
+            def revoquer(*_):
+                for v in confirmations.values():
+                    v.set(False)
+            def rafraichir():
+                for iid in tableau.get_children():
+                    tableau.delete(iid)
+                for i, e in enumerate(enfants):
+                    tableau.insert("", "end", iid=str(i), values=(e.nom, str(e.part_pourcentage)))
+            def editer(modifier=False):
+                if modifier and not tableau.selection():
+                    return
+                index = int(tableau.selection()[0]) if modifier else None
+                enfant = enfants[index] if index is not None else EnfantAdopte2025()
+                edition = tk.Toplevel(dialogue)
+                edition.title("Enfant et dépenses d'adoption")
+                dimensionner_fenetre(edition, 1050, 900)
+                edition.transient(dialogue)
+                edition.grab_set()
+                f = FormulaireDefilant(edition)
+                c = f.corps
+                c.columnconfigure(1, weight=1)
+                variables = {}
+                noms = (("nom", "Nom de l'enfant"), ("naissance", "Naissance (AAAA-MM-JJ)"),
+                    ("inscription", "Demande d'inscription ministère / agence agréée (date, si applicable)"),
+                    ("demande_cour", "Demande à une cour canadienne (date, si applicable)"),
+                    ("ordonnance", "Ordonnance délivrée ou reconnue au Canada (date)"),
+                    ("residence_permanente", "Début de résidence permanente avec vous (date)"),
+                    ("aides", "Toutes les aides reçues / à recevoir, par quiconque ($)"),
+                    ("aides_imposables_non_deductibles", "Dont aides déjà imposées et non déductibles ($)"),
+                    ("part_pourcentage", "Votre part convenue du montant admissible (%)"),
+                    ("source", "Sources : ordonnance, résidence, aides, partage et pièces fiscales"))
+                for row, (nom, libelle) in enumerate(noms):
+                    v = tk.StringVar(value=str(getattr(enfant, nom)))
+                    variables[nom] = v
+                    ttk.Label(c, text=libelle).grid(row=row, column=0, sticky="w")
+                    ttk.Entry(c, name=nom + "_enfant_5m", textvariable=v).grid(row=row, column=1, sticky="ew")
+                    v.trace_add("write", revoquer)
+                depenses = list(enfant.depenses)
+                frais = ttk.Treeview(c, name="depenses_5m", columns=("date", "categorie", "montant", "source"), show="headings", height=4)
+                for nom in ("date", "categorie", "montant", "source"):
+                    frais.heading(nom, text=nom.capitalize())
+                    frais.column(nom, width=180)
+                frais.grid(row=10, column=0, columnspan=2, sticky="ew", pady=8)
+                champs_frais = {}
+                for row, (nom, libelle) in enumerate((("date_engagement", "Date d'engagement (AAAA-MM-JJ)"),
+                        ("categorie", "Catégorie vérifiée sur pièces"), ("montant", "Dépense payée ($)"),
+                        ("source", "Référence unique de facture / portion ventilée")), 11):
+                    v = tk.StringVar()
+                    champs_frais[nom] = v
+                    ttk.Label(c, text=libelle).grid(row=row, column=0, sticky="w")
+                    w = (ttk.Combobox(c, name=nom + "_depense_5m", textvariable=v, values=CATEGORIES_ADOPTION, state="readonly")
+                        if nom == "categorie" else ttk.Entry(c, name=nom + "_depense_5m", textvariable=v))
+                    w.grid(row=row, column=1, sticky="ew")
+                selection = [None]
+                modifie = [False]
+                def modifier_frais(*_):
+                    modifie[0] = True
+                    revoquer()
+                for v in champs_frais.values():
+                    v.trace_add("write", modifier_frais)
+                def rafraichir_frais():
+                    for iid in frais.get_children():
+                        frais.delete(iid)
+                    for i, d in enumerate(depenses):
+                        frais.insert("", "end", iid=str(i), values=(d.date_engagement, d.categorie, str(d.montant), d.source))
+                def nouvelle_depense():
+                    selection[0] = None
+                    for v in champs_frais.values():
+                        v.set("")
+                    modifie[0] = False
+                def charger_depense():
+                    if frais.selection():
+                        selection[0] = int(frais.selection()[0])
+                        for nom, v in champs_frais.items():
+                            v.set(str(getattr(depenses[selection[0]], nom)))
+                        modifie[0] = False
+                def lire_enfant(lignes):
+                    brut = {nom: v.get().strip() for nom, v in variables.items()}
+                    for nom in ("aides", "aides_imposables_non_deductibles", "part_pourcentage"):
+                        brut[nom] = Decimal(brut[nom].replace(",", "."))
+                    return EnfantAdopte2025(**brut, depenses=tuple(lignes))
+                def enregistrer_depense():
+                    try:
+                        brut = {nom: v.get().strip() for nom, v in champs_frais.items()}
+                        brut["montant"] = Decimal(brut["montant"].replace(",", "."))
+                        d = DepenseAdoption2025(**brut)
+                        lignes = list(depenses)
+                        if selection[0] is None:
+                            lignes.append(d)
+                        else:
+                            lignes[selection[0]] = d
+                        calculer_enfants_adoptes_2025((lire_enfant(lignes),))
+                    except (ValueError, InvalidOperation) as erreur:
+                        messagebox.showerror("Dépense d'adoption invalide", str(erreur), parent=edition)
+                        return
+                    depenses[:] = lignes
+                    nouvelle_depense()
+                    rafraichir_frais()
+                def retirer_depense():
+                    if frais.selection():
+                        del depenses[int(frais.selection()[0])]
+                        nouvelle_depense()
+                        rafraichir_frais()
+                actions = ttk.Frame(c)
+                actions.grid(row=15, column=0, columnspan=2, sticky="ew")
+                for libelle, commande in (("Nouvelle dépense", nouvelle_depense), ("Modifier la dépense", charger_depense),
+                        ("Enregistrer la dépense", enregistrer_depense), ("Retirer la dépense", retirer_depense)):
+                    ttk.Button(actions, text=libelle, command=commande).pack(side="left", padx=4)
+                def fermer():
+                    edition.destroy()
+                    dialogue.grab_set()
+                def enregistrer_enfant():
+                    try:
+                        if modifie[0]:
+                            raise ValueError("Enregistrez la dépense modifiée avant l'enfant.")
+                        e = lire_enfant(depenses)
+                        lignes = list(enfants)
+                        if index is None:
+                            lignes.append(e)
+                        else:
+                            lignes[index] = e
+                        calculer_enfants_adoptes_2025(tuple(lignes))
+                    except (ValueError, InvalidOperation) as erreur:
+                        messagebox.showerror("Adoption invalide", str(erreur), parent=edition)
+                        return
+                    enfants[:] = lignes
+                    revoquer()
+                    rafraichir()
+                    fermer()
+                edition.protocol("WM_DELETE_WINDOW", fermer)
+                ttk.Button(f.actions, text="Enregistrer l'enfant", command=enregistrer_enfant).pack(side="right")
+                ttk.Button(f.actions, text="Annuler", command=fermer).pack(side="right", padx=8)
+                rafraichir_frais()
+            def retirer():
+                if tableau.selection():
+                    del enfants[int(tableau.selection()[0])]
+                    revoquer()
+                    rafraichir()
+            actions = ttk.Frame(cadre)
+            actions.pack(fill="x")
+            for libelle, commande in (("Ajouter un enfant", editer), ("Modifier l'enfant", lambda: editer(True)), ("Retirer l'enfant", retirer)):
+                ttk.Button(actions, text=libelle, command=commande).pack(side="left", padx=4)
+            for nom, libelle in CONFIRMATIONS_ADOPTION.items():
+                v = tk.BooleanVar(value=getattr(adoption_courante, nom))
+                confirmations[nom] = v
+                ttk.Checkbutton(cadre, name=nom + "_5m", text=libelle, variable=v).pack(anchor="w", pady=4)
+            def appliquer(effacer=False):
+                nonlocal adoption_courante, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                try:
+                    p = Adoption2025() if effacer else Adoption2025(enfants=tuple(enfants), **{nom: v.get() for nom, v in confirmations.items()})
+                    calculer_adoption_2025(p)
+                except ValueError as erreur:
+                    messagebox.showerror("Adoption invalide", str(erreur), parent=dialogue)
+                    return
+                adoption_courante = p
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Frais d'adoption mis à jour; recalculez l'estimation.")
+                dialogue.destroy()
+            ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer).pack(side="right")
+            ttk.Button(formulaire.actions, text="Effacer le profil", command=lambda: appliquer(True)).pack(side="right", padx=8)
+            ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
+            rafraichir()
+
         def ouvrir_benevoles_5l_2025():
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Services bénévoles — 31220 / 31240 / 10105")
@@ -4002,7 +4187,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
 
         def ouvrir_scolarite_recue_5h_2025():
-            nonlocal benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             dialogue = tk.Toplevel(fenetre)
             dialogue.title("Scolarité reçue — ligne 32400")
             dimensionner_fenetre(dialogue, 1000, 880)
@@ -5184,6 +5369,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    adoption=adoption_courante,
                     benevoles=benevoles_courants,
                     transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
@@ -13374,6 +13560,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    adoption=adoption_courante,
                     benevoles=benevoles_courants,
                     transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
@@ -13435,6 +13622,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    adoption=adoption_courante,
                     benevoles=benevoles_courants,
                     transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
@@ -13526,7 +13714,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
-            nonlocal benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
+            nonlocal adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal interets_pret_etudiant_courants
             nonlocal frais_garde_federaux_courants
@@ -13607,6 +13795,7 @@ class ApplicationComptaPrivee(tk.Tk):
             pension_alimentaire_payee_courante = (
                 enregistrement.pension_alimentaire_payee
             )
+            adoption_courante = enregistrement.adoption
             benevoles_courants = enregistrement.benevoles
             transfert_conjoint_courant = enregistrement.transfert_conjoint
             transferts_scolarite_recus_courants = enregistrement.transferts_scolarite_recus
@@ -13948,6 +14137,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    adoption=adoption_courante,
                     benevoles=benevoles_courants,
                     transfert_conjoint=transfert_conjoint_courant,
                     transferts_scolarite_recus=transferts_scolarite_recus_courants,
@@ -14438,6 +14628,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(zone_actions, text="Allocation travailleurs 2025 (5E)",
                    command=ouvrir_allocation_travailleurs_5e_2025).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Frais d'adoption 2025 (5M)",
+                   command=ouvrir_adoption_5m_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Services bénévoles 2025 (5L)",
                    command=ouvrir_benevoles_5l_2025).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Transfert conjoint 2025 (5K)",
