@@ -22,6 +22,7 @@ from .tax_tuition_received_2025 import lignes_transferts_scolarite_recus_2025
 from .tax_workers_benefit_2025 import lignes_allocation_travailleurs_2025
 from .tax_medical_supplement_2025 import lignes_supplement_medical_2025
 from .tax_training_credit_2025 import lignes_formation_2025
+from .tax_quebec_career_extension_2025 import lignes_carriere_quebec_2025
 from .tax_quebec_home_buyers_2025 import lignes_achat_quebec_2025
 from .tax_quebec_student_interest_2025 import lignes_interets_quebec_2025
 from .tax_student_loan_interest_2025 import lignes_resume_interets_pret_etudiant_2025
@@ -2022,6 +2023,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs))
     lignes.extend(lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical))
     lignes.extend(lignes_formation_2025(estimation.frais_scolarite.formation))
+    lignes.extend(lignes_carriere_quebec_2025(estimation.prolongation_carriere_quebec, estimation.resultat_carriere_quebec))
     lignes.extend(lignes_achat_quebec_2025(estimation.achat_habitation_quebec, estimation.resultat_achat_quebec))
     lignes.extend(lignes_interets_quebec_2025(estimation.interets_etudiants_quebec, estimation.resultat_interets_quebec))
     lignes.extend(lignes_resume_interets_pret_etudiant_2025(

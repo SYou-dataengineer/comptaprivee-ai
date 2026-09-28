@@ -382,6 +382,8 @@ def construire_trace_calcul_fiscal_2025(
         )
 
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
+    if estimation.prolongation_carriere_quebec.reclamer:
+        formule_impot_quebec += " - crédit prolongation de carrière Québec ligne 391"
     if estimation.achat_habitation_quebec.reclamer:
         formule_impot_quebec += " - crédit achat habitation Québec ligne 396"
     if estimation.resultat_interets_quebec.ligne_385:
@@ -1910,6 +1912,17 @@ def construire_trace_calcul_fiscal_2025(
         for ligne_audit in audit:
             lignes = _inserer_ligne_avant(lignes, "Impôt fédéral de base", ligne_audit)
 
+    if estimation.prolongation_carriere_quebec.reclamer:
+        rc = estimation.resultat_carriere_quebec
+        for libelle, montant, formule in (
+            ("Carrière — salaire admissible", rc.revenu_travail, "Salaire Québec recalculé, périmètre sans exclusions 11/13"),
+            ("Carrière — crédit avant réduction", rc.credit_ligne_35, "min(max(salaire - 7500, 0), 12500) × 14 %"),
+            ("Carrière — réduction selon revenu net", rc.reduction_ligne_39, "max(275 - 56500, 0) × 7 %"),
+            ("Carrière — plafond fiscal", rc.plafond_impot_ligne_49, "max(401 - (359 + 361 + 367) × 14 %, 0)"),
+            ("Prolongation de carrière Québec — ligne 391", rc.credit_ligne_391, "min(crédit réduit, plafond fiscal); non remboursable"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "PROLONGATION DE CARRIÈRE QUÉBEC", libelle,
+                estimation.prolongation_carriere_quebec.source + "; RQ TP-752.PC 2025; validation comptable confirmée", formule, montant),)
     if estimation.achat_habitation_quebec.reclamer:
         ra = estimation.resultat_achat_quebec
         for libelle, montant, formule in (

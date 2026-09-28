@@ -3797,9 +3797,9 @@ font l’objet de validations comptables. Aucune admissibilité détaillée auto
 
 Le moteur reçoit les composantes fiscales recalculées : 359 inclut le
 redressement 358, 361 inclut l’annexe B commune, et 397 le crédit de cotisations.
-Les paramètres 367 et 391 sont prévus dans la fonction pure mais restent nuls
-dans l’orchestrateur jusqu’à livraison de ces blocs. Leur future intégration
-doit alimenter ce plafond. Le crédit final est appliqué une fois, avant les
+Le paramètre 367 est prévu dans la fonction pure mais reste nul dans
+l’orchestrateur jusqu’à livraison de ce bloc. Depuis 6D, la ligne 391 recalculée
+alimente aussi ce plafond. Le crédit final est appliqué une fois, avant les
 crédits dividendes/étranger, avec plancher d’impôt zéro. Handicap, médical,
 scolarité et dons ne sont pas soustraits pour déterminer le plafond spécifique
 de TP-752.HA, même s’ils réduisent l’impôt final. Le fédéral et les revenus
@@ -3825,3 +3825,58 @@ après commit **5781 passed, 8 warnings**; push réussi, dépôt propre avant 6C
 
 Journal 6C : suite complète avant commit **5843 passed, 8 warnings**
 (`--capture=sys`, 184,28 s), diff sans erreur et PDF synthétique vérifié visuellement.
+
+
+### Bloc 6D livré — prolongation de carrière Québec, ligne 391
+
+Sources 2025 : [RQ, prolongation de carrière](https://www.revenuquebec.ca/fr/citoyens/credits-dimpot/credit-dimpot-pour-prolongation-de-carriere/)
+et [TP-752.PC, version 2025-10](https://www.revenuquebec.ca/documents/fr/formulaires/tp/TP-752.PC%282025-10%29.pdf).
+Le seuil d’âge est **65 ans au 31 décembre 2025**. Les paramètres 2024 pour les
+60–64 ans ne s’appliquent pas. Le maximum est de 1 750 $, avec extinction à
+81 500 $ de revenu net. Ce crédit est non remboursable.
+
+Formule 2025 : base = `min(max(revenu de travail admissible - 7500, 0), 12500)`;
+crédit brut = base × 14 %; réduction = `max(revenu net 275 - 56500, 0) × 7 %`.
+Le crédit réduit, au minimum zéro, est ensuite plafonné à
+`max(401 - (359 + 361 + 367) × 14 %, 0)` selon les lignes 47 à 50 du formulaire.
+Chaque multiplication monétaire est arrondie au cent. Le plafond utilise la
+base commune 359/361/367, et non le solde après tous les autres crédits.
+
+Périmètre salarié 6D : revenus de travail limités au salaire Québec du dossier,
+sans lien de dépendance avec l’employeur ou un membre d’une société de personnes
+employeuse, sans rétroactivité relative à une année passée, sans revenu d’ancien
+emploi case 211 ni déduction 293/297 applicable au salaire. Ces confirmations
+justifient des lignes 11 et 13 nulles. La présence d’une case 211 non nulle bloque
+explicitement ce profil. Les revenus admissibles d’entreprise, de recherche,
+de protection des salariés ou d’autres programmes restent à intégrer avec leurs
+blocs avancés : ils ne sont pas déclarés fiscalement inadmissibles.
+
+Le profil exige naissance, source et confirmations comptables, résidence
+Québec/Canada toute l’année, contribuable vivant et sans faillite. La naissance
+est rapprochée de l’âge du profil pensions lorsqu’il est actif. Salaire, revenu
+net, impôt brut et annexe B proviennent de l’estimation; aucun crédit ni revenu
+calculable n’est saisi dans ce dialogue. Le calcul ne présume pas de l’admissibilité
+détaillée des revenus. La ligne 367 reste à zéro dans l’orchestrateur actuel.
+
+Intégration : réduction unique de l’impôt Québec avec plancher zéro, avant les
+crédits dividendes/étranger. Le crédit 391 est également transmis au plafond de
+la ligne 396 (6C). Revenus, impôt fédéral et abattement restent inchangés.
+Exemple synthétique : salaire 52 000 $, net Québec 50 095 $ → crédit 1 750 $.
+Avec salaire 70 000 $ et net Québec recalculé 67 915 $, réduction 799,05 $,
+crédit 950,95 $. À 81 500 $ de revenu net, le crédit est nul.
+
+JSON : profil vide pour les anciens dossiers; types/clefs stricts, source et date
+validées; inférence depuis l’estimation et refus des divergences; résultats
+recalculés. GUI dédiée, confirmations révoquées après modification, réouverture
+et effacement. Résumé, trace et PDF détaillent salaire, net, base, taux, réduction,
+plafond fiscal, ligne 391, source et validation. Aucun envoi externe.
+
+Validation ciblée 6D + régressions 6A/6B/6C : **226 passed, 5 warnings**.
+Tests des seuils 7 500/20 000/56 500/81 500, âge 64/65, arrondis, plafond fiscal,
+revenu net distinct du salaire, 391 dans 396, case 211, âge pensions contradictoire,
+JSON ancien/nouveau/divergent, GUI, trace et PDF.
+Journal précédent 6C : commit `0d091db`, 10 fichiers; suites complètes avant/après
+commit **5843 passed, 8 warnings**; push réussi et dépôt propre avant 6D.
+
+Journal 6D : suite complète avant commit **5903 passed, 8 warnings**
+(`--capture=sys`, 187,05 s), diff sans erreur et PDF synthétique vérifié visuellement.
