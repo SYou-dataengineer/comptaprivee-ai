@@ -8,6 +8,9 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_quebec_student_interest_2025 import (InteretsEtudiantsQuebec2025, ResultatInteretsQuebec2025,
+    calculer_interets_quebec_2025, appliquer_interets_quebec_2025, lignes_interets_quebec_2025)
+from .tax_medical_expenses_2025 import montant_frais_medicaux_quebec_apres_seuil_2025
 from .tax_rules_2025 import arrondir_cent
 from .tax_quebec_schedule_b_2025 import calculer_annexe_b_combinee_2025, appliquer_annexe_b_combinee_2025, lignes_annexe_b_combinee_2025
 from .tax_federal_caregiver_child_2025 import verifier_combinaison_30400_30500_2025, verifier_attribution_enfants_conjoints_30500_2025
@@ -353,6 +356,8 @@ class EstimationFiscale2025:
     prestations_rrq_rpc: PrestationsRrqRpc2025 = PrestationsRrqRpc2025()
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
     resultat_allocation_travailleurs: ResultatAllocationTravailleurs2025 = ResultatAllocationTravailleurs2025()
+    interets_etudiants_quebec: InteretsEtudiantsQuebec2025 = InteretsEtudiantsQuebec2025()
+    resultat_interets_quebec: ResultatInteretsQuebec2025 = ResultatInteretsQuebec2025()
     interets_pret_etudiant: InteretsPretEtudiant2025 = InteretsPretEtudiant2025()
     resultat_interets_pret_etudiant: ResultatInteretsPretEtudiant2025 = ResultatInteretsPretEtudiant2025()
     resultat_supplement_medical: ResultatSupplementMedical2025 = ResultatSupplementMedical2025()
@@ -457,6 +462,7 @@ def calculer_estimation_fiscale_2025(
     transfert_conjoint: TransfertConjointFederal2025 | None = None,
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
+    interets_etudiants_quebec: InteretsEtudiantsQuebec2025 | None = None,
     interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
@@ -1470,6 +1476,10 @@ def calculer_estimation_fiscale_2025(
         frais_medicaux_effectifs,
         revenu.revenu_net_quebec,
     )
+    pret_quebec = interets_etudiants_quebec if interets_etudiants_quebec is not None else InteretsEtudiantsQuebec2025()
+    resultat_pret_quebec = calculer_interets_quebec_2025(pret_quebec,
+        base_medicale_381=montant_frais_medicaux_quebec_apres_seuil_2025(frais_medicaux_effectifs, revenu.revenu_net_quebec))
+    quebec = appliquer_interets_quebec_2025(quebec, resultat_pret_quebec)
     quebec = appliquer_credit_quebec_frais_scolarite_2025(
         quebec,
         frais_scolarite_effectifs,
@@ -1605,6 +1615,7 @@ def calculer_estimation_fiscale_2025(
         transferts_scolarite_recus=scolarite_recue,
         allocation_travailleurs=act, resultat_allocation_travailleurs=resultat_act,
         resultat_supplement_medical=supplement_medical,
+        interets_etudiants_quebec=pret_quebec, resultat_interets_quebec=resultat_pret_quebec,
         interets_pret_etudiant=pret_etudiant,
         resultat_interets_pret_etudiant=resultat_pret_etudiant,
         ae_confirme=ae_confirme,
@@ -1788,6 +1799,7 @@ def formater_estimation_fiscale_2025(
         *lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs),
         *lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical),
         *lignes_formation_2025(estimation.frais_scolarite.formation),
+        *lignes_interets_quebec_2025(estimation.interets_etudiants_quebec, estimation.resultat_interets_quebec),
         *lignes_resume_interets_pret_etudiant_2025(
             estimation.interets_pret_etudiant, estimation.resultat_interets_pret_etudiant
         ),

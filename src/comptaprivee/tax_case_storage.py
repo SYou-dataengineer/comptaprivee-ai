@@ -28,6 +28,8 @@ from .tax_tuition_carryforward_2025 import ReportsScolariteFederaux2025, valider
 from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025
 from .tax_medical_supplement_2025 import SupplementMedical2025, valider_supplement_medical_2025, verifier_famille_supplement_2025
 from .tax_training_credit_2025 import Formation2025, valider_formation_2025
+from .tax_quebec_student_interest_2025 import (InteretsEtudiantsQuebec2025, valider_interets_quebec_2025,
+    interets_quebec_vers_dict, interets_quebec_depuis_dict)
 from .tax_student_loan_interest_2025 import (
     InteretsPretEtudiant2025, valider_interets_pret_etudiant_2025,
 )
@@ -241,6 +243,7 @@ class DossierFiscalEnregistre:
     transfert_conjoint: TransfertConjointFederal2025 = TransfertConjointFederal2025()
     transferts_scolarite_recus: TransfertsScolariteRecus2025 = TransfertsScolariteRecus2025()
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
+    interets_etudiants_quebec: InteretsEtudiantsQuebec2025 = InteretsEtudiantsQuebec2025()
     interets_pret_etudiant: InteretsPretEtudiant2025 = InteretsPretEtudiant2025()
 
 
@@ -3573,6 +3576,7 @@ def sauvegarder_dossier_fiscal(
     transfert_conjoint: TransfertConjointFederal2025 | None = None,
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
+    interets_etudiants_quebec: InteretsEtudiantsQuebec2025 | None = None,
     interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
@@ -3868,6 +3872,10 @@ def sauvegarder_dossier_fiscal(
     )
     if estimation is not None and act != estimation.allocation_travailleurs:
         raise ValueError("Le profil ACT diffère de l'estimation.")
+    pret_quebec = valider_interets_quebec_2025(interets_etudiants_quebec if interets_etudiants_quebec is not None
+        else estimation.interets_etudiants_quebec if estimation is not None else InteretsEtudiantsQuebec2025())
+    if estimation is not None and pret_quebec != estimation.interets_etudiants_quebec:
+        raise ValueError("Profil intérêts étudiants Québec divergent de l'estimation.")
     pret_etudiant = valider_interets_pret_etudiant_2025(
         interets_pret_etudiant if interets_pret_etudiant is not None
         else (estimation.interets_pret_etudiant if estimation else InteretsPretEtudiant2025())
@@ -4177,6 +4185,7 @@ def sauvegarder_dossier_fiscal(
         "transfert_conjoint": {nom: getattr(conjoint, nom) for nom in conjoint.__dataclass_fields__},
         "transferts_scolarite_recus": _scolarite_recue_vers_dict(scolarite_recue),
         "allocation_travailleurs": _allocation_travailleurs_vers_dict(act),
+        "interets_etudiants_quebec": interets_quebec_vers_dict(pret_quebec),
         "interets_pret_etudiant": _interets_pret_etudiant_vers_dict(pret_etudiant),
         "autres_deductions": _autres_deductions_vers_dict(
             autres_deductions_effectives
@@ -4657,6 +4666,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         transfert_conjoint=_transfert_conjoint_depuis_dict(contenu.get("transfert_conjoint"), dossier.client),
         transferts_scolarite_recus=_scolarite_recue_depuis_dict(contenu.get("transferts_scolarite_recus")),
         allocation_travailleurs=_allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")),
+        interets_etudiants_quebec=interets_quebec_depuis_dict(contenu.get("interets_etudiants_quebec")),
         interets_pret_etudiant=_interets_pret_etudiant_depuis_dict(contenu.get("interets_pret_etudiant")),
         autres_deductions=autres_deductions,
         cotisations_syndicales=cotisations_syndicales,

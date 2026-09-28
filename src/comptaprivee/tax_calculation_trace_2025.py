@@ -382,6 +382,8 @@ def construire_trace_calcul_fiscal_2025(
         )
 
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
+    if estimation.resultat_interets_quebec.ligne_385:
+        formule_impot_quebec += " - ajout intérêts étudiants Québec au crédit 389 (base 385)"
     if personne_vivant_seule.combinaison_annexe_b_confirmee:
         formule_impot_quebec += " - crédit annexe B combinée ligne 361 (réduction unique)"
     if cotisations.montant_quebec_admissible > Decimal("0"):
@@ -1906,6 +1908,17 @@ def construire_trace_calcul_fiscal_2025(
         for ligne_audit in audit:
             lignes = _inserer_ligne_avant(lignes, "Impôt fédéral de base", ligne_audit)
 
+    rq = estimation.resultat_interets_quebec
+    if rq.disponible_ligne_52:
+        for libelle, montant, formule in (
+            ("Annexe M — disponible ligne 52", rq.disponible_ligne_52, "Solde Québec 1998–2024 + intérêts payés 2025"),
+            ("Intérêts étudiants Québec — ligne 385", rq.ligne_385, "Partie des intérêts disponibles choisie par le contribuable"),
+            ("Annexe M — report ligne 62", rq.report_ligne_62, "Ligne 52 - ligne 385; aucune expiration de cinq ans"),
+            ("Crédit Québec — ligne 389", rq.ligne_389, "(381 + 385) × 20 %, arrondi commun"),
+            ("Ajout intérêts au crédit 389", rq.ajout_credit_389, "Crédit commun moins crédit médical déjà calculé; non remboursable"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "INTÉRÊTS ÉTUDIANTS QUÉBEC", libelle,
+                estimation.interets_etudiants_quebec.source + "; RQ annexe M / TP-1 2025; validation comptable confirmée", formule, montant),)
     pret = estimation.interets_pret_etudiant
     rpret = estimation.resultat_interets_pret_etudiant
     if rpret.total_disponible:

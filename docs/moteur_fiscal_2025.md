@@ -3708,3 +3708,63 @@ l’allocation; le test GUI exécuté confirme le comportement. Aucun test suppr
 ni désactivé. Les 8 warnings restent ceux de SWIG et de la copie de police
 openpyxl déjà présents. Fichiers : moteur commun, profils âge/retraite et
 personne seule, estimation, stockage, GUI, trace, PDF, documentation et tests.
+
+
+### Bloc 6B livré — intérêts étudiants Québec, ligne 385 et annexe M
+
+Sources propres au Québec : [RQ, ligne 385](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/350-a-398-1-credits-dimpot-non-remboursables/ligne-385/),
+[annexe M 2025](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.M%282025-12%29.pdf)
+et [TP-1 2025, page 4](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D%282025-12%29.pdf).
+La limite historique indiquée dans 5B concernait son périmètre fédéral; 6B ajoute
+un profil Québec indépendant. Aucun solde ni choix fédéral n’est copié implicitement.
+
+**Règle officielle.** Le contribuable doit être l’emprunteur du prêt admissible;
+les paiements peuvent provenir de lui ou d’une personne liée. Les lois visées
+sont celles de l’aide financière aux études, des prêts étudiants fédéraux,
+de l’aide financière fédérale aux étudiants, des prêts aux apprentis, ou d’une
+autre province pour les études postsecondaires. Prêts privés, prêts intégrés
+à un autre type de prêt et intérêts issus d’un jugement sont exclus.
+Les intérêts admissibles inutilisés depuis 1998 sont reportables aux années
+suivantes, sans la fenêtre de cinq ans du fédéral.
+
+**Calcul.** Annexe M : ligne 46 (solde inutilisé antérieur) + ligne 48 (paiements
+2025) = ligne 52 (disponible). Le contribuable choisit une partie ou la totalité
+à la ligne 385, reprise à la ligne 60. Le report ligne 62 est le disponible
+moins cette réclamation. Ce choix fiscal est une entrée; le crédit n’est jamais
+saisi. Exemple synthétique : solde 2 000 $, paiements 1 000 $, réclamation
+1 200 $ → disponible 3 000 $, crédit 240 $, report 1 800 $.
+
+**Intégration TP-1.** Le taux est **20 %**, aux lignes 388/389. Le moteur arrondit
+la somme des bases 381 et 385 une seule fois et soustrait le crédit médical déjà
+comptabilisé pour déterminer l’ajout au crédit. Test du cent : 0,02 $ de base
+381 + 0,02 $ de base 385 → 0,01 $ à 389, contrairement à deux arrondis séparés.
+L’impôt Québec est réduit avec plancher zéro avant les crédits pour dividendes
+et impôt étranger. Les revenus et les résultats fédéraux restent inchangés.
+Les intérêts réclamés ne retournent pas au report si le crédit ne réduit pas
+l’impôt; l’interface explique ce choix, sans optimisation automatique.
+
+**Périmètre et validation comptable.** Pièces de paiement, loi du prêt, lien du
+payeur et solde Québec doivent être confirmés. La ligne 46 provient de l’annexe M
+2024, de l’avis correspondant ou d’une reconstitution documentée des intérêts
+1998–2024 jamais utilisés. Le profil 6B est borné aux résidents Québec/Canada
+toute l’année, vivants, sans faillite ni transfert de crédit. Ces dernières
+bornes sont des limites logicielles; elles ne remplacent pas les règles des cas
+spéciaux. Les frais médicaux demeurent soumis à leur périmètre existant.
+
+**Chaîne complète.** Profil immuable et Decimal au cent; types et clés JSON
+stricts; absence de profil dans un ancien JSON = profil vide. Sauvegarde des
+entrées, inférence depuis l’estimation, refus des divergences et recalcul.
+Dialogue dédié avec crédit/report en lecture seule, révocation des confirmations
+après changement, réouverture et effacement. Résumé, trace et PDF indiquent les
+lignes 46/48/52/60/62, 385/388/389, source, validation et caractère non remboursable.
+Aucune récupération automatique d’avis ni transmission à Revenu Québec.
+
+Validation ciblée 6B + régressions 5B/médical : **187 passed, 5 warnings**.
+Couverture : réclamation nulle/partielle/totale, reports anciens, payeur lié,
+montants/types invalides, plafonnement au disponible, arrondi commun, impôt nul,
+indépendance fédérale, JSON ancien/nouveau/divergent, GUI, trace et PDF.
+Journal précédent 6A : commit `a619366`, 13 fichiers, suites avant/après commit
+**5710 passed, 8 warnings**, push réussi et dépôt propre avant ouverture de 6B.
+
+Journal 6B : suite complète avant commit **5781 passed, 8 warnings**
+(`--capture=sys`, 193,19 s), diff sans erreur, PDF synthétique vérifié visuellement.

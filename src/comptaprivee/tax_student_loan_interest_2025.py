@@ -155,6 +155,6 @@ def lignes_resume_interets_pret_etudiant_2025(p: InteretsPretEtudiant2025, r: Re
         f"Réduction fédérale après 40500 et abattement Québec : {r.reduction_federale_apres_40500_et_abattement:.2f} $",
         "Réclamation choisie par le comptable; aucune optimisation ni suivi automatique ARC.",
         "Une réclamation sans économie d'impôt peut gaspiller des intérêts : les montants réclamés ne sont pas remis automatiquement en report.",
-        "Crédit Québec distinct (ligne 385) non calculé dans 5B.",
+        "Crédit Québec distinct (ligne 385) : profil 6B séparé; aucun report implicite de ces soldes fédéraux.",
     ]
     return lignes
