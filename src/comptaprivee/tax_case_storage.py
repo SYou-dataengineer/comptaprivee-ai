@@ -2781,6 +2781,10 @@ def _aidant_autre_personne_charge_federal_vers_dict(
             profil.valide_par_comptable
         ),
         "source_personne": profil.source_personne,
+        "partage_30450_confirme": profil.partage_30450_confirme,
+        "montant_attribue_autres_soutiens": _decimal_texte(profil.montant_attribue_autres_soutiens),
+        "reference_personne": profil.reference_personne,
+        "source_partage": profil.source_partage,
     }
 
 
@@ -2796,7 +2800,27 @@ def _aidant_autre_personne_charge_federal_depuis_dict(
             "enregistré est invalide."
         )
 
+    nouveaux = {"partage_30450_confirme", "montant_attribue_autres_soutiens", "reference_personne", "source_partage"}
+    if nouveaux.intersection(valeur):
+        defaults = AidantNaturelAutrePersonneChargeFederal2025()
+        connus = {c.name for c in fields(defaults)}
+        if set(valeur) - connus:
+            raise ValueError("Clé inconnue dans le profil 30450.")
+        for nom, v in valeur.items():
+            defaut = getattr(defaults, nom)
+            if isinstance(defaut, bool) and type(v) is not bool:
+                raise ValueError(f"Confirmation 30450 invalide : {nom}.")
+            if isinstance(defaut, str) and type(v) is not str:
+                raise ValueError(f"Texte 30450 invalide : {nom}.")
+            if isinstance(defaut, Decimal) and type(v) not in (str, int):
+                raise ValueError(f"Montant 30450 invalide : {nom}.")
+
     profil = AidantNaturelAutrePersonneChargeFederal2025(
+        partage_30450_confirme=valeur.get("partage_30450_confirme", False),
+        montant_attribue_autres_soutiens=_decimal_depuis_json(
+            valeur.get("montant_attribue_autres_soutiens", "0"), "partage 30450"),
+        reference_personne=valeur.get("reference_personne", ""),
+        source_partage=valeur.get("source_partage", ""),
         reclamer_montant=bool(
             valeur.get("reclamer_montant", False)
         ),
@@ -3514,6 +3538,17 @@ def sauvegarder_dossier_fiscal(
     psv_confirme: bool | None = None,
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    if estimation is not None:
+        estime_30450 = estimation.aidant_autre_personne_charge_federal
+        if estime_30450.partage_30450_confirme or (
+            aidant_autre_personne_charge_federal is not None
+            and aidant_autre_personne_charge_federal.partage_30450_confirme
+        ):
+            if aidant_autre_personne_charge_federal is None:
+                aidant_autre_personne_charge_federal = estime_30450
+            elif aidant_autre_personne_charge_federal != estime_30450:
+                raise ValueError("Profil de partage 30450 divergent de l'estimation.")
+
     celiapp_effectif = (
         deduction_celiapp
         if deduction_celiapp is not None

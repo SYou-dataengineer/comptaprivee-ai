@@ -14,9 +14,8 @@ La ligne 30450 vise une personne à charge de 18 ans ou plus qui :
 Pour les liens autres qu'enfant ou petit-enfant, cette première version
 exige que la personne ait résidé au Canada à un moment de 2025.
 
-Les situations de pension alimentaire, de partage de la réclamation
-entre plusieurs personnes et de plusieurs personnes à charge sont
-refusées dans cette première version et doivent être traitées séparément.
+Le bloc 5W autorise le partage documenté entre soutiens pour cette personne.
+Les pensions alimentaires et plusieurs personnes restent hors de ce profil.
 
 Calcul de l'annexe 5 — ligne 30450 :
 1. 28 798 $ moins le revenu net de la personne;
@@ -30,7 +29,7 @@ Source :
 ARC — Annexe 5, ligne 30450 — année d'imposition 2025.
 """
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, replace
 from decimal import Decimal
 
 from .tax_federal_2025 import ImpotFederalPreliminaire2025
@@ -95,6 +94,11 @@ class AidantNaturelAutrePersonneChargeFederal2025:
 
     source_personne: str = ""
 
+    partage_30450_confirme: bool = False
+    montant_attribue_autres_soutiens: Decimal = ZERO
+    reference_personne: str = ""
+    source_partage: str = ""
+
 
 def aucun_aidant_naturel_30450_2025(
 ) -> AidantNaturelAutrePersonneChargeFederal2025:
@@ -104,6 +108,31 @@ def aucun_aidant_naturel_30450_2025(
 def valider_aidant_naturel_30450_2025(
     profil: AidantNaturelAutrePersonneChargeFederal2025,
 ) -> AidantNaturelAutrePersonneChargeFederal2025:
+    if type(profil.partage_30450_confirme) is not bool:
+        raise ValueError("La confirmation de partage 30450 doit être booléenne.")
+    autres = profil.montant_attribue_autres_soutiens
+    if (not isinstance(autres, Decimal) or not autres.is_finite()
+            or autres < ZERO or autres != arrondir_cent(autres)):
+        raise ValueError("La somme attribuée aux autres soutiens doit être un montant positif ou nul, en cents.")
+    if type(profil.reference_personne) is not str or type(profil.source_partage) is not str:
+        raise ValueError("La référence et la source du partage 30450 doivent être textuelles.")
+    if profil.partage_30450_confirme:
+        for champ in fields(profil):
+            valeur, defaut = getattr(profil, champ.name), champ.default
+            if isinstance(defaut, bool) and type(valeur) is not bool:
+                raise ValueError(f"Confirmation 30450 invalide : {champ.name}.")
+            if isinstance(defaut, str) and type(valeur) is not str:
+                raise ValueError(f"Texte 30450 invalide : {champ.name}.")
+        revenu = profil.revenu_net_personne_ligne_23600
+        if (not isinstance(revenu, Decimal) or not revenu.is_finite()
+                or revenu < ZERO or revenu != arrondir_cent(revenu)):
+            raise ValueError("Revenu 23600 du partage 30450 invalide.")
+        if not profil.reclamer_montant or profil.aucun_partage_reclamation_30450:
+            raise ValueError("Le partage 30450 contredit les confirmations du profil.")
+        if not profil.reference_personne.strip() or not profil.source_partage.strip():
+            raise ValueError("Le partage 30450 exige la référence de la personne et la source de l'entente entre tous les soutiens.")
+    elif autres != ZERO or profil.reference_personne or profil.source_partage:
+        raise ValueError("Les données de partage 30450 exigent une entente confirmée.")
     if profil.revenu_net_personne_ligne_23600 < ZERO:
         raise ValueError(
             "Le revenu net de la personne — ligne 23600 — "
@@ -173,7 +202,7 @@ def valider_aidant_naturel_30450_2025(
             "profil simple de la ligne 30450."
         )
 
-    if not profil.aucun_partage_reclamation_30450:
+    if not profil.aucun_partage_reclamation_30450 and not profil.partage_30450_confirme:
         raise ValueError(
             "Le partage de la réclamation 30450 entre plusieurs "
             "personnes est hors du profil simple actuel."
@@ -196,6 +225,11 @@ def valider_aidant_naturel_30450_2025(
             "et la résidence lorsque requise est obligatoire."
         )
 
+    if profil.partage_30450_confirme:
+        plafond = min(MAXIMUM_LIGNE_30450_2025,
+            max(BASE_CALCUL_30450_2025 - profil.revenu_net_personne_ligne_23600, ZERO))
+        if autres > plafond:
+            raise ValueError("Les parts attribuées aux autres soutiens dépassent le plafond 30450 après réduction du revenu.")
     return profil
 
 
@@ -213,9 +247,8 @@ def montant_ligne_30450_2025(
         ZERO,
     )
 
-    return arrondir_cent(
-        min(montant, MAXIMUM_LIGNE_30450_2025)
-    )
+    plafond = arrondir_cent(min(montant, MAXIMUM_LIGNE_30450_2025))
+    return arrondir_cent(plafond - profil.montant_attribue_autres_soutiens)
 
 
 def credit_federal_ligne_30450_2025(
@@ -231,7 +264,21 @@ def nombre_personnes_charge_ligne_51120_2025(
     profil: AidantNaturelAutrePersonneChargeFederal2025,
 ) -> int:
     valider_aidant_naturel_30450_2025(profil)
-    return 1 if profil.reclamer_montant else 0
+    return int(montant_ligne_30450_2025(profil) > ZERO)
+
+
+def description_partage_30450_2025(profil: AidantNaturelAutrePersonneChargeFederal2025) -> str:
+    """Ventilation du plafond, des parts convenues ailleurs et du solde du dossier."""
+    valider_aidant_naturel_30450_2025(profil)
+    if not profil.partage_30450_confirme:
+        return "Aucun partage de la réclamation 30450 : oui"
+    plafond = arrondir_cent(min(MAXIMUM_LIGNE_30450_2025,
+        max(BASE_CALCUL_30450_2025 - profil.revenu_net_personne_ligne_23600, ZERO)))
+    part = montant_ligne_30450_2025(profil)
+    return (f"Partage 30450 — {profil.reference_personne} : plafond {plafond:.2f} $; "
+            f"moins parts attribuées aux autres soutiens {plafond - part:.2f} $ "
+            f"= part du dossier {part:.2f} $; "
+            f"entente validée : {profil.source_partage}")
 
 
 def appliquer_credit_federal_ligne_30450_2025(

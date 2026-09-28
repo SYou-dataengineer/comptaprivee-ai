@@ -78,6 +78,7 @@ from .tax_federal_home_buyers_2025 import (
     montant_ligne_31270_2025,
 )
 from .tax_federal_caregiver_other_dependant_2025 import (
+    description_partage_30450_2025,
     credit_federal_ligne_30450_2025,
     montant_ligne_30450_2025,
     nombre_personnes_charge_ligne_51120_2025,
@@ -800,7 +801,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     "personne : oui"
                 ),
                 "Aucune pension alimentaire pour cette personne : oui",
-                "Aucun partage de la réclamation 30450 : oui",
+                description_partage_30450_2025(aidant_30450_federal),
                 (
                     "Preuve médicale admissible ou T2201 approuvé : "
                     "confirmée"
@@ -812,7 +813,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                 ),
                 (
                     "Profil simple : une seule autre personne à charge; "
-                    "les cas complexes ou partagés restent refusés."
+                    "partage possible avec entente validée entre tous les soutiens."
                 ),
             ]
         )

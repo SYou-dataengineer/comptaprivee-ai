@@ -8324,7 +8324,8 @@ class ApplicationComptaPrivee(tk.Tk):
                     "âgée de 18 ans ou plus ayant une infirmité. "
                     "Le calcul utilise 28 798 $ moins le revenu net "
                     "ligne 23600, jusqu'au maximum de 8 601 $. "
-                    "La ligne 51120 indique une personne à charge."
+                    "Le partage entre soutiens nécessite une entente validée. "
+                    "La ligne 51120 compte la personne si la part du dossier est positive."
                 ),
                 wraplength=740,
                 foreground="#166534",
@@ -8531,6 +8532,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     cadre,
                     wraplength=680, anchor="w", justify="left",
                     text=texte_option,
+                    name=f"confirmation_30450_{ligne}",
                     variable=variable,
                 ).grid(
                     row=ligne,
@@ -8545,19 +8547,50 @@ class ApplicationComptaPrivee(tk.Tk):
                 text=(
                     "Garde-fous : enfant/petit-enfant peut bénéficier "
                     "de l'exception de résidence prévue au module. "
-                    "Les cas de plusieurs personnes à charge, de partage "
-                    "ou de pension alimentaire restent hors profil. "
+                    "Plusieurs personnes à charge et pensions alimentaires restent hors profil. "
+                    "En partage, le solde après les parts attribuées aux autres soutiens "
+                    "est calculé automatiquement; conserver leur entente. "
                     "La ligne 34990 est calculée automatiquement (2025)."
                 ),
                 wraplength=740,
                 foreground="#92400e",
             ).grid(
-                row=17,
+                row=22,
                 column=0,
                 columnspan=2,
                 sticky="w",
                 pady=(12, 8),
             )
+
+            entente_var = tk.BooleanVar(value=aidant_30450_federal_courant.partage_30450_confirme)
+            autres_var = tk.StringVar(value=str(aidant_30450_federal_courant.montant_attribue_autres_soutiens))
+            reference_var = tk.StringVar(value=aidant_30450_federal_courant.reference_personne)
+            source_partage_var = tk.StringVar(value=aidant_30450_federal_courant.source_partage)
+            for ligne, (nom, texte, variable) in enumerate((
+                ("reference_30450", "Référence de la personne (partage) :", reference_var),
+                ("autres_30450", "Somme attribuée aux autres soutiens selon l'entente ($) :", autres_var),
+                ("source_partage_30450", "Source de l'entente entre tous les soutiens :", source_partage_var),
+            ), start=18):
+                ttk.Label(cadre, text=texte).grid(row=ligne, column=0, sticky="w", pady=4)
+                ttk.Entry(cadre, name=nom, textvariable=variable, width=45).grid(
+                    row=ligne, column=1, sticky="ew", padx=(12, 0), pady=4)
+            tk.Checkbutton(cadre, name="entente_30450", variable=entente_var,
+                text="Entente de partage confirmée entre tous les soutiens",
+                wraplength=680, anchor="w", justify="left").grid(
+                    row=21, column=0, columnspan=2, sticky="w")
+
+            def revoquer_partage(*_):
+                comptable_var.set(False)
+                preuve_var.set(False)
+                entente_var.set(False)
+
+            for variable in (lien_var, revenu_var, source_var, autres_var, reference_var, source_partage_var):
+                variable.trace_add("write", revoquer_partage)
+            for variable in (reclamer_var, age_var, soutenue_var, infirmite_var, dependance_var,
+                             periode_var, residence_var, aucune_30300_30400_var, pension_var, partage_var):
+                variable.trace_add("write", lambda *_: (comptable_var.set(False), entente_var.set(False)))
+            for variable in (preuve_var, entente_var):
+                variable.trace_add("write", lambda *_: comptable_var.set(False))
 
             def reinitialiser() -> None:
                 reclamer_var.set(False)
@@ -8575,6 +8608,10 @@ class ApplicationComptaPrivee(tk.Tk):
                 partage_var.set(False)
                 preuve_var.set(False)
                 comptable_var.set(False)
+                entente_var.set(False)
+                autres_var.set("0")
+                reference_var.set("")
+                source_partage_var.set("")
 
             def appliquer() -> None:
                 nonlocal aidant_30450_federal_courant
@@ -8633,6 +8670,11 @@ class ApplicationComptaPrivee(tk.Tk):
                                 ),
                                 valide_par_comptable=comptable_var.get(),
                                 source_personne=source_var.get().strip(),
+                                partage_30450_confirme=entente_var.get(),
+                                montant_attribue_autres_soutiens=Decimal(
+                                    autres_var.get().strip().replace(" ", "").replace(",", ".") or "0"),
+                                reference_personne=reference_var.get().strip(),
+                                source_partage=source_partage_var.get().strip(),
                             )
                         )
 

@@ -163,6 +163,7 @@ from .tax_federal_home_buyers_2025 import (
     valider_montant_achat_habitation_2025,
 )
 from .tax_federal_caregiver_other_dependant_2025 import (
+    description_partage_30450_2025,
     AidantNaturelAutrePersonneChargeFederal2025,
     appliquer_credit_federal_ligne_30450_2025,
     credit_federal_ligne_30450_2025,
@@ -2100,7 +2101,7 @@ def formater_estimation_fiscale_2025(
                 "Dépendance pendant une période considérable : oui",
                 "Aucune ligne 30300/30400 pour cette même personne : oui",
                 "Aucune pension alimentaire pour cette personne : oui",
-                "Aucun partage de la réclamation 30450 : oui",
+                description_partage_30450_2025(estimation.aidant_autre_personne_charge_federal),
                 "Preuve médicale ou T2201 : confirmée",
                 "Validation comptable : confirmée",
                 (

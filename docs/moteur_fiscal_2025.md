@@ -3352,3 +3352,47 @@ l'absence d'infirmité ou une résidence avec deux parents pour ce mode.
 Validation ciblée, GUI et intégration : **128 passed, 5 warnings**.
 Suite complète : **5465 passed, 8 warnings** (172,18 s), avec `--capture=sys`.
 Le PDF combiné a été vérifié visuellement.
+
+
+### Bloc 5W — partage du montant aidant 30450 entre soutiens
+
+Sources : [Annexe 5 fédérale 2025, page 5](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-s5/5000-s5-25e.pdf),
+[ARC, ligne 30450](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-30450-caregiver-infirm-dependant.html),
+[LIR 118(4)d) et 118(6)](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-118.html).
+
+Règle officielle : plusieurs soutiens peuvent partager le montant pour une
+même personne, sans dépasser ensemble le maximum permis après réduction
+selon son revenu. L'entente fixe les parts; le moteur ne choisit pas la
+répartition et ne détermine pas l'admissibilité médicale.
+
+Périmètre logiciel : une seule personne adulte, admissibilité du profil
+30450 existant confirmée, sans pension alimentaire ni réclamation 30300/30400
+pour la même personne. Enfants/petits-enfants : exception de résidence de
+118(6)a); les autres liens nécessitent la résidence au Canada dans l'année.
+Plusieurs personnes à charge restent à intégrer dans un bloc distinct.
+
+Calcul : plafond = min(8601, max(28798 - revenu 23600, 0)).
+Part du dossier = plafond - somme attribuée aux autres soutiens.
+Cette somme est un fait de l'entente documentée, pas une saisie manuelle du
+crédit calculé. Le profil refuse une somme négative, supérieure au plafond,
+non finie ou contenant une fraction de cent. Exemple : revenu 25000 $,
+plafond 3798 $, parts des autres soutiens 1500 $ : 30450 = 2298 $.
+Si le plafond est entièrement attribué ailleurs, la part et le nombre 51120
+du dossier sont zéro. Le crédit de 14,5 % est intégré aux bases 33500/33800,
+34990/35000 puis 42900/40500; aucun changement de revenu ni du calcul Québec.
+
+Le comptable confirme l'entente entre tous les soutiens, l'identité locale de
+la personne et la somme des parts attribuées ailleurs. Référence sans NAS et
+source de l'entente obligatoires. Aucun rapprochement automatique avec des
+dossiers externes non liés; un partage non convenu reste refusé. La preuve
+médicale, les autres exclusions et la validation comptable restent exigées.
+
+JSON rétrocompatible : champs absents = aucun partage, somme zéro. Données
+brutes conservées en Decimal texte, types et clés contrôlés; profil partagé
+inféré de l'estimation si omis, divergence explicite refusée. GUI : référence,
+source et somme convenue ailleurs; modification révoquant les confirmations.
+Trace/PDF : plafond réduit, parts ailleurs et solde du dossier visibles.
+Le PDF synthétique a été contrôlé visuellement sans artefact livré.
+
+Validation ciblée moteur, intégration et GUI : **78 passed, 5 warnings**.
+Suite complète : **5501 passed, 8 warnings** (173,15 s), avec `--capture=sys`.

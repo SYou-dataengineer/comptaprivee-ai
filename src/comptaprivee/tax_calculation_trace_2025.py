@@ -40,6 +40,7 @@ from .tax_federal_home_buyers_2025 import (
     montant_ligne_31270_2025,
 )
 from .tax_federal_caregiver_other_dependant_2025 import (
+    description_partage_30450_2025,
     credit_federal_ligne_30450_2025,
     montant_ligne_30450_2025,
     nombre_personnes_charge_ligne_51120_2025,
@@ -1339,13 +1340,14 @@ def construire_trace_calcul_fiscal_2025(
                         aidant_30450_federal
                         .revenu_net_personne_ligne_23600
                     )
-                    + ", limité à 8 601 $ = ligne 30450 "
+                    + ", limité à 8 601 $, moins les parts attribuées aux autres soutiens = ligne 30450 "
                     + formater_montant_estimation(montant_30450)
                     + "; ligne 51120 = "
                     + str(nombre_51120)
                     + " personne à charge; crédit fédéral × 14,5 %; "
                     + "aucune ligne 30300/30400 pour cette même personne; "
-                    + "aucune pension alimentaire; aucun partage; "
+                    + "aucune pension alimentaire; "
+                    + description_partage_30450_2025(aidant_30450_federal) + "; "
                     + "preuve médicale ou T2201 confirmée"
                 ),
                 credit_federal_ligne_30450_2025(
