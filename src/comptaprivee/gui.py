@@ -9077,6 +9077,16 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal aidant_enfant_federal_courant
             nonlocal derniere_estimation, dernier_rapport_pdf
 
+            from .gui_caregiver_children_2025 import ouvrir_enfants_30500_2025
+            def appliquer_enfants(profil):
+                nonlocal aidant_enfant_federal_courant, derniere_estimation, dernier_rapport_pdf
+                aidant_enfant_federal_courant = profil
+                derniere_estimation = dernier_rapport_pdf = None
+                self.statut.set("Enfants admissibles 30500 mis à jour")
+            if aidant_enfant_federal_courant.enfants_detailles:
+                ouvrir_enfants_30500_2025(fenetre, aidant_enfant_federal_courant, appliquer_enfants)
+                return
+
             dialogue = tk.Toplevel(fenetre)
             dialogue.title(
                 "Aidant naturel — enfant < 18 ans — fédéral 2025"
@@ -9242,6 +9252,13 @@ class ApplicationComptaPrivee(tk.Tk):
                 command=appliquer,
             ).pack(side="right", padx=(0, 8))
 
+            def plusieurs_enfants():
+                if aidant_enfant_federal_courant.enfant_reclame_30400:
+                    messagebox.showerror("Liste 30500", "Le profil combiné 30400/30500 reste individuel; la liste exige deux parents toute l'année.", parent=dialogue)
+                    return
+                dialogue.destroy()
+                ouvrir_enfants_30500_2025(fenetre, aidant_enfant_federal_courant, appliquer_enfants)
+            ttk.Button(zone, text="Plusieurs enfants — profil enregistré", command=plusieurs_enfants).pack(side="left")
             organiser_boutons(formulaire.actions)
 
 

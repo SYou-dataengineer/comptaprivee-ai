@@ -109,6 +109,7 @@ from .tax_federal_caregiver_spouse_dependant_2025 import (
     valider_aidant_naturel_30425_2025,
 )
 from .tax_federal_caregiver_child_2025 import (
+    EnfantAidant30500,
     verifier_combinaison_30400_30500_2025,
     AidantNaturelEnfantMoins18Federal2025,
     valider_aidant_naturel_enfant_moins18_federal_2025,
@@ -3062,6 +3063,9 @@ def _aidant_enfant_federal_vers_dict(
     return {
         "enfant_reclame_30400": profil.enfant_reclame_30400,
         "reference_enfant": profil.reference_enfant,
+        "identites_distinctes_confirmees": profil.identites_distinctes_confirmees,
+        "enfants_detailles": [{"reference": e.reference, "nom": e.nom, "naissance": e.naissance,
+            "profil": _aidant_enfant_federal_vers_dict(e.profil)} for e in profil.enfants_detailles],
         "reclamer_montant": bool(profil.reclamer_montant),
         "enfant_biologique_ou_adopte": bool(
             profil.enfant_biologique_ou_adopte
@@ -3104,7 +3108,7 @@ def _aidant_enfant_federal_vers_dict(
 
 
 def _aidant_enfant_federal_depuis_dict(
-    valeur: Any,
+    valeur: Any, *, individuel: bool = False,
 ) -> AidantNaturelEnfantMoins18Federal2025:
     if valeur is None:
         return AidantNaturelEnfantMoins18Federal2025()
@@ -3117,7 +3121,7 @@ def _aidant_enfant_federal_depuis_dict(
 
     if type(valeur.get("enfant_reclame_30400", False)) is not bool:
         raise ValueError("Activation du profil 30400/30500 non booléenne.")
-    if valeur.get("enfant_reclame_30400", False):
+    if individuel or "enfants_detailles" in valeur or "identites_distinctes_confirmees" in valeur or valeur.get("enfant_reclame_30400", False):
         if set(valeur) - {f.name for f in fields(AidantNaturelEnfantMoins18Federal2025)}:
             raise ValueError("Clés du profil 30400/30500 inconnues.")
         for champ in fields(AidantNaturelEnfantMoins18Federal2025):
@@ -3129,7 +3133,20 @@ def _aidant_enfant_federal_depuis_dict(
                 raise ValueError("Montant JSON 30400/30500 invalide.")
 
 
+    liste = valeur.get("enfants_detailles", [])
+    if type(liste) is not list or (individuel and liste):
+        raise ValueError("Liste détaillée 30500 invalide ou imbriquée.")
+    enfants = []
+    for enfant in liste:
+        if (type(enfant) is not dict or set(enfant) != {"reference", "nom", "naissance", "profil"}
+                or type(enfant["profil"]) is not dict):
+            raise ValueError("Fiche enfant 30500 invalide.")
+        enfants.append(EnfantAidant30500(reference=enfant["reference"], nom=enfant["nom"], naissance=enfant["naissance"],
+            profil=_aidant_enfant_federal_depuis_dict(enfant["profil"], individuel=True)))
+
     profil = AidantNaturelEnfantMoins18Federal2025(
+        enfants_detailles=tuple(enfants),
+        identites_distinctes_confirmees=valeur.get("identites_distinctes_confirmees", False),
         enfant_reclame_30400=valeur.get("enfant_reclame_30400", False),
         reference_enfant=valeur.get("reference_enfant", ""),
         reclamer_montant=bool(
@@ -3566,6 +3583,14 @@ def sauvegarder_dossier_fiscal(
                 aidant_autre_personne_charge_federal = estime_30450
             elif aidant_autre_personne_charge_federal != estime_30450:
                 raise ValueError("Profil de partage 30450 divergent de l'estimation.")
+
+    if estimation is not None and (estimation.aidant_enfant_federal.enfants_detailles or (
+        aidant_enfant_federal is not None and aidant_enfant_federal.enfants_detailles
+    )):
+        if aidant_enfant_federal is None:
+            aidant_enfant_federal = estimation.aidant_enfant_federal
+        elif aidant_enfant_federal != estimation.aidant_enfant_federal:
+            raise ValueError("Profil des enfants 30500 divergent de l'estimation.")
 
     celiapp_effectif = (
         deduction_celiapp
@@ -4605,5 +4630,5 @@ def lister_dossiers_fiscaux(dossier: Path | str = DOSSIERS_FISCAUX_DIR):
 def _verifier_enfant_5v_stocke(contenu):
     personne = _personne_charge_admissible_federale_depuis_dict(contenu.get("personne_charge_admissible_federale"))
     aidant = _aidant_enfant_federal_depuis_dict(contenu.get("aidant_enfant_federal"))
-    if personne.enfant_infirmite_ligne30500 or aidant.enfant_reclame_30400:
+    if personne.enfant_infirmite_ligne30500 or aidant.enfant_reclame_30400 or aidant.enfants_detailles:
         verifier_combinaison_30400_30500_2025(personne, aidant)

@@ -181,6 +181,7 @@ from .tax_federal_caregiver_spouse_dependant_2025 import (
     valider_aidant_naturel_30425_2025,
 )
 from .tax_federal_caregiver_child_2025 import (
+    details_enfants_30500_2025,
     AidantNaturelEnfantMoins18Federal2025,
     appliquer_credit_federal_aidant_enfant_moins18_2025,
     credit_federal_aidant_enfant_moins18_2025,
@@ -2121,6 +2122,10 @@ def formater_estimation_fiscale_2025(
             )
             else []
         ),
+        *(["", "AIDANTS — ENFANTS 30500", *details_enfants_30500_2025(estimation.aidant_enfant_federal),
+            f"Nombre ligne 30499 : {len(estimation.aidant_enfant_federal.enfants_detailles)}; "
+            f"total ligne 30500 : {montant_ligne_30500_2025(estimation.aidant_enfant_federal):.2f} $; "
+            "crédit à 14,5 % du total arrondi une fois."] if estimation.aidant_enfant_federal.enfants_detailles else []),
         *(
             [
                 "",
@@ -2158,7 +2163,7 @@ def formater_estimation_fiscale_2025(
                     f"{estimation.aidant_enfant_federal.source_enfant}"
                 ),
             ]
-            if estimation.aidant_enfant_federal.reclamer_montant
+            if estimation.aidant_enfant_federal.reclamer_montant and not estimation.aidant_enfant_federal.enfants_detailles
             else []
         ),
         *(

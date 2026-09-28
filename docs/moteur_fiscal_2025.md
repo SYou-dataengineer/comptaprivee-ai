@@ -3441,3 +3441,46 @@ Validation ciblée moteur, stockage, trace/PDF et GUI : **133 passed, 5 warnings
 Les fiches de la liste restent strictes même si leurs nouveaux champs sont absents.
 
 Suite complète finale : **5537 passed, 8 warnings** (175,46 s), avec `--capture=sys`.
+
+
+### Bloc 5Y — plusieurs enfants, lignes 30499 / 30500
+
+Sources 2025 : [ARC, ligne 30500](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-30499-30500-canada-caregiver-infirm-children-under-18-years.html),
+[Annexe 5 fédérale, pages 1 et 6](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-s5/5000-s5-25e.pdf).
+Règle officielle : 2687 $ par enfant admissible de moins de 18 ans à la fin
+de l'année, une seule réclamation par enfant. Le montant entier est permis
+l'année de naissance ou d'adoption; il n'est pas réduit au prorata des mois.
+
+Périmètre de la liste 5Y : enfants biologiques/adoptés du demandeur ou de son
+conjoint, vivant avec leurs deux parents toute l'année (pendant leur vie en
+2025 pour un nouveau-né), sans garde partagée, pension alimentaire ni transfert
+32600 de leur montant. Chaque fiche confirme l'infirmité, la dépendance durable,
+l'aide accrue, la preuve médicale/T2201 et l'absence d'autre réclamant.
+Ces confirmations comptables ne sont pas une détermination médicale automatique.
+La combinaison 30400/30500 de 5V reste dans son parcours individuel; elle n'est
+pas convertie silencieusement en liste. Les autres attributions familiales de
+30500 restent à étendre : cette limite logicielle n'est pas une règle fiscale.
+
+30499 = nombre d'enfants validés; 30500 = nombre × 2687 $.
+Crédit = 14,5 % du montant total, arrondi une seule fois : deux enfants donnent
+5374 $ de base et 779,23 $ de crédit, pas deux crédits individuels arrondis.
+Les bases 33500/33800 et 34990/35000 suivent l'ordre T1 existant, puis 42900/40500;
+aucun changement du revenu ni du calcul Québec.
+
+Référence locale sans NAS, nom et naissance ISO par enfant, âge recalculé pour
+contrôle, références ou identités (nom normalisé et naissance) en double refusées.
+Les identités réelles et les demandes externes sont rapprochées par le comptable.
+Aucune liste imbriquée ni faits concurrents au niveau de l'ensemble.
+
+JSON : données brutes par fiche, anciens champs absents = liste vide. Types et
+clés stricts dans les nouvelles fiches même au format historique, inférence depuis
+l'estimation si omise et divergence explicite refusée. Les combinaisons 30400 hors
+de ce mode sont aussi refusées à la sauvegarde et au rechargement sans estimation.
+GUI : ajout/modification/retrait, conservation des faits lors d'une conversion
+historique, identités à compléter, révocation des confirmations individuelles
+et globales après modification. Trace/PDF : enfants, sources et preuves distincts,
+puis nombre, base totale et crédit; pas de saisie manuelle du montant calculable.
+
+Validation ciblée moteur, stockage, trace/PDF et GUI : **119 passed, 5 warnings**.
+Le PDF synthétique de deux enfants a été contrôlé visuellement.
+Suite complète : **5574 passed, 8 warnings** (178,87 s), avec `--capture=sys`.

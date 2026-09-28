@@ -53,6 +53,7 @@ from .tax_federal_caregiver_spouse_dependant_2025 import (
     montant_ligne_30425_2025,
 )
 from .tax_federal_caregiver_child_2025 import (
+    details_enfants_30500_2025,
     credit_federal_aidant_enfant_moins18_2025,
     montant_ligne_30500_2025,
     nombre_enfants_ligne_30499_2025,
@@ -1096,7 +1097,16 @@ def construire_trace_calcul_fiscal_2025(
             ),
         )
 
-    if aidant_enfant_federal.reclamer_montant:
+    if aidant_enfant_federal.enfants_detailles:
+        lignes = _inserer_ligne_avant(lignes, "Impôt fédéral de base", _ligne(
+            0, "FÉDÉRAL", "Crédit fédéral — enfants 30499 / 30500",
+            "Annexe 5 2025; identités distinctes et validation comptable confirmées. "
+            + " ; ".join(details_enfants_30500_2025(aidant_enfant_federal)),
+            f"30499 = {nombre_enfants_ligne_30499_2025(aidant_enfant_federal)} × 2687 $ "
+            f"= 30500 {montant_ligne_30500_2025(aidant_enfant_federal):.2f} $; crédit = total × 14,5 %, arrondi une fois.",
+            credit_federal_aidant_enfant_moins18_2025(aidant_enfant_federal)))
+
+    if aidant_enfant_federal.reclamer_montant and not aidant_enfant_federal.enfants_detailles:
         montant_30500 = montant_ligne_30500_2025(
             aidant_enfant_federal
         )

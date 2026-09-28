@@ -89,6 +89,7 @@ from .tax_federal_caregiver_spouse_dependant_2025 import (
     montant_ligne_30425_2025,
 )
 from .tax_federal_caregiver_child_2025 import (
+    details_enfants_30500_2025,
     credit_federal_aidant_enfant_moins18_2025,
     montant_ligne_30500_2025,
     nombre_enfants_ligne_30499_2025,
@@ -973,7 +974,14 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
             ]
         )
 
-    if aidant_enfant_federal.reclamer_montant:
+    if aidant_enfant_federal.enfants_detailles:
+        lignes.extend(["", "AIDANTS - ENFANTS - 30499 / 30500", *details_enfants_30500_2025(aidant_enfant_federal),
+            f"Nombre ligne 30499 : {nombre_enfants_ligne_30499_2025(aidant_enfant_federal)}",
+            f"Total ligne 30500 : {montant_ligne_30500_2025(aidant_enfant_federal):.2f} $",
+            f"Crédit à 14,5 % du total, arrondi une fois : {credit_federal_aidant_enfant_moins18_2025(aidant_enfant_federal):.2f} $",
+            "Identités distinctes et validation comptable confirmées; aucune garde partagée, pension alimentaire ni transfert 32600 pour ces enfants."])
+
+    if aidant_enfant_federal.reclamer_montant and not aidant_enfant_federal.enfants_detailles:
         nombre_enfants_30499 = nombre_enfants_ligne_30499_2025(
             aidant_enfant_federal
         )

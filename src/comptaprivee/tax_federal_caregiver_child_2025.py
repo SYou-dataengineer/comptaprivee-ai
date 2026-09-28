@@ -3,6 +3,8 @@
 Extension 5V : combinaison explicite 30400/30500 du même enfant mineur
 avec infirmité, parent sans conjoint, référence concordante et preuve médicale.
 Le supplément de 2687 $ est porté uniquement à 30500.
+Extension 5Y : plusieurs fiches d’enfants vivant avec leurs deux parents
+toute l’année, attribution unique et preuve propre à chaque enfant.
 
 Profil historique conservé :
 - un seul enfant biologique ou adopté du contribuable, ou de son époux/conjoint;
@@ -26,8 +28,8 @@ Cette version simple utilise :
 - taux fédéral de crédit non remboursable 2025 : 14,5 %.
 
 Les situations de garde partagée, de pension alimentaire, de transfert
-au conjoint, de plusieurs enfants et les interactions particulières avec
-la ligne 30400 seront ajoutées séparément afin d'éviter une réclamation
+au conjoint et les autres interactions particulières avec
+la ligne 30400 restent à étendre séparément afin d'éviter une réclamation
 incorrecte.
 
 Source fiscale :
@@ -77,6 +79,16 @@ class AidantNaturelEnfantMoins18Federal2025:
     source_enfant: str = ""
     enfant_reclame_30400: bool = False
     reference_enfant: str = ""
+    enfants_detailles: tuple["EnfantAidant30500", ...] = ()
+    identites_distinctes_confirmees: bool = False
+
+
+@dataclass(frozen=True)
+class EnfantAidant30500:
+    reference: str = ""
+    nom: str = ""
+    naissance: str = ""
+    profil: AidantNaturelEnfantMoins18Federal2025 = AidantNaturelEnfantMoins18Federal2025()
 
 
 def aucun_aidant_naturel_enfant_moins18_federal_2025(
@@ -87,6 +99,48 @@ def aucun_aidant_naturel_enfant_moins18_federal_2025(
 def valider_aidant_naturel_enfant_moins18_federal_2025(
     profil: AidantNaturelEnfantMoins18Federal2025,
 ) -> AidantNaturelEnfantMoins18Federal2025:
+    if type(profil.enfants_detailles) is not tuple or type(profil.identites_distinctes_confirmees) is not bool:
+        raise ValueError("Liste d'enfants 30500 ou confirmation d'identité invalide.")
+    if profil.enfants_detailles:
+        from datetime import date
+        for champ in fields(profil):
+            if type(getattr(profil, champ.name)) is not type(champ.default):
+                raise ValueError("Type invalide dans l'ensemble 30500 : " + champ.name)
+        attendu = AidantNaturelEnfantMoins18Federal2025(reclamer_montant=True,
+            valide_par_comptable=True, identites_distinctes_confirmees=True, enfants_detailles=profil.enfants_detailles)
+        if profil != attendu:
+            raise ValueError("L'ensemble 30500 exige validation, identités distinctes et aucun fait individuel concurrent.")
+        references, identites = set(), set()
+        for enfant in profil.enfants_detailles:
+            if type(enfant) is not EnfantAidant30500:
+                raise ValueError("Fiche enfant 30500 invalide.")
+            for nom in ("reference", "nom", "naissance"):
+                if type(getattr(enfant, nom)) is not str or not getattr(enfant, nom).strip():
+                    raise ValueError("Référence, nom et naissance de chaque enfant 30500 obligatoires.")
+            try:
+                naissance = date.fromisoformat(enfant.naissance)
+            except ValueError as erreur:
+                raise ValueError("Naissance enfant 30500 invalide : AAAA-MM-JJ attendu.") from erreur
+            if naissance.isoformat() != enfant.naissance or not date(2008, 1, 1) <= naissance <= date(2025, 12, 31):
+                raise ValueError("Chaque enfant doit être né et avoir moins de 18 ans à la fin de 2025.")
+            reference = " ".join(enfant.reference.casefold().split())
+            identite = (" ".join(enfant.nom.casefold().split()), naissance)
+            if reference in references or identite in identites:
+                raise ValueError("Enfant 30500 en double : référence ou identité déjà présente.")
+            references.add(reference)
+            identites.add(identite)
+            individuel = enfant.profil
+            if type(individuel) is not AidantNaturelEnfantMoins18Federal2025 or individuel.enfants_detailles:
+                raise ValueError("Les listes d'enfants 30500 imbriquées sont interdites.")
+            for champ in fields(individuel):
+                if type(getattr(individuel, champ.name)) is not type(champ.default):
+                    raise ValueError("Type invalide dans une fiche enfant 30500 : " + champ.name)
+            if not individuel.reclamer_montant or individuel.enfant_reclame_30400:
+                raise ValueError("La liste 5Y exige des enfants avec deux parents toute l'année; combinaison 30400 distincte hors de ce mode.")
+            valider_aidant_naturel_enfant_moins18_federal_2025(individuel)
+        return profil
+    if profil.identites_distinctes_confirmees:
+        raise ValueError("Confirmation d'identités sans liste d'enfants 30500.")
     if type(profil.enfant_reclame_30400) is not bool or not isinstance(profil.reference_enfant, str):
         raise ValueError("Profil combiné 30400/30500 invalide.")
     if profil.enfant_reclame_30400:
@@ -188,7 +242,7 @@ def nombre_enfants_ligne_30499_2025(
     profil: AidantNaturelEnfantMoins18Federal2025,
 ) -> int:
     valider_aidant_naturel_enfant_moins18_federal_2025(profil)
-    return 1 if profil.reclamer_montant else 0
+    return len(profil.enfants_detailles) if profil.enfants_detailles else int(profil.reclamer_montant)
 
 
 def montant_ligne_30500_2025(
@@ -199,7 +253,7 @@ def montant_ligne_30500_2025(
     if not profil.reclamer_montant:
         return ZERO
 
-    return MONTANT_AIDANT_ENFANT_MOINS_18_2025
+    return MONTANT_AIDANT_ENFANT_MOINS_18_2025 * nombre_enfants_ligne_30499_2025(profil)
 
 
 def credit_federal_aidant_enfant_moins18_2025(
@@ -293,3 +347,11 @@ def verifier_combinaison_30400_30500_2025(personne, aidant):
             raise ValueError("Références de l'enfant divergentes entre 30400 et 30500.")
     elif personne.reclamer_montant and aidant.reclamer_montant:
         raise ValueError("Combinaison 30400/30500 : utiliser le profil explicite du même enfant.")
+
+
+def details_enfants_30500_2025(profil):
+    valider_aidant_naturel_enfant_moins18_federal_2025(profil)
+    return tuple(f"{e.reference} — {e.nom}, naissance {e.naissance} : 2687,00 $. "
+        f"Source : {e.profil.source_enfant}. Deux parents toute l'année; attribution unique, "
+        "infirmité, aide accrue, preuve médicale et validation comptable confirmées."
+        for e in profil.enfants_detailles)
