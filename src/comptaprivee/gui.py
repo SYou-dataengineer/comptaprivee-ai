@@ -9,6 +9,10 @@ import sys
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
+from .tax_tuition_transfer_2025 import (
+    TransfertScolariteSortant2025, RELATIONS_TRANSFERT_SCOLARITE,
+    CONFIRMATIONS_TRANSFERT_SCOLARITE, LIBELLE_RESTRICTION_CONJOINT,
+)
 from .tax_tuition_carryforward_2025 import ReportsScolariteFederaux2025, CONFIRMATIONS_REPORTS_SCOLARITE
 from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025, CONFIRMATIONS_ACT
 from .tax_medical_supplement_2025 import SupplementMedical2025, CONFIRMATIONS_SUPPLEMENT
@@ -5925,7 +5929,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 text=(
                     "Activer le bloc 5F ci-dessous pour les reports fédéraux. "
-                    "Les transferts et reports Québec restent hors de ce formulaire."
+                    "Les transferts sortants fédéraux sont traités en 5G; transferts reçus et reports Québec hors profil."
                 ),
                 foreground="#92400e",
                 wraplength=710,
@@ -5987,15 +5991,48 @@ class ApplicationComptaPrivee(tk.Tk):
                 ttk.Checkbutton(cadre, name=nom + "_5f", text=libelle, variable=variable).grid(
                     row=row, column=0, columnspan=2, sticky="w")
 
+            transfert = reports.transfert_sortant
+            transfert_vars = {}
+            transfert_confirmations = {}
+            ttk.Label(cadre, text="Transfert fédéral sortant — certificat signé (5G)",
+                      font=("Segoe UI", 12, "bold")).grid(row=41, column=0, columnspan=2, sticky="w", pady=8)
+            ttk.Label(cadre, text="Activer 5F et laisser décochées les confirmations d'absence de transfert. "
+                "Le montant désigné est un choix documenté; le plafond est calculé par le moteur.",
+                wraplength=680).grid(row=42, column=0, columnspan=2, sticky="w")
+            for row, (nom, libelle) in enumerate((
+                ("montant_designe", "Montant désigné sur le certificat (0 = aucun transfert)"),
+                ("beneficiaire", "Nom du bénéficiaire désigné"),
+                ("relation", "Lien avec le bénéficiaire"),
+                ("source", "Source du certificat et de l'autorisation"),
+            ), 43):
+                variable = tk.StringVar(value=str(getattr(transfert, nom) or ""))
+                transfert_vars[nom] = variable
+                ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w")
+                if nom == "relation":
+                    widget = ttk.Combobox(cadre, name=nom + "_5g", textvariable=variable,
+                                          values=("", *RELATIONS_TRANSFERT_SCOLARITE), state="readonly")
+                else:
+                    widget = ttk.Entry(cadre, name=nom + "_5g", textvariable=variable)
+                widget.grid(row=row, column=1, sticky="ew")
+            libelles_transfert = dict(CONFIRMATIONS_TRANSFERT_SCOLARITE,
+                aucun_credit_conjoint_30300_30425_32600=LIBELLE_RESTRICTION_CONJOINT)
+            for row, (nom, libelle) in enumerate(libelles_transfert.items(), 47):
+                variable = tk.BooleanVar(value=getattr(transfert, nom))
+                transfert_confirmations[nom] = variable
+                ttk.Checkbutton(cadre, name=nom + "_5g", text=libelle, variable=variable).grid(
+                    row=row, column=0, columnspan=2, sticky="w")
+
             def revoquer_scolarite_et_formation(*_):
                 for _, var in confirmations:
                     var.set(False)
-                for var in (*ccf_confirmations.values(), *reports_confirmations.values()):
+                for var in (*ccf_confirmations.values(), *reports_confirmations.values(), *transfert_confirmations.values()):
                     var.set(False)
-            for var in (fed_var, qc_var, source_fed_var, source_qc_var, *ccf_vars.values(), ccf_max, reports_activer, report_solde, report_source):
+            for var in (fed_var, qc_var, source_fed_var, source_qc_var, *ccf_vars.values(), ccf_max, reports_activer, report_solde, report_source, *transfert_vars.values()):
                 var.trace_add("write", revoquer_scolarite_et_formation)
 
             def effacer() -> None:
+                for variable in transfert_vars.values():
+                    variable.set("")
                 reports_activer.set(False)
                 report_solde.set("")
                 report_source.set("")
@@ -6035,6 +6072,13 @@ class ApplicationComptaPrivee(tk.Tk):
                     )
                     nouveaux_frais = FraisScolarite2025(
                         reports_federaux=ReportsScolariteFederaux2025(
+                            transfert_sortant=TransfertScolariteSortant2025(
+                                montant_designe=decimal_depuis_champ(transfert_vars["montant_designe"].get(), "Montant désigné"),
+                                beneficiaire=transfert_vars["beneficiaire"].get().strip(),
+                                relation=transfert_vars["relation"].get(),
+                                source=transfert_vars["source"].get().strip(),
+                                **{nom: var.get() for nom, var in transfert_confirmations.items()},
+                            ),
                             activer=reports_activer.get(),
                             report_avis_2024=decimal_depuis_champ(report_solde.get(), "Report fédéral"),
                             source=report_source.get().strip(),

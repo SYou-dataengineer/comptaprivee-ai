@@ -3,7 +3,7 @@
 Portée volontairement limitée :
 - frais admissibles payés pour 2025 seulement;
 - reports fédéraux via le profil dédié 5F; reports Québec hors profil;
-- aucun transfert à un parent ou grand-parent;
+- transferts fédéraux sortants via 5G; transferts reçus et Québec hors profil;
 - crédit canadien pour la formation via le profil dédié 5C;
 - pièces justificatives et admissibilité déjà vérifiées;
 - résident du Québec/Canada dans le profil simple de ComptaPrivée.
@@ -13,8 +13,8 @@ Références de calcul visées :
 - Québec : annexe T, ligne 398.
 
 Cette première version calcule les crédits non remboursables associés aux
-montants admissibles validés. Les reports fédéraux sont traités séparément en 5F, sans
-transferts. Le crédit formation est intégré séparément en 5C.
+montants admissibles validés. Les reports fédéraux sont traités en 5F et les
+transferts sortants en 5G. Le crédit formation est intégré séparément en 5C.
 """
 
 from dataclasses import dataclass, replace
@@ -79,6 +79,8 @@ def valider_frais_scolarite_2025(
         if not isinstance(montant, Decimal) or not montant.is_finite():
             raise ValueError(f"{nom} doit être un Decimal fini.")
     valider_reports_scolarite_federaux_2025(frais.reports_federaux)
+    if frais.reports_federaux.transfert_sortant.present and frais.aucun_transfert:
+        raise ValueError("Confirmation contradictoire : transfert sortant présent et aucun transfert.")
     if frais.reports_federaux.report_avis_2024 and frais.aucun_report_anterieur:
         raise ValueError("Confirmation contradictoire : report fédéral présent et aucun report antérieur.")
     valider_formation_2025(frais.formation)
@@ -158,7 +160,7 @@ def valider_frais_scolarite_2025(
             "d'années antérieures."
         )
 
-    if not frais.aucun_transfert:
+    if not frais.aucun_transfert and not frais.reports_federaux.transfert_sortant.present:
         raise ValueError(
             "Cette version n'accepte pas encore les transferts de frais "
             "de scolarité à une autre personne."

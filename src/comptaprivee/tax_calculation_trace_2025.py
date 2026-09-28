@@ -1938,10 +1938,18 @@ def construire_trace_calcul_fiscal_2025(
             ("Report scolarité antérieur utilisé", r.report_anterieur_utilise, "min(report disponible, capacité), utilisé en premier"),
             ("Frais 2025 utilisés", r.frais_2025_utilises, "min(frais nets après CCF, capacité restante)"),
             ("Scolarité réclamée 32300", r.ligne_32300, "Report utilisé + frais 2025 utilisés; intégré une seule fois à 33500"),
-            ("Report scolarité fédéral futur", r.report_futur, "Report antérieur + frais 2025 nets - 32300; aucun transfert"),
+            ("Maximum de scolarité transférable", r.transfert_maximal, "max(min(frais 2025 nets, 5000) - frais 2025 utilisés, 0)"),
+            ("Transfert sortant 32700", r.ligne_32700, "Montant désigné sur le certificat, au plus le maximum calculé"),
+            ("Report scolarité fédéral futur", r.report_futur, "Report antérieur + frais 2025 nets - 32300 - 32700"),
         ):
             lignes += (_ligne(len(lignes) + 1, "REPORTS SCOLARITÉ — BLOC 5F", libelle,
                 frais_scolarite.reports_federaux.source, formule, montant),)
+
+    transfert = frais_scolarite.reports_federaux.transfert_sortant
+    if transfert.present:
+        lignes += (_ligne(len(lignes) + 1, "TRANSFERT SCOLARITÉ — BLOC 5G", "Bénéficiaire du transfert sortant",
+            transfert.source, f"Autorisation signée : {transfert.beneficiaire} ({transfert.relation}); montant désigné validé",
+            estimation.resultat_reports_scolarite.ligne_32700),)
 
     prochain_ordre = len(lignes) + 1
 

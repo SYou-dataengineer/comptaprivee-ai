@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .tax_tuition_transfer_2025 import TransfertScolariteSortant2025, valider_transfert_scolarite_sortant_2025
 from .tax_tuition_carryforward_2025 import ReportsScolariteFederaux2025, valider_reports_scolarite_federaux_2025
 from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025
 from .tax_medical_supplement_2025 import SupplementMedical2025, valider_supplement_medical_2025
@@ -1233,9 +1234,20 @@ def _frais_medicaux_depuis_dict(
     return valider_frais_medicaux_2025(frais)
 
 
+def _transfert_scolarite_sortant_depuis_dict(valeur):
+    if valeur is None:
+        return TransfertScolariteSortant2025()
+    if not isinstance(valeur, dict) or set(valeur) - set(TransfertScolariteSortant2025.__dataclass_fields__):
+        raise ValueError("Profil transfert sortant ou clés inconnues invalides.")
+    valeurs = dict(valeur)
+    valeurs["montant_designe"] = _decimal_depuis_json(valeurs.get("montant_designe", "0"), "Transfert désigné")
+    return valider_transfert_scolarite_sortant_2025(TransfertScolariteSortant2025(**valeurs))
+
+
 def _reports_scolarite_federaux_vers_dict(profil):
     valeurs = asdict(valider_reports_scolarite_federaux_2025(profil))
     valeurs["report_avis_2024"] = format(profil.report_avis_2024, ".2f")
+    valeurs["transfert_sortant"]["montant_designe"] = format(profil.transfert_sortant.montant_designe, ".2f")
     return valeurs
 
 
@@ -1246,6 +1258,7 @@ def _reports_scolarite_federaux_depuis_dict(valeur):
         raise ValueError("Profil reports scolarité ou clés inconnues invalides.")
     valeurs = dict(valeur)
     valeurs["report_avis_2024"] = _decimal_depuis_json(valeurs.get("report_avis_2024", "0"), "Report scolarité")
+    valeurs["transfert_sortant"] = _transfert_scolarite_sortant_depuis_dict(valeurs.get("transfert_sortant"))
     return valider_reports_scolarite_federaux_2025(ReportsScolariteFederaux2025(**valeurs))
 
 

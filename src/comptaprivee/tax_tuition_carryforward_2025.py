@@ -1,9 +1,13 @@
-"""Annexe 11 Québec 2025, reports fédéraux sans transfert (bloc 5F).
+"""Annexe 11 Québec 2025, reports fédéraux (5F) et transferts sortants (5G).
 
 Source : https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s11/5005-s11-25e.pdf
 """
 from dataclasses import dataclass
 from decimal import Decimal
+from .tax_tuition_transfer_2025 import (
+    TransfertScolariteSortant2025, valider_transfert_scolarite_sortant_2025,
+    calculer_transfert_scolarite_sortant_2025, lignes_transfert_scolarite_sortant_2025,
+)
 from .tax_federal_top_up_2025 import montant_decimal_2025
 from .tax_rules_2025 import arrondir_cent
 
@@ -22,6 +26,7 @@ class ReportsScolariteFederaux2025:
     resident_canada_quebec_confirme: bool = False
     aucun_deces_faillite: bool = False
     aucun_report_quebec: bool = False
+    transfert_sortant: TransfertScolariteSortant2025 = TransfertScolariteSortant2025()
 
 
 CONFIRMATIONS_REPORTS_SCOLARITE = {
@@ -38,6 +43,7 @@ CONFIRMATIONS_REPORTS_SCOLARITE = {
 def valider_reports_scolarite_federaux_2025(p: ReportsScolariteFederaux2025) -> ReportsScolariteFederaux2025:
     if not isinstance(p, ReportsScolariteFederaux2025):
         raise ValueError("Profil de reports scolarité fédéraux invalide.")
+    valider_transfert_scolarite_sortant_2025(p.transfert_sortant)
     for nom in ("activer", *CONFIRMATIONS_REPORTS_SCOLARITE):
         if type(getattr(p, nom)) is not bool:
             raise ValueError("Confirmation reports scolarité non booléenne : " + nom)
@@ -47,10 +53,17 @@ def valider_reports_scolarite_federaux_2025(p: ReportsScolariteFederaux2025) -> 
         raise ValueError("Source reports scolarité invalide.")
     if p.report_avis_2024 and not p.activer:
         raise ValueError("Activer le calcul des reports fédéraux pour utiliser le solde.")
+    if p.transfert_sortant.present:
+        if not p.activer:
+            raise ValueError("Activer l'annexe 11 (5F) pour calculer un transfert sortant.")
+        if p.aucun_transfert_entrant_sortant:
+            raise ValueError("Confirmation contradictoire : transfert sortant présent et aucun transfert.")
     if p.activer:
         if not p.source.strip():
             raise ValueError("Source des reports fédéraux obligatoire.")
         for nom, libelle in CONFIRMATIONS_REPORTS_SCOLARITE.items():
+            if nom == "aucun_transfert_entrant_sortant" and p.transfert_sortant.present:
+                continue
             if not getattr(p, nom):
                 raise ValueError("Confirmation obligatoire : " + libelle)
     return p
@@ -64,6 +77,8 @@ class ResultatReportsScolariteFederaux2025:
     frais_2025_utilises: Decimal = ZERO
     ligne_32300: Decimal = ZERO
     report_futur: Decimal = ZERO
+    transfert_maximal: Decimal = ZERO
+    ligne_32700: Decimal = ZERO
 
     @property
     def credit_federal(self) -> Decimal:
@@ -84,8 +99,11 @@ def calculer_reports_scolarite_federaux_2025(p: ReportsScolariteFederaux2025, *,
     anterieur = min(p.report_avis_2024, capacite)
     courant = min(frais, capacite - anterieur)
     utilise = anterieur + courant
+    maximum, transfert = calculer_transfert_scolarite_sortant_2025(
+        p.transfert_sortant, frais_nets_2025=frais, frais_2025_utilises=courant,
+    )
     return ResultatReportsScolariteFederaux2025(frais, capacite, anterieur, courant,
-        utilise, p.report_avis_2024 + frais - utilise)
+        utilise, p.report_avis_2024 + frais - utilise - transfert, maximum, transfert)
 
 
 def lignes_reports_scolarite_federaux_2025(p: ReportsScolariteFederaux2025, r: ResultatReportsScolariteFederaux2025) -> list[str]:
@@ -101,4 +119,6 @@ def lignes_reports_scolarite_federaux_2025(p: ReportsScolariteFederaux2025, r: R
         f"Frais 2025 utilisés ensuite : {r.frais_2025_utilises:.2f} $",
         f"Ligne 32300 : {r.ligne_32300:.2f} $; crédit à 14.5 % : {r.credit_federal:.2f} $",
         f"Report fédéral futur calculé : {r.report_futur:.2f} $",
-        "Aucun transfert calculé. Solde futur à rapprocher de l'avis ARC; aucun report Québec dans 5F."]
+        f"Maximum transférable pour les frais courants : {r.transfert_maximal:.2f} $",
+        "Solde futur après transfert éventuel, à rapprocher de l'avis ARC; aucun report Québec dans 5F.",
+        *lignes_transfert_scolarite_sortant_2025(p.transfert_sortant, r.transfert_maximal, r.ligne_32700)]

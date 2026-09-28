@@ -2315,3 +2315,43 @@ Régression avant correction : **2 failed, 1 passed**. Validation ciblée après
 correction : **121 passed, 5 warnings**. Aucun test existant modifié.
 
 Suite complète du correctif dons : **3905 passed, 8 warnings** (`--capture=sys`).
+
+
+### Bloc 5G livré — transferts fédéraux sortants de scolarité, ligne 32700
+
+Source : [annexe 11 Québec 2025, lignes 21–25 et instructions de désignation](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s11/5005-s11-25e.pdf).
+Après l'utilisation obligatoire des reports antérieurs puis des frais courants
+calculée par 5F, le maximum transférable est
+`max(min(frais 2025 nets du CCF, 5000) - frais 2025 utilisés, 0)`.
+Les reports antérieurs ne sont jamais transférables. Le montant désigné à
+32700 peut être inférieur au maximum : il provient de l'autorisation signée
+sur le certificat, et non d'un crédit calculé saisi manuellement. Tout
+montant supérieur au maximum est refusé. Le report futur est réduit du
+transfert, sans ajouter de crédit au dossier de l'étudiant ni modifier
+32300, les revenus ou le calcul Québec.
+
+Un bénéficiaire unique est identifié : conjoint, parent ou grand-parent de
+l'étudiant ou de son conjoint. Pour un parent/grand-parent, confirmation
+explicite que le conjoint ne réclame pas 30300, 30425 ou 32600 pour l'étudiant.
+Source, autorisation signée, lien et unicité sont validés par le comptable;
+le moteur ne détermine pas automatiquement l'admissibilité documentaire.
+
+Ce bloc étend 5F aux transferts sortants fédéraux. Les transferts reçus dans
+le dossier du bénéficiaire et les transferts Québec restent des fonctions
+distinctes à livrer. Les autres limites 5F restent applicables. L'absence de
+transfert des anciens profils ne peut pas être confirmée simultanément avec
+un transfert sortant positif.
+
+Le profil imbriqué `reports_federaux.transfert_sortant` conserve uniquement
+les données de désignation et les confirmations. Ancien JSON sans ce profil :
+profil vide. Types, clés inconnues, montants non finis, précision et plafonds
+sont contrôlés; les résultats sont recalculés et les divergences entre profil
+explicite et estimation sont refusées. GUI : choix du lien et données du
+certificat, révocation des confirmations après modification. Trace et PDF :
+bénéficiaire, source, maximum, 32700 et report futur après transfert.
+
+Validation ciblée : **201 passed, 5 warnings**, couvrant aussi CCF, reports,
+ancien JSON, divergence, bornes, non-finis, GUI, trace et PDF. Aucun test
+existant modifié.
+
+Suite complète 5G : **3947 passed, 8 warnings** (`--capture=sys`).
