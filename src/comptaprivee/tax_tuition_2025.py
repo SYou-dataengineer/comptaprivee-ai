@@ -20,6 +20,7 @@ transferts ni le crédit canadien pour la formation.
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_federal_top_up_2025 import valider_scolarite_sans_report_2025
 from .tax_federal_2025 import ImpotFederalPreliminaire2025
 from .tax_quebec_2025 import ImpotQuebecPreliminaire2025
 from .tax_rules_2025 import arrondir_cent
@@ -183,13 +184,20 @@ def credit_quebec_frais_scolarite_2025(
 def appliquer_credit_federal_frais_scolarite_2025(
     impot: ImpotFederalPreliminaire2025,
     frais: FraisScolarite2025,
+    *,
+    base_ligne105: Decimal | None = None,
 ) -> ImpotFederalPreliminaire2025:
     credit = credit_federal_frais_scolarite_2025(frais)
 
     if credit == ZERO:
         return impot
 
-    if credit > impot.impot_federal_de_base:
+    if base_ligne105 is not None:
+        valider_scolarite_sans_report_2025(
+            frais.montant_admissible_federal, impot.revenu_imposable,
+            impot.impot_brut, base_ligne105,
+        )
+    elif credit > impot.impot_federal_de_base:
         raise ValueError(
             "Une partie du montant fédéral de scolarité devrait être "
             "reportée à une année future. Le report est hors profil "

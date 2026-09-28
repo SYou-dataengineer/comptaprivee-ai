@@ -34,10 +34,10 @@ def _index(trace, libelle):
     return next(i for i, ligne in enumerate(trace.lignes) if ligne.libelle == libelle)
 
 
-def test_trace_sans_cotisations_reste_a_17_etapes():
+def test_trace_sans_cotisations_reste_a_22_etapes():
     estimation = calculer_estimation_fiscale_2025(_dossier_52000())
     trace = construire_trace_calcul_fiscal_2025(estimation)
-    assert len(trace.lignes) == 17
+    assert len(trace.lignes) == 22
 
 
 def test_trace_cotisations_ajoute_deux_etapes():
@@ -45,8 +45,8 @@ def test_trace_cotisations_ajoute_deux_etapes():
         _dossier_52000(), cotisations_syndicales=_cotisations_600()
     )
     trace = construire_trace_calcul_fiscal_2025(estimation)
-    assert len(trace.lignes) == 19
-    assert [x.ordre for x in trace.lignes] == list(range(1, 20))
+    assert len(trace.lignes) == 24
+    assert [x.ordre for x in trace.lignes] == list(range(1, 25))
 
 
 def test_trace_deduction_federale_avant_revenu_imposable():
@@ -71,15 +71,15 @@ def test_trace_credit_quebec_avant_impot_preliminaire():
     assert trace.lignes[i1].montant == Decimal("60.00")
 
 
-def test_trace_reer_et_cotisations_a_20_etapes():
+def test_trace_reer_et_cotisations_a_25_etapes():
     estimation = calculer_estimation_fiscale_2025(
         _dossier_52000(),
         ajustement_reer=_reer_5000(),
         cotisations_syndicales=_cotisations_600(),
     )
     trace = construire_trace_calcul_fiscal_2025(estimation)
-    assert len(trace.lignes) == 20
-    assert [x.ordre for x in trace.lignes] == list(range(1, 21))
+    assert len(trace.lignes) == 25
+    assert [x.ordre for x in trace.lignes] == list(range(1, 26))
     assert trace.lignes[2].libelle == "Déduction REER/RPAC/RVER validée"
     assert trace.lignes[3].libelle == "Cotisations syndicales/professionnelles — fédéral"
     assert trace.lignes[-1].montant == Decimal("7049.07")

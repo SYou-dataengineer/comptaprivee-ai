@@ -66,8 +66,8 @@ def test_pdf_affiche_source_et_garde_fou(tmp_path):
     texte = _texte_pdf(_rapport(tmp_path))
 
     assert "Source : État civil et revenu du conjoint validés" in texte
-    assert "Ligne 34990 : garde-fou actif" in texte
-    assert "première tranche fédérale" in texte
+    assert "Ligne 34990 : calcul automatique intégré (2025)." in texte
+    assert "8 319,38" in texte
 
 
 def test_pdf_sans_conjoint_ne_montre_pas_section(tmp_path):

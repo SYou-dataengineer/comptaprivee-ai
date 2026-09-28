@@ -44,6 +44,7 @@ def _profil_aidant_enfant(**modifications):
 def test_sans_aidant_enfant_resultat_historique_inchange():
     e = calculer_estimation_fiscale_2025(_dossier_52000())
 
+    # T1 : arrondi de la somme 33500 × 14,5 %, et non des crédits séparés.
     assert e.federal.impot_federal_de_base == Decimal("4401.90")
     assert e.rapprochement.impot_total_preliminaire == Decimal("8088.95")
     assert e.rapprochement.remboursement_estime == Decimal("5611.05")
@@ -59,11 +60,12 @@ def test_aidant_enfant_reduit_impot_federal():
         aidant_enfant_federal=_profil_aidant_enfant(),
     )
 
-    assert e.federal.impot_federal_de_base == Decimal("4012.28")
+    # T1 : arrondi de la somme 33500 × 14,5 %, et non des crédits séparés.
+    assert e.federal.impot_federal_de_base == Decimal("4012.29")
     assert e.rapprochement.abattement_quebec == Decimal("662.03")
-    assert e.rapprochement.impot_federal_apres_abattement == Decimal("3350.25")
-    assert e.rapprochement.impot_total_preliminaire == Decimal("7763.61")
-    assert e.rapprochement.remboursement_estime == Decimal("5936.39")
+    assert e.rapprochement.impot_federal_apres_abattement == Decimal("3350.26")
+    assert e.rapprochement.impot_total_preliminaire == Decimal("7763.62")
+    assert e.rapprochement.remboursement_estime == Decimal("5936.38")
 
 
 def test_estimation_conserve_profil_aidant_enfant():

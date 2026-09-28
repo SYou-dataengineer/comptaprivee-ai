@@ -451,6 +451,16 @@ def construire_trace_calcul_fiscal_2025(
             "Client incohérent entre les modules fiscaux."
         )
 
+    if federal.credits_federaux_complets is not None:
+        composantes = "; ".join(
+            part for part in formule_impot_federal.split(" - ")[1:]
+            if not part.startswith("crédit dividendes")
+        )
+        formule_impot_federal = (
+            "max(impôt brut - ligne 35000 - crédit dividendes 40425, 0)"
+            "; composantes déjà incluses dans 35000 : " + composantes
+        )
+
     lignes = (
         _ligne(
             1, "REVENU FÉDÉRAL", "Revenu d'emploi fédéral",
@@ -1840,6 +1850,26 @@ def construire_trace_calcul_fiscal_2025(
         r = estimation.capital
         for libelle, valeur, formule in (("Produit brut 13199",r.produit,"T5008 21 = RL-18 21 + courtage"),("PBR indépendant",r.pbr,"Preuve distincte de la case 20"),("Frais de disposition",r.frais_courtage+r.frais_autres,"Courtage + autres frais; aucune double déduction"),("Gain/perte 13200 / G 10",r.gain_perte,"Produit brut - PBR - courtage - autres frais"),("Gain imposable 12700 / 139",r.ligne_12700,"50 % du gain positif; aucune perte déduite du salaire"),("Perte nette 2025 à vérifier",r.perte_nette_2025,"50 % de la perte; aucun report utilisé ou certifié"),("FSS capital 446",r.cotisation_fss,("Assiette = gain imposable 139 - frais 231; annexe F 2025" if estimation.frais_placement.present else "Assiette = gain imposable 139; annexe F 2025"))):
             lignes = _inserer_ligne_avant(lignes, "Impôt total préliminaire", _ligne(0,"CAPITAL", libelle, estimation.profil_capital.source, formule, valeur))
+
+    credits = federal.credits_federaux_complets
+    if credits is not None:
+        section = "CRÉDIT COMPENSATOIRE FÉDÉRAL 2025"
+        source = "T1 Québec 2025; feuille fédérale 5000-D1; annexe 9"
+        audit = (
+            _ligne(0, section, "Base ligne 33500", source,
+                   " + ".join(f"{code} ({valeur:.2f})" for code, valeur in credits.montants_par_ligne),
+                   credits.base_ligne_33500),
+            _ligne(0, section, "Base ligne 33800", source, "33500 × 14,5 %", credits.credit_ligne_33800),
+            _ligne(0, section, "Annexe 9 ligne 22", source, "min(dons réclamés, 200 $) × 14,5 %", credits.annexe9_ligne22),
+            _ligne(0, section, "Ligne 34990", source,
+                   "max(33800 + annexe 9 ligne 22 - 8 319,38 $, 0) × 3,45 %",
+                   credits.credit_compensatoire_ligne_34990),
+            _ligne(0, section, "Total ligne 35000", source,
+                   "33800 + 34900 + 34990; application unique à l'impôt brut",
+                   credits.total_credits_ligne_35000),
+        )
+        for ligne_audit in audit:
+            lignes = _inserer_ligne_avant(lignes, "Impôt fédéral de base", ligne_audit)
 
     prochain_ordre = len(lignes) + 1
 

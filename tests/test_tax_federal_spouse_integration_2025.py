@@ -40,6 +40,7 @@ def _profil_conjoint(**modifications):
 def test_sans_montant_conjoint_resultat_historique_inchange():
     e = calculer_estimation_fiscale_2025(_dossier_52000())
 
+    # T1 : arrondi de la somme 33500 × 14,5 %, et non des crédits séparés.
     assert e.federal.impot_federal_de_base == Decimal("4401.90")
     assert e.rapprochement.impot_total_preliminaire == Decimal("8088.95")
     assert e.rapprochement.remboursement_estime == Decimal("5611.05")
@@ -52,11 +53,12 @@ def test_montant_conjoint_reduit_impot_federal():
         montant_conjoint_federal=_profil_conjoint(),
     )
 
-    assert e.federal.impot_federal_de_base == Decimal("2788.19")
+    # T1 : arrondi de la somme 33500 × 14,5 %, et non des crédits séparés.
+    assert e.federal.impot_federal_de_base == Decimal("2788.20")
     assert e.rapprochement.abattement_quebec == Decimal("460.05")
-    assert e.rapprochement.impot_federal_apres_abattement == Decimal("2328.14")
-    assert e.rapprochement.impot_total_preliminaire == Decimal("6741.50")
-    assert e.rapprochement.remboursement_estime == Decimal("6958.50")
+    assert e.rapprochement.impot_federal_apres_abattement == Decimal("2328.15")
+    assert e.rapprochement.impot_total_preliminaire == Decimal("6741.51")
+    assert e.rapprochement.remboursement_estime == Decimal("6958.49")
 
 
 def test_estimation_conserve_profil_conjoint():
@@ -121,14 +123,15 @@ def test_combinaison_age_et_conjoint_federal_supportee():
         montant_conjoint_federal=_profil_conjoint(),
     )
 
-    assert e.federal.impot_federal_de_base == Decimal("1609.48")
-    assert e.rapprochement.abattement_quebec == Decimal("265.56")
+    # T1 : arrondi de la somme 33500 × 14,5 %, et non des crédits séparés.
+    assert e.federal.impot_federal_de_base == Decimal("1609.49")
+    assert e.rapprochement.abattement_quebec == Decimal("265.57")
     assert e.rapprochement.impot_federal_apres_abattement == Decimal("1343.92")
     assert e.rapprochement.impot_total_preliminaire == Decimal("5757.28")
     assert e.rapprochement.remboursement_estime == Decimal("7942.72")
 
 
-def test_garde_fou_34990_reste_actif():
+def test_coherence_revenu_23600_reste_obligatoire():
     profil = _profil_conjoint(
         revenu_net_contribuable_ligne_23600=Decimal("60000")
     )

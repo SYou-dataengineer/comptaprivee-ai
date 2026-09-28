@@ -6352,9 +6352,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Label(
                 cadre,
                 text=(
-                    "Garde-fou : cette première version refuse "
-                    "l'automatisation au-delà de la première tranche "
-                    "fédérale si la ligne 34990 est requise."
+                    "La ligne 34990 est calculée automatiquement (2025)."
                 ),
                 wraplength=720,
                 justify="left",
@@ -6517,8 +6515,8 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 text=(
                     "Profil simple 2025 : maximum 10 000 $, "
-                    "crédit fédéral 14,5 %. Le garde-fou ligne 34990 "
-                    "reste actif au-delà de la première tranche."
+                    "crédit fédéral 14,5 %. La ligne 34990 "
+                    "est calculée automatiquement (2025)."
                 ),
                 foreground="#475569",
                 wraplength=760,
@@ -7064,7 +7062,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     "de l'exception de résidence prévue au module. "
                     "Les cas de plusieurs personnes à charge, de partage "
                     "ou de pension alimentaire restent hors profil. "
-                    "La restriction de la ligne 34990 demeure active."
+                    "La ligne 34990 est calculée automatiquement (2025)."
                 ),
                 wraplength=740,
                 foreground="#92400e",
@@ -7412,8 +7410,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Label(
                 contenu,
                 text=(
-                    "Garde-fou : cette version conserve la restriction "
-                    "de la ligne 34990. Les cas de partage complexes, "
+                    "Calcul automatique de la ligne 34990 (2025). Les cas de partage complexes, "
                     "les transferts et les autres profils hors périmètre "
                     "restent refusés."
                 ),
@@ -7641,7 +7638,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Label(
                 cadre,
                 text=(
-                    "Garde-fou ligne 34990 actif. La combinaison "
+                    "Calcul automatique de la ligne 34990 (2025). La combinaison "
                     "ligne 30400 + ligne 30500 est bloquée dans ce profil."
                 ),
                 wraplength=700,
@@ -7993,7 +7990,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 cadre,
                 text=(
                     "Le crédit fédéral est calculé à 14,5 %. La ligne 34990 "
-                    "reste protégée par le garde-fou du moteur. Les cas de "
+                    "est calculée automatiquement (2025). Les cas de "
                     "garde partagée, pension alimentaire, déficience/aide "
                     "naturelle et les profils avec conjoint sont exclus de "
                     "cette première version."
@@ -8173,7 +8170,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     "aucune séparation/réconciliation, conjoint résident du Canada, "
                     "aucune pension alimentaire liée à une séparation et aucune "
                     "déficience du conjoint. Le revenu net du conjoint réduit la "
-                    "ligne 30300 dollar pour dollar. Garde-fou ligne 34990 actif."
+                    "ligne 30300 dollar pour dollar. Calcul automatique de la ligne 34990 (2025)."
                 ),
                 wraplength=720,
                 foreground="#475569",
@@ -8368,8 +8365,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 text=(
                     "Le montant personnel fédéral 2025 applicable au contribuable "
                     "est réduit par le revenu net du conjoint. Le crédit fédéral "
-                    "est ensuite calculé à 14,5 %. La ligne 34990 demeure protégée "
-                    "par le garde-fou du moteur."
+                    "est ensuite calculé à 14,5 %. La ligne 34990 est calculée automatiquement (2025)."
                 ),
                 wraplength=720,
                 foreground="#475569",
@@ -8557,9 +8553,7 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Label(
                 cadre,
                 text=(
-                    "Garde-fou ligne 34990 : les dossiers au-delà de la "
-                    "première tranche fédérale sont refusés tant que le "
-                    "crédit compensatoire n'est pas intégré."
+                    "La ligne 34990 est calculée automatiquement (2025)."
                 ),
                 wraplength=650,
                 justify="left",

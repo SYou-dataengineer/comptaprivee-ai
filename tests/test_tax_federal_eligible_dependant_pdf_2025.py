@@ -73,8 +73,8 @@ def test_pdf_affiche_source_et_garde_fou(tmp_path):
         "Source : État civil, résidence et revenu de l'enfant validés"
         in texte
     )
-    assert "Ligne 34990 : garde-fou actif" in texte
-    assert "première tranche fédérale" in texte
+    assert "Ligne 34990 : calcul automatique intégré (2025)." in texte
+    assert "8 319,38" in texte
 
 
 def test_pdf_sans_personne_charge_ne_montre_pas_section(tmp_path):

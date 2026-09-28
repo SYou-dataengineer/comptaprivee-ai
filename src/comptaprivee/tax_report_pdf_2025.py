@@ -5,6 +5,7 @@ from decimal import Decimal
 import re
 import textwrap
 import fitz
+from .tax_federal_top_up_2025 import lignes_resume_credit_compensatoire_2025
 from .tax_capital_loss_carryovers_2025 import lignes_resume_reports_pertes_2025
 from .tax_investment_expenses_2025 import lignes_resume_frais_placement_2025
 from .tax_capital_gains_2025 import lignes_resume_capital_2025
@@ -655,8 +656,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     f"{accessibilite_domiciliaire_federale.source_renovation}"
                 ),
                 (
-                    "Ligne 34990 : garde-fou actif pour les profils "
-                    "au-delà de la première tranche fédérale."
+                    "Ligne 34990 : calcul automatique intégré (2025)."
                 ),
                 (
                     "Profil simple : demande pour soi-même; partage et "
@@ -716,8 +716,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     f"{achat_habitation_federal.source_habitation}"
                 ),
                 (
-                    "Ligne 34990 : garde-fou actif pour les profils "
-                    "au-delà de la première tranche fédérale."
+                    "Ligne 34990 : calcul automatique intégré (2025)."
                 ),
                 (
                     "Profil simple : partage et exception handicap "
@@ -791,8 +790,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                 "Validation comptable : confirmée",
                 f"Source : {aidant_30450_federal.source_personne}",
                 (
-                    "Ligne 34990 : garde-fou actif pour les profils "
-                    "au-delà de la première tranche fédérale."
+                    "Ligne 34990 : calcul automatique intégré (2025)."
                 ),
                 (
                     "Profil simple : une seule autre personne à charge; "
@@ -943,7 +941,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     )
                 ),
                 "Source : " + aidant_30425_federal.source_personne,
-                "Ligne 34990 : garde-fou actif",
+                "Ligne 34990 : calcul automatique intégré (2025).",
             ]
         )
 
@@ -1002,8 +1000,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                 "Validation comptable : confirmée",
                 f"Source : {aidant_enfant_federal.source_enfant}",
                 (
-                    "Ligne 34990 : garde-fou actif pour les profils "
-                    "au-delà de la première tranche fédérale."
+                    "Ligne 34990 : calcul automatique intégré (2025)."
                 ),
                 (
                     "Combinaison ligne 30400 + ligne 30500 : "
@@ -1073,8 +1070,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                     f"{personne_charge_admissible_federale.source_personne_charge}"
                 ),
                 (
-                    "Ligne 34990 : garde-fou actif pour les profils "
-                    "au-delà de la première tranche fédérale."
+                    "Ligne 34990 : calcul automatique intégré (2025)."
                 ),
             ]
         )
@@ -1133,8 +1129,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                 "Validation comptable : confirmée",
                 f"Source : {montant_conjoint_federal.source_conjoint}",
                 (
-                    "Ligne 34990 : garde-fou actif pour les profils "
-                    "au-delà de la première tranche fédérale."
+                    "Ligne 34990 : calcul automatique intégré (2025)."
                 ),
             ]
         )
@@ -1286,8 +1281,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
             lignes.append("Ligne 31400 non réclamée")
 
         lignes.append(
-            "Ligne 34990 : garde-fou actif; calcul automatique "
-            "limité au profil simple actuellement supporté."
+            "Ligne 34990 : calcul automatique intégré (2025)."
         )
 
     if (
@@ -1881,7 +1875,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
                 f"{formater_montant_estimation(f.impot_brut)}"
             ),
             (
-                "Crédits non remboursables : "
+                "Crédits non remboursables de base emploi : "
                 f"{formater_montant_estimation(
                     f.credits_non_remboursables
                 )}"
@@ -1967,6 +1961,9 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
             ),
         ]
     )
+    lignes.extend(lignes_resume_credit_compensatoire_2025(
+        estimation.federal.credits_federaux_complets
+    ))
     return lignes
 
 

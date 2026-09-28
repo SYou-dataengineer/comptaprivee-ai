@@ -239,8 +239,10 @@ def test_total_sans_detail_sous_cases(emploi):
 
 
 def test_limites_existantes_credits_et_hauts_revenus_preservees():
-    with pytest.raises(ValueError,match='34990'):
-        calcul(credits_federaux_age_pension=_profil_age_federal(revenu_net_ligne_23600=Decimal('71515')))
+    e = calcul(credits_federaux_age_pension=_profil_age_federal(revenu_net_ligne_23600=Decimal('71515')))
+    assert e.revenu.revenu_imposable_federal > Decimal("57375")
+    assert e.federal.top_up_credit == 0
+    assert e.federal.credits_federaux_complets.total_credits_ligne_35000 == e.federal.credits_federaux_complets.credit_ligne_33800
     with pytest.raises(ValueError,match='hors profil'):
         calcul(dossier_rrq_rpc(brut='148060',emploi=False))
 

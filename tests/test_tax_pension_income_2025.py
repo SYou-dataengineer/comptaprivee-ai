@@ -174,7 +174,10 @@ def test_profils_credits_doivent_concorder():
 
 
 def test_limites_existantes_maintenues():
-    with pytest.raises(ValueError,match='34990'):calcul(dossier=dossier_pensions(emploi=True))
+    e = calcul(dossier=dossier_pensions(emploi=True))
+    assert e.revenu.revenu_imposable_federal == Decimal("71515")
+    assert dict(e.federal.credits_federaux_complets.montants_par_ligne)["31400"] == Decimal("2000")
+    assert e.federal.top_up_credit == 0
 
 
 def test_stockage_recalcul_et_ancien_json(tmp_path):

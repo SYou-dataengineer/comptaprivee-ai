@@ -49,6 +49,7 @@ def _profil_personne_charge(**modifications):
 def test_sans_personne_charge_resultat_historique_inchange():
     e = calculer_estimation_fiscale_2025(_dossier_52000())
 
+    # T1 : arrondi de la somme 33500 × 14,5 %, et non des crédits séparés.
     assert e.federal.impot_federal_de_base == Decimal("4401.90")
     assert e.rapprochement.impot_total_preliminaire == Decimal("8088.95")
     assert e.rapprochement.remboursement_estime == Decimal("5611.05")
@@ -64,11 +65,12 @@ def test_personne_charge_reduit_impot_federal():
         personne_charge_admissible_federale=_profil_personne_charge(),
     )
 
-    assert e.federal.impot_federal_de_base == Decimal("2643.19")
+    # T1 : arrondi de la somme 33500 × 14,5 %, et non des crédits séparés.
+    assert e.federal.impot_federal_de_base == Decimal("2643.20")
     assert e.rapprochement.abattement_quebec == Decimal("436.13")
-    assert e.rapprochement.impot_federal_apres_abattement == Decimal("2207.06")
-    assert e.rapprochement.impot_total_preliminaire == Decimal("6620.42")
-    assert e.rapprochement.remboursement_estime == Decimal("7079.58")
+    assert e.rapprochement.impot_federal_apres_abattement == Decimal("2207.07")
+    assert e.rapprochement.impot_total_preliminaire == Decimal("6620.43")
+    assert e.rapprochement.remboursement_estime == Decimal("7079.57")
 
 
 def test_estimation_conserve_profil_personne_charge():
@@ -110,11 +112,12 @@ def test_combinaison_age_federal_et_30400_supportee():
         personne_charge_admissible_federale=_profil_personne_charge(),
     )
 
-    assert e.federal.impot_federal_de_base == Decimal("1464.48")
+    # T1 : arrondi de la somme 33500 × 14,5 %, et non des crédits séparés.
+    assert e.federal.impot_federal_de_base == Decimal("1464.49")
     assert e.rapprochement.abattement_quebec == Decimal("241.64")
-    assert e.rapprochement.impot_federal_apres_abattement == Decimal("1222.84")
-    assert e.rapprochement.impot_total_preliminaire == Decimal("5636.20")
-    assert e.rapprochement.remboursement_estime == Decimal("8063.80")
+    assert e.rapprochement.impot_federal_apres_abattement == Decimal("1222.85")
+    assert e.rapprochement.impot_total_preliminaire == Decimal("5636.21")
+    assert e.rapprochement.remboursement_estime == Decimal("8063.79")
 
 
 def test_resume_affiche_personne_charge_admissible():

@@ -120,7 +120,7 @@ def test_pdf_30425_affiche_validations(tmp_path):
         "Aucune réclamation partagée : oui",
         "Preuve médicale admissible ou T2201 approuvé : confirmée",
         "Validation comptable : confirmée",
-        "Ligne 34990 : garde-fou actif",
+        "Ligne 34990 : calcul automatique intégré (2025).",
     ):
         assert attendu in texte
 

@@ -1,8 +1,9 @@
 """Impôt fédéral préliminaire 2025 - profil emploi Québec simple."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_federal_top_up_2025 import CreditsFederauxNonRemboursables2025
 from .tax_engine_input_2025 import BaseFiscaleEmploi2025
 from .tax_income_2025 import RevenuNetImposable2025, calculer_cotisations_attendues_2025
 from .tax_rules_2025 import (
@@ -28,6 +29,10 @@ class ImpotFederalPreliminaire2025:
     assurance_emploi_admissible: Decimal
     rqap_admissible: Decimal
     montant_canadien_emploi: Decimal
+    # Champs historiques : base du profil salarié et son crédit à 14,5 %.
+    # Ils ne deviennent pas silencieusement 33500/33800/35000.
+    # credits_federaux_complets expose séparément les agrégats T1, dont 34990.
+    # impot_federal_de_base est le solde après 35000 et 40425, avant 40500.
     base_credits_non_remboursables: Decimal
     credits_non_remboursables: Decimal
     impot_federal_de_base: Decimal
@@ -36,6 +41,7 @@ class ImpotFederalPreliminaire2025:
     limitations: tuple[str, ...]
     # impot_federal_de_base conserve la ligne 42900, avant le crédit 40500.
     credit_etranger_ligne_40500: Decimal = ZERO
+    credits_federaux_complets: CreditsFederauxNonRemboursables2025 | None = None
 
     @property
     def impot_federal_apres_credit_etranger(self) -> Decimal:
@@ -96,8 +102,8 @@ def calculer_impot_federal_preliminaire_2025(
         bpa + cotisation_base_rrq + ae + rqap + emploi
     )
 
-    # Le profil simple ne contient pas assez de montants admissibles pour que
-    # le crédit compensatoire 2025 soit requis.
+    # Le profil salarié seul reste sous le seuil. L'orchestrateur finalise
+    # 34990 une seule fois, une fois toutes les bases admissibles disponibles.
     top_up = ZERO
 
     credits = arrondir_cent(
@@ -130,4 +136,21 @@ def calculer_impot_federal_preliminaire_2025(
             "Abattement Québec de 16,5 % non encore appliqué.",
             "Aucun remboursement ou solde final calculé.",
         ),
+    )
+
+
+def finaliser_credits_federaux_2025(
+    impot: ImpotFederalPreliminaire2025,
+    credits: CreditsFederauxNonRemboursables2025,
+) -> ImpotFederalPreliminaire2025:
+    """Applique 35000 depuis le brut, une fois, avant 40425 et 40500."""
+    if impot.credits_federaux_complets is not None or impot.credit_etranger_ligne_40500:
+        raise ValueError("Les crédits fédéraux sont déjà finalisés ou 40500 est déjà appliquée.")
+    return replace(
+        impot,
+        credits_federaux_complets=credits,
+        top_up_credit=credits.credit_compensatoire_ligne_34990,
+        impot_federal_de_base=max(arrondir_cent(
+            impot.impot_brut - credits.total_credits_ligne_35000
+        ), ZERO),
     )

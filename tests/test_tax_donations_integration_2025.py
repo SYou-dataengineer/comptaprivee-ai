@@ -136,8 +136,8 @@ def test_resume_et_trace_affichent_dons_et_resultat_combine():
     assert "Crédit Québec — ligne 395 : 232,00 $" in resume
     assert "7\u00a0499,01 $" in resume
 
-    assert len(trace.lignes) == 22
-    assert [x.ordre for x in trace.lignes] == list(range(1, 23))
+    assert len(trace.lignes) == 27
+    assert [x.ordre for x in trace.lignes] == list(range(1, 28))
     assert "Crédit fédéral pour dons" in texte_trace
     assert "Crédit Québec pour dons" in texte_trace
     assert "7\u00a0499,01 $" in texte_trace

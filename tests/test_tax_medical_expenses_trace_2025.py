@@ -33,8 +33,8 @@ def test_trace_medicale_ajoute_deux_etapes():
     )
     trace = construire_trace_calcul_fiscal_2025(e)
 
-    assert len(trace.lignes) == 19
-    assert [x.ordre for x in trace.lignes] == list(range(1, 20))
+    assert len(trace.lignes) == 24
+    assert [x.ordre for x in trace.lignes] == list(range(1, 25))
 
 
 def test_trace_medicale_affiche_credit_federal_et_quebec():

@@ -1932,3 +1932,98 @@ de l'abattement remboursable, du dossier sans crédit étranger, de la trace,
 du PDF et du rechargement JSON inclus.
 
 Validation complète du préalable : **3465 passed, 8 warnings in 118.44s**.
+
+### Bloc 5A livré — crédit compensatoire fédéral, ligne 34990
+
+Sources officielles 2025 revérifiées avant implémentation :
+
+- [T1 Québec 2025, parties B et C](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-r/5005-r-25f.pdf).
+- [Feuille fédérale 5000-D1, page 7](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-d1/5000-d1-25e.pdf).
+- [Annexe 9, ligne 22](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-s9/5000-s9-25e.pdf).
+- [Annexe 11 propre au Québec, lignes 11 à 17](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s11/5005-s11-25e.pdf).
+- [Notes explicatives de Finances Canada, exemple du crédit compensatoire](https://fin.canada.ca/drleg-apl/2025/nwmm-amvm-1-n-2-1125-eng.pdf).
+
+Le module pur `tax_federal_top_up_2025.py` distingue les montants admissibles
+de 33500 et les crédits de 33800, 34900, 34990 et 35000. Les entrées doivent
+être des `Decimal` finis non négatifs; les résultats sont arrondis au cent
+(ROUND_HALF_UP). Les lignes inconnues ou dupliquées sont refusées.
+
+```text
+33800 = arrondi(33500 × 14,5 %)
+34990 = arrondi(max(33800 + Annexe 9 ligne 22 − 8 319,38 $, 0) × 3,45 %)
+35000 = 33800 + 34900 + 34990
+```
+
+La ligne 33500 regroupe uniquement les montants déjà supportés des lignes
+30000, 30100, 30300, 30400, 30425, 30450, 30500, 30800, 31200, 31205,
+31260, 31270, 31285, 31400, 31600, 32300 et 33200. Le médical est le montant
+après seuil de 33200, et non les frais bruts 33099. La scolarité 32300 est
+limitée au montant utilisable sans report selon l'annexe 11 Québec; sa capacité
+repose sur la ligne 105, avant scolarité, médical et dons, sans circularité 34990.
+
+Dans le profil de dons actuel, l'annexe 9 ligne 22 est le crédit de 14,5 % sur
+les premiers 200 $ réclamés, soit au plus 29 $. Elle ne vaut pas le crédit
+total 34900 : pour 1 000 $ de dons, les montants sont respectivement 29 $
+et 261 $. Un crédit 33800 de 10 000 $ sans dons donne 34990 = 57,98 $,
+comme dans l'exemple officiel. Le revenu imposable n'est pas l'assiette de 34990.
+
+`credits_federaux_complets` expose les bases par ligne et les agrégats T1.
+Les champs historiques `base_credits_non_remboursables` et
+`credits_non_remboursables` restent les composantes de base emploi.
+`top_up_credit` expose désormais le résultat réel 34990. Les fonctions
+existantes de crédits conservent leurs validations et leurs limitations;
+la finalisation reconstruit le solde depuis l'impôt brut en soustrayant
+35000 une seule fois, sans cumuler les débits intermédiaires. Une seconde
+finalisation est refusée. L'ordre est 35000, crédit dividendes 40425,
+42900, crédit étranger 40500, puis rapprochement avec 44000 calculé sur 42900.
+40425 et 40500 n'entrent jamais dans 33800 ni dans 34990.
+
+L'arrondi global de 33800 corrige quelques écarts historiques de 0,01 $ dus
+à l'addition de crédits arrondis séparément. Par exemple, 32 286,08 $ de base
+donnent 4 681,48 $ à 33800. Les tests conservent des attentes exactes, y compris
+pour le rapprochement; le dossier salarié simple de 52 000 $ reste inchangé
+(impôt total de 8 088,95 $).
+
+Les huit blocages provisoires au-delà de 57 375 $ sont retirés de
+l'orchestrateur pour âge/pension, 30300, 30400, 30425, 31285, 31270,
+30450 et 30500. Chacun possède un test au-dessus de ce seuil. Les anciennes
+fonctions publiques nommées `integration_*sans_credit_compensatoire*`
+restent disponibles pour compatibilité, mais ne pilotent plus l'estimation.
+Les mentions de ces blocages dans les sections historiques précédentes sont
+remplacées par le comportement décrit ici.
+
+Les autres validations demeurent : admissibilité et confirmation comptable,
+cohérence des revenus, liens familiaux, pièces justificatives, exclusions
+de partage et de combinaisons familiales, notamment 30400 + 30500.
+Aucun report ou transfert de scolarité, report de dons, nouveau crédit
+remboursable, profil multi-juridictions ou travail autonome avancé n'est ajouté.
+Le fractionnement de pension conserve son périmètre limité et son plafond
+de revenu existant; son élargissement n'est pas livré par 5A.
+
+Trace, résumé et PDF affichent 33500, 33800, annexe 9 ligne 22, seuil, taux,
+34990 et 35000, même à zéro pour l'audit. Les neuf messages GUI concernés
+annoncent le calcul automatique; aucun champ manuel 34990 n'est créé.
+Le schéma JSON reste inchangé : les anciens profils sont rechargés et les
+résultats dérivés sont recalculés. Le moteur ne détermine pas automatiquement
+l'admissibilité détaillée des dépenses ou des personnes.
+
+Validation 5A : **2959 passed, 550 deselected, 5 warnings** pour les tests
+fiscaux ciblés. La première suite complète a produit **1 failed, 3508 passed,
+8 warnings** : erreur Tcl/Tk `invalid command name "tcl_findLibrary"` pendant
+la création de la racine, avant l'ouverture du dialogue médical.
+
+Diagnostic de stabilité, sans modification du code ni des tests Tkinter :
+
+- Deux lancements isolés de
+  `test_dialogue_medical_reel_erreur_effacer_et_fermer[780x650]` : chacun
+  **1 passed, 5 warnings** (le second après la suite complète).
+- Un lancement du fichier `tests/test_gui_layout.py` :
+  **28 passed, 5 warnings**.
+- Un lancement des fichiers `tests/test_gui*.py`, motif développé explicitement
+  sous PowerShell : **275 passed, 5 warnings**.
+- Une relance complète avant commits : **3509 passed, 8 warnings in 119.21s**.
+
+L'incident est non reproduit dans ces vérifications. La cause précise de
+l'initialisation Tcl/Tk défaillante n'est pas établie; aucune fuite de fixture
+ni dépendance à l'ordre n'est démontrée. Aucun test n'a été désactivé ou modifié
+pour contourner cet incident.

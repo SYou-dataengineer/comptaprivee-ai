@@ -143,11 +143,11 @@ from src.comptaprivee.tax_calculation_trace_2025 import (
 )
 
 
-def test_trace_calcul_contient_17_etapes():
+def test_trace_calcul_contient_22_etapes():
     trace = construire_trace_calcul_fiscal_2025(
         calculer_estimation_fiscale_2025(_dossier_52000())
     )
-    assert len(trace.lignes) == 17
+    assert len(trace.lignes) == 22
 
 
 def test_trace_calcul_commence_par_t4_case_14():
@@ -268,7 +268,7 @@ def test_trace_reer_ajoute_une_etape():
         ajustement_reer=_reer_5000(),
     )
     trace = construire_trace_calcul_fiscal_2025(e)
-    assert len(trace.lignes) == 18
+    assert len(trace.lignes) == 23
     assert (
         trace.lignes[2].libelle
         == "Déduction REER/RPAC/RVER validée"
@@ -312,7 +312,7 @@ def test_trace_reer_conserve_une_numerotation_continue():
     trace = construire_trace_calcul_fiscal_2025(e)
 
     assert [ligne.ordre for ligne in trace.lignes] == list(
-        range(1, 19)
+        range(1, 24)
     )
 
 # --- Priorité 4A : intégration estimation CELIAPP ---

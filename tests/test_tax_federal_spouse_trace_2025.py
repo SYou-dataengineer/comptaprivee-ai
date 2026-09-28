@@ -56,7 +56,7 @@ def test_trace_impot_federal_final_mentionne_ligne_30300():
     )
 
     assert "crédit conjoint ligne 30300" in ligne.formule
-    assert ligne.montant == Decimal("2788.19")
+    assert ligne.montant == Decimal("2788.20")
 
 
 def test_trace_numerotation_continue():

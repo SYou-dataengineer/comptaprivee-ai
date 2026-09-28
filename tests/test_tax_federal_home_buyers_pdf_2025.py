@@ -71,7 +71,7 @@ def test_pdf_affiche_source_et_garde_fou_31270(tmp_path):
     texte = _texte_pdf(path)
 
     assert profil.source_habitation in texte
-    assert "Ligne 34990 : garde-fou actif" in texte
+    assert "Ligne 34990 : calcul automatique intégré (2025)." in texte
     assert "Profil simple : partage et exception handicap non pris en charge" in texte
 
 

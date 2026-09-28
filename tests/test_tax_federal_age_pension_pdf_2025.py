@@ -64,11 +64,11 @@ def test_pdf_affiche_ligne_31400_non_reclamee(tmp_path):
     assert "Ligne 31400 non réclamée" in texte
 
 
-def test_pdf_affiche_garde_fou_34990(tmp_path):
+def test_pdf_affiche_calcul_34990(tmp_path):
     texte = _texte_pdf(_rapport(tmp_path))
 
-    assert "Ligne 34990 : garde-fou actif" in texte
-    assert "profil simple actuellement supporté" in texte
+    assert "Ligne 34990 : calcul automatique intégré (2025)." in texte
+    assert "8 319,38" in texte
 
 
 def test_pdf_sans_age_pension_federal_ne_montre_pas_section(tmp_path):

@@ -67,7 +67,14 @@ from .tax_donations_2025 import (
     credit_federal_dons_2025,
     credit_quebec_dons_2025,
 )
+from .tax_federal_top_up_2025 import (
+    calculer_base_33500_2025,
+    calculer_annexe9_ligne22_2025,
+    calculer_credits_non_remboursables_2025,
+    lignes_resume_credit_compensatoire_2025,
+)
 from .tax_disability_2025 import (
+    MONTANT_FEDERAL_HANDICAP_2025,
     CreditDeficience2025,
     appliquer_credit_federal_handicap_2025,
     appliquer_credit_quebec_deficience_2025,
@@ -89,6 +96,7 @@ from .tax_living_alone_2025 import (
 )
 from .tax_medical_expenses_2025 import (
     FraisMedicaux2025,
+    montant_frais_medicaux_federal_apres_seuil_2025,
     appliquer_credit_federal_frais_medicaux_2025,
     appliquer_credit_quebec_frais_medicaux_2025,
     credit_federal_frais_medicaux_2025,
@@ -109,7 +117,6 @@ from .tax_federal_home_accessibility_2025 import (
     DepensesAccessibiliteDomiciliaireFederal2025,
     appliquer_credit_federal_ligne_31285_2025,
     credit_federal_ligne_31285_2025,
-    integration_31285_sans_credit_compensatoire_autorisee_2025,
     montant_ligne_31285_2025,
     valider_depenses_accessibilite_domiciliaire_2025,
 )
@@ -117,7 +124,6 @@ from .tax_federal_home_buyers_2025 import (
     MontantAchatHabitationFederal2025,
     appliquer_credit_federal_ligne_31270_2025,
     credit_federal_ligne_31270_2025,
-    integration_31270_sans_credit_compensatoire_autorisee_2025,
     montant_ligne_31270_2025,
     valider_montant_achat_habitation_2025,
 )
@@ -125,24 +131,22 @@ from .tax_federal_caregiver_other_dependant_2025 import (
     AidantNaturelAutrePersonneChargeFederal2025,
     appliquer_credit_federal_ligne_30450_2025,
     credit_federal_ligne_30450_2025,
-    integration_30450_sans_credit_compensatoire_autorisee_2025,
     montant_ligne_30450_2025,
     nombre_personnes_charge_ligne_51120_2025,
     valider_aidant_naturel_30450_2025,
 )
 from .tax_federal_caregiver_spouse_dependant_2025 import (
+    montant_ligne_30425_2025,
     TYPE_CONJOINT,
     TYPE_PERSONNE_CHARGE_ADMISSIBLE,
     AidantNaturelConjointOuPersonneChargeFederal2025,
     appliquer_credit_federal_ligne_30425_2025,
-    integration_sans_credit_compensatoire_autorisee_2025 as integration_aidant_30425_sans_34990_2025,
     valider_aidant_naturel_30425_2025,
 )
 from .tax_federal_caregiver_child_2025 import (
     AidantNaturelEnfantMoins18Federal2025,
     appliquer_credit_federal_aidant_enfant_moins18_2025,
     credit_federal_aidant_enfant_moins18_2025,
-    integration_sans_credit_compensatoire_autorisee_2025 as integration_aidant_enfant_sans_34990_2025,
     montant_ligne_30500_2025,
     nombre_enfants_ligne_30499_2025,
     valider_aidant_naturel_enfant_moins18_federal_2025,
@@ -151,7 +155,6 @@ from .tax_federal_eligible_dependant_2025 import (
     MontantPersonneChargeAdmissibleFederal2025,
     appliquer_credit_federal_personne_charge_admissible_2025,
     credit_federal_personne_charge_admissible_2025,
-    integration_sans_credit_compensatoire_autorisee_2025 as integration_personne_charge_sans_34990_2025,
     montant_ligne_30400_2025,
     valider_montant_personne_charge_admissible_federal_2025,
 )
@@ -159,7 +162,6 @@ from .tax_federal_spouse_2025 import (
     MontantConjointFederal2025,
     appliquer_credit_federal_montant_conjoint_2025,
     credit_federal_montant_conjoint_2025,
-    integration_sans_credit_compensatoire_autorisee_2025 as integration_montant_conjoint_sans_34990_2025,
     montant_ligne_30300_2025,
     valider_montant_conjoint_federal_2025,
 )
@@ -167,13 +169,13 @@ from .tax_federal_age_pension_2025 import (
     CreditsFederauxAgePension2025,
     appliquer_credit_federal_age_pension_2025,
     credit_federal_age_pension_2025,
-    integration_sans_credit_compensatoire_autorisee_2025,
     montant_age_federal_2025,
     montant_pension_federal_2025,
     valider_credits_federaux_age_pension_2025,
 )
 from .tax_federal_2025 import (
     ImpotFederalPreliminaire2025,
+    finaliser_credits_federaux_2025,
     calculer_impot_federal_preliminaire_2025,
 )
 from .tax_income_2025 import (
@@ -978,19 +980,6 @@ def calculer_estimation_fiscale_2025(
             "(lignes 11500, 11600 ou 12900 selon le cas)."
         )
 
-    if (
-        age_pension_federal_actif
-        and not integration_sans_credit_compensatoire_autorisee_2025(
-            revenu.revenu_imposable_federal
-        )
-    ):
-        raise ValueError(
-            "Ce dossier peut nécessiter le crédit compensatoire "
-            "fédéral de la ligne 34990. Cette première version "
-            "refuse le calcul automatique au-delà de la première "
-            "tranche tant que la ligne 34990 n'est pas intégrée."
-        )
-
     montant_conjoint_federal_effectif = (
         montant_conjoint_federal
         if montant_conjoint_federal is not None
@@ -1012,20 +1001,6 @@ def calculer_estimation_fiscale_2025(
             "Le revenu net du contribuable à la ligne 23600 du "
             "profil conjoint fédéral doit correspondre au revenu "
             "net fédéral calculé pour ce dossier."
-        )
-
-    if (
-        montant_conjoint_federal_effectif.reclamer_montant
-        and not integration_montant_conjoint_sans_34990_2025(
-            revenu.revenu_imposable_federal
-        )
-    ):
-        raise ValueError(
-            "Ce dossier peut nécessiter le crédit compensatoire "
-            "fédéral de la ligne 34990. Cette première version "
-            "refuse le montant conjoint automatique au-delà de la "
-            "première tranche tant que la ligne 34990 n'est pas "
-            "intégrée complètement."
         )
 
     personne_charge_admissible_federale_effective = (
@@ -1061,20 +1036,6 @@ def calculer_estimation_fiscale_2025(
             "l'absence d'époux ou conjoint de fait."
         )
 
-    if (
-        personne_charge_admissible_federale_effective.reclamer_montant
-        and not integration_personne_charge_sans_34990_2025(
-            revenu.revenu_imposable_federal
-        )
-    ):
-        raise ValueError(
-            "Ce dossier peut nécessiter le crédit compensatoire "
-            "fédéral de la ligne 34990. Cette première version "
-            "refuse la ligne 30400 automatique au-delà de la "
-            "première tranche tant que la ligne 34990 n'est pas "
-            "intégrée complètement."
-        )
-
     aidant_30425_effectif = (
         aidant_conjoint_personne_charge_federal
         if aidant_conjoint_personne_charge_federal is not None
@@ -1083,15 +1044,6 @@ def calculer_estimation_fiscale_2025(
     valider_aidant_naturel_30425_2025(aidant_30425_effectif)
 
     if aidant_30425_effectif.reclamer_montant:
-        if not integration_aidant_30425_sans_34990_2025(
-            revenu.revenu_imposable_federal
-        ):
-            raise ValueError(
-                "Cette première version refuse la ligne 30425 automatique "
-                "au-delà de la première tranche tant que la ligne 34990 "
-                "n'est pas intégrée complètement."
-            )
-
         if aidant_30425_effectif.type_personne == TYPE_CONJOINT:
             if not montant_conjoint_federal_effectif.reclamer_montant:
                 raise ValueError(
@@ -1176,20 +1128,6 @@ def calculer_estimation_fiscale_2025(
         accessibilite_domiciliaire_federale_effective
     )
 
-    if (
-        accessibilite_domiciliaire_federale_effective.reclamer_montant
-        and not integration_31285_sans_credit_compensatoire_autorisee_2025(
-            revenu.revenu_imposable_federal
-        )
-    ):
-        raise ValueError(
-            "Ce dossier peut nécessiter le crédit compensatoire "
-            "fédéral de la ligne 34990. Cette première version "
-            "refuse la ligne 31285 automatique au-delà de la "
-            "première tranche tant que la ligne 34990 n'est pas "
-            "intégrée complètement."
-        )
-
     achat_habitation_federal_effectif = (
         achat_habitation_federal
         if achat_habitation_federal is not None
@@ -1199,39 +1137,12 @@ def calculer_estimation_fiscale_2025(
         achat_habitation_federal_effectif
     )
 
-    if (
-        achat_habitation_federal_effectif.reclamer_montant
-        and not integration_31270_sans_credit_compensatoire_autorisee_2025(
-            revenu.revenu_imposable_federal
-        )
-    ):
-        raise ValueError(
-            "Ce dossier peut nécessiter le crédit compensatoire "
-            "fédéral de la ligne 34990. Cette première version "
-            "refuse la ligne 31270 automatique au-delà de la "
-            "première tranche tant que la ligne 34990 n'est pas "
-            "intégrée complètement."
-        )
-
     aidant_30450_effectif = (
         aidant_autre_personne_charge_federal
         if aidant_autre_personne_charge_federal is not None
         else AidantNaturelAutrePersonneChargeFederal2025()
     )
     valider_aidant_naturel_30450_2025(aidant_30450_effectif)
-
-    if (
-        aidant_30450_effectif.reclamer_montant
-        and not integration_30450_sans_credit_compensatoire_autorisee_2025(
-            revenu.revenu_imposable_federal
-        )
-    ):
-        raise ValueError(
-            "Ce dossier peut nécessiter le crédit compensatoire fédéral "
-            "de la ligne 34990. Cette première version refuse la ligne "
-            "30450 automatique au-delà de la première tranche tant que "
-            "la ligne 34990 n'est pas intégrée complètement."
-        )
 
     aidant_enfant_federal_effectif = (
         aidant_enfant_federal
@@ -1252,19 +1163,6 @@ def calculer_estimation_fiscale_2025(
             "que l'enfant ait vécu avec ses deux parents pendant toute "
             "l'année 2025; les situations où la ligne 30400 détermine "
             "le réclamant seront traitées séparément."
-        )
-
-    if (
-        aidant_enfant_federal_effectif.reclamer_montant
-        and not integration_aidant_enfant_sans_34990_2025(
-            revenu.revenu_imposable_federal
-        )
-    ):
-        raise ValueError(
-            "Ce dossier peut nécessiter le crédit compensatoire fédéral "
-            "de la ligne 34990. Cette première version refuse la ligne "
-            "30500 automatique au-delà de la première tranche tant que "
-            "la ligne 34990 n'est pas intégrée complètement."
         )
 
     assurance_medicaments_effective = (
@@ -1303,6 +1201,27 @@ def calculer_estimation_fiscale_2025(
             cotisations_excedentaires_presentes
         ),
     )
+    # T1 Québec : ligne 105 avant scolarité et frais médicaux. Les fonctions
+    # existantes conservent leurs validations et limitations; la finalisation
+    # ci-dessous reconstruit l'impôt depuis le brut, sans cumuler leurs débits.
+    montants_avant_scolarite = (
+        ("30000", federal.montant_personnel_base),
+        ("30800", federal.cotisation_base_rrq),
+        ("31200", federal.assurance_emploi_admissible),
+        ("31205", federal.rqap_admissible),
+        ("31260", federal.montant_canadien_emploi),
+        ("30100", montant_age_federal_2025(credits_federaux_age_pension_effectifs)),
+        ("31400", montant_pension_federal_2025(credits_federaux_age_pension_effectifs)),
+        ("30300", montant_ligne_30300_2025(montant_conjoint_federal_effectif)),
+        ("30400", montant_ligne_30400_2025(personne_charge_admissible_federale_effective)),
+        ("30425", montant_ligne_30425_2025(aidant_30425_effectif)),
+        ("30450", montant_ligne_30450_2025(aidant_30450_effectif)),
+        ("30500", montant_ligne_30500_2025(aidant_enfant_federal_effectif)),
+        ("31270", montant_ligne_31270_2025(achat_habitation_federal_effectif)),
+        ("31285", montant_ligne_31285_2025(accessibilite_domiciliaire_federale_effective)),
+        ("31600", MONTANT_FEDERAL_HANDICAP_2025 if credit_deficience_effectif.reclamer_federal else Decimal("0")),
+    )
+    base_ligne105 = calculer_base_33500_2025(montants_avant_scolarite)
     federal = appliquer_credit_federal_dons_2025(
         federal,
         dons_effectifs,
@@ -1316,6 +1235,7 @@ def calculer_estimation_fiscale_2025(
     federal = appliquer_credit_federal_frais_scolarite_2025(
         federal,
         frais_scolarite_effectifs,
+        base_ligne105=base_ligne105,
     )
     federal = appliquer_credit_federal_handicap_2025(
         federal,
@@ -1353,6 +1273,16 @@ def calculer_estimation_fiscale_2025(
         federal,
         aidant_enfant_federal_effectif,
     )
+    credits_complets = calculer_credits_non_remboursables_2025(
+        montants_avant_scolarite + (
+            ("32300", frais_scolarite_effectifs.montant_admissible_federal),
+            ("33200", montant_frais_medicaux_federal_apres_seuil_2025(
+                frais_medicaux_effectifs, revenu.revenu_net_federal)),
+        ),
+        calculer_annexe9_ligne22_2025(dons_effectifs.montant_admissible_federal),
+        credit_federal_dons_2025(dons_effectifs, revenu.revenu_imposable_federal),
+    )
+    federal = finaliser_credits_federaux_2025(federal, credits_complets)
     quebec = calculer_impot_quebec_preliminaire_2025(revenu)
     quebec = appliquer_redressement_358_2025(quebec, remplacement)
     quebec = appliquer_credit_quebec_cotisations_2025(
@@ -2194,9 +2124,10 @@ def formater_estimation_fiscale_2025(
             else []
         ),
         "",
+        *lignes_resume_credit_compensatoire_2025(federal.credits_federaux_complets),
         "FÉDÉRAL",
         f"Impôt fédéral brut : {formater_montant_estimation(federal.impot_brut)}",
-        f"Crédits non remboursables inclus : {formater_montant_estimation(federal.credits_non_remboursables)}",
+        f"Crédits non remboursables de base emploi : {formater_montant_estimation(federal.credits_non_remboursables)}",
         f"Impôt fédéral de base : {formater_montant_estimation(final.impot_federal_de_base)}",
         *([
             f"Ligne 42900 avant crédit étranger : {formater_montant_estimation(final.impot_federal_de_base)}",

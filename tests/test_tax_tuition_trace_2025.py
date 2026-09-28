@@ -37,8 +37,8 @@ def test_trace_scolarite_ajoute_deux_etapes():
     )
     trace = construire_trace_calcul_fiscal_2025(e)
 
-    assert len(trace.lignes) == 19
-    assert [x.ordre for x in trace.lignes] == list(range(1, 20))
+    assert len(trace.lignes) == 24
+    assert [x.ordre for x in trace.lignes] == list(range(1, 25))
 
 
 def test_trace_scolarite_affiche_credits():
@@ -88,7 +88,7 @@ def test_trace_sans_scolarite_ne_change_pas_nombre_etapes():
     e = calculer_estimation_fiscale_2025(_dossier_52000())
     trace = construire_trace_calcul_fiscal_2025(e)
 
-    assert len(trace.lignes) == 17
+    assert len(trace.lignes) == 22
     assert "Crédit fédéral pour frais de scolarité" not in (
         formater_trace_calcul_fiscal_2025(trace)
     )

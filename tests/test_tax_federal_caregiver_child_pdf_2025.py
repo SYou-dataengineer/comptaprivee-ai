@@ -75,7 +75,7 @@ def test_pdf_affiche_source_et_garde_fous_aidant_enfant(tmp_path):
         "Source : Lien familial, résidence et preuve médicale validés"
         in texte
     )
-    assert "Ligne 34990 : garde-fou actif" in texte
+    assert "Ligne 34990 : calcul automatique intégré (2025)." in texte
     assert (
         "Combinaison ligne 30400 + ligne 30500 : non supportée"
         in texte
