@@ -74,6 +74,13 @@ def aucun_montant_conjoint_federal_2025() -> MontantConjointFederal2025:
 def valider_montant_conjoint_federal_2025(
     profil: MontantConjointFederal2025,
 ) -> MontantConjointFederal2025:
+    for valeur, libelle in (
+        (profil.revenu_net_contribuable_ligne_23600, "Le revenu net du contribuable à la ligne 23600"),
+        (profil.revenu_net_conjoint_2025, "Le revenu net du conjoint"),
+    ):
+        if not isinstance(valeur, Decimal) or not valeur.is_finite():
+            raise ValueError(f"{libelle} doit être un Decimal fini.")
+
     if profil.revenu_net_contribuable_ligne_23600 < ZERO:
         raise ValueError(
             "Le revenu net du contribuable à la ligne 23600 "

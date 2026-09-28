@@ -2512,3 +2512,23 @@ les trois composantes, les arrondis, l'absence de dons, les reports, la trace
 et les limites de page PDF.
 
 Suite complète 5J : **4148 passed, 8 warnings** (`--capture=sys`).
+
+### Correctif — revenus finis du montant pour conjoint 30300
+
+L'audit préalable aux transferts familiaux a reproduit un défaut de validation :
+un revenu du contribuable `Infinity` pouvait produire un montant 30300,
+et `NaN` provoquait une erreur `InvalidOperation`. Les deux revenus du profil
+30300 exigent désormais des `Decimal` finis avant comparaison ou calcul,
+y compris lorsque le profil est inactif. Les types incorrects produisent une
+`ValueError` explicite. Les contrôles des négatifs et la formule restent inchangés.
+
+La [référence ARC 30300 pour 2025](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/sujets/tout-votre-declaration-revenus/declaration-revenus/remplir-declaration-revenus/deductions-credits-depenses/ligne-30300-montant-epoux-conjoint-fait.html)
+reste la base fiscale; ce correctif porte sur la validité numérique des entrées,
+sans élargissement des situations familiales admises. Aucun changement de schéma
+JSON ou de saisie GUI. Les données finies existantes conservent leur résultat.
+
+Régression reproduite avant correction : **36 failed, 1 passed**.
+Validation ciblée après correction : **133 passed, 5 warnings**, incluant
+calculs 30300, profils inactifs, intégration, compensation et stockage.
+
+Suite complète après correctif : **4185 passed, 8 warnings** (`--capture=sys`).
