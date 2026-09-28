@@ -20,6 +20,7 @@ from decimal import Decimal
 
 from .tax_federal_top_up_2025 import montant_decimal_2025
 from .tax_political_contributions_2025 import montant_politique_2025
+from .tax_labour_funds_2025 import montant_fonds_2025
 from .tax_capital_gains_2025 import GainsCapital2025
 from .tax_dividend_income_2025 import Dividendes2025
 from .tax_interest_income_2025 import Interets2025
@@ -74,14 +75,24 @@ class RapprochementFiscal2025:
     allocation_travailleurs_ligne_45300: Decimal = ZERO
     avances_act_ligne_41500: Decimal = ZERO
     credit_politique_ligne_41000: Decimal = ZERO
+    credit_fonds_ligne_41400: Decimal = ZERO
+
+    @property
+    def credits_ligne_41600(self) -> Decimal:
+        return self.credit_politique_ligne_41000 + self.credit_fonds_ligne_41400
 
     @property
     def impot_federal_ligne_41700(self) -> Decimal:
-        return max(self.impot_federal_apres_credit_etranger - self.credit_politique_ligne_41000, ZERO)
+        return max(self.impot_federal_apres_credit_etranger - self.credits_ligne_41600, ZERO)
 
     @property
     def credit_politique_utilise(self) -> Decimal:
-        return self.impot_federal_apres_credit_etranger - self.impot_federal_ligne_41700
+        return min(self.impot_federal_apres_credit_etranger, self.credit_politique_ligne_41000)
+
+    @property
+    def credit_fonds_utilise(self) -> Decimal:
+        return min(self.credit_fonds_ligne_41400,
+                   self.impot_federal_apres_credit_etranger - self.credit_politique_utilise)
 
     @property
     def impot_federal_apres_credit_etranger(self) -> Decimal:
@@ -146,6 +157,7 @@ def calculer_rapprochement_fiscal_2025(
     allocation_travailleurs: Decimal = ZERO,
     avances_act: Decimal = ZERO,
     credit_politique: Decimal = ZERO,
+    credit_fonds: Decimal = ZERO,
 ) -> RapprochementFiscal2025:
     """Calcule une estimation de base du remboursement ou du solde."""
     _verifier_coherence(base, federal, quebec)
@@ -156,6 +168,9 @@ def calculer_rapprochement_fiscal_2025(
     credit_politique = montant_politique_2025(credit_politique, "Crédit politique 41000")
     if credit_politique > Decimal(650):
         raise ValueError("Le crédit politique 41000 ne peut pas dépasser 650 $.")
+    credit_fonds = montant_fonds_2025(credit_fonds, "Crédit fonds 41400")
+    if credit_fonds > Decimal(750):
+        raise ValueError("Le crédit fonds 41400 ne peut pas dépasser 750 $.")
     if avances_act > allocation_travailleurs:
         raise ValueError("Les avances ACT 41500 ne peuvent pas dépasser 45300.")
 
@@ -167,7 +182,7 @@ def calculer_rapprochement_fiscal_2025(
     # L'abattement 44000 est remboursable : ne pas plafonner sa valeur
     # au solde après 40500. La base reste exclusivement la ligne 42900.
     federal_apres_abattement = arrondir_cent(
-        max(federal.impot_federal_apres_credit_etranger - credit_politique, ZERO) + avances_act - abattement
+        max(federal.impot_federal_apres_credit_etranger - credit_politique - credit_fonds, ZERO) + avances_act - abattement
     )
 
     if cotisation_assurance_medicaments < ZERO:
@@ -371,6 +386,7 @@ def calculer_rapprochement_fiscal_2025(
         allocation_travailleurs_ligne_45300=allocation_travailleurs,
         avances_act_ligne_41500=avances_act,
         credit_politique_ligne_41000=credit_politique,
+        credit_fonds_ligne_41400=credit_fonds,
         client=base.client,
         annee_fiscale=base.annee_fiscale,
         province=base.province,

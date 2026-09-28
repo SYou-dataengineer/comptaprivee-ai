@@ -8,6 +8,7 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_labour_funds_2025 import (FondsTravailleurs2025, ResultatFondsTravailleurs2025, calculer_fonds_travailleurs_2025, fonds_vers_dict, fonds_depuis_dict, verifier_fonds_conjoint_2025, lignes_fonds_travailleurs_2025)
 from .tax_political_contributions_2025 import (ContributionsPolitiques2025, ResultatContributionsPolitiques2025, calculer_contributions_politiques_2025, lignes_contributions_politiques_2025, politiques_depuis_dict, verifier_recus_politiques_conjoint_2025)
 from .tax_adoption_2025 import Adoption2025, ResultatAdoption2025, calculer_adoption_2025, lignes_adoption_2025
 from .tax_volunteers_2025 import Benevoles2025, ResultatBenevoles2025, calculer_benevoles_2025, lignes_benevoles_2025
@@ -342,7 +343,9 @@ class EstimationFiscale2025:
     resultat_supplement_medical: ResultatSupplementMedical2025 = ResultatSupplementMedical2025()
     resultat_reports_scolarite: ResultatReportsScolariteFederaux2025 = ResultatReportsScolariteFederaux2025()
     resultat_reports_dons: ResultatReportsDonsFederaux2025 = ResultatReportsDonsFederaux2025()
+    fonds_travailleurs: FondsTravailleurs2025 = FondsTravailleurs2025()
     contributions_politiques: ContributionsPolitiques2025 = ContributionsPolitiques2025()
+    resultat_fonds_travailleurs: ResultatFondsTravailleurs2025 = ResultatFondsTravailleurs2025()
     resultat_contributions_politiques: ResultatContributionsPolitiques2025 = ResultatContributionsPolitiques2025()
     adoption: Adoption2025 = Adoption2025()
     resultat_adoption: ResultatAdoption2025 = ResultatAdoption2025()
@@ -420,6 +423,7 @@ def calculer_estimation_fiscale_2025(
     profil_pensions: ProfilPensions2025 = ProfilPensions2025(),
     psv_confirme: bool = False,
     rrq_rpc_confirme: bool = False,
+    fonds_travailleurs: FondsTravailleurs2025 | None = None,
     contributions_politiques: ContributionsPolitiques2025 | None = None,
     adoption: Adoption2025 | None = None,
     benevoles: Benevoles2025 | None = None,
@@ -435,6 +439,8 @@ def calculer_estimation_fiscale_2025(
             "uniquement pour l'année 2025."
         )
 
+    fonds = fonds_travailleurs if fonds_travailleurs is not None else FondsTravailleurs2025()
+    resultat_fonds = calculer_fonds_travailleurs_2025(fonds, client=dossier.client, annee=dossier.annee_fiscale)
     politiques = contributions_politiques if contributions_politiques is not None else ContributionsPolitiques2025()
     resultat_politiques = calculer_contributions_politiques_2025(politiques, client=dossier.client, annee=dossier.annee_fiscale)
     adoption_effective = adoption if adoption is not None else Adoption2025()
@@ -443,6 +449,10 @@ def calculer_estimation_fiscale_2025(
     resultat_benevoles = calculer_benevoles_2025(benevoles_effectifs, dossier)
     conjoint = transfert_conjoint if transfert_conjoint is not None else TransfertConjointFederal2025()
     resultat_conjoint = calculer_transfert_conjoint_2025(conjoint, beneficiaire=dossier.client)
+    if conjoint.activer and fonds.acquisitions:
+        import json
+        fonds_conjoint = fonds_depuis_dict(json.loads(conjoint.dossier_conjoint_json).get("fonds_travailleurs"))
+        verifier_fonds_conjoint_2025(fonds, fonds_conjoint, resultat_conjoint.nom_conjoint)
     if conjoint.activer and politiques.recus:
         import json
         brut_conjoint = json.loads(conjoint.dossier_conjoint_json)
@@ -652,6 +662,8 @@ def calculer_estimation_fiscale_2025(
         prestations_rrq_rpc = consolider_prestations_rrq_rpc_2025(dossier, rrq_rpc_confirme)
     sans_emploi = (parcours_interets_dividendes or parcours_etranger or parcours_capital or parcours_dividendes or parcours_interets or parcours_remplacement or parcours_retraits or parcours_pensions or parcours_psv or parcours_rrq_rpc) and not any(d.type_document in {"T4", "RL-1"} for d in dossier.donnees_validees)
     base = base_sans_emploi_rrq_rpc_2025(dossier) if sans_emploi else consolider_base_fiscale_emploi_2025(dossier)
+    if fonds.acquisitions and fonds.contribuable.revenu_emploi_entreprise != base.revenu_emploi_quebec:
+        raise ValueError("Fonds : revenus d'emploi déclarés différents du dossier Québec; revenus d'entreprise non encore couverts.")
     if resultat_benevoles.reintegration_10100:
         base = replace(base, revenu_emploi_federal=base.revenu_emploi_federal + resultat_benevoles.reintegration_10100)
 
@@ -1452,6 +1464,8 @@ def calculer_estimation_fiscale_2025(
     resultat_act = calculer_allocation_travailleurs_2025(
         act, revenu_travail=base.revenu_emploi_federal, revenu_net=revenu.revenu_net_federal,
     )
+    if fonds.conjoint.nom and (act.present or frais_medicaux_effectifs.supplement.reclamer):
+        raise ValueError("Fonds avec conjoint : profil familial ACT/supplément médical non encore couvert.")
     if politiques.nom_conjoint and (act.present or frais_medicaux_effectifs.supplement.reclamer):
         raise ValueError("Les reçus politiques du conjoint exigent un profil familial; ACT et supplément médical individuels ne couvrent pas cette combinaison.")
     supplement_medical = calculer_supplement_medical_2025(
@@ -1470,6 +1484,7 @@ def calculer_estimation_fiscale_2025(
         supplement_medical=supplement_medical.ligne_45200,
         allocation_travailleurs=resultat_act.ligne_45300,
         avances_act=resultat_act.ligne_41500,
+        credit_fonds=resultat_fonds.ligne_41400,
         credit_politique=resultat_politiques.ligne_41000,
         prestations_rqap=prestations_rqap,
         prestations_ae=prestations_ae,
@@ -1510,6 +1525,7 @@ def calculer_estimation_fiscale_2025(
         dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
     )
     return EstimationFiscale2025(
+        fonds_travailleurs=fonds, resultat_fonds_travailleurs=resultat_fonds,
         contributions_politiques=politiques, resultat_contributions_politiques=resultat_politiques,
         adoption=adoption_effective, resultat_adoption=resultat_adoption,
         benevoles=benevoles_effectifs, resultat_benevoles=resultat_benevoles,
@@ -1685,6 +1701,7 @@ def formater_estimation_fiscale_2025(
         ),
         *lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons),
         *lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite),
+        *lignes_fonds_travailleurs_2025(estimation.fonds_travailleurs, estimation.resultat_fonds_travailleurs, estimation.rapprochement),
         *lignes_contributions_politiques_2025(estimation.contributions_politiques, estimation.resultat_contributions_politiques, estimation.rapprochement),
         *lignes_adoption_2025(estimation.adoption, estimation.resultat_adoption),
         *lignes_benevoles_2025(estimation.benevoles, estimation.resultat_benevoles),

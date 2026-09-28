@@ -2751,3 +2751,76 @@ Validation ciblée : **330 passed, 5 warnings**. Aucun test existant modifié.
 
 Suite complète 5N : **4537 passed, 8 warnings** (`--capture=sys`).
 Rapport PDF synthétique vérifié visuellement.
+
+
+### Bloc 5O livr? ? fonds de travailleurs f?d?raux, 41300 / 41400
+
+Sources : [ARC, fonds de travailleurs, ann?e 2025](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/lines-413-414-labour-sponsored-funds-tax-credit.html),
+[LIR 127.4, notamment (1), (5) et (6)](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-127.4.html),
+[T1 Qu?bec 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-r/5005-r-25e.pdf),
+[RQ, ligne 424 pour 2025](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/400-a-447-impot-et-cotisations/ligne-424/),
+[relev? 10 officiel](https://www.revenuquebec.ca/documents/fr/formulaires/rl/RL-10(2025-10).pdf).
+
+P?rim?tre : acquisitions initiales FTQ cat?gorie A ou Fondaction A/B,
+directes, par REER personnel ou conjoint, ou par CELI propre suivant la
+fiducie admissible d?finie par 127.4(1). Souscription irr?vocable pay?e et
+premier d?tenteur sont v?rifi?s sur pi?ces. Pour le REER conjoint, souscripteur
+et rentier sont identifi?s; une m?me action ne peut ?tre partag?e entre eux.
+Les SCRT uniquement agr??es au f?d?ral ne sont pas admissibles en 2025.
+Les autres fonds provinciaux ne sont pas couverts par ce profil Qu?bec.
+
+Co?t net = prix pay? moins aides publiques re?ues ou attendues, sans soustraire
+les cr?dits d'imp?t. Dates admises : 1 janvier 2025 au 2 mars 2026 inclusivement.
+Pour d?but 2026, le choix de co?t r?serv? ? 2026 est exclu de 41300 en 2025.
+Pour les acquisitions du 1 janvier au 1 mars 2025, le cr?dit effectivement
+d?duit en 2024 est une donn?e historique document?e, non un nouveau cr?dit
+calcul? saisi manuellement. Il est retranch? du potentiel de 15 % **avant** le
+plafond de 750 $, conform?ment ? 127.4(5). Exemple : co?t net 10 000 $,
+cr?dit utilis? en 2024 de 750 $ ? min(750, 1 500 - 750) = 750 $ pour 2025.
+La ligne 41300 conserve le co?t net des acquisitions consid?r?es; la trace
+s?pare l'utilisation historique. Le taux est 15 %, distinct du taux g?n?ral
+2025 de 14,5 %. Aucun report f?d?ral g?n?ral n'est cr??; les acquisitions de
+d?but 2026 peuvent n?cessiter un examen de leur solde dans la d?claration 2026.
+
+L'admissibilit? provinciale des actions conditionne le cr?dit f?d?ral.
+Les dates de naissance, rentes de retraite, cong?s pay?s sans retour pr?vu,
+revenus d'emploi/entreprise et demandes de rachat sont explicites. Les personnes
+n?es avant 1961 sont exclues. Pour celles n?es avant 1981, retraite/pr?retraite
+exclut le cr?dit, sauf l'exception des revenus de travail sup?rieurs ? 3 500 $
+avec les autres conditions RQ. Les sommes de r?gime re?ues en raison du d?c?s
+du conjoint ne sont pas assimil?es aux rentes vis?es. Les deux personnes sont
+contr?l?es pour un REER conjoint. Le revenu de travail du contribuable doit
+concorder avec le revenu d'emploi Qu?bec du dossier; les revenus autonomes
+attendent la priorit? 7. Les autres faits et pi?ces demeurent soumis ? la
+validation comptable, sans d?termination automatique compl?te d'admissibilit?.
+
+Restrictions logicielles explicites : ?changes, rachats et annulations,
+remplacements RAP/REEP, remboursement 211.9, d?c?s et d?cisions minist?rielles
+d'acquisition r?put?e ne sont pas couverts. Toute demande de rachat d?clenche
+un refus conservateur du profil, m?me lorsqu'un traitement fiscal sp?cialis?
+pourrait permettre un cr?dit. Ce refus n'est pas une exclusion fiscale g?n?rale.
+Le calcul Qu?bec 424, ses reports et ses annulations restent distincts et
+seront trait?s en priorit? 6. Aucune d?duction REER n'est cr??e automatiquement.
+
+Ordre : 40500 puis 41000 puis 41400; 41600 = 41000 + 41400 dans ce profil.
+41700 = max(40600 - 41600, 0), puis ajout des avances ACT 41500. Les cr?dits
+utilis?s sont ventil?s sans double consommation. 33500/33800/34990/35000,
+42900, revenu et imp?t Qu?bec restent inchang?s. L'abattement remboursable
+44000 reste 16,5 % de 42900. Le profil conjoint reste refus? avec ACT ou
+suppl?ment m?dical tant que leur extension familiale n'est pas d?velopp?e.
+Les r?f?rences d'acquisitions communes aux deux dossiers import?s par 5K
+sont refus?es; hors import, l'absence de double demande est valid?e sur pi?ces.
+
+JSON r?trocompatible : absence du profil = vide; seules acquisitions,
+situations, choix, pi?ces historiques et confirmations sont enregistr?s.
+Les r?sultats sont reconstruits. Cl?s inconnues, mauvais types, montants
+non finis/n?gatifs/hors cents, dates et profils explicites divergents sont
+refus?s. GUI : ajout/modification/retrait des acquisitions, historique 2024,
+choix 2026, situations des personnes; modification r?voquant les confirmations.
+Aucun cr?dit 2025 calcul? n'est saisi. R?sum?, trace et PDF d?taillent sources,
+aides, historique, plafond, utilisation effective et ordre fiscal.
+
+Validation cibl?e : **399 passed, 5 warnings**. Aucun test existant modifi?.
+
+Suite compl?te 5O : **4692 passed, 8 warnings** (`--capture=sys`).
+Rapport PDF synth?tique v?rifi? visuellement.

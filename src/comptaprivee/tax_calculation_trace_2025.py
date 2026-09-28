@@ -526,8 +526,8 @@ def construire_trace_calcul_fiscal_2025(
         _ligne(
             11, "FÉDÉRAL", "Impôt fédéral après abattement",
             "Rapprochement fiscal 2025",
-            ("max(impôt après 40500 - crédit politique 41000, 0) + avances ACT 41500 - abattement 44000"
-             if final.credit_politique_ligne_41000 else "Impôt fédéral après 40500 + avances ACT 41500 - abattement Québec remboursable 44000"
+            ("max(impôt après 40500 - crédits 41600 (41000 + 41400), 0) + avances ACT 41500 - abattement 44000"
+             if final.credits_ligne_41600 else "Impôt fédéral après 40500 + avances ACT 41500 - abattement Québec remboursable 44000"
              if final.avances_act_ligne_41500 else "Impôt fédéral après 40500 - abattement Québec remboursable 44000"),
             final.impot_federal_apres_abattement,
         ),
@@ -2024,11 +2024,24 @@ def construire_trace_calcul_fiscal_2025(
         for libelle, montant, formule in (
             ("Contributions politiques — 40900", r.ligne_40900, "Paiements monétaires moins avantages, reçus validés une seule fois"),
             ("Crédit politique — 41000", r.ligne_41000, "75 % jusqu'à 400; 50 % des 350 suivants; 1/3 au-delà; maximum 650"),
-            ("Impôt fédéral — 41700", final.impot_federal_ligne_41700, "max(40600 - 41600, 0); 41600 = 41000 dans ce profil"),
+            ("Impôt fédéral — 41700", final.impot_federal_ligne_41700, "max(40600 - 41600, 0); 41600 = 41000 + 41400 dans ce profil"),
             ("Crédit politique utilisé", final.credit_politique_utilise, "min(41000, 40600); aucun report de l'inutilisé"),
         ):
             lignes = _inserer_ligne_avant(lignes, "Impôt fédéral après abattement",
                 _ligne(0, "CONTRIBUTIONS POLITIQUES — BLOC 5N", libelle, p.source, formule, montant))
+
+    if estimation.fonds_travailleurs.acquisitions:
+        p, r = estimation.fonds_travailleurs, estimation.resultat_fonds_travailleurs
+        for libelle, montant, formule in (
+            ("Fonds de travailleurs — 41300", r.ligne_41300, "Paiements moins aides publiques hors crédits; coût réservé à 2026 exclu"),
+            ("Fonds : crédit utilisé en 2024", r.credit_utilise_2024, "Utilisation effective sur les acquisitions des 60 premiers jours de 2025"),
+            ("Fonds de travailleurs — 41400", r.ligne_41400, "min(750, max(0, 41300 × 15 % - crédit utilisé en 2024)); LIR 127.4(5)"),
+            ("Crédit fonds utilisé", final.credit_fonds_utilise, "min(41400, max(40600 - 41000, 0))"),
+            ("Total des crédits — 41600", final.credits_ligne_41600, "41000 + 41400; avant avances ACT 41500"),
+            ("Impôt après fonds — 41700", final.impot_federal_ligne_41700, "max(40600 - 41600, 0); abattement 44000 inchangé"),
+        ):
+            lignes = _inserer_ligne_avant(lignes, "Impôt fédéral après abattement",
+                _ligne(0, "FONDS DE TRAVAILLEURS — BLOC 5O", libelle, p.source, formule, montant))
 
     for e, r in zip(estimation.adoption.enfants, estimation.resultat_adoption.enfants):
         source = e.source + " — " + e.nom

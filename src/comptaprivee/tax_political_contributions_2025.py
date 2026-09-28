@@ -195,6 +195,6 @@ def lignes_contributions_politiques_2025(p, r, final):
         f"Crédit calculé — 41000 : {r.ligne_41000:.2f} $; maximum 650 $",
         "75 % des premiers 400 $, 50 % des 350 $ suivants, un tiers au-delà; arrondi au cent.",
         f"Crédit utilisé : {final.credit_politique_utilise:.2f} $; inutilisé sans report : {r.ligne_41000 - final.credit_politique_utilise:.2f} $",
-        f"Impôt 40600 : {final.impot_federal_apres_credit_etranger:.2f} $; 41600 : {final.credit_politique_ligne_41000:.2f} $; 41700 : {final.impot_federal_ligne_41700:.2f} $",
+        f"Impôt 40600 : {final.impot_federal_apres_credit_etranger:.2f} $; 41600 : {final.credits_ligne_41600:.2f} $; 41700 : {final.impot_federal_ligne_41700:.2f} $",
         "Appliqué après 40500 et avant les avances 41500; 33500/34990 et base d'abattement 42900 inchangés."]
     return lignes

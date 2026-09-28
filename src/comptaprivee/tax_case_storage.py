@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .tax_labour_funds_2025 import (FondsTravailleurs2025, ResultatFondsTravailleurs2025, calculer_fonds_travailleurs_2025, fonds_vers_dict, fonds_depuis_dict, verifier_fonds_conjoint_2025, lignes_fonds_travailleurs_2025)
 from .tax_political_contributions_2025 import ContributionsPolitiques2025, calculer_contributions_politiques_2025, politiques_vers_dict, politiques_depuis_dict
 from .tax_adoption_2025 import Adoption2025, calculer_adoption_2025, adoption_vers_dict, adoption_depuis_dict
 from .tax_volunteers_2025 import Benevoles2025, ActiviteBenevole2025, calculer_benevoles_2025
@@ -221,6 +222,7 @@ class DossierFiscalEnregistre:
     profil_pensions: ProfilPensions2025 = ProfilPensions2025()
     psv_confirme: bool = False
     rrq_rpc_confirme: bool = False
+    fonds_travailleurs: FondsTravailleurs2025 = FondsTravailleurs2025()
     contributions_politiques: ContributionsPolitiques2025 = ContributionsPolitiques2025()
     adoption: Adoption2025 = Adoption2025()
     benevoles: Benevoles2025 = Benevoles2025()
@@ -3359,6 +3361,7 @@ def sauvegarder_dossier_fiscal(
     frais_demenagement: FraisDemenagement2025 | None = None,
     pension_alimentaire_payee: PensionAlimentairePayee2025 | None = None,
     autres_deductions: AutresDeductions2025 | None = None,
+    fonds_travailleurs: FondsTravailleurs2025 | None = None,
     contributions_politiques: ContributionsPolitiques2025 | None = None,
     adoption: Adoption2025 | None = None,
     benevoles: Benevoles2025 | None = None,
@@ -3540,6 +3543,10 @@ def sauvegarder_dossier_fiscal(
         elif (dons_bienfaisance.reports_federaux.activer or estimation.dons_bienfaisance.reports_federaux.activer) and dons_bienfaisance != estimation.dons_bienfaisance:
             raise ValueError("Le profil dons/reports diffère de l'estimation.")
 
+    fonds = fonds_travailleurs if fonds_travailleurs is not None else (estimation.fonds_travailleurs if estimation else FondsTravailleurs2025())
+    calculer_fonds_travailleurs_2025(fonds, client=dossier.client, annee=dossier.annee_fiscale)
+    if estimation is not None and fonds != estimation.fonds_travailleurs:
+        raise ValueError("Profil fonds divergent de l'estimation.")
     politiques = contributions_politiques if contributions_politiques is not None else (estimation.contributions_politiques if estimation else ContributionsPolitiques2025())
     calculer_contributions_politiques_2025(politiques, client=dossier.client, annee=dossier.annee_fiscale)
     if estimation is not None and politiques != estimation.contributions_politiques:
@@ -3869,6 +3876,7 @@ def sauvegarder_dossier_fiscal(
         "pension_alimentaire_payee": _pension_alimentaire_payee_vers_dict(
             pension_alimentaire_effective
         ),
+        "fonds_travailleurs": fonds_vers_dict(fonds),
         "contributions_politiques": politiques_vers_dict(politiques),
         "adoption": adoption_vers_dict(adoption_effective),
         "benevoles": _benevoles_vers_dict(benevoles_effectifs),
@@ -4318,6 +4326,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         depenses_emploi=depenses_emploi,
         frais_demenagement=frais_demenagement,
         pension_alimentaire_payee=pension_alimentaire_payee,
+        fonds_travailleurs=fonds_depuis_dict(contenu.get("fonds_travailleurs"), client=dossier.client, annee=dossier.annee_fiscale),
         contributions_politiques=politiques_depuis_dict(contenu.get("contributions_politiques"), client=dossier.client, annee=dossier.annee_fiscale),
         adoption=adoption_depuis_dict(contenu.get("adoption"), dossier.annee_fiscale),
         benevoles=_benevoles_depuis_dict(contenu.get("benevoles"), dossier),
