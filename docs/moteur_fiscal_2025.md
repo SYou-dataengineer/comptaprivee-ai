@@ -3880,3 +3880,32 @@ commit **5843 passed, 8 warnings**; push réussi et dépôt propre avant 6D.
 
 Journal 6D : suite complète avant commit **5903 passed, 8 warnings**
 (`--capture=sys`, 187,05 s), diff sans erreur et PDF synthétique vérifié visuellement.
+
+
+### Correction d'isolation des dossiers GUI après 6D
+
+Défaut reproduit par un parcours réel : après activation du profil carrière
+avec naissance et source propres au client A, « Initialiser le dossier fiscal »
+pour le client B conservait ces données et leurs confirmations. L'audit de la
+routine a identifié 23 profils omis : CELIAPP, déductions 4B–4F, profils fédéraux
+familiaux et remboursables récents, intérêts étudiants fédéraux/Québec, achat
+Québec, carrière Québec et profils de placement/crédit étranger.
+
+La création réussie d'un nouveau dossier remet désormais ces profils à leur
+état vide, comme les profils historiques. Une création refusée ne détruit pas
+les données du dossier courant. Aucun calcul ni paramètre fiscal n'est modifié.
+Les documents sélectionnés restent ceux de la préparation du nouveau dossier;
+ce correctif concerne les faits et confirmations des profils, sans suppression
+de fichiers. Le chargement d'un dossier existant conserve son propre contrat.
+
+Validation ciblée : **46 passed, 5 warnings**, avec reproduction avant correction,
+contrôle de la naissance/source/confirmations, absence de report étudiant hérité,
+initialisation invalide et régressions GUI. La réinitialisation explicite devra
+être complétée lors de tout ajout futur de profil.
+
+Journal précédent 6D : commit `7a13915`, 10 fichiers; suites complètes avant et
+après commit **5903 passed, 8 warnings**; push réussi et dépôt propre avant
+cette correction indépendante.
+
+Suite complète avant commit de la correction : **5906 passed, 8 warnings**,
+`--capture=sys`, 200,23 s; `git diff --check` sans erreur.

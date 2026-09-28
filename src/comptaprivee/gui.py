@@ -14309,6 +14309,26 @@ class ApplicationComptaPrivee(tk.Tk):
             afficher_donnees_fiscales_extraites()
 
         def initialiser_dossier_fiscal() -> None:
+            nonlocal frais_garde_federaux_courants
+            nonlocal depenses_emploi_courantes
+            nonlocal frais_demenagement_courants
+            nonlocal pension_alimentaire_payee_courante
+            nonlocal autres_deductions_courantes
+            nonlocal frais_medicaux_famille_courants
+            nonlocal transferts_handicap_courants
+            nonlocal renovations_multigenerationnelles_courantes
+            nonlocal fournitures_educateur_courantes
+            nonlocal fonds_travailleurs_courants
+            nonlocal contributions_politiques_courantes
+            nonlocal adoption_courante
+            nonlocal benevoles_courants
+            nonlocal transfert_conjoint_courant
+            nonlocal transferts_scolarite_recus_courants
+            nonlocal allocation_travailleurs_courante
+            nonlocal prolongation_carriere_quebec_courante
+            nonlocal achat_habitation_quebec_courant
+            nonlocal interets_etudiants_quebec_courants
+            nonlocal interets_pret_etudiant_courants
             nonlocal rapport_fiscal_a_reexporter
             nonlocal ajustement_reer_courant
             nonlocal deduction_celiapp_courante
@@ -14350,6 +14370,30 @@ class ApplicationComptaPrivee(tk.Tk):
             self.dossier_fiscal_valide_courant = None
             invalider_profil_rqap()
             ajustement_reer_courant = AjustementReer2025()
+            # Nouveau dossier : aucun fait ni accord comptable du client précédent.
+            deduction_celiapp_courante = DeductionCeliapp2025()
+            frais_garde_federaux_courants = FraisGardeFederaux2025()
+            depenses_emploi_courantes = DepensesEmploi2025()
+            frais_demenagement_courants = FraisDemenagement2025()
+            pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
+            autres_deductions_courantes = AutresDeductions2025()
+            frais_medicaux_famille_courants = FraisMedicauxFamilleFederaux2025()
+            transferts_handicap_courants = TransfertsHandicap2025()
+            renovations_multigenerationnelles_courantes = RenovationsMultigenerationnelles2025()
+            fournitures_educateur_courantes = FournituresEducateur2025()
+            fonds_travailleurs_courants = FondsTravailleurs2025()
+            contributions_politiques_courantes = ContributionsPolitiques2025()
+            adoption_courante = Adoption2025()
+            benevoles_courants = Benevoles2025()
+            transfert_conjoint_courant = TransfertConjointFederal2025()
+            transferts_scolarite_recus_courants = TransfertsScolariteRecus2025()
+            allocation_travailleurs_courante = AllocationTravailleurs2025()
+            prolongation_carriere_quebec_courante = ProlongationCarriereQuebec2025()
+            achat_habitation_quebec_courant = AchatHabitationQuebec2025()
+            interets_etudiants_quebec_courants = InteretsEtudiantsQuebec2025()
+            interets_pret_etudiant_courants = InteretsPretEtudiant2025()
+            placement_etranger_profil_courant = ProfilPlacementEtranger2025()
+            credit_etranger_profil_courant = ProfilCreditImpotEtranger2025()
             cotisations_syndicales_courantes = (
                 CotisationsSyndicalesProfessionnelles2025()
             )
