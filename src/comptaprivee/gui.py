@@ -9,6 +9,9 @@ import sys
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
+from .tax_student_loan_interest_2025 import (
+    InteretsPretEtudiant2025, valider_interets_pret_etudiant_2025, CONFIRMATIONS_5B,
+)
 from .gui_capital_loss_carryovers_2025 import ouvrir_reports_pertes_2025
 from .tax_capital_loss_carryovers_2025 import ProfilReportsPertes2025
 from .gui_investment_expenses_2025 import ouvrir_frais_placement_2025
@@ -2497,6 +2500,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_demenagement_courants = FraisDemenagement2025()
         pension_alimentaire_payee_courante = PensionAlimentairePayee2025()
         autres_deductions_courantes = AutresDeductions2025()
+        interets_pret_etudiant_courants = InteretsPretEtudiant2025()
         cotisations_syndicales_courantes = (
             CotisationsSyndicalesProfessionnelles2025()
         )
@@ -3766,6 +3770,90 @@ class ApplicationComptaPrivee(tk.Tk):
 
 
 
+        # --- Priorité 5B : GUI intérêts sur prêts étudiants ---
+
+        def ouvrir_interets_pret_etudiant_5b_2025() -> None:
+            nonlocal interets_pret_etudiant_courants
+            dialogue = tk.Toplevel(fenetre)
+            dialogue.title("Intérêts sur prêts étudiants — Bloc 5B")
+            dimensionner_fenetre(dialogue, 930, 860)
+            dialogue.transient(fenetre)
+            dialogue.grab_set()
+            formulaire = FormulaireDefilant(dialogue)
+            cadre = formulaire.corps
+            cadre.columnconfigure(1, weight=1)
+            ttk.Label(cadre, text="Intérêts sur prêts étudiants 2025 — Bloc 5B",
+                      font=("Segoe UI", 16, "bold")).grid(row=0, column=0, columnspan=2, sticky="w")
+            ttk.Label(cadre, text=(
+                "Fédéral 31900 uniquement. Emprunteur légal vivant; paiement par soi-même "
+                "ou une personne apparentée confirmée. Tiers non apparenté exclu. "
+                "Prêts sous les lois fédérales sur les prêts étudiants, l'aide financière "
+                "aux étudiants, les prêts aux apprentis ou une loi provinciale/territoriale analogue. "
+                "Aucune admissibilité automatique. Aucun suivi des soldes ARC. "
+                "Réclamation choisie : 0 conserve les intérêts non réclamés; une réclamation "
+                "sans économie fiscale peut gaspiller des intérêts. Ordre 2020 → 2025; "
+                "2020 expire après 2025. Québec ligne 385 non traité."
+            ), wraplength=800, justify="left").grid(row=1, column=0, columnspan=2, sticky="ew", pady=8)
+            profil = interets_pret_etudiant_courants
+            reports = dict(profil.reports)
+            variables = {}
+            champs = [("interets_payes_2025", "Intérêts payés en 2025", profil.interets_payes_2025)]
+            champs += [(f"report_{a}", f"Report {a} documenté non réclamé", reports.get(a, Decimal("0"))) for a in range(2020, 2025)]
+            champs += [("montant_reclame_31900", "Montant choisi à réclamer — ligne 31900", profil.montant_reclame_31900)]
+            champs += [("source", "Source / relevé des intérêts et reports par année", profil.source)]
+            for row, (nom, libelle, valeur) in enumerate(champs, 2):
+                variable = tk.StringVar(value=(str(valeur) if valeur else ""))
+                variables[nom] = variable
+                ttk.Label(cadre, text=libelle).grid(row=row, column=0, sticky="w", pady=3)
+                ttk.Entry(cadre, name=nom + "_5b", textvariable=variable).grid(row=row, column=1, sticky="ew", pady=3)
+            confirmations = {}
+            for row, (nom, libelle) in enumerate(CONFIRMATIONS_5B.items(), 10):
+                variable = tk.BooleanVar(value=getattr(profil, nom))
+                confirmations[nom] = variable
+                ttk.Checkbutton(cadre, name=nom + "_5b", text=libelle, variable=variable).grid(
+                    row=row, column=0, columnspan=2, sticky="w", pady=2)
+
+            def revoquer_confirmations_5b(*_):
+                for variable in confirmations.values():
+                    variable.set(False)
+            for variable in variables.values():
+                variable.trace_add("write", revoquer_confirmations_5b)
+
+            def effacer_5b():
+                for variable in variables.values():
+                    variable.set("")
+                revoquer_confirmations_5b()
+
+            def appliquer_5b():
+                nonlocal interets_pret_etudiant_courants
+                nonlocal derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                def montant(nom):
+                    texte = variables[nom].get().strip().replace(" ", "").replace(",", ".")
+                    try:
+                        return Decimal(texte or "0")
+                    except InvalidOperation as erreur:
+                        raise ValueError("Montant invalide : " + nom) from erreur
+                try:
+                    nouveau = valider_interets_pret_etudiant_2025(InteretsPretEtudiant2025(
+                        interets_payes_2025=montant("interets_payes_2025"),
+                        reports=tuple((a, montant(f"report_{a}")) for a in range(2020, 2025)),
+                        montant_reclame_31900=montant("montant_reclame_31900"),
+                        source=variables["source"].get(),
+                        **{nom: var.get() for nom, var in confirmations.items()},
+                    ))
+                except ValueError as erreur:
+                    messagebox.showerror("Intérêts étudiants invalides", str(erreur), parent=dialogue)
+                    return
+                interets_pret_etudiant_courants = nouveau
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Intérêts étudiants 5B validés; recalculez l'estimation.")
+                dialogue.destroy()
+            ttk.Button(formulaire.actions, text="Effacer", command=effacer_5b).pack(side="left")
+            ttk.Button(formulaire.actions, text="Valider et appliquer", command=appliquer_5b).pack(side="right")
+            ttk.Button(formulaire.actions, text="Fermer", command=dialogue.destroy).pack(side="right", padx=8)
+
         # --- Priorité 4F : GUI autres déductions ---
 
         def mettre_a_jour_bouton_autres_deductions() -> None:
@@ -4620,6 +4708,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    interets_pret_etudiant=interets_pret_etudiant_courants,
                     cotisations_rpa=cotisations_rpa_courantes,
                     cotisations_syndicales=cotisations_syndicales_courantes,
                     cotisations_excedentaires=cotisations_excedentaires_courantes,
@@ -12632,6 +12721,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    interets_pret_etudiant=interets_pret_etudiant_courants,
                             cotisations_syndicales=(
                                 cotisations_syndicales_courantes
                             ),
@@ -12688,6 +12778,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    interets_pret_etudiant=interets_pret_etudiant_courants,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -12774,6 +12865,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def charger_enregistrement_dans_interface(enregistrement) -> None:
+            nonlocal interets_pret_etudiant_courants
             nonlocal frais_garde_federaux_courants
             nonlocal depenses_emploi_courantes
             nonlocal frais_demenagement_courants
@@ -12852,6 +12944,7 @@ class ApplicationComptaPrivee(tk.Tk):
             pension_alimentaire_payee_courante = (
                 enregistrement.pension_alimentaire_payee
             )
+            interets_pret_etudiant_courants = enregistrement.interets_pret_etudiant
             autres_deductions_courantes = (
                 enregistrement.autres_deductions
             )
@@ -13188,6 +13281,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     frais_demenagement=frais_demenagement_courants,
                     pension_alimentaire_payee=pension_alimentaire_payee_courante,
                     autres_deductions=autres_deductions_courantes,
+                    interets_pret_etudiant=interets_pret_etudiant_courants,
                     cotisations_syndicales=(
                         cotisations_syndicales_courantes
                     ),
@@ -13670,6 +13764,9 @@ class ApplicationComptaPrivee(tk.Tk):
             side="left",
             padx=(8, 0),
         )
+
+        ttk.Button(zone_actions, text="Intérêts prêts étudiants 2025 (5B)",
+                   command=ouvrir_interets_pret_etudiant_5b_2025).pack(side="left", padx=(8, 0))
 
         bouton_autres_deductions_4f = ttk.Button(
             zone_actions,

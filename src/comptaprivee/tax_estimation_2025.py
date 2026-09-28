@@ -11,6 +11,11 @@ d'estimation soumise à validation comptable.
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
+from .tax_student_loan_interest_2025 import (
+    InteretsPretEtudiant2025, ResultatInteretsPretEtudiant2025,
+    valider_interets_pret_etudiant_2025, repartir_interets_pret_etudiant_2025,
+    mesurer_incidence_interets_2025, lignes_resume_interets_pret_etudiant_2025,
+)
 from .tax_age_retirement_2025 import (
     MontantsAgeRetraite2025,
     appliquer_credit_quebec_age_retraite_2025,
@@ -310,6 +315,8 @@ class EstimationFiscale2025:
     prestations_psv: PrestationsPsv2025 = PrestationsPsv2025()
     rrq_rpc_confirme: bool = False
     prestations_rrq_rpc: PrestationsRrqRpc2025 = PrestationsRrqRpc2025()
+    interets_pret_etudiant: InteretsPretEtudiant2025 = InteretsPretEtudiant2025()
+    resultat_interets_pret_etudiant: ResultatInteretsPretEtudiant2025 = ResultatInteretsPretEtudiant2025()
 
 
 def calculer_estimation_fiscale_2025(
@@ -379,6 +386,7 @@ def calculer_estimation_fiscale_2025(
     profil_pensions: ProfilPensions2025 = ProfilPensions2025(),
     psv_confirme: bool = False,
     rrq_rpc_confirme: bool = False,
+    interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
     if dossier.annee_fiscale != 2025:
@@ -386,6 +394,11 @@ def calculer_estimation_fiscale_2025(
             "L'estimation fiscale automatique est disponible "
             "uniquement pour l'année 2025."
         )
+
+    pret_etudiant = valider_interets_pret_etudiant_2025(
+        interets_pret_etudiant if interets_pret_etudiant is not None else InteretsPretEtudiant2025()
+    )
+    resultat_pret_etudiant = repartir_interets_pret_etudiant_2025(pret_etudiant)
 
     parcours_interets_dividendes = (
         detecter_interets_dividendes_2025(dossier)
@@ -1275,6 +1288,9 @@ def calculer_estimation_fiscale_2025(
     )
     credits_complets = calculer_credits_non_remboursables_2025(
         montants_avant_scolarite + (
+            (("31900", resultat_pret_etudiant.ligne_31900),)
+            if resultat_pret_etudiant.ligne_31900 else ()
+        ) + (
             ("32300", frais_scolarite_effectifs.montant_admissible_federal),
             ("33200", montant_frais_medicaux_federal_apres_seuil_2025(
                 frais_medicaux_effectifs, revenu.revenu_net_federal)),
@@ -1363,7 +1379,13 @@ def calculer_estimation_fiscale_2025(
         rapprochement = replace(rapprochement, limitations=tuple(
             texte.replace("aucun report de perte", "reports de pertes validés séparément en 3F")
             for texte in rapprochement.limitations))
+    resultat_pret_etudiant = mesurer_incidence_interets_2025(
+        resultat_pret_etudiant, credits_complets, federal.impot_brut,
+        dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
+    )
     return EstimationFiscale2025(
+        interets_pret_etudiant=pret_etudiant,
+        resultat_interets_pret_etudiant=resultat_pret_etudiant,
         ae_confirme=ae_confirme,
         profil_pensions=profil_pensions,
         profil_retraits=profil_retraits,
@@ -1525,6 +1547,9 @@ def formater_estimation_fiscale_2025(
         ),
         *lignes_resume_pension_alimentaire_payee_2025(
             estimation.pension_alimentaire_payee
+        ),
+        *lignes_resume_interets_pret_etudiant_2025(
+            estimation.interets_pret_etudiant, estimation.resultat_interets_pret_etudiant
         ),
         *lignes_resume_autres_deductions_2025(
             estimation.autres_deductions

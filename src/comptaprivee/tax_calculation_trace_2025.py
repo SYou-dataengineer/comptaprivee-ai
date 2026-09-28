@@ -1871,6 +1871,28 @@ def construire_trace_calcul_fiscal_2025(
         for ligne_audit in audit:
             lignes = _inserer_ligne_avant(lignes, "Impôt fédéral de base", ligne_audit)
 
+    pret = estimation.interets_pret_etudiant
+    rpret = estimation.resultat_interets_pret_etudiant
+    if rpret.total_disponible:
+        section = "INTÉRÊTS SUR PRÊTS ÉTUDIANTS 2025 — BLOC 5B"
+        audit = [
+            ("Intérêts payés en 2025", pret.interets_payes_2025, "Montant documenté, payé par contribuable ou personne apparentée"),
+            ("Ligne fédérale 31900", rpret.ligne_31900, "Choix comptable; répartition 2020 → 2025; inclus une fois dans 33500"),
+        ]
+        audit += [(f"Intérêts {a} réclamés", m, "Plus ancien d'abord : 2020 → 2025") for a, m in rpret.utilises_par_annee]
+        audit += [(f"Intérêts {a} non réclamés", m, "Ouverture documentée moins réclamation choisie") for a, m in rpret.non_reclames_par_annee]
+        audit += [
+            ("Incidence 31900 sur 33800", rpret.augmentation_33800, "Différence avec/sans 31900, arrondi global à 14,5 %"),
+            ("Incidence 31900 sur 34990", rpret.augmentation_34990, "34990 recalculée par 5A"),
+            ("Incidence 31900 sur 35000", rpret.augmentation_35000, "33800 + 34900 + 34990; aucune soustraction supplémentaire"),
+            ("Réduction 42900 attribuable à 31900", rpret.reduction_42900, "Avec/sans 31900, après 40425, avant 40500, plancher zéro"),
+            ("Économie fédérale réelle 5B", rpret.reduction_federale_apres_40500_et_abattement, "Avec/sans 31900 après 40500 et abattement de 16,5 % de 42900"),
+            ("Solde non réclamé reportable en 2026", rpret.non_reclames_encore_reportables_2026, "Années 2021–2025 seulement; soldes documentés, aucun suivi ARC"),
+            ("Solde 2020 expirant après 2025", rpret.non_reclame_2020_expirant, "2020 encore utilisable en 2025, pas en 2026"),
+        ]
+        for libelle, valeur, formule in audit:
+            lignes = _inserer_ligne_avant(lignes, "Base ligne 33500", _ligne(0, section, libelle, pret.source, formule, valeur))
+
     prochain_ordre = len(lignes) + 1
 
     if final.remboursement_estime > Decimal("0"):

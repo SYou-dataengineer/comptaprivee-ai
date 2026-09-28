@@ -10,6 +10,9 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .tax_student_loan_interest_2025 import (
+    InteretsPretEtudiant2025, valider_interets_pret_etudiant_2025,
+)
 from .tax_adjustments_2025 import (
     AjustementReer2025,
     valider_ajustement_reer_2025,
@@ -206,6 +209,7 @@ class DossierFiscalEnregistre:
     profil_pensions: ProfilPensions2025 = ProfilPensions2025()
     psv_confirme: bool = False
     rrq_rpc_confirme: bool = False
+    interets_pret_etudiant: InteretsPretEtudiant2025 = InteretsPretEtudiant2025()
 
 
 def _nom_securise(valeur: str) -> str:
@@ -3123,6 +3127,35 @@ def _rpa_depuis_dict(valeur):
     return valider_cotisations_rpa_2025(CotisationsRpa2025(**valeurs))
 
 
+def _interets_pret_etudiant_vers_dict(profil):
+    profil = valider_interets_pret_etudiant_2025(profil)
+    valeurs = asdict(profil)
+    for nom in ("interets_payes_2025", "montant_reclame_31900"):
+        valeurs[nom] = _decimal_texte(valeurs[nom])
+    valeurs["reports"] = [{"annee": a, "montant": _decimal_texte(m)} for a, m in profil.reports]
+    return valeurs
+
+
+def _interets_pret_etudiant_depuis_dict(valeur):
+    if valeur is None:
+        return InteretsPretEtudiant2025()
+    if not isinstance(valeur, dict) or set(valeur) - set(InteretsPretEtudiant2025.__dataclass_fields__):
+        raise ValueError("Champs inconnus ou profil intérêts étudiants invalide.")
+    valeurs = dict(valeur)
+    for nom in ("interets_payes_2025", "montant_reclame_31900"):
+        valeurs[nom] = _decimal_depuis_json(valeurs.get(nom, "0"), "interets_pret_etudiant." + nom)
+    reports = valeurs.get("reports", [])
+    if not isinstance(reports, list):
+        raise ValueError("Les reports étudiants doivent être une liste annuelle.")
+    lignes = []
+    for report in reports:
+        if not isinstance(report, dict) or set(report) != {"annee", "montant"}:
+            raise ValueError("Champs de report étudiant invalides.")
+        lignes.append((report["annee"], _decimal_depuis_json(report["montant"], "report étudiant")))
+    valeurs["reports"] = tuple(lignes)
+    return valider_interets_pret_etudiant_2025(InteretsPretEtudiant2025(**valeurs))
+
+
 def sauvegarder_dossier_fiscal(
     dossier: DossierFiscalValide,
     *,
@@ -3134,6 +3167,7 @@ def sauvegarder_dossier_fiscal(
     frais_demenagement: FraisDemenagement2025 | None = None,
     pension_alimentaire_payee: PensionAlimentairePayee2025 | None = None,
     autres_deductions: AutresDeductions2025 | None = None,
+    interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
     cotisations_syndicales: (
         CotisationsSyndicalesProfessionnelles2025 | None
     ) = None,
@@ -3283,6 +3317,13 @@ def sauvegarder_dossier_fiscal(
         raise ValueError(
             "La pension alimentaire diffère de l'estimation."
         )
+
+    pret_etudiant = valider_interets_pret_etudiant_2025(
+        interets_pret_etudiant if interets_pret_etudiant is not None
+        else (estimation.interets_pret_etudiant if estimation else InteretsPretEtudiant2025())
+    )
+    if estimation is not None and pret_etudiant != estimation.interets_pret_etudiant:
+        raise ValueError("Le profil intérêts étudiants diffère de l'estimation.")
 
     autres_deductions_effectives = (
         autres_deductions
@@ -3575,6 +3616,7 @@ def sauvegarder_dossier_fiscal(
         "pension_alimentaire_payee": _pension_alimentaire_payee_vers_dict(
             pension_alimentaire_effective
         ),
+        "interets_pret_etudiant": _interets_pret_etudiant_vers_dict(pret_etudiant),
         "autres_deductions": _autres_deductions_vers_dict(
             autres_deductions_effectives
         ),
@@ -4012,6 +4054,7 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
         depenses_emploi=depenses_emploi,
         frais_demenagement=frais_demenagement,
         pension_alimentaire_payee=pension_alimentaire_payee,
+        interets_pret_etudiant=_interets_pret_etudiant_depuis_dict(contenu.get("interets_pret_etudiant")),
         autres_deductions=autres_deductions,
         cotisations_syndicales=cotisations_syndicales,
         dons_bienfaisance=dons_bienfaisance,

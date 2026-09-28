@@ -2027,3 +2027,80 @@ L'incident est non reproduit dans ces vérifications. La cause précise de
 l'initialisation Tcl/Tk défaillante n'est pas établie; aucune fuite de fixture
 ni dépendance à l'ordre n'est démontrée. Aucun test n'a été désactivé ou modifié
 pour contourner cet incident.
+
+### Bloc 5B livré — intérêts sur prêts étudiants, ligne 31900
+
+Sources officielles consultées pour 2025 :
+
+- [ARC, ligne 31900](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/sujets/tout-votre-declaration-revenus/declaration-revenus/remplir-declaration-revenus/deductions-credits-depenses/ligne-31900-interets-payes-vos-prets-etudiants.html).
+- [Guide P105 2025, intérêts sur prêts étudiants](https://www.canada.ca/fr/agence-revenu/services/formulaires-publications/publications/p105/p105-etudiants-impot.html).
+- [LIR, article 118.62](https://laws-lois.justice.gc.ca/eng/acts/I-3.3/section-118.62.html).
+- [T1 Québec 2025, page 6, lignes 105 à 122](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-r/5005-r-25f.pdf).
+- [Feuille fédérale 2025, ligne 34990](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-d1/5000-d1-25e.pdf).
+- [Annexe 11 Québec 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s11/5005-s11-25e.pdf).
+- [Revenu Québec, crédit distinct pour intérêts étudiants](https://www.revenuquebec.ca/fr/citoyens/credits-dimpot/interets-payes-sur-un-pret-etudiant/).
+
+Le contribuable doit être l'emprunteur légal vivant. Le profil exige la
+confirmation d'un prêt relevant de la Loi fédérale sur les prêts aux étudiants,
+de la Loi fédérale sur l'aide financière aux étudiants, de la Loi sur les prêts
+aux apprentis ou d'une loi provinciale/territoriale analogue. Les paiements
+retenus sont ceux du contribuable ou d'une personne apparentée confirmée.
+Conformément au périmètre prudent fixé pour 5B, les tiers non apparentés et
+les liens non établis sont exclus. Le crédit n'est pas transférable.
+
+Les intérêts admissibles n'ont pas de plafond fixe. Les prêts privés, les prêts
+combinés, renégociés ou reconsolidés avec un autre prêt, les intérêts de jugement,
+les décès et les montants déjà réclamés restent exclus. Les confirmations et
+la source sont obligatoires dès qu'un solde positif est renseigné, même si la
+réclamation choisie vaut zéro. Un profil vide ne nécessite aucune confirmation.
+
+Pour 2025, les cinq années antérieures sont **2020 à 2024**, auxquelles
+s'ajoutent les intérêts payés en 2025. Les reports sont documentés par année et
+affectés de la plus ancienne à la plus récente. Les années 2019 et antérieures,
+les doublons d'années et les montants invalides sont refusés.
+
+`InteretsPretEtudiant2025` conserve les soldes d'ouverture, leur source et le
+montant choisi à réclamer. Le moteur ne choisit pas automatiquement de réclamer
+tous les intérêts. Avec une réclamation nulle, les soldes demeurent intacts,
+même si l'impôt disponible est nul. Les montants non réclamés sont présentés
+par année : le reliquat 2020 expire après 2025; ceux de 2021–2025 restent dans
+leur fenêtre en 2026, sans remise à zéro de leur ancienneté. Les soldes saisis
+ne sont jamais remplacés par les résultats dérivés lors d'une sauvegarde.
+
+Le montant réclamé est distinct du crédit réellement utilisable. Une
+réclamation explicite supérieure au besoin fiscal peut gaspiller des intérêts;
+le formulaire et les rapports le signalent. Les montants ainsi réclamés ne sont
+pas remis automatiquement en report. Aucun calcul optimal, historique ARC
+automatique ou reconstruction de déclarations antérieures n'est proposé.
+
+31900 entre une seule fois dans 33500, puis dans 33800 au taux de 14,5 %.
+La T1 2025 fixe ce taux; la mention générale de 15 % encore présente dans P105
+n'est pas utilisée pour le calcul 2025. Le moteur 5A recalcule 34990, puis
+35000. Aucune déduction supplémentaire de 31900 n'est appliquée au solde
+d'impôt. Les revenus total, net et imposable des deux juridictions restent
+inchangés. 31900 se situe après la ligne 105 de la T1 Québec et ne change donc
+pas cette base utilisée par l'annexe 11 pour la scolarité.
+
+La mesure d'incidence compare le même dossier avec et sans 31900, à autres
+entrées constantes. Elle expose les variations de 33800, 34990, 35000 et 42900,
+ainsi que l'effet fédéral après 40500 et l'abattement. Le crédit dividendes 40425
+reste avant 42900; le crédit étranger 40500 reste après. L'abattement Québec
+est toujours de 16,5 % de 42900. Le crédit Québec ligne 385 et son annexe M
+sont distincts et restent réservés à la priorité 6.
+
+Les calculs utilisent `Decimal` et l'arrondi au cent du moteur (ROUND_HALF_UP).
+Le formulaire défilant permet la saisie des intérêts, des reports 2020–2024,
+du montant réclamé et de la source. Chaque modification révoque toutes les
+confirmations; une validation réussie invalide l'ancienne estimation et le PDF.
+La saisie d'un montant ne vaut jamais reconnaissance automatique d'admissibilité.
+
+La section JSON `interets_pret_etudiant` persiste les données nécessaires au
+recalcul, avec les montants en chaînes décimales. Son absence dans un ancien
+JSON donne un profil vide. Les clés inconnues du profil et des reports, les
+confirmations non booléennes et une divergence avec l'estimation sont refusées.
+Trace, résumé et PDF affichent les années effectivement réclamées, la source,
+les soldes non réclamés et les incidences calculées.
+
+Validation ciblée : **369 passed, 5 warnings**, dont **84 nouveaux tests 5B**.
+Elle couvre également 5A, la scolarité, le stockage, le PDF, l'estimation et
+le correctif 40500/42900. Aucun test existant n'a été assoupli.
