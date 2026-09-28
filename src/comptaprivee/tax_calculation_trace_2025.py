@@ -322,7 +322,7 @@ def construire_trace_calcul_fiscal_2025(
     formule_impot_federal = (
         "Impôt fédéral brut - crédits non remboursables de base"
     )
-    if dons.montant_admissible_federal > Decimal("0"):
+    if dons.montant_admissible_federal > Decimal("0") or dons.reports_federaux.activer:
         formule_impot_federal += " - crédit dons ligne 34900"
     if frais_medicaux.montant_admissible_federal > Decimal("0"):
         formule_impot_federal += (
@@ -948,7 +948,7 @@ def construire_trace_calcul_fiscal_2025(
             ),
         )
 
-    if dons.montant_admissible_federal > Decimal("0"):
+    if dons.montant_admissible_federal > Decimal("0") or dons.reports_federaux.activer:
         lignes = _inserer_ligne_avant(
             lignes,
             "Impôt fédéral de base",
@@ -958,7 +958,7 @@ def construire_trace_calcul_fiscal_2025(
                 "Crédit fédéral pour dons",
                 (
                     "ARC annexe 9 / ligne 34900 — "
-                    + dons.source_federale
+                    + (dons.source_federale or dons.reports_federaux.source)
                     + " — validation comptable"
                 ),
                 (
@@ -1959,6 +1959,25 @@ def construire_trace_calcul_fiscal_2025(
         lignes += (_ligne(len(lignes) + 1, "SCOLARITÉ REÇUE — BLOC 5H", "Scolarité reçue 32400",
             "Certificats des étudiants", "Somme des désignations; une fois dans 33500, puis 33800/34990/35000; aucun report chez le bénéficiaire",
             sum((d.montant_certificat for d in estimation.transferts_scolarite_recus.designations), Decimal("0"))),)
+
+    if estimation.dons_bienfaisance.reports_federaux.activer:
+        p = estimation.dons_bienfaisance.reports_federaux
+        r = estimation.resultat_reports_dons
+        for libelle, montant, formule in (
+            ("Dons disponibles", r.disponible, "Dons courants + reports 2020–2024"),
+            ("Plafond fédéral des dons", r.plafond_75, "Revenu net 23600 × 75 %"),
+            ("Dons réclamés", r.montant_reclame, "Choix confirmé, au plus disponible et plafond; base 34900 et annexe 9 ligne 22"),
+            ("Dons 2020 expirant après 2025", r.expiration_2020, "Solde non utilisé, exclu des reports futurs"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "REPORTS DONS — BLOC 5I", libelle, p.source, formule, montant),)
+        sources = {x.annee: x.source for x in p.reports}
+        sources[2025] = estimation.dons_bienfaisance.source_federale
+        for annee, montant in r.utilisations:
+            lignes += (_ligne(len(lignes) + 1, "REPORTS DONS — BLOC 5I", f"Dons {annee} utilisés", sources[annee],
+                "Antérieurs avant courants; plus anciens d'abord", montant),)
+        for annee, montant in r.reports_futurs:
+            lignes += (_ligne(len(lignes) + 1, "REPORTS DONS — BLOC 5I", f"Dons {annee} reportables", sources[annee],
+                f"Solde non réclamé; dernière année {annee + 5}", montant),)
 
     prochain_ordre = len(lignes) + 1
 

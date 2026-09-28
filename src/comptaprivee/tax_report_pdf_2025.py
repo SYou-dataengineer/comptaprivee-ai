@@ -1,5 +1,7 @@
 """Export PDF local du rapport d'estimation fiscale 2025."""
 
+from .tax_donation_carryforward_2025 import lignes_reports_dons_federaux_2025
+from .tax_donations_2025 import credit_federal_dons_2025
 from pathlib import Path
 from decimal import Decimal
 import re
@@ -1971,6 +1973,10 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
         estimation.federal.credits_federaux_complets
     ))
     lignes.extend(lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite))
+    lignes.extend(lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons))
+    if estimation.dons_bienfaisance.reports_federaux.activer:
+        credit_dons = credit_federal_dons_2025(estimation.dons_bienfaisance, estimation.revenu.revenu_imposable_federal)
+        lignes.append(f"Crédit fédéral pour dons — ligne 34900 : {credit_dons:.2f} $")
     lignes.extend(lignes_transferts_scolarite_recus_2025(estimation.transferts_scolarite_recus))
     lignes.extend(lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs))
     lignes.extend(lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical))

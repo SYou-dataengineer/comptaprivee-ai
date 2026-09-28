@@ -9,6 +9,8 @@ d'estimation soumise à validation comptable.
 """
 
 from .tax_tuition_received_2025 import TransfertsScolariteRecus2025, valider_transferts_scolarite_recus_2025, montant_ligne_32400_2025, lignes_transferts_scolarite_recus_2025
+from .tax_donation_carryforward_2025 import ResultatReportsDonsFederaux2025, calculer_reports_dons_federaux_2025, lignes_reports_dons_federaux_2025
+from .tax_donations_2025 import montant_dons_federaux_reclames_2025
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
@@ -335,6 +337,7 @@ class EstimationFiscale2025:
     resultat_interets_pret_etudiant: ResultatInteretsPretEtudiant2025 = ResultatInteretsPretEtudiant2025()
     resultat_supplement_medical: ResultatSupplementMedical2025 = ResultatSupplementMedical2025()
     resultat_reports_scolarite: ResultatReportsScolariteFederaux2025 = ResultatReportsScolariteFederaux2025()
+    resultat_reports_dons: ResultatReportsDonsFederaux2025 = ResultatReportsDonsFederaux2025()
     transferts_scolarite_recus: TransfertsScolariteRecus2025 = TransfertsScolariteRecus2025()
 
 
@@ -887,6 +890,8 @@ def calculer_estimation_fiscale_2025(
         if dons_bienfaisance is not None
         else DonsBienfaisance2025()
     )
+    reports_dons = calculer_reports_dons_federaux_2025(dons_effectifs.reports_federaux,
+        dons_2025=dons_effectifs.montant_admissible_federal, revenu_net=revenu.revenu_net_federal)
     valider_plafond_dons_monetaire_federal_2025(dons_effectifs, revenu.revenu_net_federal)
 
     frais_medicaux_effectifs = (
@@ -1333,7 +1338,7 @@ def calculer_estimation_fiscale_2025(
             ("33200", montant_frais_medicaux_federal_apres_seuil_2025(
                 frais_medicaux_effectifs, revenu.revenu_net_federal)),
         ),
-        calculer_annexe9_ligne22_2025(dons_effectifs.montant_admissible_federal),
+        calculer_annexe9_ligne22_2025(montant_dons_federaux_reclames_2025(dons_effectifs)),
         credit_federal_dons_2025(dons_effectifs, revenu.revenu_imposable_federal),
     )
     federal = finaliser_credits_federaux_2025(federal, credits_complets)
@@ -1448,6 +1453,7 @@ def calculer_estimation_fiscale_2025(
         dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
     )
     return EstimationFiscale2025(
+        resultat_reports_dons=reports_dons,
         resultat_reports_scolarite=reports_scolarite,
         transferts_scolarite_recus=scolarite_recue,
         allocation_travailleurs=act, resultat_allocation_travailleurs=resultat_act,
@@ -1616,6 +1622,7 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_pension_alimentaire_payee_2025(
             estimation.pension_alimentaire_payee
         ),
+        *lignes_reports_dons_federaux_2025(estimation.dons_bienfaisance.reports_federaux, estimation.resultat_reports_dons),
         *lignes_reports_scolarite_federaux_2025(estimation.frais_scolarite.reports_federaux, estimation.resultat_reports_scolarite),
         *lignes_transferts_scolarite_recus_2025(estimation.transferts_scolarite_recus),
         *lignes_allocation_travailleurs_2025(estimation.allocation_travailleurs, estimation.resultat_allocation_travailleurs),
@@ -1683,7 +1690,8 @@ def formater_estimation_fiscale_2025(
                 f"{estimation.dons_bienfaisance.source_quebec}",
             ]
             if (
-                estimation.dons_bienfaisance.montant_admissible_federal
+                estimation.dons_bienfaisance.reports_federaux.activer
+                or estimation.dons_bienfaisance.montant_admissible_federal
                 > Decimal("0")
                 or estimation.dons_bienfaisance.montant_admissible_quebec
                 > Decimal("0")

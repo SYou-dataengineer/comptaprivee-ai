@@ -1,3 +1,4 @@
+from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, valider_reports_dons_federaux_2025
 from dataclasses import dataclass
 from decimal import Decimal
 from .tax_rules_2025 import arrondir_cent
@@ -25,6 +26,7 @@ class DonsBienfaisance2025:
     aucun_report_anterieur: bool = False
     inclut_dons_jan_fev_2025: bool = False
     dons_jan_fev_deja_reclames_2024: bool = False
+    reports_federaux: ReportsDonsFederaux2025 = ReportsDonsFederaux2025()
 
 
 def aucun_don_bienfaisance_2025():
@@ -36,7 +38,7 @@ def valider_plafond_dons_monetaire_federal_2025(dons, revenu_net_federal):
     valider_dons_bienfaisance_2025(dons)
     net = montant_decimal_2025(revenu_net_federal, "Revenu net fédéral 23600")
     plafond = arrondir_cent(net * Decimal("0.75"))
-    if dons.montant_admissible_federal > plafond:
+    if montant_dons_federaux_reclames_2025(dons) > plafond:
         raise ValueError(
             "Les dons monétaires fédéraux réclamés dépassent 75 % du revenu net 23600. "
             "L'excédent nécessite un report, hors du profil actuel."
@@ -44,6 +46,7 @@ def valider_plafond_dons_monetaire_federal_2025(dons, revenu_net_federal):
 
 
 def valider_dons_bienfaisance_2025(dons):
+    valider_reports_dons_federaux_2025(dons.reports_federaux)
     fed = dons.montant_admissible_federal
     qc = dons.montant_admissible_quebec
     for nom, montant in (("Don fédéral", fed), ("Don Québec", qc)):
@@ -53,6 +56,12 @@ def valider_dons_bienfaisance_2025(dons):
         raise ValueError("Le montant admissible fédéral des dons ne peut pas être négatif.")
     if qc < ZERO:
         raise ValueError("Le montant admissible Québec des dons ne peut pas être négatif.")
+    if dons.reports_federaux.activer:
+        if dons.reports_federaux.reports and dons.aucun_report_anterieur:
+            raise ValueError("Confirmation contradictoire : reports présents et aucun report.")
+        disponible = fed + sum((r.montant for r in dons.reports_federaux.reports), ZERO)
+        if dons.reports_federaux.montant_reclame > disponible:
+            raise ValueError("Réclamation supérieure aux dons disponibles.")
     if fed == ZERO and qc == ZERO:
         return dons
     if not dons.valide_par_comptable:
@@ -61,7 +70,7 @@ def valider_dons_bienfaisance_2025(dons):
         raise ValueError("Le statut de donataire reconnu doit être confirmé.")
     if not dons.dons_monetaires_2025_uniquement:
         raise ValueError("Cette version accepte uniquement les dons monétaires faits en 2025.")
-    if not dons.aucun_report_anterieur:
+    if not dons.aucun_report_anterieur and not dons.reports_federaux.activer:
         raise ValueError("Cette version n'accepte pas encore les dons reportés d'une année antérieure.")
     if dons.inclut_dons_jan_fev_2025 and dons.dons_jan_fev_deja_reclames_2024:
         raise ValueError("Un don de janvier ou février 2025 déjà demandé en 2024 ne peut pas être demandé de nouveau.")
@@ -72,6 +81,11 @@ def valider_dons_bienfaisance_2025(dons):
     return dons
 
 
+def montant_dons_federaux_reclames_2025(dons):
+    valider_dons_bienfaisance_2025(dons)
+    return dons.reports_federaux.montant_reclame if dons.reports_federaux.activer else dons.montant_admissible_federal
+
+
 def credit_federal_dons_2025(dons, revenu_imposable_federal):
     valider_dons_bienfaisance_2025(dons)
     if not isinstance(revenu_imposable_federal, Decimal) or not revenu_imposable_federal.is_finite():
@@ -80,7 +94,7 @@ def credit_federal_dons_2025(dons, revenu_imposable_federal):
         raise ValueError("Le revenu imposable fédéral ne peut pas être négatif.")
     if revenu_imposable_federal > SEUIL_FEDERAL_TAUX_SUPERIEUR_2025:
         raise ValueError("Le taux fédéral de 33 % est hors profil dans cette version.")
-    montant = dons.montant_admissible_federal
+    montant = montant_dons_federaux_reclames_2025(dons)
     premiers = min(montant, DEUX_CENTS)
     excedent = max(montant - DEUX_CENTS, ZERO)
     return arrondir_cent(

@@ -2423,3 +2423,51 @@ Une exécution sandbox avait échoué à préparer `tmp_path` (accès refusé);
 la relance hors sandbox utilise les mêmes tests, sans contournement métier.
 
 Suite complète du correctif : **4047 passed, 8 warnings** (`--capture=sys`).
+
+
+### Bloc 5I livré — reports fédéraux de dons monétaires et choix de réclamation
+
+Sources 2025 : [ARC, montant des dons à réclamer et reports](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-34900-donations-gifts/how-much-claim.html)
+et [annexe 9, lignes 6–10 et 20–23](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-s9/5000-s9-25e.pdf).
+Les dons monétaires ordinaires inutilisés des cinq années précédentes sont
+admissibles au report : banques 2020–2024 pour une réclamation en 2025.
+Les dons antérieurs doivent être utilisés avant ceux de 2025. Le logiciel
+les répartit des plus anciens aux plus récents afin de limiter l'expiration;
+cet ordre entre années antérieures est un choix logiciel documenté.
+
+Le contribuable choisit le montant de dons à réclamer, y compris zéro ou une
+partie seulement. Ce choix n'est pas un crédit calculé. Le moteur refuse un
+choix dépassant les dons disponibles ou 75 % du revenu net 23600 après
+les déductions. Les dons 2025 bruts restent conservés même s'ils dépassent ce
+plafond. Chaque année est ventilée entre utilisation et solde; le reliquat
+2020 expire après 2025 et n'entre pas dans les reports futurs. Les autres
+reliquats conservent leur année d'origine et leur dernière année de réclamation.
+Aucune optimisation automatique du choix ou de l'impôt restant n'est annoncée.
+
+Le profil `dons_bienfaisance.reports_federaux` s'active explicitement.
+Source par année, reçus, montants non déjà réclamés, choix et validation
+comptable sont obligatoires. Le garde-fou janvier/février 2025 déjà réclamé
+en 2024 reste actif. Aucun décès, don en nature, écologique/culturel,
+régime américain, abri fiscal ou report Québec dans 5I. Les taux supérieurs
+33 % fédéral et 25,75 % Québec restent des limites logicielles à lever dans
+leurs blocs respectifs; elles ne constituent pas une interdiction fiscale.
+Sans activation, le comportement antérieur reste inchangé.
+
+34900 et la part des premiers 200 $ de l'annexe 9 ligne 22 utilisent uniquement
+les dons choisis pour la réclamation. 34990 puis 35000 sont recalculés, sans
+double crédit. Les revenus et le crédit Québec ne sont pas modifiés par les
+reports fédéraux. Les dossiers avec seulement des dons antérieurs sont admis.
+
+JSON : entrées et confirmations seulement, montants décimaux sérialisés en
+chaînes; ancien JSON sans profil = profil vide. Clés, types, années en double,
+montants non finis et précision invalides sont refusés. Résultats reconstruits,
+divergence entre profil explicite et estimation refusée. GUI : choix et cinq
+soldes annuels avec sources dans les ajustements fiscaux; changement des dons
+courants ou des reports = révocation des confirmations. Trace/PDF détaillent
+plafond, choix, utilisation par année, reports futurs, expiration et 34900.
+
+Validation ciblée : **249 passed, 5 warnings**, incluant ancien JSON, report
+seul, REER réduisant le plafond, 34990, janvier/février, GUI, stockage, trace,
+PDF et formulaire CELIAPP partagé. Aucun test existant modifié.
+
+Suite complète 5I : **4128 passed, 8 warnings** (`--capture=sys`).

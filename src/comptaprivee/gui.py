@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
+from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, CONFIRMATIONS_REPORTS_DONS
 from .tax_tuition_received_2025 import (
     TransfertsScolariteRecus2025, DesignationScolariteRecue2025,
     valider_transferts_scolarite_recus_2025, RELATIONS_SCOLARITE_RECUE, CONFIRMATIONS_SCOLARITE_RECUE,
@@ -11654,7 +11655,7 @@ class ApplicationComptaPrivee(tk.Tk):
 
             ttk.Label(
                 cadre,
-                text="Montant admissible fédéral — ligne 34900 :",
+                text="Dons fédéraux admissibles faits en 2025 (avant choix de réclamation) :",
             ).grid(row=18, column=0, sticky="w", pady=5)
             ttk.Entry(
                 cadre,
@@ -11796,9 +11797,9 @@ class ApplicationComptaPrivee(tk.Tk):
             ttk.Label(
                 cadre,
                 text=(
-                    "⚠ Profil actuel : dons monétaires 2025 seulement, "
-                    "sans report antérieur ni règles spéciales. "
-                    "Les cas hors profil sont refusés."
+                    "Dons monétaires ordinaires. Activer 5I ci-dessous pour choisir la "
+                    "réclamation et calculer les reports fédéraux. Reports Québec et "
+                    "régimes spéciaux hors de ce formulaire."
                 ),
                 foreground="#92400e",
                 wraplength=790,
@@ -11986,6 +11987,45 @@ class ApplicationComptaPrivee(tk.Tk):
                 sticky="w", pady=(6, 12),
             )
 
+            reports_dons = dons_bienfaisance_courants.reports_federaux
+            reports_activer = tk.BooleanVar(value=reports_dons.activer)
+            reports_choix = tk.StringVar(value=str(reports_dons.montant_reclame))
+            reports_source = tk.StringVar(value=reports_dons.source)
+            reports_montants, reports_sources, reports_confirmations = {}, {}, {}
+            ttk.Label(cadre, text="Reports de dons fédéraux — 5I", font=("Segoe UI", 12, "bold")).grid(
+                row=39, column=0, columnspan=2, sticky="w", pady=8)
+            ttk.Checkbutton(cadre, name="activer_5i", text="Activer le choix de réclamation et les reports fédéraux",
+                variable=reports_activer).grid(row=40, column=0, columnspan=2, sticky="w")
+            ttk.Label(cadre, text="Choix de dons à réclamer en 2025 (0 autorisé; ce n'est pas le crédit)").grid(row=41, column=0, sticky="w")
+            ttk.Entry(cadre, name="montant_reclame_5i", textvariable=reports_choix).grid(row=41, column=1, sticky="ew")
+            ttk.Label(cadre, text="Source / validation du choix").grid(row=42, column=0, sticky="w")
+            ttk.Entry(cadre, name="source_5i", textvariable=reports_source).grid(row=42, column=1, sticky="ew")
+            par_annee = {r.annee: r for r in reports_dons.reports}
+            for i, annee in enumerate(range(2020, 2025)):
+                r = par_annee.get(annee)
+                montant = tk.StringVar(value=str(r.montant) if r else "")
+                source = tk.StringVar(value=r.source if r else "")
+                reports_montants[annee], reports_sources[annee] = montant, source
+                ttk.Label(cadre, text=f"Solde fédéral non réclamé de {annee}").grid(row=43+i*2, column=0, sticky="w")
+                ttk.Entry(cadre, name=f"solde_{annee}_5i", textvariable=montant).grid(row=43+i*2, column=1, sticky="ew")
+                ttk.Label(cadre, text=f"Source des dons {annee}").grid(row=44+i*2, column=0, sticky="w")
+                ttk.Entry(cadre, name=f"source_{annee}_5i", textvariable=source).grid(row=44+i*2, column=1, sticky="ew")
+            for row, (nom, libelle) in enumerate(CONFIRMATIONS_REPORTS_DONS.items(), 53):
+                v = tk.BooleanVar(value=getattr(reports_dons, nom))
+                reports_confirmations[nom] = v
+                ttk.Checkbutton(cadre, name=nom + "_5i", text=libelle, variable=v).grid(row=row, column=0, columnspan=2, sticky="w")
+            ttk.Label(cadre, text="Les soldes antérieurs restent séparés des dons courants. "
+                "Si un report est saisi, décocher la confirmation d'absence de report. "
+                "Le solde 2020 inutilisé expire après 2025; les autres soldes restent identifiés par année.",
+                wraplength=790).grid(row=60, column=0, columnspan=2, sticky="w", pady=6)
+            def revoquer_dons(*_):
+                for v in (don_validation_var, donataire_var, monetaire_2025_var, aucun_report_var, *reports_confirmations.values()):
+                    v.set(False)
+            for v in (don_fed_var, don_qc_var, don_source_fed_var, don_source_qc_var, jan_fev_var,
+                      jan_fev_reclame_2024_var, reports_activer, reports_choix, reports_source,
+                      *reports_montants.values(), *reports_sources.values()):
+                v.trace_add("write", revoquer_dons)
+
             def revoquer_confirmation_celiapp(*_args) -> None:
                 celiapp_validation_var.set(False)
                 celiapp_titulaire_var.set(False)
@@ -12028,6 +12068,11 @@ class ApplicationComptaPrivee(tk.Tk):
                 return valeur
 
             def effacer() -> None:
+                reports_activer.set(False)
+                reports_choix.set("")
+                reports_source.set("")
+                for v in (*reports_montants.values(), *reports_sources.values()):
+                    v.set("")
                 deduction_var.set("")
                 plafond_var.set("")
                 source_var.set("")
@@ -12130,6 +12175,14 @@ class ApplicationComptaPrivee(tk.Tk):
                     )
 
                     nouveaux_dons = DonsBienfaisance2025(
+                        reports_federaux=ReportsDonsFederaux2025(
+                            activer=reports_activer.get(),
+                            montant_reclame=decimal_depuis_champ(reports_choix.get(), "Dons choisis"),
+                            source=reports_source.get().strip(),
+                            reports=tuple(ReportDonFederal2025(a, decimal_depuis_champ(v.get(), f"Solde {a}"), reports_sources[a].get().strip())
+                                for a, v in reports_montants.items() if v.get().strip()),
+                            **{nom: v.get() for nom, v in reports_confirmations.items()},
+                        ),
                         montant_admissible_federal=decimal_depuis_champ(
                             don_fed_var.get(),
                             "Montant fédéral dons",

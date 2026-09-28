@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .tax_tuition_received_2025 import TransfertsScolariteRecus2025, valider_transferts_scolarite_recus_2025
 from .tax_tuition_received_2025 import DesignationScolariteRecue2025
+from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, valider_reports_dons_federaux_2025
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -1063,6 +1064,33 @@ def _cotisations_syndicales_depuis_dict(
 
 
 
+def _reports_dons_vers_dict(p):
+    valider_reports_dons_federaux_2025(p)
+    v = asdict(p)
+    v["montant_reclame"] = format(p.montant_reclame, ".2f")
+    v["reports"] = [dict(annee=r.annee, montant=format(r.montant, ".2f"), source=r.source) for r in p.reports]
+    return v
+
+
+def _reports_dons_depuis_dict(valeur):
+    if valeur is None:
+        return ReportsDonsFederaux2025()
+    if not isinstance(valeur, dict) or set(valeur) - set(ReportsDonsFederaux2025.__dataclass_fields__):
+        raise ValueError("Profil reports dons ou clés inconnues invalides.")
+    v = dict(valeur)
+    v["montant_reclame"] = _decimal_depuis_json(v.get("montant_reclame", "0"), "Dons réclamés")
+    reports = v.get("reports", [])
+    if not isinstance(reports, list):
+        raise ValueError("Liste reports dons invalide.")
+    resultat = []
+    for r in reports:
+        if not isinstance(r, dict) or set(r) != {"annee", "montant", "source"}:
+            raise ValueError("Report dons ou clés invalides.")
+        resultat.append(ReportDonFederal2025(r["annee"], _decimal_depuis_json(r["montant"], "Solde dons"), r["source"]))
+    v["reports"] = tuple(resultat)
+    return valider_reports_dons_federaux_2025(ReportsDonsFederaux2025(**v))
+
+
 def _dons_bienfaisance_vers_dict(
     dons: DonsBienfaisance2025 | None,
 ):
@@ -1072,6 +1100,7 @@ def _dons_bienfaisance_vers_dict(
     valider_dons_bienfaisance_2025(dons)
 
     return {
+        "reports_federaux": _reports_dons_vers_dict(dons.reports_federaux),
         "montant_admissible_federal": _decimal_texte(
             dons.montant_admissible_federal
         ),
@@ -1111,6 +1140,7 @@ def _dons_bienfaisance_depuis_dict(
         )
 
     dons = DonsBienfaisance2025(
+        reports_federaux=_reports_dons_depuis_dict(valeur.get("reports_federaux")),
         montant_admissible_federal=_decimal_depuis_json(
             valeur.get("montant_admissible_federal", "0"),
             "dons_bienfaisance.montant_admissible_federal",
@@ -3449,6 +3479,12 @@ def sauvegarder_dossier_fiscal(
               or estimation.frais_scolarite.reports_federaux != ReportsScolariteFederaux2025()):
             if frais_scolarite != estimation.frais_scolarite:
                 raise ValueError("Le profil scolarité/formation diffère de l'estimation.")
+
+    if estimation is not None:
+        if dons_bienfaisance is None:
+            dons_bienfaisance = estimation.dons_bienfaisance
+        elif (dons_bienfaisance.reports_federaux.activer or estimation.dons_bienfaisance.reports_federaux.activer) and dons_bienfaisance != estimation.dons_bienfaisance:
+            raise ValueError("Le profil dons/reports diffère de l'estimation.")
 
     scolarite_recue = valider_transferts_scolarite_recus_2025(
         transferts_scolarite_recus if transferts_scolarite_recus is not None
