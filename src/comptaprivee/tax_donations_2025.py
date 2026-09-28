@@ -46,6 +46,9 @@ def valider_plafond_dons_monetaire_federal_2025(dons, revenu_net_federal):
 def valider_dons_bienfaisance_2025(dons):
     fed = dons.montant_admissible_federal
     qc = dons.montant_admissible_quebec
+    for nom, montant in (("Don fédéral", fed), ("Don Québec", qc)):
+        if not isinstance(montant, Decimal) or not montant.is_finite():
+            raise ValueError(f"{nom} doit être un Decimal fini.")
     if fed < ZERO:
         raise ValueError("Le montant admissible fédéral des dons ne peut pas être négatif.")
     if qc < ZERO:
@@ -71,6 +74,8 @@ def valider_dons_bienfaisance_2025(dons):
 
 def credit_federal_dons_2025(dons, revenu_imposable_federal):
     valider_dons_bienfaisance_2025(dons)
+    if not isinstance(revenu_imposable_federal, Decimal) or not revenu_imposable_federal.is_finite():
+        raise ValueError("Le revenu imposable fédéral doit être un Decimal fini.")
     if revenu_imposable_federal < ZERO:
         raise ValueError("Le revenu imposable fédéral ne peut pas être négatif.")
     if revenu_imposable_federal > SEUIL_FEDERAL_TAUX_SUPERIEUR_2025:
@@ -86,6 +91,8 @@ def credit_federal_dons_2025(dons, revenu_imposable_federal):
 
 def credit_quebec_dons_2025(dons, revenu_imposable_quebec):
     valider_dons_bienfaisance_2025(dons)
+    if not isinstance(revenu_imposable_quebec, Decimal) or not revenu_imposable_quebec.is_finite():
+        raise ValueError("Le revenu imposable Québec doit être un Decimal fini.")
     if revenu_imposable_quebec < ZERO:
         raise ValueError("Le revenu imposable Québec ne peut pas être négatif.")
     if revenu_imposable_quebec > SEUIL_QUEBEC_TAUX_SUPERIEUR_2025:

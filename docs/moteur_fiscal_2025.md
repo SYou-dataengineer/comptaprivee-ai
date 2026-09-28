@@ -2402,3 +2402,24 @@ stockage, GUI, trace, PDF, compensation 34990 et combinaison 5F/5G.
 Aucun test existant modifié.
 
 Suite complète 5H : **4014 passed, 8 warnings** (`--capture=sys`).
+
+
+### Correctif — valeurs non finies dans les dons et leurs revenus de calcul
+
+Le validateur de dons acceptait `Infinity`, des flottants et des booléens;
+`NaN` et certains types déclenchaient des exceptions techniques avant le
+message de validation. Les fonctions de crédit acceptaient aussi des types
+incorrects pour le revenu imposable.
+
+Les deux montants de dons et les deux revenus de calcul doivent maintenant
+être des `Decimal` finis avant toute comparaison. Les taux, plafonds,
+confirmations et arrondis existants ne changent pas. Les fractions de cent
+finies déjà acceptées restent arrondies au calcul du crédit. Il s'agit d'un
+contrôle de données, sans nouvelle règle d'admissibilité fiscale.
+
+Régression avant correctif : **32 failed, 1 passed**. Après correctif et
+non-régression ciblée : **200 passed, 5 warnings**. Aucun test existant modifié.
+Une exécution sandbox avait échoué à préparer `tmp_path` (accès refusé);
+la relance hors sandbox utilise les mêmes tests, sans contournement métier.
+
+Suite complète du correctif : **4047 passed, 8 warnings** (`--capture=sys`).
