@@ -243,8 +243,14 @@ def test_limites_existantes_credits_et_hauts_revenus_preservees():
     assert e.revenu.revenu_imposable_federal > Decimal("57375")
     assert e.federal.top_up_credit == 0
     assert e.federal.credits_federaux_complets.total_credits_ligne_35000 == e.federal.credits_federaux_complets.credit_ligne_33800
-    with pytest.raises(ValueError,match='hors profil'):
-        calcul(dossier_rrq_rpc(brut='148060',emploi=False))
+    # 5J lève le refus lié au seuil des dons, même en l'absence de dons.
+    haut = calcul(dossier_rrq_rpc(brut='148060',emploi=False))
+    assert haut.prestations_rrq_rpc.prestations == Decimal('148060')
+    assert haut.revenu.revenu_imposable_federal == Decimal('148060')
+    assert haut.revenu.revenu_imposable_quebec == Decimal('148060')
+    assert haut.federal.credits_federaux_complets.credit_dons_ligne_34900 == 0
+    from tests.test_tax_federal_top_up_integration_2025 import verifier_t1
+    verifier_t1(haut)
 
 
 @pytest.mark.parametrize('autre',['ae_confirme','rqap_confirme'])

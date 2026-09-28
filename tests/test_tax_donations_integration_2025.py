@@ -136,8 +136,16 @@ def test_resume_et_trace_affichent_dons_et_resultat_combine():
     assert "Crédit Québec — ligne 395 : 232,00 $" in resume
     assert "7\u00a0499,01 $" in resume
 
-    assert len(trace.lignes) == 27
-    assert [x.ordre for x in trace.lignes] == list(range(1, 28))
+    assert len(trace.lignes) == 33
+    assert [x.ordre for x in trace.lignes] == list(range(1, 34))
+    assert {x.libelle: x.montant for x in trace.lignes if x.section == "TAUX DES DONS — BLOC 5J"} == {
+        "Dons fédéraux — base à 14,5 %": Decimal('200'),
+        "Dons fédéraux — base à 29 %": Decimal('800'),
+        "Dons fédéraux — base à 33 %": Decimal('0'),
+        "Dons Québec — base à 20 %": Decimal('200'),
+        "Dons Québec — base à 24 %": Decimal('800'),
+        "Dons Québec — base à 25,75 %": Decimal('0'),
+    }
     assert "Crédit fédéral pour dons" in texte_trace
     assert "Crédit Québec pour dons" in texte_trace
     assert "7\u00a0499,01 $" in texte_trace

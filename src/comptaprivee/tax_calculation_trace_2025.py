@@ -69,6 +69,7 @@ from .tax_federal_age_pension_2025 import (
 )
 from .tax_donations_2025 import (
     credit_federal_dons_2025,
+    ventiler_credit_federal_dons_2025, ventiler_credit_quebec_dons_2025,
     credit_quebec_dons_2025,
 )
 from .tax_disability_2025 import (
@@ -962,8 +963,8 @@ def construire_trace_calcul_fiscal_2025(
                     + " — validation comptable"
                 ),
                 (
-                    "14,5 % des premiers 200 $ + 29 % de "
-                    "l'excédent — profil simple 2025"
+                    "14,5 % des premiers 200 $; 33 % de min(excédent dons, max(26000 - 253414, 0)); "
+                    "29 % du reste; arrondi de chaque composante"
                 ),
                 credit_federal_dons_2025(
                     dons,
@@ -986,8 +987,8 @@ def construire_trace_calcul_fiscal_2025(
                     + " — validation comptable"
                 ),
                 (
-                    "20 % des premiers 200 $ + 24 % de "
-                    "l'excédent — profil simple 2025"
+                    "20 % des premiers 200 $; 25,75 % de min(excédent dons, max(299 - 129590, 0)); "
+                    "24 % du reste; arrondi de chaque composante"
                 ),
                 credit_quebec_dons_2025(
                     dons,
@@ -1978,6 +1979,18 @@ def construire_trace_calcul_fiscal_2025(
         for annee, montant in r.reports_futurs:
             lignes += (_ligne(len(lignes) + 1, "REPORTS DONS — BLOC 5I", f"Dons {annee} reportables", sources[annee],
                 f"Solde non réclamé; dernière année {annee + 5}", montant),)
+
+    ventilations_dons = []
+    if dons.montant_admissible_federal or dons.reports_federaux.activer:
+        ventilations_dons.append(("fédéraux", ventiler_credit_federal_dons_2025(dons, revenu.revenu_imposable_federal),
+            dons.source_federale or dons.reports_federaux.source, ("14,5 %", "29 %", "33 %")))
+    if dons.montant_admissible_quebec:
+        ventilations_dons.append(("Québec", ventiler_credit_quebec_dons_2025(dons, revenu.revenu_imposable_quebec),
+            dons.source_quebec, ("20 %", "24 %", "25,75 %")))
+    for juridiction, ventilation, source, taux in ventilations_dons:
+        for base_dons, pourcentage in zip((ventilation.base_premiers_200, ventilation.base_taux_intermediaire, ventilation.base_taux_superieur), taux):
+            lignes += (_ligne(len(lignes) + 1, "TAUX DES DONS — BLOC 5J", f"Dons {juridiction} — base à {pourcentage}",
+                source, "Répartition selon revenu imposable; composante du crédit pour dons", base_dons),)
 
     prochain_ordre = len(lignes) + 1
 

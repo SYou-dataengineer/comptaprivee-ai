@@ -868,9 +868,9 @@ en page bancaire ni des codes textuels. Aucune somme de plusieurs paires.
 Le FSS utilise les intérêts bruts admissibles : seuil 18 130 $, premier
 plafond 150 $, reprise au-delà de 63 060 $, plafond final 1 000 $.
 Le salaire et la déduction REER ordinaire ne changent pas cette assiette.
-Les garde-fous historiques demeurent, notamment le refus du calcul global
-au-delà de 129 590 $ de revenu imposable Québec dans le parcours actuel
-des crédits. Le barème FSS est testé séparément jusqu'à son plafond.
+Le refus historique au-delà de 129 590 $ lié aux crédits pour dons a été
+levé par 5J. Le calcul intégré des intérêts et du FSS est maintenant testé
+à haut revenu; les autres exclusions du profil restent distinctes.
 
 Exemples synthétiques vérifiés : 20 000 $ d'intérêts sans emploi donnent
 561,29 $ d'impôt fédéral de base, 468,68 $ après abattement Québec,
@@ -950,8 +950,8 @@ huit pages des quatre PDF synthétiques corrigés; boutons vérifiés aussi
 Limites maintenues : une seule source, aucun cumul 3A+3B, aucun calcul
 automatique d'un rendement CPG, aucun report d'intérêts déjà déclarés,
 aucune ventilation d'une fiducie mixte, aucune devise ni attribution.
-Les garde-fous du moteur global sur crédits, RAMQ et revenus élevés
-(notamment 129 590 $ de revenu imposable Québec) restent en vigueur.
+Les garde-fous spécialisés du moteur global et de la RAMQ restent distincts.
+Le refus historique des dons au-delà de 129 590 $ a été levé par 5J.
 Les dividendes et tous les blocs 3C à 3H restent à construire.
 
 Suite complète finale `python -m pytest -q` : **2 560 tests réussis**,
@@ -1020,8 +1020,8 @@ Tous les artefacts sont synthétiques, locaux et exclus de Git dans `tmp/`.
 Limites restantes : T5/RL-3 seulement; pas de T3/RL-16 ni cumul avec
 intérêts ou autres prestations; dix cases explicites exigées, aucun écart
 d'arrondi accepté automatiquement. Vérification humaine de l'identité,
-des codes et des exclusions. Les limites générales du moteur, dont le
-revenu imposable Québec de 129 590 $, restent inchangées. 3D non commencé.
+des codes et des exclusions. Le refus historique des dons au-delà de
+129 590 $ a depuis été levé par 5J. Les sections suivantes documentent 3D.
 
 ### Bloc 3D — audit préalable, dispositions en capital 2025
 
@@ -2449,8 +2449,7 @@ Source par année, reçus, montants non déjà réclamés, choix et validation
 comptable sont obligatoires. Le garde-fou janvier/février 2025 déjà réclamé
 en 2024 reste actif. Aucun décès, don en nature, écologique/culturel,
 régime américain, abri fiscal ou report Québec dans 5I. Les taux supérieurs
-33 % fédéral et 25,75 % Québec restent des limites logicielles à lever dans
-leurs blocs respectifs; elles ne constituent pas une interdiction fiscale.
+33 % fédéral et 25,75 % Québec sont désormais calculés par 5J.
 Sans activation, le comportement antérieur reste inchangé.
 
 34900 et la part des premiers 200 $ de l'annexe 9 ligne 22 utilisent uniquement
@@ -2471,3 +2470,45 @@ seul, REER réduisant le plafond, 34990, janvier/février, GUI, stockage, trace,
 PDF et formulaire CELIAPP partagé. Aucun test existant modifié.
 
 Suite complète 5I : **4128 passed, 8 warnings** (`--capture=sys`).
+
+
+### Bloc 5J livré — taux supérieurs des crédits pour dons et hauts revenus
+
+Sources 2025 : [annexe 9 fédérale, lignes 13–23](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5000-s9/5000-s9-25e.pdf)
+et [grille Québec 395, page 2, lignes 1–12](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.GR%282025-12%29.pdf).
+Au fédéral : 14,5 % sur les premiers 200 $; 33 % sur le minimum entre
+l'excédent des dons réclamés sur 200 $ et l'excédent du revenu imposable 26000
+sur 253 414 $; 29 % sur le reste. Au Québec : 20 % sur les premiers 200 $;
+25,75 % sur le minimum entre l'excédent des dons sur 200 $ et l'excédent du
+revenu imposable 299 sur 129 590 $; 24 % sur le reste. Les excédents de revenu
+ont un plancher zéro. Chaque composante monétaire est arrondie au cent avant
+addition, selon les lignes des formulaires.
+
+Les anciens refus fondés uniquement sur ces seuils de revenu sont supprimés,
+y compris lorsque les dons sont nuls. Les mentions historiques de ces refus
+dans les anciens blocs sont supersédées par 5J. Les autres validations,
+le plafond fédéral de 75 %, les reports 5I et les exclusions de dons
+spécialisés restent applicables. Les reports Québec restent à livrer en
+priorité 6; aucune règle fédérale n'est transposée au Québec.
+
+La base fédérale provient de la réclamation choisie en 5I lorsque ce profil
+est actif. La part de l'annexe 9 ligne 22 demeure limitée aux premiers 200 $,
+sans inclure les crédits à 29 % ou 33 % dans la compensation 34990.
+Les estimations recalculent 34900, 35000 et l'abattement normalement.
+Les ventilations sont immuables et dérivées; aucun nouveau champ JSON ou
+montant à saisir dans la GUI. Trace et PDF exposent les bases par taux,
+les revenus/seuils utilisés et les crédits 34900/395. Le PDF détaille aussi
+les dons ordinaires sans report, auparavant absents de sa section dédiée.
+
+Validation ciblée : **430 passed, 5 warnings**. Les anciens tests exigeant
+le refus des hauts revenus sont remplacés par des résultats fiscaux précis.
+Les tests FSS/intérêts, RRQ/RPC et PSV vérifient désormais l'estimation complète
+au-delà de 129 590 $, y compris la récupération PSV, au lieu du refus antérieur.
+La trace vérifie les six nouvelles bases par taux et leurs montants exacts.
+Ces changements correspondent à la
+nouvelle fonctionnalité; aucun test n'est supprimé, ignoré ou affaibli pour
+masquer une régression. Les nouveaux tests couvrent les seuils au cent près,
+les trois composantes, les arrondis, l'absence de dons, les reports, la trace
+et les limites de page PDF.
+
+Suite complète 5J : **4148 passed, 8 warnings** (`--capture=sys`).

@@ -52,13 +52,14 @@ def test_revenus_retenues_fss_et_impot(emploi):
 def test_frontieres_fss(montant,fss):
     dossier=dossier_interets(montant)
     assert consolider_interets_2025(dossier,profil_interets()).cotisation_fss==D(fss)
+    # 5J : le plafond logiciel des dons ne bloque plus les hauts revenus.
+    e=calcul(dossier)
+    assert e.interets.cotisation_fss==D(fss)
+    assert e.revenu.revenu_net_federal==D(montant)
+    assert e.federal.credits_federaux_complets.credit_dons_ligne_34900 == 0
     if D(montant)>129590:
-        # Le garde-fou historique des crédits à haut revenu est conservé.
-        with pytest.raises(ValueError,match='hors profil'):calcul(dossier)
-    else:
-        e=calcul(dossier)
-        assert e.interets.cotisation_fss==D(fss)
-        assert e.revenu.revenu_net_federal==D(montant)
+        assert e.federal.impot_federal_de_base > 0
+        assert e.quebec.impot_quebec_preliminaire > 0
 
 
 @pytest.mark.parametrize('ty,c',[('T5','13'),('T5','23')]+[('RL-3',c) for c in ('A1','A2','B','C','D','E','F','G','I','J','K')])

@@ -115,11 +115,9 @@ def test_credit_federal_1000():
     ) == Decimal("261.00")
 
 
-def test_credit_federal_revenu_tres_eleve_refuse():
-    with pytest.raises(ValueError):
-        credit_federal_dons_2025(
-            _dons_valides("1000"), Decimal("253414.01")
-        )
+def test_credit_federal_revenu_tres_eleve_taux_superieur():
+    # 5J : la règle réelle remplace le refus logiciel antérieur.
+    assert credit_federal_dons_2025(_dons_valides("1000"), Decimal("253514")) == Decimal("265.00")
 
 
 def test_credit_quebec_100():
@@ -134,8 +132,6 @@ def test_credit_quebec_1000():
     ) == Decimal("232.00")
 
 
-def test_credit_quebec_revenu_tres_eleve_refuse():
-    with pytest.raises(ValueError):
-        credit_quebec_dons_2025(
-            _dons_valides("1000"), Decimal("129590.01")
-        )
+def test_credit_quebec_revenu_tres_eleve_taux_superieur():
+    # Grille 395 : 100 $ à 25,75 %, 700 $ à 24 %, 200 $ à 20 %.
+    assert credit_quebec_dons_2025(_dons_valides("1000"), Decimal("129690")) == Decimal("233.75")

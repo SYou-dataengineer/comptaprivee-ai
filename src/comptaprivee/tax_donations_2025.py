@@ -86,38 +86,79 @@ def montant_dons_federaux_reclames_2025(dons):
     return dons.reports_federaux.montant_reclame if dons.reports_federaux.activer else dons.montant_admissible_federal
 
 
-def credit_federal_dons_2025(dons, revenu_imposable_federal):
-    valider_dons_bienfaisance_2025(dons)
-    if not isinstance(revenu_imposable_federal, Decimal) or not revenu_imposable_federal.is_finite():
-        raise ValueError("Le revenu imposable fédéral doit être un Decimal fini.")
-    if revenu_imposable_federal < ZERO:
-        raise ValueError("Le revenu imposable fédéral ne peut pas être négatif.")
-    if revenu_imposable_federal > SEUIL_FEDERAL_TAUX_SUPERIEUR_2025:
-        raise ValueError("Le taux fédéral de 33 % est hors profil dans cette version.")
-    montant = montant_dons_federaux_reclames_2025(dons)
+@dataclass(frozen=True)
+class VentilationCreditDons2025:
+    base_premiers_200: Decimal
+    base_taux_intermediaire: Decimal
+    base_taux_superieur: Decimal
+    credit_premiers_200: Decimal
+    credit_taux_intermediaire: Decimal
+    credit_taux_superieur: Decimal
+
+    @property
+    def total(self) -> Decimal:
+        return self.credit_premiers_200 + self.credit_taux_intermediaire + self.credit_taux_superieur
+
+
+def _ventiler_credit_dons(montant, revenu, seuil, taux_initial, taux_intermediaire, taux_superieur):
+    if not isinstance(revenu, Decimal) or not revenu.is_finite():
+        raise ValueError("Le revenu imposable doit être un Decimal fini.")
+    if revenu < ZERO:
+        raise ValueError("Le revenu imposable ne peut pas être négatif.")
     premiers = min(montant, DEUX_CENTS)
     excedent = max(montant - DEUX_CENTS, ZERO)
-    return arrondir_cent(
-        premiers * TAUX_FEDERAL_PREMIERS_200_2025
-        + excedent * TAUX_FEDERAL_EXCEDENT_2025
-    )
+    superieur = min(excedent, max(revenu - seuil, ZERO))
+    intermediaire = excedent - superieur
+    # Chaque ligne monétaire du formulaire est arrondie avant addition.
+    return VentilationCreditDons2025(premiers, intermediaire, superieur,
+        arrondir_cent(premiers * taux_initial), arrondir_cent(intermediaire * taux_intermediaire),
+        arrondir_cent(superieur * taux_superieur))
+
+
+def ventiler_credit_federal_dons_2025(dons, revenu_imposable_federal):
+    """Annexe 9 (25), lignes 13–23; dons monétaires ordinaires seulement."""
+    montant = montant_dons_federaux_reclames_2025(dons)
+    return _ventiler_credit_dons(montant, revenu_imposable_federal,
+        SEUIL_FEDERAL_TAUX_SUPERIEUR_2025, TAUX_FEDERAL_PREMIERS_200_2025,
+        TAUX_FEDERAL_EXCEDENT_2025, Decimal("0.33"))
+
+
+def ventiler_credit_quebec_dons_2025(dons, revenu_imposable_quebec):
+    """Grille 395 (2025-12), lignes 1–12; dons en argent de 2025."""
+    valider_dons_bienfaisance_2025(dons)
+    return _ventiler_credit_dons(dons.montant_admissible_quebec, revenu_imposable_quebec,
+        SEUIL_QUEBEC_TAUX_SUPERIEUR_2025, TAUX_QUEBEC_PREMIERS_200_2025,
+        TAUX_QUEBEC_EXCEDENT_SIMPLE_2025, Decimal("0.2575"))
+
+
+def credit_federal_dons_2025(dons, revenu_imposable_federal):
+    return ventiler_credit_federal_dons_2025(dons, revenu_imposable_federal).total
 
 
 def credit_quebec_dons_2025(dons, revenu_imposable_quebec):
-    valider_dons_bienfaisance_2025(dons)
-    if not isinstance(revenu_imposable_quebec, Decimal) or not revenu_imposable_quebec.is_finite():
-        raise ValueError("Le revenu imposable Québec doit être un Decimal fini.")
-    if revenu_imposable_quebec < ZERO:
-        raise ValueError("Le revenu imposable Québec ne peut pas être négatif.")
-    if revenu_imposable_quebec > SEUIL_QUEBEC_TAUX_SUPERIEUR_2025:
-        raise ValueError("Le taux Québec de 25,75 % est hors profil dans cette version.")
-    montant = dons.montant_admissible_quebec
-    premiers = min(montant, DEUX_CENTS)
-    excedent = max(montant - DEUX_CENTS, ZERO)
-    return arrondir_cent(
-        premiers * TAUX_QUEBEC_PREMIERS_200_2025
-        + excedent * TAUX_QUEBEC_EXCEDENT_SIMPLE_2025
-    )
+    return ventiler_credit_quebec_dons_2025(dons, revenu_imposable_quebec).total
+
+
+def lignes_credits_dons_2025(dons, revenu_federal, revenu_quebec):
+    if not (dons.montant_admissible_federal or dons.montant_admissible_quebec or dons.reports_federaux.activer):
+        return []
+    f = ventiler_credit_federal_dons_2025(dons, revenu_federal)
+    q = ventiler_credit_quebec_dons_2025(dons, revenu_quebec)
+    return ["", "CRÉDITS POUR DONS — VENTILATION 2025",
+        f"Source fédérale : {dons.source_federale or dons.reports_federaux.source}; validation comptable confirmée",
+        f"Source Québec : {dons.source_quebec}",
+        f"Dons fédéraux réclamés : {montant_dons_federaux_reclames_2025(dons):.2f} $",
+        f"Fédéral : {f.base_premiers_200:.2f} × 14,5 % = {f.credit_premiers_200:.2f}; "
+        f"{f.base_taux_intermediaire:.2f} × 29 % = {f.credit_taux_intermediaire:.2f}; "
+        f"{f.base_taux_superieur:.2f} × 33 % = {f.credit_taux_superieur:.2f} $",
+        f"Base à 33 % : min(dons au-delà de 200, max(26000 - 253414, 0)); 26000 = {revenu_federal:.2f} $",
+        f"Crédit fédéral pour dons — ligne 34900 : {f.total:.2f} $",
+        f"Québec : {q.base_premiers_200:.2f} × 20 % = {q.credit_premiers_200:.2f}; "
+        f"{q.base_taux_intermediaire:.2f} × 24 % = {q.credit_taux_intermediaire:.2f}; "
+        f"{q.base_taux_superieur:.2f} × 25,75 % = {q.credit_taux_superieur:.2f} $",
+        f"Base à 25,75 % : min(dons au-delà de 200, max(299 - 129590, 0)); 299 = {revenu_quebec:.2f} $",
+        f"Crédit Québec pour dons — ligne 395 : {q.total:.2f} $",
+        "Crédits non remboursables; arrondi de chaque composante monétaire avant addition."]
 
 
 from dataclasses import replace

@@ -268,8 +268,15 @@ def test_limites_existantes_preservees():
     assert e.revenu.revenu_imposable_federal > Decimal("57375")
     assert e.federal.top_up_credit == 0
     assert e.federal.credits_federaux_complets.total_credits_ligne_35000 == e.federal.credits_federaux_complets.credit_ligne_33800
-    with pytest.raises(ValueError,match='hors profil'):
-        calcul(dossier_psv('180000','0',False))
+    # 5J lève le refus des hauts revenus; la récupération PSV reste appliquée.
+    haut = calcul(dossier_psv('180000','0',False))
+    assert haut.prestations_psv.revenu_avant_recuperation == Decimal('180000')
+    assert haut.prestations_psv.recuperation == Decimal('12981.90')
+    assert haut.revenu.revenu_imposable_federal == Decimal('167018.10')
+    assert haut.revenu.revenu_imposable_quebec == Decimal('167018.10')
+    assert haut.federal.credits_federaux_complets.credit_dons_ligne_34900 == 0
+    from tests.test_tax_federal_top_up_integration_2025 import verifier_t1
+    verifier_t1(haut)
 
 
 def test_recuperation_psv_avec_salaire_90000_et_pension_8000():
