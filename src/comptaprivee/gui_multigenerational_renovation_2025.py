@@ -77,9 +77,19 @@ def _champs(cadre, objet, exclus=(), confirmations=()):
         v = tk.BooleanVar(value=valeur) if champ.type is bool else tk.StringVar(value=str(valeur))
         variables[nom] = v
         if champ.type is bool:
-            w = tk.Checkbutton(cadre, name=nom + "_5q", text=LIBELLES[nom], variable=v,
-                               wraplength=780, justify="left", anchor="w")
-            w.grid(row=ligne, column=0, columnspan=2, sticky="w", pady=3)
+            # Le cadre isole le wrapping du redimensionnement du formulaire.
+            case = ttk.Frame(cadre)
+            case.grid(row=ligne, column=0, columnspan=2, sticky="ew", pady=3)
+            case.columnconfigure(1, weight=1)
+            w = tk.Checkbutton(case, name=nom + "_5q", text="", variable=v)
+            w.grid(row=0, column=0, sticky="nw")
+            libelle = ttk.Label(case, text=LIBELLES[nom], wraplength=780,
+                                justify="left", anchor="w")
+            libelle.grid(row=0, column=1, sticky="w")
+            libelle.bind("<Button-1>", lambda event, bouton=w: bouton.invoke())
+            case.bind("<Configure>", lambda event, texte=libelle, bouton=w:
+                      texte.configure(wraplength=max(80, min(780,
+                          event.width - bouton.winfo_reqwidth() - 8))))
         else:
             ttk.Label(cadre, text=LIBELLES[nom], wraplength=420).grid(row=ligne, column=0, sticky="w")
             choix = LIENS_PROCHE if nom == "lien_proche" else ROLES_DEMANDEUR if nom == "role_demandeur" else None
