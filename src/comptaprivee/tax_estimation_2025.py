@@ -8,6 +8,7 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_quebec_work_premium_2025 import (PrimeTravailQuebec2025, ResultatPrimeTravailQuebec2025, calculer_prime_travail_quebec_2025, lignes_prime_travail_quebec_2025, valider_prime_travail_quebec_2025)
 from .tax_quebec_solidarity_2025 import (SolidariteQuebec2025, BaseSolidariteQuebec2025, preparer_solidarite_quebec_2025, lignes_solidarite_quebec_2025, valider_solidarite_quebec_2025)
 from .tax_quebec_caregiver_2025 import (PersonneAidanteQuebec2025, ResultatAidanteQuebec2025, calculer_aidante_quebec_2025, lignes_aidante_quebec_2025, identite_aidante, MODES_AIDANTE, verifier_aidante_conjoint_2025)
 from .tax_quebec_childcare_2025 import (FraisGardeQuebec2025, ResultatGardeQuebec2025,
@@ -368,6 +369,8 @@ class EstimationFiscale2025:
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
     resultat_allocation_travailleurs: ResultatAllocationTravailleurs2025 = ResultatAllocationTravailleurs2025()
     frais_garde_quebec: FraisGardeQuebec2025 = FraisGardeQuebec2025()
+    prime_travail_quebec: PrimeTravailQuebec2025 = PrimeTravailQuebec2025()
+    resultat_prime_travail_quebec: ResultatPrimeTravailQuebec2025 = ResultatPrimeTravailQuebec2025()
     solidarite_quebec: SolidariteQuebec2025 = SolidariteQuebec2025()
     base_solidarite_quebec: BaseSolidariteQuebec2025 | None = None
     personne_aidante_quebec: PersonneAidanteQuebec2025 = PersonneAidanteQuebec2025()
@@ -486,6 +489,7 @@ def calculer_estimation_fiscale_2025(
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
     frais_garde_quebec: FraisGardeQuebec2025 | None = None,
+    prime_travail_quebec: PrimeTravailQuebec2025 | None = None,
     solidarite_quebec: SolidariteQuebec2025 | None = None,
     personne_aidante_quebec: PersonneAidanteQuebec2025 | None = None,
     medical_remboursable_quebec: MedicalRemboursableQuebec2025 | None = None,
@@ -1723,6 +1727,46 @@ def calculer_estimation_fiscale_2025(
                 or medical_quebec.reclamer and medical_quebec.naissance != solidarite.naissance
                 or frais_medicaux_effectifs.supplement.reclamer and frais_medicaux_effectifs.supplement.age_fin_2025 != age_solidarite):
             raise ValueError("Naissance solidarité Québec divergente des autres profils actifs.")
+    prime = prime_travail_quebec if prime_travail_quebec is not None else PrimeTravailQuebec2025()
+    valider_prime_travail_quebec_2025(prime)
+    if prime.activer:
+        if (any(p.reclamer_montant for p in (montant_conjoint_federal_effectif,
+                personne_charge_admissible_federale_effective, aidant_30425_effectif,
+                aidant_30450_effectif, aidant_enfant_federal_effectif))
+                or conjoint.activer or fonds.conjoint.nom or politiques.nom_conjoint
+                or handicap_transfere.transferts or adoption_effective.enfants
+                or frais_garde_federaux_effectifs.nombre_enfants_moins_7_sans_dtc
+                or frais_garde_federaux_effectifs.nombre_enfants_7_a_16_ou_infirmes_sans_dtc
+                or frais_garde_federaux_effectifs.nombre_enfants_dtc
+                or act.famille.activer or frais_medicaux_effectifs.supplement.mode_familial
+                or any(p.lien != "soi-même" for p in medical_familial.personnes)
+                or garde_quebec.enfants or garde_quebec.conjoint_nom
+                or personne_vivant_seule_effective.reclamer_additionnel_monoparental
+                or any(p.lien in ("conjoint", "enfant", "enfant du conjoint") for p in aidante_quebec.personnes)):
+            raise ValueError("Prime au travail 6I : combinaison familiale hors du profil individuel sans conjoint ni enfant.")
+        # Ce premier profil ne simule aucune autre composante de travail P.
+        cases_emploi = {"T4": {"14", "17", "17A", "18", "20", "22", "24", "26", "44", "55", "56"},
+            "RL-1": {"A", "B.A", "B.B", "C", "D", "E", "F", "G", "H", "I", "J", "211"}}
+        for donnee in dossier.donnees_validees:
+            if donnee.valeur_validee == Decimal(0):
+                continue
+            if donnee.type_document not in cases_emploi or donnee.case not in cases_emploi[donnee.type_document]:
+                raise ValueError("Prime au travail 6I : composante documentaire hors profil salarié 101 : "
+                    + donnee.type_document + " / " + donnee.case)
+        if credit_deficience_effectif.reclamer_quebec and not prime.droit_376_confirme:
+            raise ValueError("Prime au travail : droit 376 actif incompatible avec l'absence déclarée de droit adapté.")
+        age_prime = 2025 - int(prime.naissance[:4])
+        if (act.present and act.age_fin_2025 != age_prime
+                or carriere_quebec.reclamer and carriere_quebec.naissance != prime.naissance
+                or medical_quebec.reclamer and medical_quebec.naissance != prime.naissance
+                or solidarite.activer and solidarite.naissance != prime.naissance
+                or montants_age_retraite_effectifs.reclamer_age and age_prime < 65
+                or credits_federaux_age_pension_effectifs.reclamer_montant_age and age_prime < 65
+                or frais_medicaux_effectifs.supplement.reclamer and frais_medicaux_effectifs.supplement.age_fin_2025 != age_prime):
+            raise ValueError("Naissance prime au travail divergente des autres profils actifs.")
+    resultat_prime = calculer_prime_travail_quebec_2025(prime, salaire_101=base.revenu_emploi_quebec,
+        avantages_211=avantages_ancien_emploi_211_2025(dossier) if prime.activer else Decimal(0),
+        revenu_net_275=revenu.revenu_net_quebec)
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
         federal,
@@ -1736,6 +1780,8 @@ def calculer_estimation_fiscale_2025(
         avances_garde_quebec=resultat_garde_quebec.avances_ligne_441,
         credit_aidante_quebec=resultat_aidante_quebec.credit_ligne_462,
         avances_aidante_quebec=resultat_aidante_quebec.avances_ligne_441,
+        credit_prime_travail_quebec=resultat_prime.credit_ligne_456,
+        avances_prime_travail_quebec=resultat_prime.avances_ligne_441,
         credit_medical_quebec=resultat_medical_quebec.credit_ligne_462,
         credit_educateur=resultat_educateur.ligne_46900,
         credit_fonds=resultat_fonds.ligne_41400,
@@ -1794,6 +1840,7 @@ def calculer_estimation_fiscale_2025(
         allocation_travailleurs=act, resultat_allocation_travailleurs=resultat_act,
         resultat_supplement_medical=supplement_medical,
         frais_garde_quebec=garde_quebec, resultat_garde_quebec=resultat_garde_quebec,
+        prime_travail_quebec=prime, resultat_prime_travail_quebec=resultat_prime,
         solidarite_quebec=solidarite, base_solidarite_quebec=base_solidarite,
         personne_aidante_quebec=aidante_quebec, resultat_aidante_quebec=resultat_aidante_quebec,
         medical_remboursable_quebec=medical_quebec, resultat_medical_remboursable_quebec=resultat_medical_quebec,
@@ -1984,6 +2031,7 @@ def formater_estimation_fiscale_2025(
         *lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical),
         *lignes_formation_2025(estimation.frais_scolarite.formation),
         *lignes_garde_quebec_2025(estimation.frais_garde_quebec, estimation.resultat_garde_quebec),
+        *lignes_prime_travail_quebec_2025(estimation.prime_travail_quebec, estimation.resultat_prime_travail_quebec),
         *lignes_solidarite_quebec_2025(estimation.solidarite_quebec, estimation.base_solidarite_quebec),
         *lignes_aidante_quebec_2025(estimation.personne_aidante_quebec, estimation.resultat_aidante_quebec),
         *lignes_medical_remboursable_quebec_2025(estimation.medical_remboursable_quebec, estimation.resultat_medical_remboursable_quebec),

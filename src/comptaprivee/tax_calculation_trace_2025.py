@@ -4,6 +4,7 @@ Cette brique ne modifie aucun résultat fiscal. Elle explique une estimation
 déjà calculée à partir d'un dossier verrouillé et validé par le comptable.
 """
 
+from .tax_quebec_work_premium_2025 import lignes_prime_travail_quebec_2025
 from .tax_quebec_solidarity_2025 import lignes_solidarite_quebec_2025
 from dataclasses import dataclass, replace
 from decimal import Decimal
@@ -136,6 +137,7 @@ class TraceCalculFiscal2025:
     avertissements: tuple[str, ...]
     limitations: tuple[str, ...]
     preparation_annexe_d: tuple[str, ...] = ()
+    audit_prime_travail: tuple[str, ...] = ()
 
 
 def _ligne(ordre, section, libelle, source, formule, montant):
@@ -430,6 +432,8 @@ def construire_trace_calcul_fiscal_2025(
     )
     if final.avances_garde_quebec_ligne_441:
         formule_impot_total += " + avances garde Québec 441 (RL-19 C, sans plafond)"
+    if final.avances_prime_travail_quebec_ligne_441:
+        formule_impot_total += " + avances prime au travail Québec 441 (RL-19 A)"
     if final.avances_aidante_quebec_ligne_441:
         formule_impot_total += " + avances personne aidante Québec 441 (RL-19 H, sans plafond)"
     if rqap.present:
@@ -1981,6 +1985,15 @@ def construire_trace_calcul_fiscal_2025(
             lignes = lignes + (_ligne(len(lignes) + 1, "FORMATION 2025 — BLOC 5C", libelle,
                 frais_scolarite.formation.source, formule, montant),)
 
+    if estimation.prime_travail_quebec.activer:
+        rp = estimation.resultat_prime_travail_quebec
+        for libelle, valeur, formule_prime in (
+            ("Prime au travail Québec 456", rp.credit_ligne_456, "Annexe P : maximum des colonnes admissibles, supplément exclu"),
+            ("Avances prime au travail Québec 441", rp.avances_ligne_441, "RL-19 A intégral, sans plafonnement au crédit"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "PRIME AU TRAVAIL QUÉBEC - 6I", libelle,
+                estimation.prime_travail_quebec.source, formule_prime, valeur),)
+
     if estimation.personne_aidante_quebec.reclamer:
         profil_aidante = estimation.personne_aidante_quebec
         resultat_aidante = estimation.resultat_aidante_quebec
@@ -2297,6 +2310,10 @@ def construire_trace_calcul_fiscal_2025(
                    if final.remboursement_estime else
                    "Impôt total incluant 41500 - retenues - remboursements cotisations - crédits 45200/45300/45350/45355/46900")
 
+    if final.credit_prime_travail_quebec_ligne_456:
+        formule += (" + prime au travail Québec 456" if final.remboursement_estime else " - prime au travail Québec 456")
+    if final.avances_prime_travail_quebec_ligne_441:
+        formule += "; impôt total incluant les avances prime au travail Québec 441"
     if final.credit_medical_quebec_ligne_462:
         formule += (" + crédit médical Québec 462" if final.remboursement_estime
                     else " - crédit médical Québec 462")
@@ -2329,6 +2346,7 @@ def construire_trace_calcul_fiscal_2025(
         formule_resultat=formule,
         avertissements=base.avertissements,
         limitations=final.limitations,
+        audit_prime_travail=tuple(lignes_prime_travail_quebec_2025(estimation.prime_travail_quebec, estimation.resultat_prime_travail_quebec)),
         preparation_annexe_d=lignes_solidarite_quebec_2025(estimation.solidarite_quebec, estimation.base_solidarite_quebec),
     )
 
@@ -2363,6 +2381,9 @@ def formater_trace_calcul_fiscal_2025(
                 f"{formater_montant_estimation(ligne.montant)}",
             ]
         )
+
+    if trace.audit_prime_travail:
+        lignes.extend(trace.audit_prime_travail)
 
     if trace.preparation_annexe_d:
         lignes.extend(["", *trace.preparation_annexe_d])

@@ -18,6 +18,7 @@ autonomes, plusieurs employeurs et autres situations particulières.
 from dataclasses import dataclass
 from decimal import Decimal
 
+from .tax_quebec_work_premium_2025 import montant_prime_travail
 from .tax_quebec_caregiver_2025 import montant_aidante
 from .tax_quebec_childcare_2025 import montant_garde_quebec
 from .tax_quebec_refundable_medical_2025 import montant_medical_remboursable_quebec
@@ -86,6 +87,8 @@ class RapprochementFiscal2025:
     avances_garde_quebec_ligne_441: Decimal = ZERO
     credit_aidante_quebec_ligne_462: Decimal = ZERO
     avances_aidante_quebec_ligne_441: Decimal = ZERO
+    credit_prime_travail_quebec_ligne_456: Decimal = ZERO
+    avances_prime_travail_quebec_ligne_441: Decimal = ZERO
     credit_medical_quebec_ligne_462: Decimal = ZERO
     credit_fonds_ligne_41400: Decimal = ZERO
 
@@ -177,11 +180,17 @@ def calculer_rapprochement_fiscal_2025(
     avances_garde_quebec: Decimal = ZERO,
     credit_aidante_quebec: Decimal = ZERO,
     avances_aidante_quebec: Decimal = ZERO,
+    credit_prime_travail_quebec: Decimal = ZERO,
+    avances_prime_travail_quebec: Decimal = ZERO,
 ) -> RapprochementFiscal2025:
     """Calcule une estimation de base du remboursement ou du solde."""
     _verifier_coherence(base, federal, quebec)
     montant_garde_quebec(credit_garde_quebec, "455")
     montant_garde_quebec(avances_garde_quebec, "441")
+    montant_prime_travail(credit_prime_travail_quebec, "456")
+    montant_prime_travail(avances_prime_travail_quebec, "441 A")
+    if credit_prime_travail_quebec > Decimal("2257.33"):
+        raise ValueError("Prime au travail individuelle : crédit supérieur au maximum 2257.33.")
     montant_aidante(credit_aidante_quebec, "462")
     montant_aidante(avances_aidante_quebec, "441")
     montant_medical_remboursable_quebec(credit_medical_quebec, "462 point 1")
@@ -245,6 +254,7 @@ def calculer_rapprochement_fiscal_2025(
         + quebec.impot_quebec_preliminaire
         + avances_garde_quebec
         + avances_aidante_quebec
+        + avances_prime_travail_quebec
         + cotisation_assurance_medicaments
         + prestations_rqap.cotisation_fss
         + prestations_ae.cotisation_fss + prestations_ae.recuperation
@@ -272,6 +282,7 @@ def calculer_rapprochement_fiscal_2025(
         + credit_medical_quebec
         + credit_garde_quebec
         + credit_aidante_quebec
+        + credit_prime_travail_quebec
         - impot_total
     )
 
@@ -437,6 +448,8 @@ def calculer_rapprochement_fiscal_2025(
         credit_fonds_ligne_41400=credit_fonds,
         credit_garde_quebec_ligne_455=credit_garde_quebec,
         avances_garde_quebec_ligne_441=avances_garde_quebec,
+        credit_prime_travail_quebec_ligne_456=credit_prime_travail_quebec,
+        avances_prime_travail_quebec_ligne_441=avances_prime_travail_quebec,
         credit_aidante_quebec_ligne_462=credit_aidante_quebec,
         avances_aidante_quebec_ligne_441=avances_aidante_quebec,
         credit_medical_quebec_ligne_462=credit_medical_quebec,

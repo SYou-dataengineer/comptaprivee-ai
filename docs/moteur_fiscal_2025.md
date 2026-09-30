@@ -4411,3 +4411,316 @@ l'API de copie de police openpyxl existante.
 prévue dans un commit fonctionnel unique, fichiers explicitement sélectionnés.
 GitHub Actions sert de seconde validation complète après push; aucune full
 suite locale post-commit n'est requise en l'absence d'échec ou de doute nouveau.
+
+
+### Audit 6I — prime au travail 2025, session 6 (aucune implémentation)
+
+Checkpoint : working tree propre, HEAD `ba10996`; derniers commits `ba10996`,
+`ea325f5`, `1306537`; `git diff --check` propre. Audit limité à la prime au travail.
+Aucun moteur, test, JSON ou écran modifié; aucun commit/push ni suite complète.
+
+**Recommandation : prime ordinaire, salarié individuel sans conjoint ni enfant,
+avec avances RL-19 A.** Proposition conditionnelle : les règles d'arrondi et la
+borne terminale doivent être clarifiées avant tout calcul monétaire publiable.
+Ne pas recopier le moteur ACT ni le revenu de travail du médical 6E.
+
+#### Sources officielles examinées, millésime fiscal 2025
+
+- **P** : [Annexe P TP-1.D.P (2025-12)](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.P%282025-12%29.pdf), p. 1 parties A-D, p. 2 parties E-F.
+- **G** : [Guide TP-1.G (2025-12)](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.G%282025-12%29.pdf), pages imprimées 72-74, ligne 456; indices PDF 71-73.
+- **456** : [Instructions RQ de la ligne 456, année 2025](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/451-a-480-remboursement-ou-solde-a-payer/ligne-456/).
+- **M** : [Montant des crédits — tableaux explicitement 2025](https://www.revenuquebec.ca/fr/citoyens/credits-dimpot/credits-dimpot-relatifs-a-la-prime-au-travail/montant/). Les tableaux 2026 présents sur la même page ne sont pas utilisés.
+- **441** : [Versements anticipés, ligne 441](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/400-a-447-impot-et-cotisations/ligne-441/), sections prime au travail et autres cases RL-19, référence à 2025.
+- **460** : [Bouclier fiscal, ligne 460, année 2025](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/451-a-480-remboursement-ou-solde-a-payer/ligne-460/), uniquement pour identifier l'interaction, pas pour ouvrir un autre bloc.
+
+Seules les sources Revenu Québec sont retenues. Les résultats de recherche
+externes ou d'autres années ne fondent aucune règle ci-dessous.
+
+#### Conditions officielles et distinctions à conserver
+
+G, pages 72-74 : Québec au 31 décembre; citoyenneté canadienne, statut d'Indien
+inscrit, résidence permanente ou asile accordé; adulte fin 2025, avec exceptions
+pour certains mineurs. Il faut un revenu de travail admissible. Incompatibilités :
+transfert annexe S aux parents, désignation du demandeur comme enfant à charge
+dans une autre annexe P, Allocation famille reçue pour lui (exception d'âge),
+études à temps plein sans enfant cohabitant. Détention : présence le 31 décembre
+et plus de 183 jours dans l'année.
+
+La définition étudiant n'est pas celle de l'ACT : session commencée et complétée
+dans l'année, formation professionnelle secondaire ou postsecondaire, au moins
+9 heures hebdomadaires de cours/travaux; règle particulière de 20 heures mensuelles
+pour déficience fonctionnelle majeure. Le conjoint doit aussi satisfaire la
+définition propre à la prime. L'absence de conjoint n'exige pas de vivre seul.
+
+La prime adaptée suppose un droit Québec 376 en 2025 OU des prestations liées
+aux contraintes sévères à l'emploi en 2025 ou dans les cinq années précédentes
+(2020-2024). Une case `reclamer_quebec=False` ne prouve pas l'absence de droit.
+Un dossier admissible à l'adaptée exige la comparaison des deux primes, jamais
+leur addition. Ces situations seront explicitement exclues du premier profil.
+
+456 : enfants désignés selon les catégories fiscales prévues, garde partagée
+au moins 40 % au dernier mois pour le cas visé; la désignation enlève à l'enfant
+son propre droit aux primes. Les couples peuvent partager le crédit via deux
+annexes. Le supplément de transition exige notamment 24 mois d'aide sur 30,
+un revenu mensuel d'au moins 200 $ et un carnet de réclamation au premier mois.
+Il est limité à la période de transition, au maximum 12 mois, avec contrôle RL-5 V.
+
+#### Paramètres officiels 2025 (audit comparatif, pas constants de code)
+
+Sources : P p. 2 pour exclusion, seuil et taux; M pour maxima publiés; G p. 74
+et 456 pour revenus familiaux maximaux affichés. Tous les montants sont annuels,
+pour la déclaration 2025, et non pour le cycle 2026-2027 de solidarité.
+
+| Variante / famille | Travail exclu | Plafond du travail et seuil de réduction | Taux de prime | Taux de réduction | Maximum publié | Revenu familial maximal affiché |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Ordinaire / sans conjoint ni enfant | 2 400 $ | 12 620 $ | 11,6 % | 10 % | 1 185,52 $ | 24 475 $ |
+| Ordinaire / couple sans enfant | 3 600 $ | 19 534 $ | 11,6 % | 10 % | 1 848,34 $ | 38 017 $ |
+| Ordinaire / monoparentale | 2 400 $ | 12 620 $ | 30 % | 10 % | 3 066,00 $ | 43 280 $ |
+| Ordinaire / couple avec enfant | 3 600 $ | 19 534 $ | 25 % | 10 % | 3 983,50 $ | 59 369 $ |
+| Adaptée / sans conjoint ni enfant | 1 200 $ | 17 798 $ | 13,6 % | 10 % | 2 257,33 $ | 40 371 $ |
+| Adaptée / couple sans enfant | 1 200 $ | 26 946 $ | 13,6 % | 10 % | 3 501,46 $ | 61 961 $ |
+| Adaptée / monoparentale | 1 200 $ | 17 798 $ | 25 % | 10 % | 4 149,50 $ | 59 293 $ |
+| Adaptée / couple avec enfant | 1 200 $ | 26 946 $ | 20 % | 10 % | 5 149,20 $ | 78 438 $ |
+
+M : supplément 200 $/mois, maximum individuel théorique 2 400 $ pour 12 mois
+admissibles. Avances estimatives : 75 % sans enfant désigné, 50 % avec enfant;
+supplément anticipable intégralement. Ces pourcentages ne servent **jamais** à
+recalculer les avances réellement reçues figurant au RL-19.
+
+#### Ordre des calculs et arrêt sur les arrondis
+
+P p. 1 : travail = 101 + 105 positif - RL-1 case 211 + 107 + subventions de
+recherche nettes + annexe L (22 à 26.1, sans pertes) + protection des salariés,
+puis retrait de la fraction donnant droit à 293. Famille = somme des lignes 275.
+Dans le profil salarié proposé : travail = 101 - case 211, famille = 275 propre.
+Ne pas déduire à nouveau 201, 205 ou 207 du travail annexe P.
+
+P p. 2, ordinaire individuel :
+
+1. 64 = travail; 66 = 12 620; 68 = minimum(64, 66).
+2. 72 = maximum(68 - 2 400, 0); 76 = 72 × 0,116.
+3. 78 = revenu familial; 82 = maximum(78 - 12 620, 0); 83 = 82 × 0,10.
+4. 84 = maximum(76 - 83, 0); sans adaptée, 87 puis 89 reprennent la prime.
+5. 90 = supplément 88 + prime 89, report à TP-1 456. Avances séparées à 441.
+
+**Non vérifié :** mode d'arrondi, traitement des demi-cents, arrondi à chaque
+ligne ou seulement au résultat final. Les cases en dollars/cents et le maximum
+adapté publié à deux décimales ne suffisent pas à établir ces règles. Recherche
+textuelle « arrond » dans le guide sans résultat; aucune instruction explicite
+trouvée dans les sources examinées. Cela ne prouve pas qu'une instruction RQ
+n'existe pas ailleurs. `ROUND_HALF_UP` du dépôt est une convention existante,
+pas une preuve officielle pour l'annexe P.
+
+**Écart terminal à clarifier :** G p. 74/456 disent absence de droit à partir de
+24 475 $, alors que la formule brute P, travail au plafond, donne encore 0,02 $
+à ce revenu et zéro à 24 475,20 $. Ce dernier chiffre est une dérivation
+algébrique, **pas un seuil officiel de remplacement**. Ne choisir ni la coupure
+entière ni la continuation en cents sans clarification officielle de leur
+articulation. Même vigilance pour les autres familles. Aucun calcul implémenté.
+
+#### Dépôt : disponible, manquant et dépendances
+
+Lecture ciblée des modules, sans modification :
+
+- `tax_engine_input_2025` conserve salaire Québec RL-1 A et fédéral T4 14
+  séparément, sans les additionner. `tax_income_2025` et `tax_estimation_2025`
+  recalculent 275 après les déductions autorisées.
+- `tax_workers_benefit_2025` calcule l'ACT fédérale avec revenu fédéral,
+  confirmations d'âge/études/détention différentes et avances RC210.
+  Ce n'est pas la prime Québec; pas de réutilisation de son barème ou admissibilité.
+- `tax_quebec_refundable_medical_2025` fournit un contrôle de la case 211
+  (types, valeurs, doublons par feuillet), mais son revenu de travail déduit
+  aussi 205/207 : cette formule ne convient pas à P.
+- `tax_disability_2025` connaît la demande Québec 376, pas l'historique des
+  prestations 2020-2025 ni tous les droits non réclamés : faits supplémentaires
+  nécessaires pour exclure l'adaptée de façon sûre.
+- `tax_reconciliation_2025` gère les avances C (garde) et H (aidant) à 441;
+  aucun champ prime 456 ou avances A/B. Ajouter un crédit remboursable au
+  rapprochement, sans toucher aux impôts de base ni à l'abattement fédéral.
+- `tax_quebec_solidarity_2025` reste préparatoire et sans montant. Ses faits
+  résidence/âge/famille peuvent être rapprochés, pas ses critères copiés aveuglément.
+- Absence constatée de moteur prime au travail/annexe P/Bouclier dans `src/`
+  et `tests/`. Les profils familiaux, annexe S/scolarité, ACT, déficience et
+  suppléments médicaux demandent des contrôles de contradiction.
+
+Exploration sans fichier de code : dossier fictif salarié 20 000 $, revenu
+Québec 275 = 18 635,00 $, fédéral 23600 = 19 835,00 $. Avec REER 5 000 $ validé :
+275 = 13 635,00 $, 23600 = 14 835,00 $, salaire Québec inchangé à 20 000 $.
+L'interaction confirme qu'on doit relire 275 recalculée, pas figer un revenu
+familial dans le JSON ni soustraire le REER au travail annexe P.
+
+#### Plus petit périmètre recommandé et exclusions logicielles
+
+Premier profil : adulte citoyen canadien, résident Québec/Canada toute l'année,
+sans conjoint pendant l'année et sans enfant/personne à charge, non étudiant
+selon la définition Québec, aucun transfert S, aucune désignation comme enfant
+ailleurs, aucune Allocation famille pour soi, aucune détention, décès ou faillite.
+Ces restrictions sont plus étroites que la loi et doivent être affichées comme
+limites logicielles, jamais comme exclusions fiscales générales.
+
+Travail salarié 101 uniquement, ajustement 211 contrôlé, autres sources du
+travail P et 293 absentes et confirmées. Autoriser les déductions déjà vérifiées
+(REER, RPA, etc.) dans 275 sans les appliquer au travail P. Pour limiter les
+combinaisons initiales, exclure revenus autonomes, recherche, protection des
+salariés, pensions, retraits, placements et résidence partielle. Pas de calcul
+adapté, familial, de supplément ou de Bouclier fiscal.
+
+Exiger confirmation documentée de non-admissibilité à l'adaptée et au supplément;
+refuser les contradictions 376, RL-5 V ou RL-19 B. Une absence de saisie n'est
+pas une preuve. Accepter RL-19 A documenté, y compris si le revenu rend la prime
+nulle; les avances restent intégrales, même supérieures au crédit. Ne pas
+permettre qu'une désactivation efface des avances présentes. Les dossiers dont
+l'inadmissibilité ou la case B sort du profil nécessitent un traitement externe
+explicite, jamais un résultat silencieusement incomplet.
+
+Le Bouclier (460) dépend notamment de l'évolution des revenus 2024/2025 et peut
+exister même quand la prime est nulle. Prévoir une mention « Bouclier non calculé,
+à examiner séparément », sans montant à zéro présenté comme droit nul, et sans
+cocher automatiquement la case 5 de P. Aucun travail sur ce bloc n'est démarré.
+
+#### Intégrations à prévoir, lignes et doubles comptages
+
+- Nouveau profil JSON facultatif de faits/confirmations, naissance, sources et
+  avances A au cent en chaîne; défaut inactif pour anciens dossiers. Pas de revenu
+  dérivé ni de crédit manuel faisant autorité; recalcul et validation stricte.
+- GUI dédiée, sans saisie de revenu net; distinctions prime/ACT/adaptée et
+  exclusion Bouclier explicites; révocation des confirmations, invalidation
+  estimation/PDF, sauvegarde/rechargement et nouveau dossier.
+- Résultat avec étapes P et sources; trace/PDF séparant crédit brut 456, avances
+  personnelles A à 441 et effet net. Contrairement à 6H, effet réel sur le solde.
+- 456 alimente les crédits remboursables et donc remboursement/solde; 441 les
+  avances. 101/275 sont des entrées inchangées; 376 contrôle l'adaptée; 460 reste
+  exclue. Aucun montant dans 462, 455, ACT 45300 ou RC210 41500.
+- Risques : crédit déjà net d'avances puis avances comptées une deuxième fois;
+  A ajouté au total RL-19 puis aux C/H déjà intégrées; somme T4+RL-1;
+  soustraction double REER/RPA; addition ordinaire+adaptée; partage conjugal
+  dupliqué; imputation erronée aux impôts fédéraux ou à la solidarité.
+
+Tests futurs : bornes 2 400/12 620 et borne terminale clarifiée (±0,01),
+demi-cents après preuve officielle, crédit nul avec avances, crédit supérieur
+à l'impôt, cumul A+C+H sans doublon, revenu 275 après déductions, ACT inchangée,
+6H inchangé, incompatibilités et JSON anciens, cycle GUI/trace/PDF complet.
+
+**Coût estimé après clarification :** complexité modérée, environ 3 à 5 sessions
+contrôlées de 30 minutes (moteur/limites, intégrations, contrôles et publication),
+hors délai d'obtention de la règle officielle. Estimation, pas engagement.
+Prochaine action : résoudre les deux questions officielles d'arrondi/borne;
+ensuite autoriser explicitement le moteur ordinaire individuel. Audit arrêté.
+
+
+#### Reprise FAST TRACK autorisée — préparation 6I
+
+L'utilisateur autorise expressément la conservation de l'audit local précédent
+et son inclusion dans le futur commit 6I; aucun commit documentaire séparé.
+Checkpoint de reprise : seul ce document était modifié, diff sans erreur.
+La mission FAST TRACK remplace la recommandation initiale sur deux points :
+borne ordinaire fixée à revenu familial strictement inférieur à 24 475 $;
+prime adaptée incluse dans le profil individuel quand ses conditions sont
+explicitement confirmées, avec comparaison des deux colonnes. Le supplément
+reste exclu. L'historique d'audit ci-dessus est conservé comme tel.
+
+Ajouts locaux : `tax_quebec_work_premium_2025.py` et son test ciblé. Le module
+prépare uniquement les faits individuels, le travail 101 moins case 211,
+le revenu familial 275 recalculé, les avances A intégrales et la nécessité de
+comparer l'adaptée (droit 376 OU prestations admissibles 2020-2025). Confirmations
+strictes; désactivation avec avances non vides refusée. Les restrictions de
+citoyenneté, absence de conjoint sur l'année, etc. sont des limites logicielles.
+Aucune intégration applicative, aucun montant 456, aucune publication.
+
+Vérification additionnelle limitée à l'arrondi : recherche RQ ciblée sans
+instruction applicable obtenue. Les documents de production des relevés trouvés
+ne constituent pas une règle de calcul de l'annexe P. Le barème et l'admissibilité
+n'ont pas été recherchés à nouveau.
+
+Point restant : placement de l'arrondi et traitement des demi-cents aux lignes
+76 et 83. Illustration arithmétique, sans valeur normative : travail 20 000 $,
+revenu familial 18 635,05 $, brut ordinaire 1 185,52 $, réduction exacte 601,505 $.
+Avec HALF_UP par ligne, le résultat serait 584,01 $; avec HALF_UP seulement à
+la fin, 584,02 $. La mission ne précise pas cette convention. Ne pas présenter
+une convention supposée comme une règle RQ. Référence demandée à l'utilisateur;
+aucun choix numérique ni calcul monétaire n'est fait en attendant.
+
+Validation : `tests/test_tax_quebec_work_premium_2025.py`, **69 passed,
+5 warnings SWIG/PyMuPDF**, `--capture=sys -q -p no:cacheprovider`.
+Test d'interaction avec le moteur existant : un REER modifie 275 et non le
+travail annexe P. Pas de full suite, GUI, PDF, commit ou push à cette étape.
+6I non terminé; 6J/6K/6L non commencés, Priorité 7 non ouverte.
+
+
+### 6I — prime au travail individuelle intégrée (état final FAST TRACK)
+
+Cette section remplace les recommandations et blocages des deux étapes
+historiques ci-dessus. L'audit initial est conservé; le périmètre final comprend
+les colonnes ordinaire et adaptée, comparées sans addition, pour une personne
+seule sans enfant. Les paramètres et sources 2025 déjà audités restent ceux
+consignés ci-dessus : TP-1.D.P (2025-12), p. 1-2, guide TP-1.G 2025 p. 72-74,
+lignes 456/441/460. Aucun barème d'une autre année n'est utilisé.
+
+#### Convention monétaire, distincte d'une instruction fiscale
+
+Aucune règle d'arrondi spécifique aux lignes 76/83 n'a été trouvée dans
+les sources officielles 2025 consultées; le moteur utilise sa convention
+monétaire générale au cent, sans présenter celle-ci comme une règle fiscale
+particulière de l'annexe P.
+
+Les produits 72 × taux et 82 × 10 % sont conservés exactement en Decimal.
+Quand les lignes 76 et 83 deviennent des montants monétaires, chacune utilise
+`tax_rules_2025.arrondir_cent` (ROUND_HALF_UP); leur différence positive donne
+84. C'est la convention déjà appliquée au brut et à la réduction dans 6E
+(`tax_quebec_refundable_medical_2025`), et à la réduction dans 6G.
+Exemple de stabilité logicielle, pas validation d'une règle RQ : travail
+20 000 $, famille 18 635,05 $, produit 83 exact 601,505 $, représenté 601,51 $,
+prime ordinaire 584,01 $. Les tests vérifient les fractions de cent de 76 et
+les fractions/demi-cents de 83 ainsi que les produits exacts conservés.
+
+Ordinaire : plafond/réduction 12 620 $, exclusion 2 400 $, taux 11,6 %,
+revenu familial strictement inférieur à 24 475 $. Adaptée : plafond/réduction
+17 798 $, exclusion 1 200 $, taux 13,6 %, revenu familial strictement inférieur
+à 40 371 $. Réduction 10 % dans les deux cas. Le maximum des colonnes admissibles
+est retenu; maxima 1 185,52 $ et 2 257,33 $. La borne entière officielle fait
+foi même lorsqu'une continuation purement algébrique laisserait quelques cents.
+
+#### Profil et intégrations
+
+- Faits documentés, adulte de 18 ans fin 2025, citoyen canadien, résidence
+  Canada toute l'année/Québec fin 2025, aucun conjoint ni enfant, aucune
+  détention/faillite/décès; non-étudiant selon Québec, aucun transfert S,
+  aucune désignation comme enfant ni Allocation famille pour soi.
+- Admissibilité adaptée vérifiée explicitement : droit 376 OU prestations
+  admissibles pour contraintes sévères reçues en 2020-2025. La demande 376
+  déjà active et les âges/naissances des autres profils sont rapprochés.
+- Travail = 101 moins 211 contrôlée; revenu familial = 275 recalculée après
+  déductions. REER/RPA/205/207 ne sont pas déduits à nouveau du travail P.
+  Les pièces non nulles hors T4/RL-1 et les cases hors profil salarié sont
+  refusées. Les avances A sont saisies dans le profil avec source vérifiée;
+  aucun import automatique RL-19 n'est ajouté.
+- JSON facultatif rétrocompatible : faits et avances en chaîne décimale,
+  aucun revenu/crédit dérivé faisant autorité. Validation stricte et refus
+  d'un profil divergent de l'estimation; ancien JSON = profil inactif.
+- GUI dédiée avec révocation des confirmations lors d'une modification,
+  effacement explicite, sauvegarde/rechargement, invalidation estimation/PDF
+  et réinitialisation nouveau dossier.
+- Trace/résumé/PDF : étapes P, produits exacts et représentation au cent,
+  origine du droit adapté, crédit retenu 456 et avances intégrales A à 441.
+  Le crédit est ajouté une fois au rapprochement; les avances sont séparées,
+  même supérieures au crédit ou quand celui-ci est nul. Aucun changement des
+  impôts de base, de l'abattement, de l'ACT fédérale ou de la préparation 6H.
+
+Exclusions logicielles explicites, non exclusions légales générales : couples,
+enfants/personnes à charge, autres statuts d'immigration, travailleurs autonomes,
+recherche, protection des salariés, 105/107 et 293, pensions/retraits/placements,
+résidence partielle, supplément de transition, RL-5 V et RL-19 B. Le bouclier
+fiscal 460 n'est pas calculé : examen séparé signalé même si la prime est nulle.
+
+Validation ciblée : **451 passed, 5 warnings SWIG/PyMuPDF**, incluant bornes,
+fractions de cent, 211, REER/275, avances A/C/H, ACT/6H, anciens JSON,
+contradictions, cycle GUI et export. PDF fictif de deux pages contrôlé
+visuellement : colonnes ordinaire/adaptée, crédit 2 173,63 $, avances 500 $,
+note d'arrondi et exclusions lisibles; test de source longue sans débordement.
+Aucune donnée client. Artifacts de contrôle uniquement sous `tmp/pdfs/6i/`,
+non versionnés. Suite complète et publication : voir commit 6I et CI associée.
+
+Suite complète prépublication 6I : **6435 passed, 8 warnings**, 176,67 s,
+`python -m pytest --capture=sys -q --ignore=tmp`. `tmp` contient uniquement
+des artifacts locaux ignorés; tous les tests du projet ont été exécutés.
+`git diff --check` sans erreur. Pas de seconde full locale post-commit.

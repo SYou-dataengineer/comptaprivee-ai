@@ -37,6 +37,8 @@ from .tax_medical_supplement_2025 import (SupplementMedical2025, CONFIRMATIONS_S
 from .tax_training_credit_2025 import Formation2025, CONFIRMATIONS_FORMATION
 from .tax_quebec_caregiver_2025 import PersonneAidanteQuebec2025
 from .tax_quebec_solidarity_2025 import SolidariteQuebec2025
+from .tax_quebec_work_premium_2025 import PrimeTravailQuebec2025
+from .gui_quebec_work_premium_2025 import ouvrir_prime_travail_quebec_2025
 from .gui_quebec_solidarity_2025 import ouvrir_solidarite_quebec_2025
 from .gui_quebec_caregiver_2025 import ouvrir_aidante_quebec_2025
 from .tax_quebec_childcare_2025 import FraisGardeQuebec2025
@@ -2553,6 +2555,7 @@ class ApplicationComptaPrivee(tk.Tk):
         allocation_travailleurs_courante = AllocationTravailleurs2025()
         frais_garde_quebec_courante = FraisGardeQuebec2025()
         solidarite_quebec_courante = SolidariteQuebec2025()
+        prime_travail_quebec_courante = PrimeTravailQuebec2025()
         personne_aidante_quebec_courante = PersonneAidanteQuebec2025()
         medical_remboursable_quebec_courante = MedicalRemboursableQuebec2025()
         prolongation_carriere_quebec_courante = ProlongationCarriereQuebec2025()
@@ -4965,6 +4968,16 @@ class ApplicationComptaPrivee(tk.Tk):
                 self.statut.set("Crédit de garde Québec validé; recalculez l'estimation.")
             ouvrir_garde_quebec_2025(fenetre, frais_garde_quebec_courante, enregistrer)
 
+        def ouvrir_prime_travail_quebec_6i():
+            def enregistrer(p):
+                nonlocal prime_travail_quebec_courante, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                prime_travail_quebec_courante = p
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Prime au travail enregistrée; recalculez l'estimation fiscale.")
+            ouvrir_prime_travail_quebec_2025(fenetre, prime_travail_quebec_courante, enregistrer)
+
         def ouvrir_solidarite_quebec_6h():
             def enregistrer(p):
                 nonlocal solidarite_quebec_courante, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
@@ -6048,6 +6061,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     allocation_travailleurs=allocation_travailleurs_courante,
                     frais_garde_quebec=frais_garde_quebec_courante,
                     solidarite_quebec=solidarite_quebec_courante,
+                    prime_travail_quebec=prime_travail_quebec_courante,
                     personne_aidante_quebec=personne_aidante_quebec_courante,
                     medical_remboursable_quebec=medical_remboursable_quebec_courante,
                     prolongation_carriere_quebec=prolongation_carriere_quebec_courante,
@@ -14383,6 +14397,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal allocation_travailleurs_courante
             nonlocal frais_garde_quebec_courante
             nonlocal personne_aidante_quebec_courante, solidarite_quebec_courante
+            nonlocal prime_travail_quebec_courante
             nonlocal medical_remboursable_quebec_courante
             nonlocal prolongation_carriere_quebec_courante
             nonlocal achat_habitation_quebec_courant
@@ -14449,6 +14464,7 @@ class ApplicationComptaPrivee(tk.Tk):
             allocation_travailleurs_courante = AllocationTravailleurs2025()
             frais_garde_quebec_courante = FraisGardeQuebec2025()
             solidarite_quebec_courante = SolidariteQuebec2025()
+            prime_travail_quebec_courante = PrimeTravailQuebec2025()
             personne_aidante_quebec_courante = PersonneAidanteQuebec2025()
             medical_remboursable_quebec_courante = MedicalRemboursableQuebec2025()
             prolongation_carriere_quebec_courante = ProlongationCarriereQuebec2025()
@@ -14630,6 +14646,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     allocation_travailleurs=allocation_travailleurs_courante,
                     frais_garde_quebec=frais_garde_quebec_courante,
                     solidarite_quebec=solidarite_quebec_courante,
+                    prime_travail_quebec=prime_travail_quebec_courante,
                     personne_aidante_quebec=personne_aidante_quebec_courante,
                     medical_remboursable_quebec=medical_remboursable_quebec_courante,
                     prolongation_carriere_quebec=prolongation_carriere_quebec_courante,
@@ -14705,6 +14722,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     allocation_travailleurs=allocation_travailleurs_courante,
                     frais_garde_quebec=frais_garde_quebec_courante,
                     solidarite_quebec=solidarite_quebec_courante,
+                    prime_travail_quebec=prime_travail_quebec_courante,
                     personne_aidante_quebec=personne_aidante_quebec_courante,
                     medical_remboursable_quebec=medical_remboursable_quebec_courante,
                     prolongation_carriere_quebec=prolongation_carriere_quebec_courante,
@@ -14801,6 +14819,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal allocation_travailleurs_courante
             nonlocal frais_garde_quebec_courante
             nonlocal personne_aidante_quebec_courante, solidarite_quebec_courante
+            nonlocal prime_travail_quebec_courante
             nonlocal medical_remboursable_quebec_courante
             nonlocal prolongation_carriere_quebec_courante
             nonlocal achat_habitation_quebec_courant
@@ -14897,6 +14916,7 @@ class ApplicationComptaPrivee(tk.Tk):
             allocation_travailleurs_courante = enregistrement.allocation_travailleurs
             frais_garde_quebec_courante = enregistrement.frais_garde_quebec
             solidarite_quebec_courante = enregistrement.solidarite_quebec
+            prime_travail_quebec_courante = enregistrement.prime_travail_quebec
             personne_aidante_quebec_courante = enregistrement.personne_aidante_quebec
             medical_remboursable_quebec_courante = enregistrement.medical_remboursable_quebec
             prolongation_carriere_quebec_courante = enregistrement.prolongation_carriere_quebec
@@ -15252,6 +15272,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     allocation_travailleurs=allocation_travailleurs_courante,
                     frais_garde_quebec=frais_garde_quebec_courante,
                     solidarite_quebec=solidarite_quebec_courante,
+                    prime_travail_quebec=prime_travail_quebec_courante,
                     personne_aidante_quebec=personne_aidante_quebec_courante,
                     medical_remboursable_quebec=medical_remboursable_quebec_courante,
                     prolongation_carriere_quebec=prolongation_carriere_quebec_courante,
@@ -15766,6 +15787,8 @@ class ApplicationComptaPrivee(tk.Tk):
 
         ttk.Button(zone_actions, text="Frais de garde Québec 2025 (6F)",
                    command=ouvrir_garde_quebec_6f).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Prime au travail Québec 2025 (6I)",
+                   command=ouvrir_prime_travail_quebec_6i).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Solidarité Québec / annexe D 2025 (6H)",
                    command=ouvrir_solidarite_quebec_6h).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Personne aidante Québec 2025 (6G)",
