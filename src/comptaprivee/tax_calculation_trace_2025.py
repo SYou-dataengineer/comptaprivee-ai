@@ -146,6 +146,7 @@ class TraceCalculFiscal2025:
     audit_maintien_domicile: tuple[str, ...] = ()
     audit_prime_travail: tuple[str, ...] = ()
     audit_employeurs: tuple[str, ...] = ()
+    audit_location: tuple[str, ...] = ()
     audit_autonome: tuple[str, ...] = ()
 
 
@@ -177,6 +178,19 @@ def _inserer_ligne_avant(lignes, libelle_cible, nouvelle_ligne):
 def construire_trace_calcul_fiscal_2025(
     estimation: EstimationFiscale2025,
 ) -> TraceCalculFiscal2025:
+    if estimation.location.faits is not None:
+        from .tax_rental_income_2025 import lignes_location_2025
+        r=estimation.location; x=estimation.rapprochement; d=estimation.dossier
+        valeurs=(('Brut 12599 / 168','Loyers + autres revenus',r.ligne_12599),
+                 ('Net 12600 / 136','Brut - dépenses; DPA nulle',r.ligne_12600),
+                 ('FSS 446','Annexe F sur net locatif, hors salaire',r.cotisation_fss),
+                 ('Québec 275','Revenu salarial net + net locatif',estimation.revenu.revenu_net_quebec),
+                 ('Solde annuel','Impôts après crédits + FSS - retenues et remboursements',x.solde_estime-x.remboursement_estime))
+        return TraceCalculFiscal2025(client=d.client,annee_fiscale=d.annee_fiscale,province=d.province,
+            lignes=tuple(_ligne(i,'LOCATION',lib,'T776/TP-128/annexe F 2025',form,m) for i,(lib,form,m) in enumerate(valeurs,1)),
+            resultat=x.resultat,montant_resultat=max(x.solde_estime,x.remboursement_estime),
+            formule_resultat='Impôts + FSS - retenues et remboursements de cotisations',avertissements=(),
+            limitations=('Location simple sans DPA, limites 7D confirmées.',),audit_location=lignes_location_2025(estimation))
     if estimation.cotisations_autonomes is not None:
         from .tax_self_employment_contributions_2025 import lignes_annuelles_autonomes_2025
         c=estimation.cotisations_autonomes
@@ -2410,6 +2424,8 @@ def construire_trace_calcul_fiscal_2025(
 def formater_trace_calcul_fiscal_2025(
     trace: TraceCalculFiscal2025,
 ) -> str:
+    if trace.audit_location:
+        return "\n".join((*trace.audit_location, "", *(f"{l.libelle} : {l.montant:.2f} $; {l.formule}" for l in trace.lignes)))
     if trace.audit_autonome:
         return '\n'.join((*trace.audit_autonome, '', 'TRACE DES LIGNES MONÉTAIRES',
             *(f'{l.libelle} : {l.montant:.2f} $; {l.formule}' for l in trace.lignes)))

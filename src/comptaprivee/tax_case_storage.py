@@ -33,6 +33,7 @@ from .tax_quebec_volunteers_2025 import (VolontairesQuebec2025, valider_volontai
 from .tax_quebec_home_support_2025 import (MaintienDomicileQuebec2025, valider_maintien_domicile_quebec_2025, maintien_domicile_vers_dict, maintien_domicile_depuis_dict)
 from .tax_quebec_work_premium_2025 import (PrimeTravailQuebec2025, valider_prime_travail_quebec_2025, prime_travail_vers_dict, prime_travail_depuis_dict)
 from .tax_quebec_solidarity_2025 import (SolidariteQuebec2025, valider_solidarite_quebec_2025, solidarite_quebec_vers_dict, solidarite_quebec_depuis_dict)
+from .tax_rental_income_2025 import locations_vers_json, locations_depuis_json, verifier_dossier_location_2025
 from .tax_self_employment_2025 import entreprises_vers_json, entreprises_depuis_json, MESSAGE_7C
 from .tax_self_employment_contributions_2025 import profil_7c_vers_json, profil_7c_depuis_json, calculer_cotisations_autonomes_2025
 from .tax_quebec_caregiver_2025 import (PersonneAidanteQuebec2025, valider_aidante_quebec_2025, aidante_quebec_vers_dict, aidante_quebec_depuis_dict)
@@ -3665,6 +3666,10 @@ def sauvegarder_dossier_fiscal(
     psv_confirme: bool | None = None,
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    location = verifier_dossier_location_2025(dossier)
+    locations_json = locations_vers_json(dossier.biens_locatifs)
+    if location.faits is not None and estimation is not None and (estimation.dossier != dossier or estimation.location != location):
+        raise ValueError("7D : estimation différente des faits locatifs.")
     entreprises_json = entreprises_vers_json(dossier.entreprises)
     profil_7c_json = profil_7c_vers_json(dossier.profil_cotisations_autonomes)
     if dossier.profil_cotisations_autonomes.activer:
@@ -4228,6 +4233,7 @@ def sauvegarder_dossier_fiscal(
         "annee_fiscale": dossier.annee_fiscale,
         "province": dossier.province,
         "documents": [_chemin_vers_stockage(x) for x in dossier.documents],
+        "biens_locatifs": locations_json,
         "entreprises": entreprises_json,
         "profil_cotisations_autonomes": profil_7c_json,
         "donnees_validees": [
@@ -4416,7 +4422,8 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
     if province.strip().casefold() not in {"québec", "quebec"}:
         raise ValueError("Cette version accepte uniquement les dossiers Québec.")
     entreprises = entreprises_depuis_json(contenu.get("entreprises"))
-    if not isinstance(documents_json, list) or not isinstance(donnees_json, list) or (not donnees_json and not entreprises):
+    biens_locatifs = locations_depuis_json(contenu.get("biens_locatifs"))
+    if not isinstance(documents_json, list) or not isinstance(donnees_json, list) or (not donnees_json and not entreprises and not biens_locatifs):
         raise ValueError("Le dossier fiscal enregistré ne contient pas de données valides.")
 
     documents = tuple(Path(str(v)) for v in documents_json)
@@ -4458,10 +4465,12 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         province="Québec",
         documents=documents,
         donnees_validees=tuple(donnees),
+        biens_locatifs=biens_locatifs,
         entreprises=entreprises,
         profil_cotisations_autonomes=profil_7c_depuis_json(contenu.get("profil_cotisations_autonomes")),
     )
 
+    verifier_dossier_location_2025(dossier)
     estimation = None
     e = contenu.get("derniere_estimation")
     if dossier.profil_cotisations_autonomes.activer:

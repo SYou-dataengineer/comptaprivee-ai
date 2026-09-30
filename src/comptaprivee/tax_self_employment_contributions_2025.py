@@ -99,6 +99,8 @@ class CotisationsAutonomes2025:
 
 
 def calculer_cotisations_autonomes_2025(dossier, profil):
+    if dossier.biens_locatifs:
+        raise ValueError('7C : combinaison avec location 7D hors périmètre.')
     valider_profil_7c(profil)
     if not profil.activer:
         raise ValueError('7C : profil annuel non activé; garde-fou 7B conservé.')

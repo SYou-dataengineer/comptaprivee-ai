@@ -72,6 +72,7 @@ class RapprochementFiscal2025:
 
     statut: str
     limitations: tuple[str, ...]
+    fss_location_446: Decimal = ZERO
     rrq_autonome_445: Decimal = ZERO
     rqap_autonome_439: Decimal = ZERO
     fss_autonome_446: Decimal = ZERO
@@ -191,12 +192,14 @@ def calculer_rapprochement_fiscal_2025(
     credit_maintien_domicile_quebec: Decimal = ZERO,
     credit_prime_travail_quebec: Decimal = ZERO,
     avances_prime_travail_quebec: Decimal = ZERO,
+    fss_location_446: Decimal = ZERO,
     rrq_autonome_445: Decimal = ZERO,
     rqap_autonome_439: Decimal = ZERO,
     fss_autonome_446: Decimal = ZERO,
 ) -> RapprochementFiscal2025:
     """Calcule une estimation de base du remboursement ou du solde."""
     _verifier_coherence(base, federal, quebec)
+    montant_decimal_2025(fss_location_446, "FSS location 446")
     for nom, montant in (("445",rrq_autonome_445),("439",rqap_autonome_439),("446",fss_autonome_446)):
         montant_decimal_2025(montant, nom)
     montant_garde_quebec(credit_garde_quebec, "455")
@@ -276,7 +279,7 @@ def calculer_rapprochement_fiscal_2025(
         + avances_aidante_quebec
         + avances_prime_travail_quebec
         + cotisation_assurance_medicaments
-        + rrq_autonome_445 + rqap_autonome_439 + fss_autonome_446
+        + rrq_autonome_445 + rqap_autonome_439 + fss_autonome_446 + fss_location_446
         + prestations_rqap.cotisation_fss
         + prestations_ae.cotisation_fss + prestations_ae.recuperation
         + prestations_rrq_rpc.cotisation_fss + prestations_psv.recuperation + pensions.cotisation_fss + retraits.cotisation_fss + interets.cotisation_fss + placement_etranger.cotisation_fss + dividendes.cotisation_fss + capital.cotisation_fss
@@ -461,6 +464,7 @@ def calculer_rapprochement_fiscal_2025(
         )
 
     return RapprochementFiscal2025(
+        fss_location_446=fss_location_446,
         rrq_autonome_445=rrq_autonome_445, rqap_autonome_439=rqap_autonome_439, fss_autonome_446=fss_autonome_446,
         credit_formation_ligne_45350=credit_formation,
         supplement_medical_ligne_45200=supplement_medical,

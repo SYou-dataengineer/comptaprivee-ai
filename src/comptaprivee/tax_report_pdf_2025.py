@@ -163,6 +163,9 @@ def nom_rapport_fiscal_pdf_2025(estimation: EstimationFiscale2025) -> str:
 
 
 def _lignes(estimation: EstimationFiscale2025) -> list[str]:
+    if estimation.location.faits is not None:
+        from .tax_rental_income_2025 import lignes_location_2025
+        return list(lignes_location_2025(estimation))
     if estimation.cotisations_autonomes is not None:
         from .tax_self_employment_contributions_2025 import lignes_annuelles_autonomes_2025
         return list(lignes_annuelles_autonomes_2025(estimation))

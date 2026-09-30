@@ -11,6 +11,7 @@ d'estimation soumise à validation comptable.
 from .tax_quebec_senior_support_2025 import (SoutienAinesQuebec2025, ResultatSoutienAinesQuebec2025, calculer_soutien_aines_quebec_2025, lignes_soutien_aines_quebec_2025, valider_soutien_aines_quebec_2025)
 from .tax_quebec_volunteers_2025 import (VolontairesQuebec2025, ResultatVolontairesQuebec2025, calculer_volontaires_quebec_2025, lignes_volontaires_quebec_2025, valider_volontaires_quebec_2025, appliquer_volontaires_quebec_2025)
 from .tax_employment_qpp_2025 import calculer_rrq_salarie_2025, lignes_employeurs_2025
+from .tax_rental_income_2025 import Location2025, verifier_dossier_location_2025, appliquer_location_2025, lignes_location_2025
 from .tax_self_employment_2025 import calculer_entreprises_2025, MESSAGE_7C
 from .tax_self_employment_contributions_2025 import (CotisationsAutonomes2025, valider_profil_7c, calculer_cotisations_autonomes_2025, verifier_options_annuelles_7c, appliquer_revenu_autonome_2025, lignes_annuelles_autonomes_2025)
 from .tax_quebec_home_support_2025 import (MaintienDomicileQuebec2025, ResultatMaintienDomicileQuebec2025, calculer_maintien_domicile_quebec_2025, lignes_maintien_domicile_quebec_2025, valider_maintien_domicile_quebec_2025)
@@ -343,6 +344,7 @@ class EstimationFiscale2025:
     achat_habitation_federal: MontantAchatHabitationFederal2025
     aidant_autre_personne_charge_federal: AidantNaturelAutrePersonneChargeFederal2025
     aidant_enfant_federal: AidantNaturelEnfantMoins18Federal2025
+    location: Location2025 = Location2025()
     cotisations_autonomes: CotisationsAutonomes2025 | None = None
     cotisations_rpa: CotisationsRpa2025 = CotisationsRpa2025()
     rqap_confirme: bool = False
@@ -516,6 +518,7 @@ def calculer_estimation_fiscale_2025(
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
     options_7c = locals().copy()
+    location = verifier_dossier_location_2025(dossier, options_7c)
     valider_profil_7c(dossier.profil_cotisations_autonomes)
     calculer_entreprises_2025(dossier.entreprises)
     autonomes = None
@@ -754,7 +757,7 @@ def calculer_estimation_fiscale_2025(
             raise ValueError("RRQ/RPC avec AE/RQAP : profil combiné hors périmètre.")
         prestations_rrq_rpc = consolider_prestations_rrq_rpc_2025(dossier, rrq_rpc_confirme)
     sans_emploi = (parcours_interets_dividendes or parcours_etranger or parcours_capital or parcours_dividendes or parcours_interets or parcours_remplacement or parcours_retraits or parcours_pensions or parcours_psv or parcours_rrq_rpc) and not any(d.type_document in {"T4", "RL-1"} for d in dossier.donnees_validees)
-    sans_emploi = sans_emploi or autonomes is not None
+    sans_emploi = sans_emploi or autonomes is not None or (location.faits is not None and not dossier.donnees_validees)
     base = base_sans_emploi_rrq_rpc_2025(dossier) if sans_emploi else consolider_base_fiscale_emploi_2025(dossier)
     if fonds.acquisitions and fonds.contribuable.revenu_emploi_entreprise != base.revenu_emploi_quebec:
         raise ValueError("Fonds : revenus d'emploi déclarés différents du dossier Québec; revenus d'entreprise non encore couverts.")
@@ -845,6 +848,7 @@ def calculer_estimation_fiscale_2025(
         ),
     )
 
+    revenu = appliquer_location_2025(revenu, location)
     if autonomes is not None:
         revenu = appliquer_revenu_autonome_2025(revenu, autonomes)
 
@@ -1899,6 +1903,7 @@ def calculer_estimation_fiscale_2025(
         base,
         federal,
         quebec,
+        fss_location_446=location.cotisation_fss,
         rrq_autonome_445=autonomes.rrq_445 if autonomes else Decimal("0"),
         rqap_autonome_439=autonomes.rqap_439 if autonomes else Decimal("0"),
         fss_autonome_446=autonomes.fss_446 if autonomes else Decimal("0"),
@@ -1958,6 +1963,7 @@ def calculer_estimation_fiscale_2025(
         dividendes.ligne_40425, credit_impot_etranger.ligne_40500,
     )
     return EstimationFiscale2025(
+        location=location,
         cotisations_autonomes=autonomes,
         frais_medicaux_famille=medical_familial, resultat_medical_familial=resultat_medical_familial,
         transferts_handicap=handicap_transfere, resultat_transferts_handicap=resultat_handicap_transfere,
@@ -2077,6 +2083,8 @@ def formater_estimation_fiscale_2025(
     estimation: EstimationFiscale2025,
 ) -> str:
     """Construit le résumé lisible destiné à la fenêtre de validation."""
+    if estimation.location.faits is not None:
+        return "\n".join(lignes_location_2025(estimation))
     if estimation.cotisations_autonomes is not None:
         return "\n".join(lignes_annuelles_autonomes_2025(estimation))
     base = estimation.base

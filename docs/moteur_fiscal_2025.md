@@ -5150,3 +5150,87 @@ Suite complète locale unique : **6782 passed, 8 warnings**, 194,34 secondes,
 existants SWIG/PyMuPDF et openpyxl. `git diff --check` sans erreur.
 La seconde validation complète est confiée à GitHub Actions, sans répétition
 locale post-commit. Aucun travail 7D commencé.
+
+
+### 7D — Location résidentielle simple sans DPA
+
+Départ vérifié : `a47bcea`, working tree propre. Ce bloc ouvre une estimation
+annuelle de location seule ou combinée aux salaires ordinaires Québec, y compris
+le profil multi-employeurs 7A déjà validé. Aucun travail 7E.
+
+#### Sources officielles 2025 et règles retenues
+
+- [T776 F (25), pages 1–2](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t776/t776-25f.pdf) : revenu de bien avec services essentiels; services supplémentaires pouvant constituer une entreprise. Brut 8141 + 8230 => 8299 / 12599; net après charges, sans DPA => 9946 / 12600.
+- [T4036, édition 2025, chapitre 3](https://www.canada.ca/fr/agence-revenu/services/formulaires-publications/publications/t4036/revenus-location.html) : comptabilité d’exercice, charges courantes et portion d’assurance de l’année. Sections 8521, 8690, 8860, 8871, 9180 et 9220; frais d’acquisition, travaux majeurs et immobilisations exclus. Les services publics doivent être à la charge du propriétaire selon le bail.
+- [TP-128 (2025-10), pages 1–2](https://www.revenuquebec.ca/documents/fr/formulaires/tp/TP-128%282025-10%29.pdf) : brut 110 => TP-1 168; charges 200/210/216/228/230/238; partie personnelle et court terme nuls; net 394 => 136, DPA 393 nulle. Un formulaire par immeuble.
+- [RQ, ligne 136](https://www.revenuquebec.ca/en/citizens/income-tax-return/completing-your-income-tax-return/line-by-line-help/96-to-164-total-income/line-136/) : revenu net de location; une location constituant une entreprise suit l’annexe L et non la ligne 136. Les travaux peuvent nécessiter TP-1086.R.23.12, hors périmètre ici.
+- [Annexe F 2025, parties A/B](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf) : le salaire est retiré de l’assiette FSS. Dans le profil sans autre déduction, l’assiette est le net locatif. Seuil 18 130 $, 1 %, plafond 150 $ jusqu’à 63 060 $; au-delà, 150 $ + 1 % de l’excédent, maximum 1 000 $. Réutilisation du moteur FSS publié; quantification au cent selon la convention monétaire générale.
+
+#### Périmètre logiciel et charges
+
+Un propriétaire unique, un immeuble résidentiel au Québec, entièrement loué
+à long terme du 1er janvier au 31 décembre 2025, sans usage personnel, vacance,
+acquisition ou prorata. Résidence Canada/Québec toute l’année. Sources, baux,
+caractère de revenu de bien, valeur marchande et admissibilité des dépenses
+confirmés par le comptable. Fiche immuable, montants Decimal finis au cent.
+
+Six catégories uniquement : publicité locative, assurance de l’année, gestion
+locative courante sans travaux, tenue comptable locative, taxes municipales et
+scolaires courantes, électricité/chauffage/eau à charge selon le bail.
+Les autres revenus sont limités aux primes de bail acquises en 2025, hors dépôt
+remboursable et revenu en nature. Aucun champ libre de dépenses diverses.
+
+Résultat = loyers + primes de bail - six catégories de dépenses. Résultat positif
+ou nul seulement. Une dépense supérieure aux recettes déclenche un refus de
+perte locative : c’est une limite logicielle, pas une affirmation générale que
+les pertes de location seraient fiscalement inadmissibles.
+
+#### Intégration et garde-fous
+
+Le net est ajouté une seule fois aux revenus total/net/imposable des deux
+juridictions avant calcul des impôts. Brut fédéral 12599 et Québec 168 conservés
+à titre informatif; net fédéral 12600 et Québec 136 explicites; 275 recalculée.
+Le revenu de bien ne majore pas les bases de travail RRQ/RQAP ou la déduction 201.
+La cotisation FSS locative 446 est ajoutée une fois dans le rapprochement, en
+plus des impôts et avant déduction des retenues/remboursements de cotisations.
+
+Tous les profils supplémentaires de crédits/déductions sont refusés, sauf le
+profil de cotisations excédentaires d’emploi existant, dont les validations
+restent intégrales. ACT, prime au travail, crédits familiaux et autres combinaisons
+ne sont pas étendus implicitement. Couverture médicaments privée annuelle et
+absence d’acomptes requises par confirmation. L’emploi ordinaire reste validé par
+les moteurs existants; RPC et autres revenus sont refusés dans ce parcours.
+
+La combinaison avec travail autonome 7B/7C est refusée dans le moteur annuel,
+la préparation 7B et le calcul autonome 7C. Les calculs publiés 7A–7C restent
+inchangés en l’absence de location.
+
+JSON : champ optionnel `biens_locatifs`, absent => tuple vide; un seul bien,
+champs inconnus/types invalides/doublons refusés. Aucun changement de version
+rendant les anciens dossiers illisibles. Sources et confirmations sauvegardées;
+une estimation doit correspondre aux faits lors de la sauvegarde.
+GUI : fiche défilante, cas exclus explicites, confirmations révoquées à chaque
+modification, suppression, chargement, nouveau dossier. Changer les faits
+invalide l’estimation et empêche d’exporter un ancien PDF. Trace et PDF présentent
+les revenus/dépenses, lignes fiscales, FSS, calcul annuel et limites, ainsi que
+le détail multi-employeurs 7A lorsqu’il est présent.
+
+Exclusions : DPA, intérêts/frais d’emprunt, travaux/réparations, immobilisations,
+partage personnel/locatif, disposition, récupération, perte finale, changement
+d’usage, copropriété/associés, commercial, tout court terme (même conforme),
+terrain vacant, location sous valeur marchande, étranger/hors Québec, revenus
+en nature, sinistre, décès/faillite, taxes récupérables et autres dépenses.
+Ce sont des limites logicielles explicites, non des règles d’inadmissibilité.
+
+Validation ciblée : **386 passed, 5 warnings**, moteur, seuils FSS, montants
+invalides, exclusions, ancien/nouveau JSON, GUI, trace/PDF et régressions 7A–7C.
+Contrôle visuel des **trois pages** du PDF fictif location + deux employeurs :
+lisible, sans débordement; `tmp/pdfs/7d/` ignoré par Git. `git diff --check` OK.
+Suite complète locale unique : **6893 passed, 8 warnings**, 173,85 secondes,
+`python -m pytest --capture=sys -q --ignore=tmp --tb=short`. Avertissements
+existants SWIG/PyMuPDF et openpyxl. La seconde validation complète est confiée
+à GitHub Actions, sans full suite locale post-commit.
+
+Dépendances restantes : audit séparé des pertes, combinaisons avec travail
+autonome/crédits et dépenses complexes. Aucune règle ou implémentation 7E n’est
+inférée de ce bloc; son périmètre devra être défini dans une mission distincte.

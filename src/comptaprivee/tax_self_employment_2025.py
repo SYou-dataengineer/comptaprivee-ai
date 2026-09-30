@@ -141,6 +141,8 @@ def preparer_revenus_autonomes_2025(dossier, entreprises) -> PreparationAutonome
     """
     from .tax_engine_input_2025 import consolider_base_fiscale_emploi_2025
     from .tax_rules_2025 import deduction_travailleur_quebec_2025
+    if dossier.biens_locatifs:
+        raise ValueError('7B : combinaison avec location 7D hors périmètre.')
     if entreprises != dossier.entreprises:
         raise ValueError("7B : les entreprises doivent correspondre aux faits du dossier.")
     r = calculer_entreprises_2025(entreprises)
