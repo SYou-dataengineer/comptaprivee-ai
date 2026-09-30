@@ -106,7 +106,7 @@ def calculer_impot_quebec_preliminaire_2025(
         impot_quebec_preliminaire=impot_preliminaire,
         limitations=(
             "Résident du Québec et du Canada pour toute l'année.",
-            "Profil emploi simple avec un seul T4 et un seul RL-1.",
+            "Employeurs multiples Québec confirmés (7A)." if "Employeurs multiples Québec confirmés (7A)." in revenu.limitations else "Profil emploi simple avec un seul T4 et un seul RL-1.",
             "Le montant personnel de base inclut déjà RRQ, RQAP et AE.",
             "Aucun montant pour conjoint, personne à charge ou âge.",
             "Aucun crédit handicap, médical, scolarité ou don.",

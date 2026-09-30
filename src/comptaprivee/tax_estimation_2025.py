@@ -10,6 +10,7 @@ d'estimation soumise à validation comptable.
 
 from .tax_quebec_senior_support_2025 import (SoutienAinesQuebec2025, ResultatSoutienAinesQuebec2025, calculer_soutien_aines_quebec_2025, lignes_soutien_aines_quebec_2025, valider_soutien_aines_quebec_2025)
 from .tax_quebec_volunteers_2025 import (VolontairesQuebec2025, ResultatVolontairesQuebec2025, calculer_volontaires_quebec_2025, lignes_volontaires_quebec_2025, valider_volontaires_quebec_2025, appliquer_volontaires_quebec_2025)
+from .tax_employment_qpp_2025 import calculer_rrq_salarie_2025, lignes_employeurs_2025
 from .tax_quebec_home_support_2025 import (MaintienDomicileQuebec2025, ResultatMaintienDomicileQuebec2025, calculer_maintien_domicile_quebec_2025, lignes_maintien_domicile_quebec_2025, valider_maintien_domicile_quebec_2025)
 from .tax_quebec_work_premium_2025 import (PrimeTravailQuebec2025, ResultatPrimeTravailQuebec2025, calculer_prime_travail_quebec_2025, lignes_prime_travail_quebec_2025, valider_prime_travail_quebec_2025)
 from .tax_quebec_solidarity_2025 import (SolidariteQuebec2025, BaseSolidariteQuebec2025, preparer_solidarite_quebec_2025, lignes_solidarite_quebec_2025, valider_solidarite_quebec_2025)
@@ -759,6 +760,23 @@ def calculer_estimation_fiscale_2025(
         != CotisationsExcedentaires2025()
     )
 
+    if base.feuillets_emploi and not cotisations_excedentaires_effectives.multi_employeurs_confirme:
+        raise ValueError("7A : confirmer le profil multi-employeurs dans Cotisations excédentaires : "
+            "résidence Québec toute l'année, employeurs distincts et feuillets originaux appariés, "
+            "sans cotisation facultative RRQ.")
+    if base.feuillets_emploi:
+        from datetime import date
+        for p in (solidarite_quebec, prime_travail_quebec, soutien_aines_quebec,
+                  maintien_domicile_quebec, prolongation_carriere_quebec):
+            if p is not None and p.naissance:
+                naissance = date.fromisoformat(p.naissance)
+                if not date(1961, 1, 1) <= naissance <= date(2007, 1, 1):
+                    raise ValueError("7A : naissance incompatible avec le profil RRQ 18–64 ans toute l'année.")
+        if ((credits_federaux_age_pension and credits_federaux_age_pension.reclamer_montant_age)
+                or (montants_age_retraite and montants_age_retraite.reclamer_age)
+                or (act.present and not 18 <= act.age_fin_2025 <= 64)):
+            raise ValueError("7A : âge déclaré incompatible avec le profil RRQ 18–64 ans.")
+
     if cotisations_excedentaires_presentes:
         controles = (
             (
@@ -893,6 +911,8 @@ def calculer_estimation_fiscale_2025(
         if depenses_emploi is not None
         else DepensesEmploi2025()
     )
+    if base.feuillets_emploi and depenses_emploi_effectives != DepensesEmploi2025():
+        raise ValueError("7A : dépenses d'emploi multi-employeurs hors périmètre; attribution T2200/T777 par employeur requise.")
     revenu = appliquer_depenses_emploi_2025(
         revenu,
         depenses_emploi_effectives,
@@ -1576,6 +1596,14 @@ def calculer_estimation_fiscale_2025(
             cotisations_excedentaires_effectives
         )
     )
+    if base.feuillets_emploi:
+        rrq_7a = calculer_rrq_salarie_2025(base.rrq_base_premiere_supplementaire,
+            base.rrq_deuxieme_supplementaire, base.gains_admissibles_rrq)
+        remboursements_cotisations = replace(remboursements_cotisations,
+            rrq_ligne_452=rrq_7a.excedent,
+            assurance_emploi_ligne_45000=(base.assurance_emploi
+                if base.gains_assurables_ae <= Decimal("2000")
+                else remboursements_cotisations.assurance_emploi_ligne_45000))
 
     if frais_medicaux_effectifs.supplement.reclamer and not frais_medicaux_effectifs.supplement.mode_familial and any(p.reclamer_montant for p in (
         montant_conjoint_federal_effectif, personne_charge_admissible_federale_effective,
@@ -2119,6 +2147,7 @@ def formater_estimation_fiscale_2025(
         *lignes_garde_quebec_2025(estimation.frais_garde_quebec, estimation.resultat_garde_quebec),
         *lignes_soutien_aines_quebec_2025(estimation.soutien_aines_quebec, estimation.resultat_soutien_aines_quebec),
         *lignes_volontaires_quebec_2025(estimation.volontaires_quebec, estimation.resultat_volontaires_quebec),
+        *lignes_employeurs_2025(estimation.base, estimation.cotisations_excedentaires.source),
         *lignes_maintien_domicile_quebec_2025(estimation.maintien_domicile_quebec, estimation.resultat_maintien_domicile_quebec),
         *lignes_prime_travail_quebec_2025(estimation.prime_travail_quebec, estimation.resultat_prime_travail_quebec),
         *lignes_solidarite_quebec_2025(estimation.solidarite_quebec, estimation.base_solidarite_quebec),

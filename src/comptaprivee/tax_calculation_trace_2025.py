@@ -10,6 +10,7 @@ from .tax_quebec_home_support_2025 import lignes_maintien_domicile_quebec_2025
 from .tax_quebec_work_premium_2025 import lignes_prime_travail_quebec_2025
 from .tax_quebec_solidarity_2025 import lignes_solidarite_quebec_2025
 from dataclasses import dataclass, replace
+from .tax_employment_qpp_2025 import lignes_employeurs_2025
 from decimal import Decimal
 
 
@@ -144,6 +145,7 @@ class TraceCalculFiscal2025:
     audit_volontaires: tuple[str, ...] = ()
     audit_maintien_domicile: tuple[str, ...] = ()
     audit_prime_travail: tuple[str, ...] = ()
+    audit_employeurs: tuple[str, ...] = ()
 
 
 def _ligne(ordre, section, libelle, source, formule, montant):
@@ -2379,6 +2381,7 @@ def construire_trace_calcul_fiscal_2025(
         audit_maintien_domicile=tuple(lignes_maintien_domicile_quebec_2025(estimation.maintien_domicile_quebec, estimation.resultat_maintien_domicile_quebec)),
         audit_prime_travail=tuple(lignes_prime_travail_quebec_2025(estimation.prime_travail_quebec, estimation.resultat_prime_travail_quebec)),
         preparation_annexe_d=lignes_solidarite_quebec_2025(estimation.solidarite_quebec, estimation.base_solidarite_quebec),
+        audit_employeurs=lignes_employeurs_2025(base, cotisations_excedentaires.source),
     )
 
 
@@ -2413,6 +2416,7 @@ def formater_trace_calcul_fiscal_2025(
             ]
         )
 
+    lignes.extend(trace.audit_employeurs)
     if trace.audit_soutien_aines:
         lignes.extend(trace.audit_soutien_aines)
 

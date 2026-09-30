@@ -74,6 +74,7 @@ class CotisationsExcedentaires2025:
     aucun_cas_particulier_ae: bool = False
     aucun_cas_particulier_rqap: bool = False
     calcul_standard_confirme: bool = False
+    multi_employeurs_confirme: bool = False
 
 
 @dataclass(frozen=True)
@@ -106,6 +107,8 @@ def valider_cotisations_excedentaires_2025(
     donnees: CotisationsExcedentaires2025,
 ) -> CotisationsExcedentaires2025:
     """Valide le profil simple avant tout calcul de remboursement."""
+    if type(donnees.multi_employeurs_confirme) is not bool:
+        raise ValueError("La confirmation multi-employeurs doit être un booléen.")
     for nom, montant in (
         ("RRQ B.A", donnees.rrq_ba),
         ("RRQ B.B", donnees.rrq_bb),

@@ -271,7 +271,7 @@ def test_cotisation_excédentaire_produit_avertissement() -> None:
     assert len(base.avertissements) == 3
 
 
-def test_plusieurs_feuillets_sont_agreges_sans_double_compter() -> None:
+def test_feuillets_incomplets_multi_employeurs_refuses() -> None:
     donnees = list(_donnees_completes())
 
     # On remplace les revenus initiaux par deux feuillets de 26 000 $.
@@ -291,11 +291,7 @@ def test_plusieurs_feuillets_sont_agreges_sans_double_compter() -> None:
         )
     )
 
-    base = consolider_base_fiscale_emploi_2025(
-        _dossier(donnees)
-    )
-
-    assert base.revenu_emploi_federal == Decimal("52000")
-    assert base.revenu_emploi_quebec == Decimal("52000")
-    assert base.nombre_t4 == 3
-    assert base.nombre_rl1 == 3
+    # 7A exige un feuillet complet par employeur : les retenues d'un troisième
+    # document ne peuvent pas compléter silencieusement deux feuillets partiels.
+    with pytest.raises(ValueError, match="cases requises manquantes"):
+        consolider_base_fiscale_emploi_2025(_dossier(donnees))

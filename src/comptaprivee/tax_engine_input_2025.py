@@ -46,6 +46,7 @@ class BaseFiscaleEmploi2025:
     nombre_t4: int
     nombre_rl1: int
     avertissements: tuple[str, ...]
+    feuillets_emploi: tuple[tuple[str, str, tuple[tuple[str, Decimal], ...]], ...] = ()
 
 
 def _valeurs(
@@ -186,6 +187,13 @@ def consolider_base_fiscale_emploi_2025(
         dossier,
         "RL-1",
     )
+
+    if any(d.type_document == "T4" and d.case in {"16", "16A"}
+           and d.valeur_validee != ZERO for d in dossier.donnees_validees):
+        raise ValueError("RPC présent sur un T4 : RC381 hors périmètre, RRQ seulement.")
+    feuillets = ()
+    if len(documents_t4) > 1 or len(documents_rl1) > 1:
+        feuillets = _verifier_feuillets_multiples(dossier, documents_t4, documents_rl1)
 
     if not documents_t4:
         raise ValueError(
@@ -360,4 +368,48 @@ def consolider_base_fiscale_emploi_2025(
         nombre_t4=len(documents_t4),
         nombre_rl1=len(documents_rl1),
         avertissements=tuple(avertissements),
+        feuillets_emploi=feuillets,
     )
+
+
+def _verifier_feuillets_multiples(dossier, documents_t4, documents_rl1):
+    """Une source par feuillet; appariement comptable, jamais déduit du salaire."""
+    if len(documents_t4) != len(documents_rl1):
+        raise ValueError("7A exige autant de T4 que de RL-1, un de chaque par employeur.")
+    requis = {"T4": {"14", "17", "18", "22", "24", "26", "55", "56"},
+              "RL-1": {"A", "B.A", "C", "E", "G", "H", "I"}}
+    permis = {"T4": requis["T4"] | {"17A", "16", "16A", "20", "44"},
+              "RL-1": requis["RL-1"] | {"B.B", "D", "F", "J", "211"}}
+    groupes = {}
+    sources = {}
+    for d in dossier.donnees_validees:
+        if d.type_document not in requis:
+            raise ValueError("7A : seuls les feuillets T4/RL-1 ordinaires sont pris en charge.")
+        cle = (str(d.document).replace("\\", "/").casefold(), d.type_document)
+        sources.setdefault(cle, str(d.document))
+        valeurs = groupes.setdefault(cle, {})
+        if d.case in valeurs:
+            raise ValueError("7A : doublon de case ou de feuillet.")
+        montant = d.valeur_validee
+        if not isinstance(montant, Decimal) or not montant.is_finite() or montant < ZERO:
+            raise ValueError("7A : montant de feuillet invalide.")
+        if d.case not in permis[d.type_document] and montant:
+            raise ValueError(f"7A : {d.type_document} case {d.case} hors périmètre.")
+        valeurs[d.case] = montant
+    empreintes = set()
+    signatures = {"T4": [], "RL-1": []}
+    paires = {"T4": ("17", "17A", "18", "26", "55", "56"),
+              "RL-1": ("B.A", "B.B", "C", "G", "H", "I")}
+    for (document, type_doc), valeurs in groupes.items():
+        if not requis[type_doc] <= valeurs.keys():
+            raise ValueError(f"7A : cases requises manquantes sur {document}.")
+        empreinte = (type_doc, tuple(sorted((c, v) for c, v in valeurs.items() if v)))
+        if empreinte in empreintes:
+            raise ValueError("7A : doublon potentiel de feuillet (montants identiques); vérifier les originaux.")
+        empreintes.add(empreinte)
+        signatures[type_doc].append(tuple(valeurs.get(c, ZERO) for c in paires[type_doc]))
+        if type_doc == "T4" and valeurs["26"] > Decimal("81200"):
+            raise ValueError("7A : case 26 supérieure à 81 200 $ par feuillet; vérifier le T4.")
+    if sorted(signatures["T4"]) != sorted(signatures["RL-1"]):
+        raise ValueError("7A : correspondance des cotisations/gains par feuillet T4/RL-1 incohérente.")
+    return tuple((sources[(doc, typ)], typ, tuple(sorted(vals.items()))) for (doc, typ), vals in sorted(groupes.items()))

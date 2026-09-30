@@ -4918,3 +4918,96 @@ Bouclier 6F lisibles. Full prépublication : **6641 passed, 8 warnings**,
 181,23 s, `python -m pytest --capture=sys -q --ignore=tmp`.
 `git diff --check` sans erreur. Clôture des éléments A; éléments B/C conservés
 explicitement comme limites et reste de couverture. Aucun début de Priorité 7.
+
+
+### 7A — employeurs multiples Québec et RRQ salarié (2025)
+
+Ce bloc remplace la limite historique un T4/un RL-1 uniquement pour le profil
+ci-dessous. Les paragraphes de clôture 6L décrivent l'état antérieur à 7A.
+
+#### Périmètre et activation
+
+Résident Québec toute l'année, emplois Québec ordinaires, RRQ seulement,
+18–64 ans toute l'année, sans proratisation, cotisation facultative ni travail
+autonome. Un T4 et un RL-1 complets par employeur; les zéros sont explicites.
+La fenêtre **Cotisations excédentaires 2025** conserve les confirmations
+existantes et ajoute une confirmation 7A : résidence annuelle, employeurs
+distincts, originaux appariés et référencés dans la source, absence de cotisation
+facultative. Les totaux saisis doivent correspondre aux feuillets validés.
+Modifier un montant ou la source révoque cette confirmation dans la GUI.
+
+Les revenus T4-14 et RL-1-A sont additionnés séparément, ainsi que les retenues
+T4-22/RL-1-E. Les montants 17/17A/26 sont les montants réels des feuillets,
+pas une reconstitution à partir du salaire. Contrôle de complétude par document,
+des cotisations/gains appariables entre T4 et RL-1, des cases répétées et des
+feuillets ayant exactement les mêmes montants (doublon potentiel, refus prudent).
+Deux véritables feuillets aux montants intégralement identiques restent exclus
+jusqu'à une future identification structurée permettant de lever l'ambiguïté.
+Les chemins d'origine et tous les montants sont conservés dans le dossier et
+exposés dans le résumé, la trace et le PDF; aucun appariement par salaire inventé.
+
+#### Sources officielles 2025 et calcul
+
+- [ARC, 5005-S8 F (25), partie 2, pages 3–5](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s8/5005-s8-25f.pdf) :
+  lignes 8/21 réelles, ligne 1 gains; séparation base/première (84,375 % et
+  différence), comparaison aux montants requis puis branches 2a/2b, y compris
+  les transferts d'excédents entre composantes. Sorties 30800 et 22215 distinctes.
+- [RQ, TP-1.D.U (2025-12), partie B, page 3](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.U%282025-12%29.pdf) :
+  déduction 248 calculée séparément, lignes 10–23. La déduction fédérale n'est
+  pas recopiée par hypothèse; des écarts de cent sont possibles.
+- [RQ, ligne 452, paramètres 2025](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/451-a-480-remboursement-ou-solde-a-payer/ligne-452/) :
+  seuil manifeste 4 735,20 $; excédent possible en dessous. Dans ce profil
+  standard confirmé, excédent positif réel moins requis, annexe 8 ligne 24.
+  Inscription Québec 452 une seule fois; aucun remboursement fédéral 44800.
+- [ARC, ligne 31200, 2025](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/sujets/tout-votre-declaration-revenus/declaration-revenus/remplir-declaration-revenus/deductions-credits-depenses/ligne-31200-cotisations-employe-a-assurance-emploi.html) et
+  [ligne 45000](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/sujets/tout-votre-declaration-revenus/declaration-revenus/remplir-declaration-revenus/deductions-credits-depenses/ligne-45000-paiement-trop-assurance-emploi.html) :
+  crédit AE limité aux cotisations conservées; remboursement complet si gains
+  assurables de 2 000 $ ou moins. RQAP : moteur publié, crédit net des excédents,
+  remboursement complet sous 2 000 $, excédent à 457, maximum 484,12 $.
+
+Paramètres RRQ salarié sur douze mois : gains 71 300/81 200 $, exemption 3 500 $,
+base 5,4 %, première supplémentaire 1 %, deuxième 4 %; plafonds 3 661,20/678/396 $.
+Calculs Decimal; représentation de chaque ligne monétaire au cent selon la
+convention générale existante ROUND_HALF_UP. Cette convention n'est pas présentée
+comme une règle d'arrondi particulière nouvellement prescrite par RQ/ARC.
+Le parcours historique à un employeur et ses validations restent inchangés.
+
+#### Régressions, intégrations et exclusions
+
+Deux emplois de 26 000 $, RRQ réelle 2 880 $ : 30800 = 2 430 $, 22215 = 450 $,
+248 = 450 $. Les valeurs théoriques 2 619/485 $ ne sont pas utilisées dans 7A.
+Cas de cotisations inférieures, égales, supérieures, deuxième supplémentaire,
+transferts entre composantes et fractions de cent testés. Contrôle des retenues,
+excédents sous/plafond, employeur à zéro, doublons et champs incomplets.
+Interaction 6I : deux salaires de 10 000 $, cotisations réelles 832 $ => déduction
+248 de 130 $, déduction travailleur 1 200 $, revenu 275 de 18 670 $; 456 recalculée.
+Les profils d'âge contradictoires avec 18–64 ans sont refusés.
+
+JSON : seul ajout optionnel `cotisations_excedentaires.multi_employeurs_confirme`,
+booléen strict, absent => false. Aucun montant calculé stocké comme entrée
+fiscale; les données par feuillet existantes restent la source de vérité.
+Ouverture ancien JSON, sauvegarde/rechargement, GUI, invalidation de l'estimation
+et du PDF, effacement et nouveau dossier couverts.
+
+Exclus : RPC (T4-16/16A non nul => refus explicite), RC381/LE-35, cotisations
+facultatives, travail autonome, années partielles, décès, choix RRQ, autres
+feuillets et rémunérations exotiques non modélisées. Dépenses d'emploi T2200/T777
+multi-employeurs refusées faute d'attribution structurée par employeur. Aucun
+élargissement des profils 5/6 ni ouverture de 7B. Aucun fichier client ou PDF
+produit ne doit être versionné.
+
+#### Validation 7A
+
+Tests ciblés : **269 passed, 5 warnings SWIG/PyMuPDF**. Cas multi-employeurs,
+RRQ/AE/RQAP, régressions revenu/impôt/rapprochement, 6I, JSON, GUI, trace et PDF.
+Un ancien test acceptant des feuillets partiels a été renforcé en refus explicite;
+l'agrégation des feuillets complets est vérifiée séparément. Une attente du
+nouveau test 6I a été corrigée (déduction travailleur : 6 % de 20 000 = 1 200,
+pas le plafond), sans modification de la règle publiée.
+Contrôle visuel des quatre pages du rapport fictif `tmp/pdfs/7a/` : lisible,
+provenance et résultats RRQ distincts, aucun débordement. Fichiers ignorés par Git.
+Une seule suite complète locale prépublication : **6680 passed, 8 warnings**,
+189,05 s, `python -m pytest --capture=sys -q --ignore=tmp`. Les huit avertissements
+préexistants concernent SWIG/PyMuPDF et `openpyxl.font.copy`. `git diff --check`
+sans erreur. La seconde validation complète est confiée à GitHub Actions.
+Après publication de 7A : arrêt obligatoire, 7B non commencé.

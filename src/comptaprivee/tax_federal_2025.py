@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from .tax_federal_top_up_2025 import CreditsFederauxNonRemboursables2025
 from .tax_engine_input_2025 import BaseFiscaleEmploi2025
+from .tax_employment_qpp_2025 import calculer_rrq_salarie_2025
 from .tax_income_2025 import RevenuNetImposable2025, calculer_cotisations_attendues_2025
 from .tax_rules_2025 import (
     arrondir_cent,
@@ -72,6 +73,10 @@ def calculer_impot_federal_preliminaire_2025(
     cotisation_base_rrq = arrondir_cent(
         attendues.rrq_ba - attendues.rrq_premiere_supplementaire
     )
+    if base.feuillets_emploi:
+        cotisation_base_rrq = calculer_rrq_salarie_2025(
+            base.rrq_base_premiere_supplementaire, base.rrq_deuxieme_supplementaire,
+            base.gains_admissibles_rrq).ligne_30800
 
     ae_source = (
         attendues.assurance_emploi
@@ -83,6 +88,9 @@ def calculer_impot_federal_preliminaire_2025(
         if utiliser_cotisations_attendues
         else base.rqap
     )
+    if base.feuillets_emploi:
+        ae_source = min(base.assurance_emploi, attendues.assurance_emploi)
+        rqap_source = min(base.rqap, attendues.rqap)
 
     ae = (
         ZERO
@@ -129,7 +137,7 @@ def calculer_impot_federal_preliminaire_2025(
         top_up_credit=top_up,
         limitations=(
             "Résident du Canada et du Québec pour toute l'année.",
-            "Profil emploi simple avec un seul T4 et un seul RL-1.",
+            "Employeurs multiples Québec confirmés (7A)." if base.feuillets_emploi else "Profil emploi simple avec un seul T4 et un seul RL-1.",
             "Aucun montant pour âge, conjoint ou personne à charge.",
             "Aucun crédit pour handicap, frais médicaux ou scolarité.",
             "Aucun don ni crédit transféré.",

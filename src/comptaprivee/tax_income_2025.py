@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from .tax_engine_input_2025 import BaseFiscaleEmploi2025
+from .tax_employment_qpp_2025 import calculer_rrq_salarie_2025
 from .tax_rules_2025 import (
     EI_MAX_INSURABLE_EARNINGS_QUEBEC_2025,
     EI_RATE_QUEBEC_2025,
@@ -155,6 +156,9 @@ def verifier_profil_emploi_simple_2025(
         raise ValueError("Cette version du calcul accepte uniquement le Québec.")
 
     if base.nombre_t4 != 1 or base.nombre_rl1 != 1:
+        if (base.nombre_t4 > 1 and base.nombre_t4 == base.nombre_rl1
+                and base.feuillets_emploi and autoriser_cotisations_excedentaires):
+            return calculer_cotisations_attendues_2025(base)
         raise ValueError(
             "Le calcul automatique de cette première version exige "
             "exactement un T4 et un RL-1."
@@ -205,6 +209,12 @@ def calculer_revenu_net_imposable_2025(
         attendues.rrq_premiere_supplementaire
         + attendues.rrq_deuxieme_supplementaire
     )
+    deduction_rrq_quebec = deduction_rrq
+    if base.feuillets_emploi:
+        rrq = calculer_rrq_salarie_2025(base.rrq_base_premiere_supplementaire,
+            base.rrq_deuxieme_supplementaire, base.gains_admissibles_rrq)
+        deduction_rrq = rrq.ligne_22215
+        deduction_rrq_quebec = rrq.ligne_248
 
     revenu_net_federal = max(
         arrondir_cent(base.revenu_emploi_federal - deduction_rrq),
@@ -220,7 +230,7 @@ def calculer_revenu_net_imposable_2025(
         arrondir_cent(
             base.revenu_emploi_quebec
             - deduction_travailleur
-            - deduction_rrq
+            - deduction_rrq_quebec
         ),
         ZERO,
     )
@@ -236,12 +246,12 @@ def calculer_revenu_net_imposable_2025(
         revenu_imposable_federal=revenu_imposable_federal,
         revenu_total_quebec=base.revenu_emploi_quebec,
         deduction_travailleur_quebec=deduction_travailleur,
-        deduction_rrq_quebec=deduction_rrq,
+        deduction_rrq_quebec=deduction_rrq_quebec,
         revenu_net_quebec=revenu_net_quebec,
         revenu_imposable_quebec=revenu_imposable_quebec,
         profil="Emploi Québec simple 2025",
         limitations=(
-            "Un seul T4 et un seul RL-1.",
+            "Employeurs multiples Québec confirmés (7A)." if base.feuillets_emploi else "Un seul T4 et un seul RL-1.",
             "Aucun revenu de travail autonome.",
             "Aucune cotisation CPP ou situation interprovinciale.",
             "Aucune proratisation ou élection spéciale du RRQ.",

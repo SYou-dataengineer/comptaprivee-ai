@@ -12054,6 +12054,10 @@ class ApplicationComptaPrivee(tk.Tk):
                     .calcul_standard_confirme
                 )
             )
+            multi_employeurs_var = tk.BooleanVar(value=cotisations_excedentaires_courantes.multi_employeurs_confirme)
+            for variable_7a in (rrq_ba_var, rrq_bb_var, gains_rrq_var, ae_var,
+                               gains_ae_var, rqap_var, revenus_rqap_var, source_var):
+                variable_7a.trace_add("write", lambda *_: multi_employeurs_var.set(False))
 
             champs = (
                 ("RRQ B.A payé :", rrq_ba_var),
@@ -12148,6 +12152,11 @@ class ApplicationComptaPrivee(tk.Tk):
                     "Calcul standard RRQ / AE / RQAP confirmé",
                     calcul_standard_var,
                 ),
+                (
+                    "7A : résident Québec toute l'année; employeurs distincts, T4/RL-1 originaux "
+                    "appariés et identifiés dans la source; sans cotisation facultative RRQ",
+                    multi_employeurs_var,
+                ),
             )
 
             for ligne, (libelle, variable) in enumerate(
@@ -12178,7 +12187,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 foreground="#92400e",
                 wraplength=790,
             ).grid(
-                row=19,
+                row=20,
                 column=0,
                 columnspan=2,
                 sticky="w",
@@ -12229,6 +12238,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 ae_simple_var.set(False)
                 rqap_simple_var.set(False)
                 calcul_standard_var.set(False)
+                multi_employeurs_var.set(False)
 
             def appliquer() -> None:
                 nonlocal cotisations_excedentaires_courantes
@@ -12280,6 +12290,7 @@ class ApplicationComptaPrivee(tk.Tk):
                         calcul_standard_confirme=(
                             calcul_standard_var.get()
                         ),
+                        multi_employeurs_confirme=multi_employeurs_var.get(),
                     )
                     nouvelles_cotisations = (
                         valider_cotisations_excedentaires_2025(

@@ -1740,6 +1740,7 @@ def _cotisations_excedentaires_vers_dict(
         "calcul_standard_confirme": bool(
             cotisations.calcul_standard_confirme
         ),
+        "multi_employeurs_confirme": cotisations.multi_employeurs_confirme,
     }
 
 
@@ -1814,6 +1815,7 @@ def _cotisations_excedentaires_depuis_dict(
         calcul_standard_confirme=bool(
             valeur.get("calcul_standard_confirme", False)
         ),
+        multi_employeurs_confirme=valeur.get("multi_employeurs_confirme", False),
     )
     return valider_cotisations_excedentaires_2025(cotisations)
 
