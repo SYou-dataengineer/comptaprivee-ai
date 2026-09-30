@@ -1,6 +1,7 @@
 """Persistance locale des dossiers fiscaux validés."""
 
 from __future__ import annotations
+from .tax_loss_ledger_2025 import registre_pertes_vers_json, registre_pertes_depuis_json
 from .tax_family_medical_2025 import (FraisMedicauxFamilleFederaux2025, calculer_medical_familial_2025, medical_familial_vers_dict, medical_familial_depuis_dict, verifier_combinaison_medicale_famille)
 from .tax_family_workers_benefit_2025 import famille_act_vers_dict, famille_act_depuis_dict, verifier_concordance_act_familial_2025
 from .tax_disability_transfer_2025 import (TransfertsHandicap2025, calculer_transferts_handicap_2025, transferts_handicap_vers_dict, transferts_handicap_depuis_dict)
@@ -3668,6 +3669,7 @@ def sauvegarder_dossier_fiscal(
 ) -> Path:
     location = verifier_dossier_location_2025(dossier)
     locations_json = locations_vers_json(dossier.biens_locatifs)
+    pertes_7f_json = registre_pertes_vers_json(dossier.registre_pertes)
     if location.faits is not None and estimation is not None and (estimation.dossier != dossier or estimation.location != location):
         raise ValueError("7D : estimation différente des faits locatifs.")
     entreprises_json = entreprises_vers_json(dossier.entreprises)
@@ -4234,6 +4236,7 @@ def sauvegarder_dossier_fiscal(
         "province": dossier.province,
         "documents": [_chemin_vers_stockage(x) for x in dossier.documents],
         "biens_locatifs": locations_json,
+        "registre_pertes": pertes_7f_json,
         "entreprises": entreprises_json,
         "profil_cotisations_autonomes": profil_7c_json,
         "donnees_validees": [
@@ -4466,6 +4469,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         documents=documents,
         donnees_validees=tuple(donnees),
         biens_locatifs=biens_locatifs,
+        registre_pertes=registre_pertes_depuis_json(contenu.get("registre_pertes")),
         entreprises=entreprises,
         profil_cotisations_autonomes=profil_7c_depuis_json(contenu.get("profil_cotisations_autonomes")),
     )

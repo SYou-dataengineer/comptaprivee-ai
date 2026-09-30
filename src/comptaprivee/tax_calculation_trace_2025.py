@@ -4,6 +4,7 @@ Cette brique ne modifie aucun résultat fiscal. Elle explique une estimation
 déjà calculée à partir d'un dossier verrouillé et validé par le comptable.
 """
 
+from .tax_loss_ledger_2025 import lignes_resultat_pertes_2025
 from .tax_quebec_senior_support_2025 import lignes_soutien_aines_quebec_2025
 from .tax_quebec_volunteers_2025 import lignes_volontaires_quebec_2025
 from .tax_quebec_home_support_2025 import lignes_maintien_domicile_quebec_2025
@@ -148,6 +149,7 @@ class TraceCalculFiscal2025:
     audit_employeurs: tuple[str, ...] = ()
     audit_location: tuple[str, ...] = ()
     audit_autonome: tuple[str, ...] = ()
+    audit_pertes: tuple[str, ...] = ()
 
 
 def _ligne(ordre, section, libelle, source, formule, montant):
@@ -199,7 +201,7 @@ def construire_trace_calcul_fiscal_2025(
                     (juridiction+' solde final', 'Solde ouverture - DPA choisie', amort.fermeture),
                 ))
             valeurs = (valeurs[0], *details, *valeurs[1:])
-        return TraceCalculFiscal2025(client=d.client,annee_fiscale=d.annee_fiscale,province=d.province,
+        return TraceCalculFiscal2025(audit_pertes=tuple(lignes_resultat_pertes_2025(estimation.pertes_7f)),client=d.client,annee_fiscale=d.annee_fiscale,province=d.province,
             lignes=tuple(_ligne(i,'LOCATION',lib,'T776/TP-128/annexe F 2025',form,m) for i,(lib,form,m) in enumerate(valeurs,1)),
             resultat=x.resultat,montant_resultat=max(x.solde_estime,x.remboursement_estime),
             formule_resultat='Impôts + FSS - retenues et remboursements de cotisations',avertissements=(),
@@ -220,7 +222,7 @@ def construire_trace_calcul_fiscal_2025(
             ('Solde annuel','Fédéral après abattement + impôt Québec + 445 + 439 + 446',x.solde_estime),
         ):
             lignes.append(_ligne(len(lignes)+1,'ANNUEL',libelle,'Pipeline annuel 7C',formule,montant))
-        return TraceCalculFiscal2025(client=d.client,annee_fiscale=d.annee_fiscale,province=d.province,
+        return TraceCalculFiscal2025(audit_pertes=tuple(lignes_resultat_pertes_2025(estimation.pertes_7f)),client=d.client,annee_fiscale=d.annee_fiscale,province=d.province,
             lignes=tuple(lignes),resultat=x.resultat,montant_resultat=max(x.solde_estime,x.remboursement_estime),
             formule_resultat='Impôts après crédits et abattement + cotisations Québec, chacune une fois',
             avertissements=(),limitations=('Autonome pur borné; emploi et autres crédits exclus.',),
@@ -361,6 +363,9 @@ def construire_trace_calcul_fiscal_2025(
         formule_revenu_federal += " + PSV 11300 + suppléments 14600 - récupération 23500 - déduction 25000"
         formule_revenu_quebec += " + PSV 114 + suppléments 148 - récupération 250 - déduction 295"
 
+    if estimation.pertes_7f.soldes:
+        formule_revenu_federal += " - pertes 7F 25200/25300 (imposable uniquement)"
+        formule_revenu_quebec += " - pertes 7F 289/290 (imposable uniquement; annexe N sans rajustement)"
     if estimation.reports_pertes.present:
         formule_revenu_federal += " - pertes 25300 (imposable uniquement)"
         formule_revenu_quebec += " - pertes 290 + rajustement 276 (imposable uniquement)"
@@ -2414,7 +2419,7 @@ def construire_trace_calcul_fiscal_2025(
         ),
     )
 
-    return TraceCalculFiscal2025(
+    return TraceCalculFiscal2025(audit_pertes=tuple(lignes_resultat_pertes_2025(estimation.pertes_7f)),
         client=dossier.client,
         annee_fiscale=dossier.annee_fiscale,
         province=dossier.province,
@@ -2438,9 +2443,9 @@ def formater_trace_calcul_fiscal_2025(
     trace: TraceCalculFiscal2025,
 ) -> str:
     if trace.audit_location:
-        return "\n".join((*trace.audit_location, "", *(f"{l.libelle} : {l.montant:.2f} $; {l.formule}" for l in trace.lignes)))
+        return "\n".join((*trace.audit_location, *trace.audit_pertes, "", *(f"{l.libelle} : {l.montant:.2f} $; {l.formule}" for l in trace.lignes)))
     if trace.audit_autonome:
-        return '\n'.join((*trace.audit_autonome, '', 'TRACE DES LIGNES MONÉTAIRES',
+        return '\n'.join((*trace.audit_autonome, *trace.audit_pertes, '', 'TRACE DES LIGNES MONÉTAIRES',
             *(f'{l.libelle} : {l.montant:.2f} $; {l.formule}' for l in trace.lignes)))
     lignes = [
         "TRACE DE CALCUL FISCAL 2025 — VALIDATION COMPTABLE OBLIGATOIRE",
@@ -2501,4 +2506,4 @@ def formater_trace_calcul_fiscal_2025(
             "ou à Revenu Québec.",
         ]
     )
-    return "\n".join(lignes)
+    return "\n".join([*lignes, *trace.audit_pertes])

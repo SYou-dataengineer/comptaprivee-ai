@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
+from .tax_loss_ledger_2025 import RegistrePertes2025, valider_registre_pertes_2025
+from .gui_loss_ledger_2025 import ouvrir_pertes_2025 as ouvrir_registre_pertes_7f
 from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, CONFIRMATIONS_REPORTS_DONS
 from .gui_family_medical_2025 import ouvrir_medical_familial_2025
 from .tax_family_medical_2025 import FraisMedicauxFamilleFederaux2025
@@ -2569,6 +2571,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_garde_quebec_courante = FraisGardeQuebec2025()
         solidarite_quebec_courante = SolidariteQuebec2025()
         locations_courantes = self.dossier_fiscal_valide_courant.biens_locatifs if self.dossier_fiscal_valide_courant else ()
+        pertes_courantes = self.dossier_fiscal_valide_courant.registre_pertes if self.dossier_fiscal_valide_courant else RegistrePertes2025()
         entreprises_courantes = (
             self.dossier_fiscal_valide_courant.entreprises
             if self.dossier_fiscal_valide_courant is not None else ()
@@ -5028,6 +5031,22 @@ class ApplicationComptaPrivee(tk.Tk):
                 rapport_fiscal_a_reexporter = True
                 self.statut.set("Prime au travail enregistrée; recalculez l'estimation fiscale.")
             ouvrir_prime_travail_quebec_2025(fenetre, prime_travail_quebec_courante, enregistrer)
+
+        def ouvrir_pertes_7f():
+            dossier_ouvert = self.dossier_fiscal_valide_courant
+            if dossier_ouvert is None:
+                messagebox.showerror("Pertes 7F indisponibles", "Validez d'abord le dossier fiscal.", parent=fenetre)
+                return
+            def enregistrer(registre):
+                nonlocal pertes_courantes, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                if self.dossier_fiscal_valide_courant is not dossier_ouvert:
+                    raise ValueError("Le dossier a changé; rouvrez les reports de pertes.")
+                valider_registre_pertes_2025(registre)
+                pertes_courantes = registre
+                self.dossier_fiscal_valide_courant = replace(dossier_ouvert, registre_pertes=registre)
+                derniere_estimation = dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+            ouvrir_registre_pertes_7f(fenetre, pertes_courantes, enregistrer)
 
         def ouvrir_dpa_7e():
             courant = self.dossier_fiscal_valide_courant
@@ -14545,7 +14564,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal frais_garde_quebec_courante
-            nonlocal entreprises_courantes, locations_courantes
+            nonlocal entreprises_courantes, locations_courantes, pertes_courantes
             nonlocal personne_aidante_quebec_courante, solidarite_quebec_courante
             nonlocal prime_travail_quebec_courante
             nonlocal soutien_aines_quebec_courante
@@ -14619,6 +14638,7 @@ class ApplicationComptaPrivee(tk.Tk):
             solidarite_quebec_courante = SolidariteQuebec2025()
             entreprises_courantes = ()
             locations_courantes = ()
+            pertes_courantes = RegistrePertes2025()
             prime_travail_quebec_courante = PrimeTravailQuebec2025()
             soutien_aines_quebec_courante = SoutienAinesQuebec2025()
             volontaires_quebec_courante = VolontairesQuebec2025()
@@ -14732,7 +14752,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 mettre_a_jour_etat_dossier_valide()
                 return
 
-            dossier_valide = replace(dossier_valide, entreprises=entreprises_courantes, biens_locatifs=locations_courantes)
+            dossier_valide = replace(dossier_valide, entreprises=entreprises_courantes, biens_locatifs=locations_courantes, registre_pertes=pertes_courantes)
             self.dossier_fiscal_valide_courant = dossier_valide
             statut_dossier.set(
                 "Validé — prêt pour le moteur fiscal"
@@ -14983,7 +15003,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal frais_medicaux_famille_courants, transferts_handicap_courants, renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal frais_garde_quebec_courante
-            nonlocal entreprises_courantes, locations_courantes
+            nonlocal entreprises_courantes, locations_courantes, pertes_courantes
             nonlocal personne_aidante_quebec_courante, solidarite_quebec_courante
             nonlocal prime_travail_quebec_courante
             nonlocal soutien_aines_quebec_courante
@@ -15086,6 +15106,7 @@ class ApplicationComptaPrivee(tk.Tk):
             frais_garde_quebec_courante = enregistrement.frais_garde_quebec
             entreprises_courantes = enregistrement.dossier.entreprises
             locations_courantes = enregistrement.dossier.biens_locatifs
+            pertes_courantes = enregistrement.dossier.registre_pertes
             solidarite_quebec_courante = enregistrement.solidarite_quebec
             prime_travail_quebec_courante = enregistrement.prime_travail_quebec
             soutien_aines_quebec_courante = enregistrement.soutien_aines_quebec
@@ -15977,6 +15998,8 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_soutien_aines_quebec_6j).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Prime au travail Québec 2025 (6I)",
                    command=ouvrir_prime_travail_quebec_6i).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Pertes et reports 2025 (7F)",
+                   command=ouvrir_pertes_7f).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="DPA location 2025 (7E)",
                    command=ouvrir_dpa_7e).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Location résidentielle 2025 (7D)",

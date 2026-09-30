@@ -172,7 +172,7 @@ def lignes_resume_capital_2025(p,profil,reports=False):
         f'Gain/perte annexe 3 13200 / annexe G 10 : {f(p.gain_perte)}',
         f'Inclusion 50 %; fédéral 12700 / Québec 139 : {f(p.ligne_12700)}',
         'Seul le gain imposable positif augmente les revenus total, net et imposable.',
-        f'Perte nette 2025 calculée à vérifier : {f(p.perte_nette_2025)}; ' + ('suivi dans le registre 3F.' if reports else 'aucun report utilisé ou certifié.'),
+        f'Perte nette 2025 calculée à vérifier : {f(p.perte_nette_2025)}; ' + ('suivi dans le registre 7F.' if reports == '7F' else 'suivi dans le registre 3F.' if reports else 'aucun report utilisé ou certifié.'),
         'Une perte nette ne réduit ni le salaire ni les autres revenus.',
         f'FSS 446 sur le gain imposable : {f(p.cotisation_fss)}; aucune retenue ajoutée.',
         'Vente unique en CAD; hors T3/T5, pertes apparentes, étranger, conjoint, autres placements et IMR complexe.']

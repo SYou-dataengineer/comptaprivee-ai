@@ -260,6 +260,7 @@ from .tax_union_dues_2025 import (
     credit_quebec_cotisations_2025,
 )
 from .tax_validated_case import DossierFiscalValide
+from .tax_loss_ledger_2025 import PreparationPertes2025, verifier_options_pertes_2025, appliquer_pertes_annuelles_2025, lignes_resultat_pertes_2025
 from .tax_capital_loss_carryovers_2025 import (ProfilReportsPertes2025, ReportsPertes2025, verifier_confirmation_reports_pertes_2025, appliquer_reports_pertes_2025, lignes_resume_reports_pertes_2025)
 from .tax_investment_expenses_2025 import (ProfilFraisPlacement2025, FraisPlacement2025, verifier_confirmation_frais_2025, calculer_frais_placement_2025, lignes_resume_frais_placement_2025)
 from .tax_capital_gains_2025 import (ProfilCapital2025, GainsCapital2025, valider_profil_capital_2025, detecter_capital_2025, consolider_capital_2025, appliquer_capital_2025, lignes_resume_capital_2025)
@@ -353,6 +354,7 @@ class EstimationFiscale2025:
     prestations_ae: PrestationsAe2025 = PrestationsAe2025()
     profil_reports_pertes: ProfilReportsPertes2025 = ProfilReportsPertes2025()
     reports_pertes: ReportsPertes2025 = ReportsPertes2025()
+    pertes_7f: PreparationPertes2025 = PreparationPertes2025()
     profil_frais_placement: ProfilFraisPlacement2025 = ProfilFraisPlacement2025()
     frais_placement: FraisPlacement2025 = FraisPlacement2025()
     profil_capital: ProfilCapital2025 = ProfilCapital2025()
@@ -518,6 +520,7 @@ def calculer_estimation_fiscale_2025(
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
     options_7c = locals().copy()
+    verifier_options_pertes_2025(dossier, options_7c)
     location = verifier_dossier_location_2025(dossier, options_7c)
     valider_profil_7c(dossier.profil_cotisations_autonomes)
     calculer_entreprises_2025(dossier.entreprises)
@@ -1056,6 +1059,7 @@ def calculer_estimation_fiscale_2025(
 
     revenu, prestations_ae = appliquer_recuperation_ae_2025(revenu, prestations_ae)
     revenu, prestations_psv = appliquer_recuperation_psv_2025(revenu, prestations_psv)
+    revenu, pertes_7f = appliquer_pertes_annuelles_2025(dossier.registre_pertes, revenu, capital)
 
     dons_effectifs = (
         dons_bienfaisance
@@ -1954,9 +1958,9 @@ def calculer_estimation_fiscale_2025(
         ),
     )
 
-    if reports_pertes.present:
+    if reports_pertes.present or pertes_7f.soldes:
         rapprochement = replace(rapprochement, limitations=tuple(
-            texte.replace("aucun report de perte", "reports de pertes validés séparément en 3F")
+            texte.replace("aucun report de perte", "reports de pertes validés séparément en " + ("7F" if pertes_7f.soldes else "3F"))
             for texte in rapprochement.limitations))
     resultat_pret_etudiant = mesurer_incidence_interets_2025(
         resultat_pret_etudiant, credits_complets, federal.impot_brut,
@@ -2004,6 +2008,7 @@ def calculer_estimation_fiscale_2025(
         profil_dividendes=profil_dividendes,
         profil_reports_pertes=profil_reports_pertes,
         reports_pertes=reports_pertes,
+        pertes_7f=pertes_7f,
         profil_frais_placement=profil_frais_placement,
         frais_placement=frais_placement,
         profil_capital=profil_capital,
@@ -2084,9 +2089,9 @@ def formater_estimation_fiscale_2025(
 ) -> str:
     """Construit le résumé lisible destiné à la fenêtre de validation."""
     if estimation.location.faits is not None:
-        return "\n".join(lignes_location_2025(estimation))
+        return "\n".join([*lignes_location_2025(estimation), *lignes_resultat_pertes_2025(estimation.pertes_7f)])
     if estimation.cotisations_autonomes is not None:
-        return "\n".join(lignes_annuelles_autonomes_2025(estimation))
+        return "\n".join([*lignes_annuelles_autonomes_2025(estimation), *lignes_resultat_pertes_2025(estimation.pertes_7f)])
     base = estimation.base
     revenu = estimation.revenu
     federal = estimation.federal
@@ -2112,7 +2117,7 @@ def formater_estimation_fiscale_2025(
         *lignes_resume_ae_2025(estimation.prestations_ae),
         *lignes_resume_reports_pertes_2025(estimation.reports_pertes, estimation.profil_reports_pertes),
         *lignes_resume_frais_placement_2025(estimation.frais_placement, estimation.profil_frais_placement, estimation.reports_pertes.present),
-        *lignes_resume_capital_2025(estimation.capital, estimation.profil_capital, estimation.reports_pertes.present),
+        *lignes_resume_capital_2025(estimation.capital, estimation.profil_capital, "7F" if estimation.pertes_7f.soldes else estimation.reports_pertes.present),
         *lignes_resume_interets_dividendes_2025(CombinaisonInteretsDividendes2025(
             interets=estimation.interets,
             dividendes=estimation.dividendes,
@@ -2861,4 +2866,4 @@ def formater_estimation_fiscale_2025(
         ]
     )
 
-    return "\n".join(lignes)
+    return "\n".join([*lignes, *lignes_resultat_pertes_2025(estimation.pertes_7f)])

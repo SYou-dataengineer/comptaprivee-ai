@@ -1,5 +1,6 @@
 """Export PDF local du rapport d'estimation fiscale 2025."""
 
+from .tax_loss_ledger_2025 import lignes_resultat_pertes_2025
 from .tax_quebec_senior_support_2025 import lignes_soutien_aines_quebec_2025
 from .tax_quebec_volunteers_2025 import lignes_volontaires_quebec_2025
 from .tax_employment_qpp_2025 import lignes_employeurs_2025
@@ -165,10 +166,10 @@ def nom_rapport_fiscal_pdf_2025(estimation: EstimationFiscale2025) -> str:
 def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     if estimation.location.faits is not None:
         from .tax_rental_income_2025 import lignes_location_2025
-        return list(lignes_location_2025(estimation))
+        return [*lignes_location_2025(estimation), *lignes_resultat_pertes_2025(estimation.pertes_7f)]
     if estimation.cotisations_autonomes is not None:
         from .tax_self_employment_contributions_2025 import lignes_annuelles_autonomes_2025
-        return list(lignes_annuelles_autonomes_2025(estimation))
+        return [*lignes_annuelles_autonomes_2025(estimation), *lignes_resultat_pertes_2025(estimation.pertes_7f)]
     b = estimation.base
     r = estimation.revenu
     f = estimation.federal
@@ -279,7 +280,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_resume_psv_2025(estimation.prestations_psv))
     lignes.extend(lignes_resume_reports_pertes_2025(estimation.reports_pertes, estimation.profil_reports_pertes))
     lignes.extend(lignes_resume_frais_placement_2025(estimation.frais_placement, estimation.profil_frais_placement, estimation.reports_pertes.present))
-    lignes.extend(lignes_resume_capital_2025(estimation.capital, estimation.profil_capital, estimation.reports_pertes.present))
+    lignes.extend(lignes_resume_capital_2025(estimation.capital, estimation.profil_capital, "7F" if estimation.pertes_7f.soldes else estimation.reports_pertes.present))
     lignes.extend(lignes_resume_interets_dividendes_2025(CombinaisonInteretsDividendes2025(
         interets=estimation.interets,
         dividendes=estimation.dividendes,
@@ -2053,7 +2054,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_resume_interets_pret_etudiant_2025(
         estimation.interets_pret_etudiant, estimation.resultat_interets_pret_etudiant
     ))
-    return lignes
+    return [*lignes, *lignes_resultat_pertes_2025(estimation.pertes_7f)]
 
 
 def exporter_rapport_fiscal_pdf_2025(
@@ -2145,4 +2146,24 @@ def exporter_fractionnement_pdf_2025(resultat, destination):
                 page.insert_text((48,y),morceau,fontsize=10,fontname='helv');y+=15
         doc.set_metadata({'title':'Fractionnement de pension 2025 - estimation du couple','author':'ComptaPrivée AI'})
         doc.save(chemin,garbage=3,deflate=True)
+    return chemin
+
+
+def exporter_preparation_pertes_pdf_2025(registre, destination):
+    """Préparation séparée T1A/TP-1012.A, sans estimation annuelle implicite."""
+    from .tax_loss_ledger_2025 import lignes_preparation_pertes_2025
+    lignes = lignes_preparation_pertes_2025(registre)
+    chemin = Path(destination).with_suffix('.pdf')
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    with fitz.open() as doc:
+        page = doc.new_page()
+        y = 55
+        for ligne in lignes:
+            for morceau in textwrap.wrap(ligne, width=88, break_long_words=True) or ['']:
+                if y > 750:
+                    page = doc.new_page(); y = 55
+                page.insert_text((48,y), morceau, fontsize=10, fontname='helv')
+                y += 15
+        doc.set_metadata({'title':'Préparation séparée des reports de pertes 2025', 'author':'ComptaPrivée AI'})
+        doc.save(chemin, garbage=3, deflate=True)
     return chemin

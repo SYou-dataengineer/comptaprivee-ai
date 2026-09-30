@@ -5351,3 +5351,77 @@ Suite complète locale unique : **6976 passed, 8 warnings**, 191,85 secondes,
 existants SWIG/PyMuPDF et openpyxl. La seconde validation complète est confiée
 à GitHub Actions, sans full suite locale post-commit. Périmètre réduit 7E terminé;
 acquisitions/additions et autres cas spéciaux restent explicitement exclus.
+
+
+### Bloc 7F — pertes documentées et reports bornés (session du 30 septembre 2026)
+
+Socle vérifié : `b784ccb`, working tree propre avant intervention. Aucun travail
+7G. Deux registres immuables distincts : pertes non-capital et pertes nettes en
+capital, par année et juridiction. Le montant disponible est un **solde fiscal
+confirmé après toutes utilisations antérieures**, jamais une perte comptable
+brute. Aucune reconstruction des anciennes déclarations.
+
+#### Sources officielles applicables à 2025
+
+- [ARC, ligne 25200 — année 2025](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/sujets/tout-votre-declaration-revenus/declaration-revenus/remplir-declaration-revenus/deductions-credits-depenses/ligne-25200-pertes-autres-pertes-capital-autres-annees.html) : déduction du revenu imposable; pertes ordinaires après 2005 reportables trois ans en arrière et vingt ans en avant. La page comporte aussi un ancien passage mentionnant sept ans; le profil retient expressément la règle après 2005, corroborée par le formulaire Québec 2025.
+- [ARC, ligne 25300 — année 2025](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/sujets/tout-votre-declaration-revenus/declaration-revenus/remplir-declaration-revenus/deductions-credits-depenses/ligne-25300-pertes-capital-nettes-autres-annees.html) : pertes nettes antérieures contre gains imposables, plus anciennes d’abord, soldes annuels distincts. Historique à taux différent exclu; périmètre 2004–2025 déjà net à 50 %, cohérent avec 3F.
+- [T1A F (25)](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t1a/t1a-25f.pdf), partie 2 pages 1–2 et partie 5 page 3 : demandes 2022/2023/2024; non-capital 66250/66260/66270, capital 66360/66370/66380. Total demandé plafonné au solde annuel, reste futur distinct. Aucune déclaration historique modifiée automatiquement.
+- [RQ, ligne 289](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/276-a-298-2-revenu-imposable/ligne-289/) : pertes antérieures 2006–2024, code 289.1 = 01 dans ce profil.
+- [TP-1012.A-V (2025-10)](https://www.revenuquebec.ca/documents/en/formulaires/tp/TP-1012.A-V%282025-10%29.pdf), introduction et partie 2.1 page 1, partie 2.4 pages 2–3 : priorité des pertes antérieures, capacités historiques après ces pertes; capital aux lignes 2/3/4, non-capital 56/57/58. Capital : trois années antérieures et futur sans limite ordinaire; non-capital ordinaire : futur vingt ans. Le report capital peut avoir une incidence sur N52 : confirmation d’absence de rajustement annexe N obligatoire dans le profil historique borné.
+- Utilisation actuelle des pertes en capital au Québec : sources 290, TP-729 et annexe N 2025 déjà auditées en 3F ci-dessus. Aucun nouvel algorithme historique de taux ni de frais de placement n’est introduit.
+
+#### Périmètre logiciel et séparation des résultats
+
+Les demandes courantes sont soustraites **uniquement** des revenus imposables,
+aux lignes 25200/25300 et 289/290. Les impôts et le rapprochement sont ensuite
+recalculés; revenu net fédéral, Québec 275, cotisations 7A/7C, revenus locatifs
+7D/7E et FSS ne sont pas modifiés par les reports. Les capacités 2025 proviennent
+exclusivement du moteur, jamais des capacités saisies. Le total des demandes des
+deux natures ne peut dépasser l’imposable; le capital a aussi son propre plafond
+de gains. La politique conservatrice du registre consomme les anciennes années
+avant les récentes dans chaque nature/juridiction; aucun choix optimisé automatique.
+
+Les pertes capital 2025 doivent correspondre au calcul 3D, une seule fois par
+juridiction. Les reports arrière demandent des capacités 2022–2024 documentées,
+après pertes déjà utilisées et vérification des cas exclus. Résultat distinct
+« Demande de report rétrospectif préparée », avec formulaire, ligne, année, montant
+et reste. Aucun remboursement historique ajouté au rapprochement 2025.
+
+**Limite explicite :** une perte non-capital 2025 importée autorise la préparation
+séparée et son PDF, mais bloque l’estimation annuelle du dossier. Les moteurs
+7B/7D conservent leur refus des pertes courantes : on ne prétend pas valider une
+perte annuelle externe avec une déclaration qui n’en contient pas les revenus et
+charges. Les pertes non-capital antérieures confirmées sont intégrées à 2025.
+
+La combinaison 7F + ancien registre 3F est refusée pour éviter deux consommations.
+Les frais de placement/annexe N avec rajustement et autres options annuelles non
+validées sont bloqués; aucune validation existante n’est levée. Maintien des
+exclusions : ABIL/PDTPE, agriculture/pêche, pertes restreintes, commanditaires,
+biens personnels/précieux, pertes superficielles, taux historiques complexes,
+décès/faillite, déductions gains en capital/transferts d’entreprise et IMR.
+
+JSON : clé optionnelle `registre_pertes`, absente => inactif. Montants Decimal
+sérialisés en chaînes; soldes finaux calculés, non stockés dans les faits. GUI :
+fiche par nature/juridiction/année, confirmations révoquées après modification,
+application explicite, invalidation estimation/PDF, rechargement et reset. PDF
+séparé pour les demandes externes, PDF annuel pour les déductions effectivement
+calculées. Les deux ne confondent pas demande et acceptation fiscale.
+
+Validation de développement : 399 tests moteur ciblés réussis; 3 nouveaux tests
+GUI 7F réussis après correction d’un conflit de nom avec la fenêtre 3F. Contrôle
+visuel : deux pages du rapport annuel fictif et une page de préparation séparée,
+lisibles sans débordement (`tmp/pdfs/7f/`, ignoré par Git). Les vérifications
+complémentaires sont consignées ci-dessous.
+
+
+Validation finale 7F : **189 tests ciblés 7F/3F réussis**, dont GUI et bornes
+numériques. Suite complète locale unique : **7065 passed, 8 warnings**, 195,64 s,
+`python -m pytest --capture=sys -q --ignore=tmp --tb=short`. Les avertissements
+SWIG/PyMuPDF et openpyxl sont préexistants. Les derniers libellés capital et
+rapprochement corrigés pendant la suite complète font l’objet d’une vérification
+ciblée supplémentaire avant commit; aucun changement de règle fiscale associé.
+Contrôle visuel complémentaire : trois pages capital/report arrière fictives,
+sans débordement et sans ajout du report au remboursement 2025. Diff check propre.
+La validation complète du commit final est confiée à GitHub Actions.
+Périmètre borné 7F terminé; aucun moteur de création de perte courante non-capital,
+aucun historique recalculé, aucun travail 7G.
