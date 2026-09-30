@@ -11,6 +11,7 @@ d'estimation soumise à validation comptable.
 from .tax_quebec_senior_support_2025 import (SoutienAinesQuebec2025, ResultatSoutienAinesQuebec2025, calculer_soutien_aines_quebec_2025, lignes_soutien_aines_quebec_2025, valider_soutien_aines_quebec_2025)
 from .tax_quebec_volunteers_2025 import (VolontairesQuebec2025, ResultatVolontairesQuebec2025, calculer_volontaires_quebec_2025, lignes_volontaires_quebec_2025, valider_volontaires_quebec_2025, appliquer_volontaires_quebec_2025)
 from .tax_employment_qpp_2025 import calculer_rrq_salarie_2025, lignes_employeurs_2025
+from .tax_self_employment_2025 import calculer_entreprises_2025, MESSAGE_7C
 from .tax_quebec_home_support_2025 import (MaintienDomicileQuebec2025, ResultatMaintienDomicileQuebec2025, calculer_maintien_domicile_quebec_2025, lignes_maintien_domicile_quebec_2025, valider_maintien_domicile_quebec_2025)
 from .tax_quebec_work_premium_2025 import (PrimeTravailQuebec2025, ResultatPrimeTravailQuebec2025, calculer_prime_travail_quebec_2025, lignes_prime_travail_quebec_2025, valider_prime_travail_quebec_2025)
 from .tax_quebec_solidarity_2025 import (SolidariteQuebec2025, BaseSolidariteQuebec2025, preparer_solidarite_quebec_2025, lignes_solidarite_quebec_2025, valider_solidarite_quebec_2025)
@@ -512,6 +513,9 @@ def calculer_estimation_fiscale_2025(
     interets_pret_etudiant: InteretsPretEtudiant2025 | None = None,
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
+    calculer_entreprises_2025(dossier.entreprises)
+    if dossier.entreprises:
+        raise ValueError(MESSAGE_7C)
     if dossier.annee_fiscale != 2025:
         raise ValueError(
             "L'estimation fiscale automatique est disponible "

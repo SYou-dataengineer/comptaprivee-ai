@@ -5011,3 +5011,67 @@ Une seule suite complète locale prépublication : **6680 passed, 8 warnings**,
 préexistants concernent SWIG/PyMuPDF et `openpyxl.font.copy`. `git diff --check`
 sans erreur. La seconde validation complète est confiée à GitHub Actions.
 Après publication de 7A : arrêt obligatoire, 7B non commencé.
+
+
+### 7B — Préparation des revenus autonomes simples (2025)
+
+Périmètre livré séparément de 7C : fiches immuables d'entreprises/professions
+individuelles de services au Québec, comptabilité d'exercice, exercice commençant
+en 2025 et terminé le 31 décembre 2025. Une liste permet plusieurs entreprises
+avec références distinctes et confirmation explicite d'absence de double compte.
+Montants Decimal finis, non négatifs et au cent; revenu net = brut moins dépenses.
+Résultat nul admis; pertes refusées dans ce premier périmètre (aucun report 7F).
+
+Sources officielles consultées pour 2025 :
+- [T2125 F (25), page 3](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t2125/t2125-25f.pdf) : dépenses 8810/8860, résultat net; report 13500 entreprise ou 13700 profession.
+- [T4002 2025, page 49](https://www.canada.ca/content/dam/cra-arc/formspubs/pub/t4002/t4002-25f.pdf) : petits articles de bureau et frais comptables courants. Les immobilisations, frais juridiques et allocations ne sont pas ouverts.
+- [TP-80 (2025-10), page 3](https://www.revenuquebec.ca/documents/fr/formulaires/tp/TP-80%282025-10%29.pdf) : frais de bureau 222 et frais comptables 228; calcul du résultat.
+- [RQ, ligne 164](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/96-a-164-revenu-total/ligne-164/) : comptabilité d'exercice, annexe L, fin autre que le 31 décembre nécessitant un traitement supplémentaire, exclu ici.
+- [RQ, ligne 201](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/201-a-260-revenu-net/ligne-201/) et [revenu admissible](https://www.revenuquebec.ca/fr/definitions/revenu-de-travail-admissible-1/) : emploi et revenu net d'entreprise admissibles; convention et paramètres 2025 existants (6 %, maximum 1 420 $) appliqués une seule fois.
+
+Deux catégories seulement : petits articles de bureau entièrement professionnels
+et tenue comptable courante. Le comptable confirme l'admissibilité dans les deux
+juridictions, les pièces, l'exhaustivité, l'absence de taxes et de double compte.
+Exclus : associés, commissions, agriculture/pêche, stocks, DPA/immobilisations,
+véhicule, domicile, TPS/TVQ/TVH, proratas, dépenses mixtes ou remboursées,
+subventions, réserves, changement de fin d'exercice/cessation, revenus étrangers,
+établissement hors Québec, décès/faillite et pertes.
+
+#### Intégration bornée et dépendance 7C
+
+La préparation autonome additionne le net aux salaires ordinaires validés
+(plusieurs employeurs conservés par 7A). Les autres feuillets et ajustements de
+salaire complexes sont refusés par cette préparation. Total fédéral/Québec,
+net fédéral provisoire et base provisoire 275 sont exposés dans la trace et le
+PDF. Ces deux derniers montants précèdent TOUTES les déductions RRQ/RQAP,
+y compris d'emploi, et les autres déductions personnelles. Ils ne sont pas des
+lignes définitives à reporter dans une déclaration.
+
+Toute présence d'entreprise bloque l'estimation annuelle existante, même avec
+un résultat nul : aucun impôt ou solde incomplet n'est affiché. ACT, prime au
+travail, crédits médicaux, solidarité et autres crédits liés au revenu ne sont
+pas étendus silencieusement. Il ne s'agit donc pas encore d'une intégration du
+travail autonome dans le calcul annuel complet. 7C devra traiter les cotisations,
+les déductions, les profils mixtes avec cotisations salariales réelles de 7A,
+puis auditer séparément chaque crédit dépendant avant de lever ce garde-fou.
+Aucune formule de cotisation autonome n'est implémentée ici.
+
+JSON : ajout optionnel `entreprises`, absent => tuple vide. Faits bruts seulement,
+montants en chaînes Decimal; champs inconnus et confirmations invalides refusés.
+Un résumé annuel ou ancien rapport fiscal joint à un dossier avec entreprise
+est refusé à la sauvegarde et au chargement. L'interface permet ajout, modification,
+suppression, sauvegarde/rechargement et nouveau dossier. Modifier les faits
+révoque les confirmations. Une préparation périmée ne peut pas être exportée.
+Le PDF est un état préparatoire distinct, jamais un rapport de solde annuel.
+
+Validation 7B : **218 tests ciblés réussis**, 5 avertissements SWIG/PyMuPDF.
+Moteur, JSON, GUI, trace/PDF, reset et régressions de l'estimation et de 7A.
+Le test de suppression GUI a révélé une dépendance à la sélection mémorisée;
+la suppression utilise désormais la sélection effective de la liste.
+Contrôle visuel des deux pages du PDF fictif emploi + deux entreprises : lisible,
+sans débordement, bases provisoires clairement identifiées (`tmp/pdfs/7b/`, ignoré).
+Une seule suite complète locale : **6736 passed, 8 warnings**, 184,46 s,
+`python -m pytest --capture=sys -q --ignore=tmp`. Les huit avertissements sont
+ceux déjà présents (SWIG/PyMuPDF et openpyxl). `git diff --check` sans erreur.
+La seconde validation complète est confiée à GitHub Actions. Aucun travail 7C
+commencé; le calcul annuel autonome reste explicitement verrouillé.

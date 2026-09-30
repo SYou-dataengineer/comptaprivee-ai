@@ -45,6 +45,8 @@ from .gui_quebec_volunteers_2025 import ouvrir_volontaires_quebec_2025
 from .gui_quebec_home_support_2025 import ouvrir_maintien_domicile_quebec_2025
 from .tax_quebec_work_premium_2025 import PrimeTravailQuebec2025
 from .gui_quebec_work_premium_2025 import ouvrir_prime_travail_quebec_2025
+from .gui_self_employment_2025 import ouvrir_entreprises_2025, afficher_preparation_autonome_2025
+from .tax_validated_case import DossierFiscalValide
 from .gui_quebec_solidarity_2025 import ouvrir_solidarite_quebec_2025
 from .gui_quebec_caregiver_2025 import ouvrir_aidante_quebec_2025
 from .tax_quebec_childcare_2025 import FraisGardeQuebec2025
@@ -2561,6 +2563,10 @@ class ApplicationComptaPrivee(tk.Tk):
         allocation_travailleurs_courante = AllocationTravailleurs2025()
         frais_garde_quebec_courante = FraisGardeQuebec2025()
         solidarite_quebec_courante = SolidariteQuebec2025()
+        entreprises_courantes = (
+            self.dossier_fiscal_valide_courant.entreprises
+            if self.dossier_fiscal_valide_courant is not None else ()
+        )
         prime_travail_quebec_courante = PrimeTravailQuebec2025()
         soutien_aines_quebec_courante = SoutienAinesQuebec2025()
         volontaires_quebec_courante = VolontairesQuebec2025()
@@ -5016,6 +5022,26 @@ class ApplicationComptaPrivee(tk.Tk):
                 rapport_fiscal_a_reexporter = True
                 self.statut.set("Prime au travail enregistrée; recalculez l'estimation fiscale.")
             ouvrir_prime_travail_quebec_2025(fenetre, prime_travail_quebec_courante, enregistrer)
+
+        def ouvrir_entreprises_7b():
+            def enregistrer(faits):
+                nonlocal entreprises_courantes, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                courant = self.dossier_fiscal_valide_courant
+                if courant is None:
+                    brut = self.dossier_fiscal_courant
+                    if brut is None:
+                        raise ValueError("Initialisez d'abord le dossier fiscal.")
+                    if brut.documents or documents_importes:
+                        raise ValueError("Préparez les feuillets validés avant d'ajouter une entreprise.")
+                    courant = DossierFiscalValide(client=brut.client, annee_fiscale=brut.annee_fiscale,
+                        province=brut.province, documents=(), donnees_validees=())
+                if courant.annee_fiscale != 2025:
+                    raise ValueError("7B : année 2025 requise.")
+                entreprises_courantes = faits
+                self.dossier_fiscal_valide_courant = replace(courant, entreprises=faits)
+                derniere_estimation = dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+            ouvrir_entreprises_2025(fenetre, entreprises_courantes, enregistrer)
 
         def ouvrir_solidarite_quebec_6h():
             def enregistrer(p):
@@ -14449,6 +14475,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal frais_garde_quebec_courante
+            nonlocal entreprises_courantes
             nonlocal personne_aidante_quebec_courante, solidarite_quebec_courante
             nonlocal prime_travail_quebec_courante
             nonlocal soutien_aines_quebec_courante
@@ -14520,6 +14547,7 @@ class ApplicationComptaPrivee(tk.Tk):
             allocation_travailleurs_courante = AllocationTravailleurs2025()
             frais_garde_quebec_courante = FraisGardeQuebec2025()
             solidarite_quebec_courante = SolidariteQuebec2025()
+            entreprises_courantes = ()
             prime_travail_quebec_courante = PrimeTravailQuebec2025()
             soutien_aines_quebec_courante = SoutienAinesQuebec2025()
             volontaires_quebec_courante = VolontairesQuebec2025()
@@ -14633,6 +14661,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 mettre_a_jour_etat_dossier_valide()
                 return
 
+            dossier_valide = replace(dossier_valide, entreprises=entreprises_courantes)
             self.dossier_fiscal_valide_courant = dossier_valide
             statut_dossier.set(
                 "Validé — prêt pour le moteur fiscal"
@@ -14883,6 +14912,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal frais_medicaux_famille_courants, transferts_handicap_courants, renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal frais_garde_quebec_courante
+            nonlocal entreprises_courantes
             nonlocal personne_aidante_quebec_courante, solidarite_quebec_courante
             nonlocal prime_travail_quebec_courante
             nonlocal soutien_aines_quebec_courante
@@ -14983,6 +15013,7 @@ class ApplicationComptaPrivee(tk.Tk):
             transferts_scolarite_recus_courants = enregistrement.transferts_scolarite_recus
             allocation_travailleurs_courante = enregistrement.allocation_travailleurs
             frais_garde_quebec_courante = enregistrement.frais_garde_quebec
+            entreprises_courantes = enregistrement.dossier.entreprises
             solidarite_quebec_courante = enregistrement.solidarite_quebec
             prime_travail_quebec_courante = enregistrement.prime_travail_quebec
             soutien_aines_quebec_courante = enregistrement.soutien_aines_quebec
@@ -15318,6 +15349,11 @@ class ApplicationComptaPrivee(tk.Tk):
                     ),
                     parent=fenetre,
                 )
+                return
+
+            if dossier_valide.entreprises:
+                afficher_preparation_autonome_2025(fenetre, dossier_valide,
+                    lambda: self.dossier_fiscal_valide_courant)
                 return
 
             try:
@@ -15869,6 +15905,8 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_soutien_aines_quebec_6j).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Prime au travail Québec 2025 (6I)",
                    command=ouvrir_prime_travail_quebec_6i).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Entreprises 2025 / préparation (7B)",
+                   command=ouvrir_entreprises_7b).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Solidarité Québec / annexe D 2025 (6H)",
                    command=ouvrir_solidarite_quebec_6h).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Personne aidante Québec 2025 (6G)",

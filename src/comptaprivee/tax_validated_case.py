@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .tax_case import DossierFiscal
+from .tax_self_employment_2025 import Entreprise2025
 from .tax_field_extractor import DonneeFiscaleExtraite
 from .tax_field_validation import (
     DonneeFiscaleValidee,
@@ -27,6 +28,7 @@ class DossierFiscalValide:
     documents: tuple[Path, ...]
     donnees_validees: tuple[DonneeFiscaleValidee, ...]
     statut: str = STATUT_DOSSIER_VALIDE
+    entreprises: tuple[Entreprise2025, ...] = ()
 
 
 def construire_dossier_fiscal_valide(

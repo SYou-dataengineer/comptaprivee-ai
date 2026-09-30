@@ -33,6 +33,7 @@ from .tax_quebec_volunteers_2025 import (VolontairesQuebec2025, valider_volontai
 from .tax_quebec_home_support_2025 import (MaintienDomicileQuebec2025, valider_maintien_domicile_quebec_2025, maintien_domicile_vers_dict, maintien_domicile_depuis_dict)
 from .tax_quebec_work_premium_2025 import (PrimeTravailQuebec2025, valider_prime_travail_quebec_2025, prime_travail_vers_dict, prime_travail_depuis_dict)
 from .tax_quebec_solidarity_2025 import (SolidariteQuebec2025, valider_solidarite_quebec_2025, solidarite_quebec_vers_dict, solidarite_quebec_depuis_dict)
+from .tax_self_employment_2025 import entreprises_vers_json, entreprises_depuis_json, MESSAGE_7C
 from .tax_quebec_caregiver_2025 import (PersonneAidanteQuebec2025, valider_aidante_quebec_2025, aidante_quebec_vers_dict, aidante_quebec_depuis_dict)
 from .tax_quebec_childcare_2025 import (FraisGardeQuebec2025, valider_garde_quebec_2025,
     garde_quebec_vers_dict, garde_quebec_depuis_dict)
@@ -3663,6 +3664,9 @@ def sauvegarder_dossier_fiscal(
     psv_confirme: bool | None = None,
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    entreprises_json = entreprises_vers_json(dossier.entreprises)
+    if dossier.entreprises and (estimation is not None or rapport_pdf is not None):
+        raise ValueError(MESSAGE_7C)
     if estimation is not None:
         estime_30450 = estimation.aidant_autre_personne_charge_federal
         if estime_30450.partage_30450_confirme or estime_30450.personnes_detaillees or (
@@ -4218,6 +4222,7 @@ def sauvegarder_dossier_fiscal(
         "annee_fiscale": dossier.annee_fiscale,
         "province": dossier.province,
         "documents": [_chemin_vers_stockage(x) for x in dossier.documents],
+        "entreprises": entreprises_json,
         "donnees_validees": [
             {
                 "document": _chemin_vers_stockage(d.document),
@@ -4403,7 +4408,8 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         raise ValueError("Identité du dossier fiscal enregistrée invalide.")
     if province.strip().casefold() not in {"québec", "quebec"}:
         raise ValueError("Cette version accepte uniquement les dossiers Québec.")
-    if not isinstance(documents_json, list) or not isinstance(donnees_json, list) or not donnees_json:
+    entreprises = entreprises_depuis_json(contenu.get("entreprises"))
+    if not isinstance(documents_json, list) or not isinstance(donnees_json, list) or (not donnees_json and not entreprises):
         raise ValueError("Le dossier fiscal enregistré ne contient pas de données valides.")
 
     documents = tuple(Path(str(v)) for v in documents_json)
@@ -4445,10 +4451,13 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         province="Québec",
         documents=documents,
         donnees_validees=tuple(donnees),
+        entreprises=entreprises,
     )
 
     estimation = None
     e = contenu.get("derniere_estimation")
+    if entreprises and (e is not None or contenu.get("rapport_pdf") is not None):
+        raise ValueError(MESSAGE_7C)
     if e is not None:
         if not isinstance(e, dict):
             raise ValueError("Le résumé d'estimation enregistré est invalide.")

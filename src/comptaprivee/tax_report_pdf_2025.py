@@ -2103,6 +2103,27 @@ def exporter_rapport_fiscal_pdf_2025(
     return chemin
 
 
+def exporter_preparation_autonome_pdf_2025(preparation, destination):
+    """État préparatoire 7B, sans résultat d'impôt annuel."""
+    from .tax_self_employment_2025 import lignes_preparation_autonome_2025
+    chemin = Path(destination).with_suffix('.pdf')
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    with fitz.open() as doc:
+        page = doc.new_page()
+        y = 55
+        for ligne in lignes_preparation_autonome_2025(preparation):
+            for morceau in textwrap.wrap(ligne, width=88, break_long_words=True) or ['']:
+                if y > 750:
+                    page = doc.new_page()
+                    y = 55
+                page.insert_text((48, y), morceau, fontsize=10, fontname='helv')
+                y += 15
+        doc.set_metadata({'title': 'Préparation revenus autonomes 2025 - avant 7C',
+                          'author': 'ComptaPrivée AI'})
+        doc.save(chemin, garbage=3, deflate=True)
+    return chemin
+
+
 def exporter_fractionnement_pdf_2025(resultat, destination):
     """Rapport commun des deux déclarations; données exclusivement locales."""
     from .tax_pension_splitting_2025 import lignes_fractionnement_2025
