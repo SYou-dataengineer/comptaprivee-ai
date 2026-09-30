@@ -24,9 +24,10 @@ Fichiers de référence : `tax_engine_input_2025.py`, `tax_income_2025.py`,
 
 ## Principaux manques et ordre proposé
 
-Chaque ligne représente une famille à découper en blocs vérifiables. La mission
-de finalisation autorise désormais leur enchaînement autonome après validation,
-commit et push; arrêt seulement pour une décision ou un blocage réel.
+Chaque ligne représente une famille à découper en blocs vérifiables. Le travail
+se fait désormais par sessions courtes contrôlées, sur un seul bloc à la fois.
+Chaque session se termine par un checkpoint et un arrêt; la suite nécessite
+une nouvelle autorisation de l'utilisateur.
 
 | Priorité | Famille | Fonctionnalités et dépendances à traiter |
 | --- | --- | --- |
@@ -4180,3 +4181,233 @@ avec `.venv\Scripts\python.exe -m pytest --capture=sys -q`.
 `git diff --check` sans erreur. Publication limitée aux douze fichiers 6G;
 la suite complète post-commit et GitHub Actions sont les derniers contrôles
 de publication, dont le résultat sera fourni dans le checkpoint de session.
+
+### Bloc 6H — préparation annexe D / admissibilité / audit, TVQ individuelle
+
+**Décision de périmètre, session 5 du 30 septembre 2026 :** 6H ne calcule pas
+le crédit de solidarité. Les sections des sessions 3 et 4 ci-dessous sont
+l'historique de recherche, remplacé pour la livraison par le périmètre final
+en fin de section. Le barème non vérifié n'est plus un prérequis : aucune
+recherche du barème caché, estimation monétaire ou reproduction du calculateur
+RQ n'est prévue dans ce bloc.
+
+#### Choix vérifié dans le dépôt — session 3 du 29 septembre 2026
+
+Checkpoint initial : dépôt propre, `HEAD` à `ea325f5`, bloc 6G publié.
+La Priorité 6 place solidarité après garde et personne aidante, désormais
+livrées. La recherche dans `src/` et `tests/` ne trouve aucun moteur solidarité,
+prime au travail ou maintien à domicile. Solidarité est donc la première lacune
+restante dans cet ordre proposé, sans dépendre des deux autres crédits absents.
+Un seul bloc est ouvert : **6H**. Aucun classement par impact client n'est
+supposé et aucune donnée client n'est utilisée.
+
+#### Sources officielles liées à la déclaration 2025
+
+- [Revenu Québec — annexe D, édition 2025-12, pages 1 et 2](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.D%282025-12%29.pdf) : faits et conditions d'admissibilité.
+- [RQ — solidarité, aide à la déclaration 2025](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/credit-dimpot-pour-solidarite/) : la déclaration 2025 détermine les versements de juillet 2026 à juin 2027.
+- [RQ — calcul](https://www.revenuquebec.ca/fr/citoyens/credits-dimpot/credit-dimpot-pour-solidarite/calcul-du-credit-dimpot-pour-solidarite/) : revenu familial fondé sur la ligne 275 et composantes distinctes.
+- [RQ — composante TVQ](https://www.revenuquebec.ca/fr/citoyens/credits-dimpot/credit-dimpot-pour-solidarite/composantes-du-credit-dimpot-pour-solidarite/composante-relative-a-la-tvq/) : le supplément de vie seule se vérifie sur toute l'année 2025.
+- [RQ — outil d'estimation](https://www.revenuquebec.ca/fr/services-en-ligne/outils/outil-destimation-des-versements-du-credit-dimpot-pour-solidarite/) : la page de présentation est lisible; la récupération automatisée de son HTML a renvoyé HTTP 403. Aucun résultat du calculateur n'a été obtenu.
+
+#### Périmètre logiciel retenu
+
+Première étape autonome : validation des faits d'un adulte citoyen canadien,
+résident Québec/Canada toute l'année, sans conjoint ni enfant, hors village
+nordique et sans droit à la composante logement après examen des pièces.
+La réponse « vit seul toute l'année » peut être vraie ou fausse et nécessite
+une confirmation séparée de sa vérification. Le revenu net Québec recalculé
+est fourni au préparateur en `Decimal`, fini, non négatif et au cent près;
+la limite technique de saisie est 999 999 999,99 $, sans signification fiscale.
+
+Limites logicielles explicites : couples, enfants, mineurs même admissibles
+par exception, autres statuts d'immigration, résidence partielle, détention,
+Allocation famille reçue pour le demandeur lui-même même en cas d'exception,
+faillite/décès, changements de résidence, revenus négatifs, composantes logement
+et villages nordiques. Elles ne sont pas des exclusions fiscales générales.
+Le futur calcul 6H reste limité à la TVQ individuelle; on ne doit pas omettre
+silencieusement une composante logement à laquelle une personne aurait droit.
+
+#### État réel du code et interactions prévues
+
+`tax_quebec_solidarity_2025.py` prépare seulement la base et la période.
+**Aucun montant de crédit, taux de réduction ou échéancier n'est calculé.**
+Une base valide ne vaut pas décision d'admissibilité ni promesse de versement.
+Les pages RQ examinées ne fournissent pas le barème détaillé nécessaire :
+montant de base, supplément, seuil, taux et arrondis du cycle 2026-2027
+restent à vérifier sur une source RQ applicable aux faits et revenus 2025.
+Ne pas substituer les paramètres du cycle juillet 2025 à juin 2026.
+
+Le revenu doit venir de `tax_income_2025` via l'estimation : ses déductions
+modifient potentiellement la base; le revenu fédéral ne convient pas.
+Lors du branchement, rapprocher vie seule avec 6A/361 et cohabitation 6G,
+et refuser les profils conjugaux/avec enfants incompatibles déjà actifs
+(transfert conjoint, ACT familial, garde 6F, médical familial notamment).
+Ces contrôles croisés ne sont pas encore implémentés.
+
+La solidarité doit avoir un résultat séparé pour sa période de versement,
+sans ajout au remboursement TP-1 2025 ni aux avances RL-19 de la ligne 441.
+Les helpers JSON autonomes ne conservent que les faits et rejettent les clés
+inconnues; `None` ou `{}` donnent un profil vide. Le stockage applicatif,
+l'orchestrateur, le rapprochement, la trace, le PDF et la GUI restent inchangés.
+La compatibilité des fichiers existants est donc préservée; l'intégration
+future devra aussi recharger un ancien dossier sans profil solidarité.
+
+Tests de base : **68 passed**, couvrant âge, dates, confirmations/types,
+limites `Decimal`, période, JSON et utilisation du revenu Québec recalculé.
+Avec régressions estimation, rapprochement, stockage JSON et 6G :
+**313 passed, 5 warnings**, `--capture=sys`; avertissements SWIG/PyMuPDF.
+Le bloc n'est pas publiable. Prochaine étape : confirmer le barème du bon
+cycle, implémenter le calcul avec cas officiels, puis seulement les intégrations
+et les validations de publication. Aucun autre bloc ouvert, aucun commit/push.
+
+#### Vérification du barème 6H — session contrôlée du 30 septembre 2026
+
+**Décision : barème non verrouillé; calcul monétaire non implémenté.**
+Le checkpoint retrouve exactement les trois fichiers 6H attendus, avec `HEAD`
+à `ea325f5`. Le code et les tests existants sont conservés sans modification.
+La présente revue complète les preuves déjà consignées, sans reprendre la roadmap.
+
+Références exactes utilisées pour la matrice ci-dessous :
+
+- **S1** : [annexe D TP-1.D.D (2025-12)](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.D%282025-12%29.pdf), pages 1–2, déjà examinées lors de la session 3 : questionnaire et admissibilité, pas de grille monétaire.
+- **S2** : [guide TP-1.G (2025-12)](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.G%282025-12%29.pdf), pages imprimées 12–13 (indices PDF 11–12), section « Crédit d'impôt pour solidarité », nouvelle vérification de cette session.
+- **S3** : [RQ — Calcul du crédit d'impôt pour solidarité](https://www.revenuquebec.ca/fr/citoyens/credits-dimpot/credit-dimpot-pour-solidarite/calcul-du-credit-dimpot-pour-solidarite/), introduction et tableau « Revenu familial maximal selon la situation familiale au 31 décembre 2025 », déjà examinés en session 3.
+- **S4** : [RQ — Composante relative à la TVQ](https://www.revenuquebec.ca/fr/citoyens/credits-dimpot/credit-dimpot-pour-solidarite/composantes-du-credit-dimpot-pour-solidarite/composante-relative-a-la-tvq/), section « Montant additionnel pour personne vivant seule », déjà examinée en session 3.
+- **S5** : [RQ — Outil d'estimation des versements](https://www.revenuquebec.ca/fr/services-en-ligne/outils/outil-destimation-des-versements-du-credit-dimpot-pour-solidarite/), page de présentation seulement; aucun calcul ni barème obtenu.
+
+Dans toutes les lignes du tableau, **2026–2027** désigne juillet 2026 à juin
+2027, sur les faits et revenus de **2025**. Il ne s'agit pas du barème des
+versements de juillet 2025 à juin 2026.
+
+| Paramètre demandé | Valeur / preuve disponible | Source et emplacement | Versements | Statut pour le moteur TVQ seul |
+| --- | --- | --- | --- | --- |
+| Montant de base TVQ | Non établi. Une illustration affiche **356 $**, avec une réserve sur les critères; elle ne désigne pas explicitement cette somme comme le montant de base TVQ du sous-profil. | S2, p. 12, encadré illustratif au bas de la page | 2026–2027 pour la section; rattachement précis de l'illustration au paramètre non établi | **Non verrouillé**; ne pas transformer l'illustration en constante |
+| Additionnel de vie seule | Montant non établi; condition de vie seule pendant toute l'année 2025 confirmée. | S4, section « Montant additionnel pour personne vivant seule »; S1, p. 1, case 12 | 2026–2027 | **Montant manquant** |
+| Seuil de début de réduction | Non établi dans les documents examinés. | S2, p. 12, « Calcul du crédit d'impôt »; S3, introduction | 2026–2027 | **Manquant** |
+| Taux de réduction TVQ seule | Non établi dans les documents examinés. | S2, p. 12, « Calcul du crédit d'impôt »; S3, introduction | 2026–2027 | **Manquant** |
+| Revenu maximal TVQ seule | Non établi, avec ou sans additionnel. **64 545 $** figure au tableau général pour un particulier sans conjoint; ce tableau ne donne pas le plafond propre à la TVQ seule. | S3, tableau, ligne « Particulier sans conjointe ou conjoint » | 2026–2027 | **Plafonds spécifiques manquants**; ne pas employer 64 545 $ comme seuil de réduction TVQ |
+| Arrondis | Aucune règle spécifique identifiée pour l'assiette, la réduction, le crédit annuel ou les versements. | S2, p. 12–13, calcul et versement; recherche textuelle « arrond » sans occurrence dans ce PDF; S5 non exploitable pour le calcul | 2026–2027 | **Manquants**; aucun choix cent/dollar ou demi-cent autorisé par cette revue |
+| Ordre exact des opérations | Ordre général confirmé : addition des composantes admissibles, puis réduction liée au revenu familial. Le revenu du profil sans conjoint vient de la ligne 275. Les étapes chiffrées, planchers et positions des arrondis restent à établir. | S2, p. 12, « Calcul du crédit d'impôt »; S3, introduction | 2026–2027 | **Partiel**, insuffisant pour coder une formule |
+
+Compléments de recherche limités à Revenu Québec : recherches ciblées sur
+les arrondis, montants et publications, ainsi que consultation de la rubrique
+[Juste pour tous — faible revenu](https://justepourtous.revenuquebec.ca/fr/profils/personnes-ou-familles-a-faible-revenu),
+section « Comment le crédit d'impôt pour solidarité est-il calculé? ».
+Cette rubrique renvoie au calculateur sans fournir le barème recherché;
+elle n'est pas utilisée comme preuve chiffrée datée de 2025.
+La tentative d'accès par navigateur n'a trouvé aucun navigateur disponible.
+Le HTTP 403 mentionné précédemment appartient à la session 3 : il n'a pas été
+retesté par la même méthode. Le rendu web de la page PDF a échoué avec
+« Cache miss »; le texte du guide a pu être consulté, sans contrôle visuel.
+Ces limites d'accès ne prouvent pas que RQ ne publie pas les paramètres.
+
+Comparaison au module `tax_quebec_solidarity_2025.py` : la ligne 275 et les
+dates de période concordent avec S2/S3. `vit_seul_toute_annee` reste un fait
+à vérifier, non un montant acquis. Le contrôle au cent via `arrondir_cent`
+valide la précision du revenu fourni : **ce n'est pas une règle d'arrondi
+du crédit solidarité**. Aucune constante ni formule monétaire n'est ajoutée.
+JSON, validations et moteurs publiés restent inchangés.
+
+Pour débloquer : obtenir une référence RQ explicitement applicable à cette
+période qui donne les deux montants, le seuil, le taux, les plafonds TVQ seul
+et l'ordre des arrondis. Un exemple de calcul ou une sortie arrondie du
+calculateur ne suffira pas, à lui seul, à prouver toutes ces règles.
+Les valeurs provenant d'autres organismes, d'autres années ou déduites par
+ingénierie inverse ne sont pas retenues dans cette mission.
+
+Validation de session : `python -m pytest tests/test_tax_quebec_solidarity_2025.py
+-q --capture=sys -p no:cacheprovider` : **68 passed**, 0,39 s.
+`git diff --check` sans erreur. Seule la documentation est modifiée pendant
+cette session; les deux fichiers Python 6H préexistants restent non suivis.
+Aucune full suite, aucune GUI applicative, aucun commit ni push.
+
+
+#### Périmètre final 6H — session 5 du 30 septembre 2026
+
+Préparation de l'annexe D 2025 et piste d'audit uniquement, pour la période
+**juillet 2026 à juin 2027**. RQ détermine séparément le montant final.
+Le logiciel ne produit ni ne transmet une annexe D officielle et ne promet
+aucun droit à versement. Il ne remplace pas la décision de Revenu Québec.
+
+Sources conservées : annexe D TP-1.D.D (2025-12), pages 1-2 (conditions,
+situation au 31 décembre, habitation et vie seule ligne 12); guide TP-1.G
+(2025-12), pages 12-13 (période, revenu familial et détermination du crédit).
+L'annexe D officielle a été relue de façon ciblée pour cette intégration.
+Aucune nouvelle recherche de barème et aucun paramètre monétaire ajouté.
+
+Le profil de faits initial et toutes ses validations sont conservés : adulte
+au 31 décembre 2025, citoyen canadien, résident Québec/Canada toute l'année,
+sans conjoint ni enfant, hors village nordique, logement non admissible après
+examen de l'annexe D. La vie seule toute l'année a une réponse oui/non et une
+confirmation de vérification distincte. Les restrictions de résidence annuelle,
+de citoyenneté, de détention et de cas particuliers sont des **limites logicielles**,
+pas une définition exhaustive de l'admissibilité fiscale.
+
+Intégrations :
+
+- `tax_estimation_2025` prépare une base séparée à partir de la **ligne Québec
+  275 recalculée**, en `Decimal`, après les déductions. Aucun revenu saisi dans
+  le profil solidarité; aucune utilisation du revenu fédéral.
+- Contrôles croisés des profils familiaux déjà actifs : conjoint, transfert
+  conjoint, ACT familial, garde, adoption, personnes à charge, médical familial
+  et transferts de handicap sont hors du profil 6H individuel. Les personnes
+  aidées déclarées conjoint/enfant ne sont pas compatibles avec 6H. Les autres
+  aidants 6G restent possibles si la vie seule déclarée est cohérente.
+- Vie seule rapprochée de l'annexe B/361 et de la cohabitation annexe H/6G;
+  naissance rapprochée des profils actifs pensions, ACT individuel, carrière,
+  médical remboursable, supplément médical et crédits d'âge.
+- JSON : seule la clé facultative `solidarite_quebec` conserve les faits.
+  Absence de clé, `null` ou objet vide donnent le profil désactivé; types stricts,
+  clés inconnues et divergences avec l'estimation refusés. Aucun montant de
+  solidarité ou revenu familial dérivé n'est stocké dans ce profil.
+- GUI : saisie dédiée, confirmations révoquées à toute modification des faits,
+  effacement explicite, sauvegarde/rechargement, invalidation de l'ancienne
+  estimation/PDF et réinitialisation complète lors d'un nouveau dossier.
+- Résumé, trace narrative séparée et PDF : période, faits 2025, demande TVQ et
+  admissibilité préparée, revenu 275, sources, montant non calculé, détermination
+  distincte par RQ et absence d'effet sur le remboursement/solde TP-1 2025.
+- Aucun branchement monétaire dans `tax_reconciliation_2025` : ni crédit 462,
+  ni remboursement TP-1, ni avances 441. Les lignes monétaires de la trace,
+  les deux impôts et le rapprochement complet sont inchangés à l'activation.
+
+**Exclusions finales :** calcul de base/supplément TVQ, seuils/taux/plafonds,
+arrondis et échéancier de paiement; logement; villages nordiques; couples;
+enfants; mineurs admissibles par exception; autres statuts d'immigration;
+résidence partielle; détention; Allocation famille pour le demandeur; décès,
+faillite et changements de résidence; revenu négatif. Aucun ancien barème et
+aucune valeur illustrative ne sont utilisés. Les restrictions sur les autres
+profils familiaux sont conservatrices et ne signifient pas une exclusion légale.
+
+La prochaine lacune documentée de Priorité 6 est la **prime au travail**,
+avant maintien à domicile des aînés, à auditer dans une nouvelle session
+uniquement. Aucun de ces blocs n'est commencé ici.
+
+
+Validation session 5 : **441 tests ciblés et régressions liées réussis**, dont
+les tests GUI exécutés avec `--capture=sys` (5 avertissements SWIG/PyMuPDF).
+Scénarios explicites sans effet fiscal : remboursement, solde et revenu nul,
+avec et sans vie seule; revenu 275 recalculé après déduction REER; ancien JSON;
+refus de profils incompatibles; GUI jusqu'à la trace et l'export puis invalidation.
+PDF fictif de deux pages rendu et contrôlé visuellement : section 6H lisible,
+aucun chevauchement ni débordement; source longue de 2 000 caractères également
+testée. Fichiers de contrôle dans `tmp/`, exclus de Git. `git diff --check` propre.
+
+Incidents résolus : restrictions du bac à sable sur Tcl/temp pytest contournées
+par l'exécution autorisée des tests dans l'environnement Windows normal; fixture
+de revenu corrigée pour préserver les contrôles de cotisations existants;
+fixture source longue ramenée à la limite existante de 2 000 caractères.
+Aucune validation fiscale préexistante modifiée pour faire passer les tests.
+
+
+Validation complète prépublication : **6 313 passed, 8 warnings en 191,95 s**,
+commande `.venv\Scripts\python.exe -m pytest --capture=sys -q --ignore=tmp`.
+La première tentative s'était arrêtée en collecte, avant tout test, sur un
+répertoire temporaire créé dans le bac à sable. Seul `tmp/` a été exclu lors
+de la relance; aucun test du projet n'est exclu. Une seule suite complète a
+été exécutée jusqu'au bout. Les 8 avertissements concernent SWIG/PyMuPDF et
+l'API de copie de police openpyxl existante.
+
+**6H terminé dans le périmètre borné de préparation annexe D.** Publication
+prévue dans un commit fonctionnel unique, fichiers explicitement sélectionnés.
+GitHub Actions sert de seconde validation complète après push; aucune full
+suite locale post-commit n'est requise en l'absence d'échec ou de doute nouveau.

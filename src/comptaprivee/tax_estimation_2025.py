@@ -8,6 +8,7 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_quebec_solidarity_2025 import (SolidariteQuebec2025, BaseSolidariteQuebec2025, preparer_solidarite_quebec_2025, lignes_solidarite_quebec_2025, valider_solidarite_quebec_2025)
 from .tax_quebec_caregiver_2025 import (PersonneAidanteQuebec2025, ResultatAidanteQuebec2025, calculer_aidante_quebec_2025, lignes_aidante_quebec_2025, identite_aidante, MODES_AIDANTE, verifier_aidante_conjoint_2025)
 from .tax_quebec_childcare_2025 import (FraisGardeQuebec2025, ResultatGardeQuebec2025,
     calculer_garde_quebec_2025, verifier_garde_conjoint_2025, normaliser_garde, lignes_garde_quebec_2025)
@@ -367,6 +368,8 @@ class EstimationFiscale2025:
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
     resultat_allocation_travailleurs: ResultatAllocationTravailleurs2025 = ResultatAllocationTravailleurs2025()
     frais_garde_quebec: FraisGardeQuebec2025 = FraisGardeQuebec2025()
+    solidarite_quebec: SolidariteQuebec2025 = SolidariteQuebec2025()
+    base_solidarite_quebec: BaseSolidariteQuebec2025 | None = None
     personne_aidante_quebec: PersonneAidanteQuebec2025 = PersonneAidanteQuebec2025()
     resultat_garde_quebec: ResultatGardeQuebec2025 = ResultatGardeQuebec2025()
     resultat_aidante_quebec: ResultatAidanteQuebec2025 = ResultatAidanteQuebec2025()
@@ -483,6 +486,7 @@ def calculer_estimation_fiscale_2025(
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
     frais_garde_quebec: FraisGardeQuebec2025 | None = None,
+    solidarite_quebec: SolidariteQuebec2025 | None = None,
     personne_aidante_quebec: PersonneAidanteQuebec2025 | None = None,
     medical_remboursable_quebec: MedicalRemboursableQuebec2025 | None = None,
     prolongation_carriere_quebec: ProlongationCarriereQuebec2025 | None = None,
@@ -1688,6 +1692,37 @@ def calculer_estimation_fiscale_2025(
                     raise ValueError("Revenu Québec du conjoint aidé divergent du profil garde Québec.")
     if conjoint.activer:
         verifier_aidante_conjoint_2025(aidante_quebec, resultat_aidante_quebec, demandeur=dossier.client, conjoint=resultat_conjoint)
+    solidarite = solidarite_quebec if solidarite_quebec is not None else SolidariteQuebec2025()
+    valider_solidarite_quebec_2025(solidarite)
+    base_solidarite = (preparer_solidarite_quebec_2025(solidarite, revenu_net_quebec=revenu.revenu_net_quebec)
+        if solidarite.activer else None)
+    if solidarite.activer:
+        if (any(p.reclamer_montant for p in (montant_conjoint_federal_effectif,
+                personne_charge_admissible_federale_effective, aidant_30425_effectif,
+                aidant_30450_effectif, aidant_enfant_federal_effectif))
+                or conjoint.activer or fonds.conjoint.nom or politiques.nom_conjoint
+                or handicap_transfere.transferts or adoption_effective.enfants
+                or frais_garde_federaux_effectifs.nombre_enfants_moins_7_sans_dtc
+                or frais_garde_federaux_effectifs.nombre_enfants_7_a_16_ou_infirmes_sans_dtc
+                or frais_garde_federaux_effectifs.nombre_enfants_dtc
+                or act.famille.activer or frais_medicaux_effectifs.supplement.mode_familial
+                or any(p.lien != "soi-même" for p in medical_familial.personnes)
+                or garde_quebec.enfants or garde_quebec.conjoint_nom
+                or personne_vivant_seule_effective.reclamer_additionnel_monoparental
+                or any(p.lien in ("conjoint", "enfant", "enfant du conjoint") for p in aidante_quebec.personnes)):
+            raise ValueError("Solidarité 6H : combinaison familiale hors du profil individuel sans conjoint ni enfant.")
+        if (personne_vivant_seule_effective.reclamer_montant and not solidarite.vit_seul_toute_annee
+                or solidarite.vit_seul_toute_annee and any(p.mode != MODES_AIDANTE[1] for p in aidante_quebec.personnes)):
+            raise ValueError("Solidarité 6H : vie seule divergente de l'annexe B ou de la cohabitation annexe H.")
+        age_solidarite = 2025 - int(solidarite.naissance[:4])
+        if (pensions.present and profil_pensions.age_31_decembre != age_solidarite
+                or act.present and act.age_fin_2025 != age_solidarite
+                or montants_age_retraite_effectifs.reclamer_age and age_solidarite < 65
+                or credits_federaux_age_pension_effectifs.reclamer_montant_age and age_solidarite < 65
+                or carriere_quebec.reclamer and carriere_quebec.naissance != solidarite.naissance
+                or medical_quebec.reclamer and medical_quebec.naissance != solidarite.naissance
+                or frais_medicaux_effectifs.supplement.reclamer and frais_medicaux_effectifs.supplement.age_fin_2025 != age_solidarite):
+            raise ValueError("Naissance solidarité Québec divergente des autres profils actifs.")
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
         federal,
@@ -1759,6 +1794,7 @@ def calculer_estimation_fiscale_2025(
         allocation_travailleurs=act, resultat_allocation_travailleurs=resultat_act,
         resultat_supplement_medical=supplement_medical,
         frais_garde_quebec=garde_quebec, resultat_garde_quebec=resultat_garde_quebec,
+        solidarite_quebec=solidarite, base_solidarite_quebec=base_solidarite,
         personne_aidante_quebec=aidante_quebec, resultat_aidante_quebec=resultat_aidante_quebec,
         medical_remboursable_quebec=medical_quebec, resultat_medical_remboursable_quebec=resultat_medical_quebec,
         prolongation_carriere_quebec=carriere_quebec, resultat_carriere_quebec=resultat_carriere_quebec,
@@ -1948,6 +1984,7 @@ def formater_estimation_fiscale_2025(
         *lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical),
         *lignes_formation_2025(estimation.frais_scolarite.formation),
         *lignes_garde_quebec_2025(estimation.frais_garde_quebec, estimation.resultat_garde_quebec),
+        *lignes_solidarite_quebec_2025(estimation.solidarite_quebec, estimation.base_solidarite_quebec),
         *lignes_aidante_quebec_2025(estimation.personne_aidante_quebec, estimation.resultat_aidante_quebec),
         *lignes_medical_remboursable_quebec_2025(estimation.medical_remboursable_quebec, estimation.resultat_medical_remboursable_quebec),
         *lignes_carriere_quebec_2025(estimation.prolongation_carriere_quebec, estimation.resultat_carriere_quebec),

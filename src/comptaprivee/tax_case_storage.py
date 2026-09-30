@@ -28,6 +28,7 @@ from .tax_tuition_carryforward_2025 import ReportsScolariteFederaux2025, valider
 from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_allocation_travailleurs_2025
 from .tax_medical_supplement_2025 import SupplementMedical2025, valider_supplement_medical_2025, verifier_famille_supplement_2025
 from .tax_training_credit_2025 import Formation2025, valider_formation_2025
+from .tax_quebec_solidarity_2025 import (SolidariteQuebec2025, valider_solidarite_quebec_2025, solidarite_quebec_vers_dict, solidarite_quebec_depuis_dict)
 from .tax_quebec_caregiver_2025 import (PersonneAidanteQuebec2025, valider_aidante_quebec_2025, aidante_quebec_vers_dict, aidante_quebec_depuis_dict)
 from .tax_quebec_childcare_2025 import (FraisGardeQuebec2025, valider_garde_quebec_2025,
     garde_quebec_vers_dict, garde_quebec_depuis_dict)
@@ -253,6 +254,7 @@ class DossierFiscalEnregistre:
     transferts_scolarite_recus: TransfertsScolariteRecus2025 = TransfertsScolariteRecus2025()
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
     frais_garde_quebec: FraisGardeQuebec2025 = FraisGardeQuebec2025()
+    solidarite_quebec: SolidariteQuebec2025 = SolidariteQuebec2025()
     personne_aidante_quebec: PersonneAidanteQuebec2025 = PersonneAidanteQuebec2025()
     medical_remboursable_quebec: MedicalRemboursableQuebec2025 = MedicalRemboursableQuebec2025()
     prolongation_carriere_quebec: ProlongationCarriereQuebec2025 = ProlongationCarriereQuebec2025()
@@ -3591,6 +3593,7 @@ def sauvegarder_dossier_fiscal(
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
     frais_garde_quebec: FraisGardeQuebec2025 | None = None,
+    solidarite_quebec: SolidariteQuebec2025 | None = None,
     personne_aidante_quebec: PersonneAidanteQuebec2025 | None = None,
     medical_remboursable_quebec: MedicalRemboursableQuebec2025 | None = None,
     prolongation_carriere_quebec: ProlongationCarriereQuebec2025 | None = None,
@@ -3917,6 +3920,10 @@ def sauvegarder_dossier_fiscal(
     )
     if estimation is not None and pret_etudiant != estimation.interets_pret_etudiant:
         raise ValueError("Le profil intérêts étudiants diffère de l'estimation.")
+    solidarite_quebec = valider_solidarite_quebec_2025(solidarite_quebec if solidarite_quebec is not None
+        else estimation.solidarite_quebec if estimation is not None else SolidariteQuebec2025())
+    if estimation is not None and solidarite_quebec != estimation.solidarite_quebec:
+        raise ValueError("Profil solidarité Québec divergent de l'estimation.")
     personne_aidante_quebec = valider_aidante_quebec_2025(personne_aidante_quebec if personne_aidante_quebec is not None
         else estimation.personne_aidante_quebec if estimation is not None else PersonneAidanteQuebec2025())
     if estimation is not None and personne_aidante_quebec != estimation.personne_aidante_quebec:
@@ -4225,6 +4232,7 @@ def sauvegarder_dossier_fiscal(
         "transferts_scolarite_recus": _scolarite_recue_vers_dict(scolarite_recue),
         "allocation_travailleurs": _allocation_travailleurs_vers_dict(act),
         "frais_garde_quebec": garde_quebec_vers_dict(frais_garde_quebec),
+        "solidarite_quebec": solidarite_quebec_vers_dict(solidarite_quebec),
         "personne_aidante_quebec": aidante_quebec_vers_dict(personne_aidante_quebec),
         "medical_remboursable_quebec": medical_remboursable_quebec_vers_dict(medical_remboursable_quebec),
         "prolongation_carriere_quebec": carriere_quebec_vers_dict(carriere_quebec),
@@ -4711,6 +4719,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         transferts_scolarite_recus=_scolarite_recue_depuis_dict(contenu.get("transferts_scolarite_recus")),
         allocation_travailleurs=_allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")),
         frais_garde_quebec=garde_quebec_depuis_dict(contenu.get("frais_garde_quebec")),
+        solidarite_quebec=solidarite_quebec_depuis_dict(contenu.get("solidarite_quebec")),
         personne_aidante_quebec=aidante_quebec_depuis_dict(contenu.get("personne_aidante_quebec")),
         medical_remboursable_quebec=medical_remboursable_quebec_depuis_dict(contenu.get("medical_remboursable_quebec")),
         prolongation_carriere_quebec=carriere_quebec_depuis_dict(contenu.get("prolongation_carriere_quebec")),

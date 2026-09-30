@@ -4,6 +4,7 @@ Cette brique ne modifie aucun résultat fiscal. Elle explique une estimation
 déjà calculée à partir d'un dossier verrouillé et validé par le comptable.
 """
 
+from .tax_quebec_solidarity_2025 import lignes_solidarite_quebec_2025
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
@@ -134,6 +135,7 @@ class TraceCalculFiscal2025:
     formule_resultat: str
     avertissements: tuple[str, ...]
     limitations: tuple[str, ...]
+    preparation_annexe_d: tuple[str, ...] = ()
 
 
 def _ligne(ordre, section, libelle, source, formule, montant):
@@ -2327,6 +2329,7 @@ def construire_trace_calcul_fiscal_2025(
         formule_resultat=formule,
         avertissements=base.avertissements,
         limitations=final.limitations,
+        preparation_annexe_d=lignes_solidarite_quebec_2025(estimation.solidarite_quebec, estimation.base_solidarite_quebec),
     )
 
 
@@ -2360,6 +2363,9 @@ def formater_trace_calcul_fiscal_2025(
                 f"{formater_montant_estimation(ligne.montant)}",
             ]
         )
+
+    if trace.preparation_annexe_d:
+        lignes.extend(["", *trace.preparation_annexe_d])
 
     if trace.avertissements:
         lignes.extend(["", "AVERTISSEMENTS"])
