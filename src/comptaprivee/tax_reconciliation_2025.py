@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from .tax_quebec_senior_support_2025 import montant_soutien
+from .tax_quebec_home_support_2025 import montant_maintien
 from .tax_quebec_work_premium_2025 import montant_prime_travail
 from .tax_quebec_caregiver_2025 import montant_aidante
 from .tax_quebec_childcare_2025 import montant_garde_quebec
@@ -89,6 +90,7 @@ class RapprochementFiscal2025:
     credit_aidante_quebec_ligne_462: Decimal = ZERO
     avances_aidante_quebec_ligne_441: Decimal = ZERO
     credit_soutien_aines_quebec_ligne_463: Decimal = ZERO
+    credit_maintien_domicile_quebec_ligne_458: Decimal = ZERO
     credit_prime_travail_quebec_ligne_456: Decimal = ZERO
     avances_prime_travail_quebec_ligne_441: Decimal = ZERO
     credit_medical_quebec_ligne_462: Decimal = ZERO
@@ -183,6 +185,7 @@ def calculer_rapprochement_fiscal_2025(
     credit_aidante_quebec: Decimal = ZERO,
     avances_aidante_quebec: Decimal = ZERO,
     credit_soutien_aines_quebec: Decimal = ZERO,
+    credit_maintien_domicile_quebec: Decimal = ZERO,
     credit_prime_travail_quebec: Decimal = ZERO,
     avances_prime_travail_quebec: Decimal = ZERO,
 ) -> RapprochementFiscal2025:
@@ -193,6 +196,9 @@ def calculer_rapprochement_fiscal_2025(
     montant_soutien(credit_soutien_aines_quebec, "463")
     if credit_soutien_aines_quebec > Decimal(2000):
         raise ValueError("Soutien aux aînés individuel : maximum 2000.")
+    montant_maintien(credit_maintien_domicile_quebec, "458")
+    if credit_maintien_domicile_quebec > Decimal("280.80"):
+        raise ValueError("Maintien à domicile individuel : maximum logiciel loyers seuls 280.80.")
     montant_prime_travail(credit_prime_travail_quebec, "456")
     montant_prime_travail(avances_prime_travail_quebec, "441 A")
     if credit_prime_travail_quebec > Decimal("2257.33"):
@@ -289,6 +295,7 @@ def calculer_rapprochement_fiscal_2025(
         + credit_garde_quebec
         + credit_aidante_quebec
         + credit_soutien_aines_quebec
+        + credit_maintien_domicile_quebec
         + credit_prime_travail_quebec
         - impot_total
     )
@@ -456,6 +463,7 @@ def calculer_rapprochement_fiscal_2025(
         credit_garde_quebec_ligne_455=credit_garde_quebec,
         avances_garde_quebec_ligne_441=avances_garde_quebec,
         credit_soutien_aines_quebec_ligne_463=credit_soutien_aines_quebec,
+        credit_maintien_domicile_quebec_ligne_458=credit_maintien_domicile_quebec,
         credit_prime_travail_quebec_ligne_456=credit_prime_travail_quebec,
         avances_prime_travail_quebec_ligne_441=avances_prime_travail_quebec,
         credit_aidante_quebec_ligne_462=credit_aidante_quebec,

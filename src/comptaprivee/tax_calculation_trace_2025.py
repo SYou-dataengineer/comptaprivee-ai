@@ -5,6 +5,7 @@ déjà calculée à partir d'un dossier verrouillé et validé par le comptable.
 """
 
 from .tax_quebec_senior_support_2025 import lignes_soutien_aines_quebec_2025
+from .tax_quebec_home_support_2025 import lignes_maintien_domicile_quebec_2025
 from .tax_quebec_work_premium_2025 import lignes_prime_travail_quebec_2025
 from .tax_quebec_solidarity_2025 import lignes_solidarite_quebec_2025
 from dataclasses import dataclass, replace
@@ -139,6 +140,7 @@ class TraceCalculFiscal2025:
     limitations: tuple[str, ...]
     preparation_annexe_d: tuple[str, ...] = ()
     audit_soutien_aines: tuple[str, ...] = ()
+    audit_maintien_domicile: tuple[str, ...] = ()
     audit_prime_travail: tuple[str, ...] = ()
 
 
@@ -1992,6 +1994,11 @@ def construire_trace_calcul_fiscal_2025(
             estimation.soutien_aines_quebec.source, "max(2000 - réduction 5,40 % au-delà de 27835, 0)",
             estimation.resultat_soutien_aines_quebec.credit_ligne_463),)
 
+    if estimation.maintien_domicile_quebec.activer:
+        lignes += (_ligne(len(lignes) + 1, "MAINTIEN À DOMICILE QUÉBEC - 6K", "Maintien à domicile Québec 458",
+            estimation.maintien_domicile_quebec.source, "Loyers annexe J au cent x 39 %, réduction nulle dans le profil borné",
+            estimation.resultat_maintien_domicile_quebec.credit_ligne_458),)
+
     if estimation.prime_travail_quebec.activer:
         rp = estimation.resultat_prime_travail_quebec
         for libelle, valeur, formule_prime in (
@@ -2319,6 +2326,8 @@ def construire_trace_calcul_fiscal_2025(
 
     if final.credit_soutien_aines_quebec_ligne_463:
         formule += (" + soutien aux aînés Québec 463" if final.remboursement_estime else " - soutien aux aînés Québec 463")
+    if final.credit_maintien_domicile_quebec_ligne_458:
+        formule += (" + maintien à domicile Québec 458" if final.remboursement_estime else " - maintien à domicile Québec 458")
     if final.credit_prime_travail_quebec_ligne_456:
         formule += (" + prime au travail Québec 456" if final.remboursement_estime else " - prime au travail Québec 456")
     if final.avances_prime_travail_quebec_ligne_441:
@@ -2356,6 +2365,7 @@ def construire_trace_calcul_fiscal_2025(
         avertissements=base.avertissements,
         limitations=final.limitations,
         audit_soutien_aines=tuple(lignes_soutien_aines_quebec_2025(estimation.soutien_aines_quebec, estimation.resultat_soutien_aines_quebec)),
+        audit_maintien_domicile=tuple(lignes_maintien_domicile_quebec_2025(estimation.maintien_domicile_quebec, estimation.resultat_maintien_domicile_quebec)),
         audit_prime_travail=tuple(lignes_prime_travail_quebec_2025(estimation.prime_travail_quebec, estimation.resultat_prime_travail_quebec)),
         preparation_annexe_d=lignes_solidarite_quebec_2025(estimation.solidarite_quebec, estimation.base_solidarite_quebec),
     )
@@ -2394,6 +2404,9 @@ def formater_trace_calcul_fiscal_2025(
 
     if trace.audit_soutien_aines:
         lignes.extend(trace.audit_soutien_aines)
+
+    if trace.audit_maintien_domicile:
+        lignes.extend(trace.audit_maintien_domicile)
 
     if trace.audit_prime_travail:
         lignes.extend(trace.audit_prime_travail)

@@ -4768,3 +4768,62 @@ locaux sous `tmp/pdfs/6j/`, non versionnés. Aucun client réel.
 PDF 6J : trois pages contrôlées visuellement, sans débordement.
 Full prépublication : **6506 passed, 8 warnings**, 178,00 s,
 `python -m pytest --capture=sys -q --ignore=tmp`. Diff sans erreur.
+
+
+### 6K — maintien à domicile, loyers ordinaires seulement (458)
+
+Sources 2025 et paramètres fournis dans la mission FAST TRACK, sans recherche
+répétée : [annexe J TP-1.D.J (2025-12)](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.J%282025-12%29.pdf),
+[ligne 458](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/451-a-480-remboursement-ou-solde-a-payer/ligne-458/).
+Taux 39 %, plafond de dépenses annuel autonome individuel 19 500 $, maximum
+légal avant réduction 7 605 $. Réduction applicable au-delà de 71 010 $ : grille
+volontairement hors périmètre, donc refus explicite si 275 recalculée > 71 010 $.
+
+Premier sous-profil utile et sûr : personne autonome, au moins 70 ans **dès le
+1er janvier 2025**, seule sans conjoint ni personne à charge, résidente Québec
+toute l'année, même logement locatif ordinaire occupé toute l'année, douze loyers
+positifs documentés. Les loyers peuvent varier d'un mois à l'autre. Aucun décès,
+exonération, faillite, absence ou résidence partielle. Les anniversaires des
+70 ans après le 1er janvier et toute proratisation sont exclus de ce premier
+profil; ceci n'est pas présenté comme une exclusion fiscale générale.
+
+Chaque mois : loyer retenu = minimum(maximum(loyer payé, 600), 1200).
+Base exacte = somme des douze loyers retenus × 5 %. La ligne 75 représente cette
+base au cent, plafonnée à 19 500 $. Ligne 458 = ligne 75 × 39 %, au cent;
+réduction nulle dans le profil. Convention générale `arrondir_cent`, sans règle
+particulière d'arrondi RQ présumée; la base exacte reste dans l'audit.
+Dans le sous-profil **loyers seuls**, les dépenses sont au plus 720 $ et le
+crédit au plus **280,80 $**, ce qui est distinct du maximum légal général.
+
+Exclus et confirmés explicitement : services supplémentaires J 50-56, soins
+infirmiers, non-autonomie, RPA/CHSLD, copropriété/propriété, cooccupation,
+déménagements, avances de maintien à domicile (RL-19 D), couples et cas spéciaux.
+Les avances ne sont pas présumées nulles à partir d'un champ manquant : leur
+absence exige une confirmation comptable; un RL-19 D non nul détecté est refusé.
+Les gardes documentaires déjà présentes restent prioritaires et inchangées.
+
+Le médical agrégé actuel ne permet pas d'identifier automatiquement des soins
+infirmiers partagés entre demandes. Par prudence, le **cumul de frais médicaux
+réclamés et de ce sous-profil 6K est refusé**, agrégé fédéral/Québec ou détaillé.
+C'est une limite logicielle, pas une interdiction fiscale générale de cumuler
+ces crédits. Aucun montant médical n'est effacé ou déplacé. Les personnes
+cohabitantes de l'annexe H et une vie seule contradictoire dans 6H sont refusées.
+Âge/naissance rapprochés avec pensions, carrière, 6H, 6I, 6J et autres profils
+actifs. Les confirmations de bail/loyers et d'absence de double demande restent
+obligatoires; aucune saisie manuelle du crédit final.
+
+Intégration complète : moteur Decimal, revenu 275 recalculé, rapprochement 458
+une seule fois, JSON facultatif rétrocompatible (douze loyers en chaînes), GUI
+avec révocation des confirmations après modification d'un loyer, reset nouveau
+dossier, trace et PDF (douze loyers, bornes, base exacte, crédit et exclusions).
+Tests : 600/1200 ± 0,01, loyers variables et fractions de cent, 70 ans au premier
+janvier, 71 010 $/71 010,01 $, refus des cas exclus, pension et REER/275,
+cumul 6H/6I/6J sans double compte, remboursement/solde, JSON ancien, cycle GUI.
+Ciblés et régressions : **299 passed, 5 warnings SWIG/PyMuPDF**. PDF fictif avec
+pension 20 000 $, soutien 463 de 2 000 $ et maintien 458 de 210,60 $; artifacts
+locaux `tmp/pdfs/6k/` ignorés par Git. Aucune donnée client.
+
+Contrôle visuel 6K : quatre pages lisibles, détail des douze loyers et limites.
+Test GUI renforcé après modification d’un loyer : 4 passed.
+Full prépublication : **6598 passed, 8 warnings**, 177,92 s,
+`python -m pytest --capture=sys -q --ignore=tmp`. Diff sans erreur.
