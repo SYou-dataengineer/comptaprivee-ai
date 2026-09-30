@@ -5075,3 +5075,78 @@ Une seule suite complète locale : **6736 passed, 8 warnings**, 184,46 s,
 ceux déjà présents (SWIG/PyMuPDF et openpyxl). `git diff --check` sans erreur.
 La seconde validation complète est confiée à GitHub Actions. Aucun travail 7C
 commencé; le calcul annuel autonome reste explicitement verrouillé.
+
+
+### 7C — Cotisations et estimation annuelle, autonome pur
+
+État de départ : `97af2e2`. Le brouillon d’audit et les sources de la session
+précédente sont conservés et intégrés. Aucun travail 7D. Le garde-fou 7B reste
+actif sans activation et confirmation explicites du profil annuel 7C.
+
+Sources officielles 2025 lues :
+- [Annexe U TP-1.D.U (2025-12)](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.U%282025-12%29.pdf), partie C pages 4–7, renseignements page 9 : exemption 3 500 $, MGA 71 300 $, maximum supplémentaire 81 200 $. U48 : assiette U47.2 × 12,8 %; U93 : U92 × 8 %; U99 : minimum de U94/U98, report 445. U124 : déduction 248. Le moteur conserve les lignes distinctes et les minima, sans remplacer U99 par une somme théorique.
+- [Annexe 8 Québec 5005-S8 F (25)](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s8/5005-s8-25f.pdf), partie 3 pages 5–6 : base 10,8 %, première supplémentaire 2 %, deuxième 8 %; crédit 31000 et déduction 22200 distincts. Aucun report 42100 pour ce parcours Québec; 22215/30800 restent des lignes d'emploi.
+- [Annexe R TP-1.D.R (2025-12)](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.R%282025-12%29.pdf), partie A : seuil 2 000 $, plafond assurable 98 000 $, taux 0,878 %, maximum 860,44 $. R24 vers 439; R26 = R24 × 43,736 % vers 248.
+- [Annexe 10 5005-S10 F (25)](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s10/5005-s10-25f.pdf), partie A page 1 : déduction fédérale 22300 et base de crédit 31215, maxima 376,32 $ et 484,12 $. Dépendance nécessaire intégrée dans le parcours annuel.
+- [Annexe F TP-1.D.F (2025-12)](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.F%282025-12%29.pdf), partie A lignes 43/43.1 et partie B : la cotisation FSS 446 doit également être prise en compte. Pour l'autonome pur sans autres ajustements, son assiette retire R26 et U101/U103/U115 du net autonome, sans retirer la déduction travailleur 201.
+
+#### Arrondi : structure du formulaire et convention logicielle
+
+Décision 7C vérifiée par l’utilisateur sur l’annexe U, partie C, pages 4 à 6 :
+chaque ligne monétaire est quantifiée au cent AVANT réutilisation. La ligne
+suivante reprend le montant de cette ligne, sans précision cachée. Les lignes
+monétaires réutilisées des annexes R, 8 et 10 suivent la même discipline.
+Le traitement des demi-cents utilise `arrondir_cent` / `ROUND_HALF_UP`, convention
+monétaire générale de ComptaPrivée, et non une règle fiscale spécifique attribuée
+à Revenu Québec ou à l’ARC. Aucune règle officielle particulière de demi-cent
+n’a été identifiée dans les sources 2025 consultées.
+
+Régression fictive : net autonome 3 500,05 $, U48 = 0,01 $, U71 = 0,00 $,
+U94 = 0,01 $, U98 = 0,00 $, U99/445 = **0,00 $**. Le résultat 0,01 $ produit
+par une précision cachée jusqu’au report final est explicitement rejeté.
+Tests adjacents : 3 500,04 $, 3 500,06 $ et 3 500,08 $.
+
+#### Périmètre livré et intégrations
+
+Autonome pur : 18 ans acquis avant 2025, moins de 65 ans fin 2025, résidence
+Canada/Québec toute l’année, exclusivement des entreprises/professions 7B.
+Plusieurs entreprises sont agrégées avant de calculer UNE fois les cotisations.
+Profil immuable attaché au dossier : naissance, source et dix confirmations.
+Toutes les validations 7B restent requises; aucune perte n’est ouverte.
+
+RRQ : annexe U C, ligne 445 et déduction 248. Fédéral : annexe 8 partie 3,
+22200 et base 31000, sans confusion avec 22215/30800 d’emploi ni 42100.
+RQAP : annexe R A, 439 et déduction 248; annexe 10 A, 22300 et base 31215.
+FSS 446 : annexe F, après ses déductions autonomes, sans déduire la ligne 201.
+Revenu total/net/imposable, Québec 275, crédits non remboursables fédéraux et
+rapprochement annuel intégrés. RRQ/RQAP/FSS payables ajoutées une seule fois.
+
+JSON rétrocompatible : champ optionnel `profil_cotisations_autonomes`, absent
+=> profil désactivé. Faits bruts uniquement, champs inconnus/types invalides
+refusés. Sauvegarde annuelle contrôlée contre les faits du dossier. GUI :
+activation distincte, confirmations révoquées après changement du profil ou
+des entreprises, invalidation de l’estimation/PDF, chargement et nouveau dossier.
+Trace : détail des lignes U/R/S8 et reports annuels. PDF : revenus des entreprises,
+cotisations, déductions, impôts, solde, source et limites du parcours.
+
+Exclus : emploi + autonome, autres revenus/feuillets, RPC/LE-35, lignes 96/96.1/96.2,
+proratas d’âge, invalidité/rentes/choix, cotisations facultatives, adhésion AE,
+revenus exonérés, déductions 293/297, ressources intermédiaires/familiales,
+acomptes/retenues, assurance médicaments publique. Une couverture privée annuelle
+admissible doit être confirmée. Les exclusions métier 7B sont conservées.
+Tout autre profil de crédit/déduction non vide est refusé : ACT, prime au travail
+6I et autres crédits dépendants ne sont pas étendus silencieusement.
+
+Dépendances restantes hors de ce périmètre : emploi + autonome avec cotisations
+réelles 7A; audit individuel des crédits dépendants; profils spéciaux, acomptes
+et couverture publique. Elles restent bloquées, sans commencer le bloc suivant.
+
+Validation locale : tests ciblés moteur, seuils, fractions de cent, absence de
+double comptage, rétrocompatibilité JSON, GUI, trace/PDF et régressions 7A/7B.
+Contrôle visuel du PDF annuel fictif à 98 000 $ : une page lisible, sans
+débordement; fichier conservé sous `tmp/pdfs/7c/` (ignoré par Git).
+Suite complète locale unique : **6782 passed, 8 warnings**, 194,34 secondes,
+`python -m pytest --capture=sys -q --ignore=tmp --tb=short`. Avertissements
+existants SWIG/PyMuPDF et openpyxl. `git diff --check` sans erreur.
+La seconde validation complète est confiée à GitHub Actions, sans répétition
+locale post-commit. Aucun travail 7D commencé.

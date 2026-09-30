@@ -45,6 +45,8 @@ from .gui_quebec_volunteers_2025 import ouvrir_volontaires_quebec_2025
 from .gui_quebec_home_support_2025 import ouvrir_maintien_domicile_quebec_2025
 from .tax_quebec_work_premium_2025 import PrimeTravailQuebec2025
 from .gui_quebec_work_premium_2025 import ouvrir_prime_travail_quebec_2025
+from .gui_self_employment_contributions_2025 import ouvrir_cotisations_autonomes_2025
+from .tax_self_employment_contributions_2025 import ProfilCotisationsAutonomes2025, calculer_cotisations_autonomes_2025
 from .gui_self_employment_2025 import ouvrir_entreprises_2025, afficher_preparation_autonome_2025
 from .tax_validated_case import DossierFiscalValide
 from .gui_quebec_solidarity_2025 import ouvrir_solidarite_quebec_2025
@@ -5023,6 +5025,22 @@ class ApplicationComptaPrivee(tk.Tk):
                 self.statut.set("Prime au travail enregistrée; recalculez l'estimation fiscale.")
             ouvrir_prime_travail_quebec_2025(fenetre, prime_travail_quebec_courante, enregistrer)
 
+        def ouvrir_cotisations_7c():
+            dossier_ouvert = self.dossier_fiscal_valide_courant
+            if dossier_ouvert is None or not dossier_ouvert.entreprises:
+                messagebox.showerror("Profil 7C indisponible", "Enregistrez d'abord les fiches entreprises 7B.", parent=fenetre)
+                return
+            def enregistrer(profil):
+                nonlocal derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                if self.dossier_fiscal_valide_courant is not dossier_ouvert:
+                    raise ValueError("Le dossier a changé; rouvrez le profil 7C.")
+                if profil.activer:
+                    calculer_cotisations_autonomes_2025(dossier_ouvert, profil)
+                self.dossier_fiscal_valide_courant = replace(dossier_ouvert, profil_cotisations_autonomes=profil)
+                derniere_estimation = dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+            ouvrir_cotisations_autonomes_2025(fenetre, dossier_ouvert.profil_cotisations_autonomes, enregistrer)
+
         def ouvrir_entreprises_7b():
             def enregistrer(faits):
                 nonlocal entreprises_courantes, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
@@ -5038,7 +5056,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 if courant.annee_fiscale != 2025:
                     raise ValueError("7B : année 2025 requise.")
                 entreprises_courantes = faits
-                self.dossier_fiscal_valide_courant = replace(courant, entreprises=faits)
+                self.dossier_fiscal_valide_courant = replace(courant, entreprises=faits, profil_cotisations_autonomes=ProfilCotisationsAutonomes2025())
                 derniere_estimation = dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
             ouvrir_entreprises_2025(fenetre, entreprises_courantes, enregistrer)
@@ -15351,7 +15369,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 return
 
-            if dossier_valide.entreprises:
+            if dossier_valide.entreprises and not dossier_valide.profil_cotisations_autonomes.activer:
                 afficher_preparation_autonome_2025(fenetre, dossier_valide,
                     lambda: self.dossier_fiscal_valide_courant)
                 return
@@ -15905,6 +15923,8 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_soutien_aines_quebec_6j).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Prime au travail Québec 2025 (6I)",
                    command=ouvrir_prime_travail_quebec_6i).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Cotisations autonomes / annuel 2025 (7C)",
+                   command=ouvrir_cotisations_7c).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Entreprises 2025 / préparation (7B)",
                    command=ouvrir_entreprises_7b).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Solidarité Québec / annexe D 2025 (6H)",

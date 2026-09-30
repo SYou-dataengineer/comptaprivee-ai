@@ -50,6 +50,9 @@ class RevenuNetImposable2025:
     revenu_imposable_quebec: Decimal
     profil: str
     limitations: tuple[str, ...]
+    deduction_autonome_22200: Decimal = ZERO
+    deduction_autonome_22300: Decimal = ZERO
+    deduction_rqap_autonome_quebec: Decimal = ZERO
 
 
 def _cotisation_rrq_ba_attendue(gains: Decimal) -> Decimal:

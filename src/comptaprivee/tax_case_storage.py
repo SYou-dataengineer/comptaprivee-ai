@@ -34,6 +34,7 @@ from .tax_quebec_home_support_2025 import (MaintienDomicileQuebec2025, valider_m
 from .tax_quebec_work_premium_2025 import (PrimeTravailQuebec2025, valider_prime_travail_quebec_2025, prime_travail_vers_dict, prime_travail_depuis_dict)
 from .tax_quebec_solidarity_2025 import (SolidariteQuebec2025, valider_solidarite_quebec_2025, solidarite_quebec_vers_dict, solidarite_quebec_depuis_dict)
 from .tax_self_employment_2025 import entreprises_vers_json, entreprises_depuis_json, MESSAGE_7C
+from .tax_self_employment_contributions_2025 import profil_7c_vers_json, profil_7c_depuis_json, calculer_cotisations_autonomes_2025
 from .tax_quebec_caregiver_2025 import (PersonneAidanteQuebec2025, valider_aidante_quebec_2025, aidante_quebec_vers_dict, aidante_quebec_depuis_dict)
 from .tax_quebec_childcare_2025 import (FraisGardeQuebec2025, valider_garde_quebec_2025,
     garde_quebec_vers_dict, garde_quebec_depuis_dict)
@@ -3665,7 +3666,12 @@ def sauvegarder_dossier_fiscal(
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
     entreprises_json = entreprises_vers_json(dossier.entreprises)
-    if dossier.entreprises and (estimation is not None or rapport_pdf is not None):
+    profil_7c_json = profil_7c_vers_json(dossier.profil_cotisations_autonomes)
+    if dossier.profil_cotisations_autonomes.activer:
+        calc_7c = calculer_cotisations_autonomes_2025(dossier, dossier.profil_cotisations_autonomes)
+        if estimation is not None and (estimation.dossier != dossier or estimation.cotisations_autonomes != calc_7c):
+            raise ValueError('7C : estimation différente des faits du dossier.')
+    if dossier.entreprises and not dossier.profil_cotisations_autonomes.activer and (estimation is not None or rapport_pdf is not None):
         raise ValueError(MESSAGE_7C)
     if estimation is not None:
         estime_30450 = estimation.aidant_autre_personne_charge_federal
@@ -4223,6 +4229,7 @@ def sauvegarder_dossier_fiscal(
         "province": dossier.province,
         "documents": [_chemin_vers_stockage(x) for x in dossier.documents],
         "entreprises": entreprises_json,
+        "profil_cotisations_autonomes": profil_7c_json,
         "donnees_validees": [
             {
                 "document": _chemin_vers_stockage(d.document),
@@ -4452,11 +4459,14 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         documents=documents,
         donnees_validees=tuple(donnees),
         entreprises=entreprises,
+        profil_cotisations_autonomes=profil_7c_depuis_json(contenu.get("profil_cotisations_autonomes")),
     )
 
     estimation = None
     e = contenu.get("derniere_estimation")
-    if entreprises and (e is not None or contenu.get("rapport_pdf") is not None):
+    if dossier.profil_cotisations_autonomes.activer:
+        calculer_cotisations_autonomes_2025(dossier, dossier.profil_cotisations_autonomes)
+    if entreprises and not dossier.profil_cotisations_autonomes.activer and (e is not None or contenu.get("rapport_pdf") is not None):
         raise ValueError(MESSAGE_7C)
     if e is not None:
         if not isinstance(e, dict):

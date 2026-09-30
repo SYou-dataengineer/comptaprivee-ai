@@ -146,6 +146,7 @@ class TraceCalculFiscal2025:
     audit_maintien_domicile: tuple[str, ...] = ()
     audit_prime_travail: tuple[str, ...] = ()
     audit_employeurs: tuple[str, ...] = ()
+    audit_autonome: tuple[str, ...] = ()
 
 
 def _ligne(ordre, section, libelle, source, formule, montant):
@@ -176,6 +177,27 @@ def _inserer_ligne_avant(lignes, libelle_cible, nouvelle_ligne):
 def construire_trace_calcul_fiscal_2025(
     estimation: EstimationFiscale2025,
 ) -> TraceCalculFiscal2025:
+    if estimation.cotisations_autonomes is not None:
+        from .tax_self_employment_contributions_2025 import lignes_annuelles_autonomes_2025
+        c=estimation.cotisations_autonomes
+        d=estimation.dossier
+        x=estimation.rapprochement
+        lignes=[]
+        for annexe, valeurs in (("U C",c.lignes_u),("S8 partie 3",c.lignes_s8),("R A",c.lignes_r)):
+            for numero,montant in valeurs:
+                lignes.append(_ligne(len(lignes)+1,"COTISATIONS AUTONOMES",f"{annexe} ligne {numero}",
+                    f"Annexe {annexe} 2025", "Ligne monétaire du formulaire, au cent avant réutilisation",montant))
+        for libelle,formule,montant in (
+            ('Revenu net fédéral','Net autonome - 22200 - 22300',estimation.revenu.revenu_net_federal),
+            ('Québec 275','Net autonome - 201 - U124 - R26',estimation.revenu.revenu_net_quebec),
+            ('Solde annuel','Fédéral après abattement + impôt Québec + 445 + 439 + 446',x.solde_estime),
+        ):
+            lignes.append(_ligne(len(lignes)+1,'ANNUEL',libelle,'Pipeline annuel 7C',formule,montant))
+        return TraceCalculFiscal2025(client=d.client,annee_fiscale=d.annee_fiscale,province=d.province,
+            lignes=tuple(lignes),resultat=x.resultat,montant_resultat=max(x.solde_estime,x.remboursement_estime),
+            formule_resultat='Impôts après crédits et abattement + cotisations Québec, chacune une fois',
+            avertissements=(),limitations=('Autonome pur borné; emploi et autres crédits exclus.',),
+            audit_autonome=lignes_annuelles_autonomes_2025(estimation))
     dossier = estimation.dossier
     base = estimation.base
     revenu = estimation.revenu
@@ -2388,6 +2410,9 @@ def construire_trace_calcul_fiscal_2025(
 def formater_trace_calcul_fiscal_2025(
     trace: TraceCalculFiscal2025,
 ) -> str:
+    if trace.audit_autonome:
+        return '\n'.join((*trace.audit_autonome, '', 'TRACE DES LIGNES MONÉTAIRES',
+            *(f'{l.libelle} : {l.montant:.2f} $; {l.formule}' for l in trace.lignes)))
     lignes = [
         "TRACE DE CALCUL FISCAL 2025 — VALIDATION COMPTABLE OBLIGATOIRE",
         "",
