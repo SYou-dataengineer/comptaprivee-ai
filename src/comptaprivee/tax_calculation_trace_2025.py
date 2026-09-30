@@ -5,6 +5,7 @@ déjà calculée à partir d'un dossier verrouillé et validé par le comptable.
 """
 
 from .tax_quebec_senior_support_2025 import lignes_soutien_aines_quebec_2025
+from .tax_quebec_volunteers_2025 import lignes_volontaires_quebec_2025
 from .tax_quebec_home_support_2025 import lignes_maintien_domicile_quebec_2025
 from .tax_quebec_work_premium_2025 import lignes_prime_travail_quebec_2025
 from .tax_quebec_solidarity_2025 import lignes_solidarite_quebec_2025
@@ -140,6 +141,7 @@ class TraceCalculFiscal2025:
     limitations: tuple[str, ...]
     preparation_annexe_d: tuple[str, ...] = ()
     audit_soutien_aines: tuple[str, ...] = ()
+    audit_volontaires: tuple[str, ...] = ()
     audit_maintien_domicile: tuple[str, ...] = ()
     audit_prime_travail: tuple[str, ...] = ()
 
@@ -390,6 +392,8 @@ def construire_trace_calcul_fiscal_2025(
         )
 
     formule_impot_quebec = "Impôt Québec brut - crédit personnel de base"
+    if estimation.volontaires_quebec.activer:
+        formule_impot_quebec += " - crédit non remboursable volontaires Québec 390"
     if estimation.prolongation_carriere_quebec.reclamer:
         formule_impot_quebec += " - crédit prolongation de carrière Québec ligne 391"
     if estimation.achat_habitation_quebec.reclamer:
@@ -1994,6 +1998,11 @@ def construire_trace_calcul_fiscal_2025(
             estimation.soutien_aines_quebec.source, "max(2000 - réduction 5,40 % au-delà de 27835, 0)",
             estimation.resultat_soutien_aines_quebec.credit_ligne_463),)
 
+    if estimation.volontaires_quebec.activer:
+        lignes += (_ligne(len(lignes) + 1, "VOLONTAIRES QUÉBEC - 6L", "Volontaires Québec Québec 390",
+            estimation.volontaires_quebec.source, "5404 x 14 %, non remboursable, une seule fois",
+            estimation.resultat_volontaires_quebec.credit_ligne_390),)
+
     if estimation.maintien_domicile_quebec.activer:
         lignes += (_ligne(len(lignes) + 1, "MAINTIEN À DOMICILE QUÉBEC - 6K", "Maintien à domicile Québec 458",
             estimation.maintien_domicile_quebec.source, "Loyers annexe J au cent x 39 %, réduction nulle dans le profil borné",
@@ -2363,8 +2372,10 @@ def construire_trace_calcul_fiscal_2025(
         montant_resultat=montant,
         formule_resultat=formule,
         avertissements=base.avertissements,
-        limitations=final.limitations,
+        limitations=final.limitations + (("Bouclier fiscal 460 non calculé : faits et revenus 2024 nécessaires; examen séparé requis, même si le crédit 455 est nul.",)
+            if estimation.frais_garde_quebec.reclamer else ()),
         audit_soutien_aines=tuple(lignes_soutien_aines_quebec_2025(estimation.soutien_aines_quebec, estimation.resultat_soutien_aines_quebec)),
+        audit_volontaires=tuple(lignes_volontaires_quebec_2025(estimation.volontaires_quebec, estimation.resultat_volontaires_quebec)),
         audit_maintien_domicile=tuple(lignes_maintien_domicile_quebec_2025(estimation.maintien_domicile_quebec, estimation.resultat_maintien_domicile_quebec)),
         audit_prime_travail=tuple(lignes_prime_travail_quebec_2025(estimation.prime_travail_quebec, estimation.resultat_prime_travail_quebec)),
         preparation_annexe_d=lignes_solidarite_quebec_2025(estimation.solidarite_quebec, estimation.base_solidarite_quebec),
@@ -2404,6 +2415,9 @@ def formater_trace_calcul_fiscal_2025(
 
     if trace.audit_soutien_aines:
         lignes.extend(trace.audit_soutien_aines)
+
+    if trace.audit_volontaires:
+        lignes.extend(trace.audit_volontaires)
 
     if trace.audit_maintien_domicile:
         lignes.extend(trace.audit_maintien_domicile)

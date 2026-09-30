@@ -29,6 +29,7 @@ from .tax_workers_benefit_2025 import AllocationTravailleurs2025, valider_alloca
 from .tax_medical_supplement_2025 import SupplementMedical2025, valider_supplement_medical_2025, verifier_famille_supplement_2025
 from .tax_training_credit_2025 import Formation2025, valider_formation_2025
 from .tax_quebec_senior_support_2025 import (SoutienAinesQuebec2025, valider_soutien_aines_quebec_2025, soutien_aines_vers_dict, soutien_aines_depuis_dict)
+from .tax_quebec_volunteers_2025 import (VolontairesQuebec2025, valider_volontaires_quebec_2025, volontaires_vers_dict, volontaires_depuis_dict)
 from .tax_quebec_home_support_2025 import (MaintienDomicileQuebec2025, valider_maintien_domicile_quebec_2025, maintien_domicile_vers_dict, maintien_domicile_depuis_dict)
 from .tax_quebec_work_premium_2025 import (PrimeTravailQuebec2025, valider_prime_travail_quebec_2025, prime_travail_vers_dict, prime_travail_depuis_dict)
 from .tax_quebec_solidarity_2025 import (SolidariteQuebec2025, valider_solidarite_quebec_2025, solidarite_quebec_vers_dict, solidarite_quebec_depuis_dict)
@@ -258,6 +259,7 @@ class DossierFiscalEnregistre:
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
     frais_garde_quebec: FraisGardeQuebec2025 = FraisGardeQuebec2025()
     soutien_aines_quebec: SoutienAinesQuebec2025 = SoutienAinesQuebec2025()
+    volontaires_quebec: VolontairesQuebec2025 = VolontairesQuebec2025()
     maintien_domicile_quebec: MaintienDomicileQuebec2025 = MaintienDomicileQuebec2025()
     prime_travail_quebec: PrimeTravailQuebec2025 = PrimeTravailQuebec2025()
     solidarite_quebec: SolidariteQuebec2025 = SolidariteQuebec2025()
@@ -3600,6 +3602,7 @@ def sauvegarder_dossier_fiscal(
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
     frais_garde_quebec: FraisGardeQuebec2025 | None = None,
     soutien_aines_quebec: SoutienAinesQuebec2025 | None = None,
+    volontaires_quebec: VolontairesQuebec2025 | None = None,
     maintien_domicile_quebec: MaintienDomicileQuebec2025 | None = None,
     prime_travail_quebec: PrimeTravailQuebec2025 | None = None,
     solidarite_quebec: SolidariteQuebec2025 | None = None,
@@ -3933,6 +3936,10 @@ def sauvegarder_dossier_fiscal(
         else estimation.soutien_aines_quebec if estimation is not None else SoutienAinesQuebec2025())
     if estimation is not None and soutien_aines_quebec != estimation.soutien_aines_quebec:
         raise ValueError("Profil soutien aux aînés divergent de l'estimation.")
+    volontaires_quebec = valider_volontaires_quebec_2025(volontaires_quebec if volontaires_quebec is not None
+        else estimation.volontaires_quebec if estimation is not None else VolontairesQuebec2025())
+    if estimation is not None and volontaires_quebec != estimation.volontaires_quebec:
+        raise ValueError("Profil volontaires Québec divergent de l'estimation.")
     maintien_domicile_quebec = valider_maintien_domicile_quebec_2025(maintien_domicile_quebec if maintien_domicile_quebec is not None
         else estimation.maintien_domicile_quebec if estimation is not None else MaintienDomicileQuebec2025())
     if estimation is not None and maintien_domicile_quebec != estimation.maintien_domicile_quebec:
@@ -4254,6 +4261,7 @@ def sauvegarder_dossier_fiscal(
         "allocation_travailleurs": _allocation_travailleurs_vers_dict(act),
         "frais_garde_quebec": garde_quebec_vers_dict(frais_garde_quebec),
         "soutien_aines_quebec": soutien_aines_vers_dict(soutien_aines_quebec),
+        "volontaires_quebec": volontaires_vers_dict(volontaires_quebec),
         "maintien_domicile_quebec": maintien_domicile_vers_dict(maintien_domicile_quebec),
         "prime_travail_quebec": prime_travail_vers_dict(prime_travail_quebec),
         "solidarite_quebec": solidarite_quebec_vers_dict(solidarite_quebec),
@@ -4744,6 +4752,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         allocation_travailleurs=_allocation_travailleurs_depuis_dict(contenu.get("allocation_travailleurs")),
         frais_garde_quebec=garde_quebec_depuis_dict(contenu.get("frais_garde_quebec")),
         soutien_aines_quebec=soutien_aines_depuis_dict(contenu.get("soutien_aines_quebec")),
+        volontaires_quebec=volontaires_depuis_dict(contenu.get("volontaires_quebec")),
         maintien_domicile_quebec=maintien_domicile_depuis_dict(contenu.get("maintien_domicile_quebec")),
         prime_travail_quebec=prime_travail_depuis_dict(contenu.get("prime_travail_quebec")),
         solidarite_quebec=solidarite_quebec_depuis_dict(contenu.get("solidarite_quebec")),

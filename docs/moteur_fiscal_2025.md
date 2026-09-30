@@ -1,5 +1,8 @@
 # Moteur fiscal 2025 — inventaire et blocs fonctionnels
 
+État actuel : voir la section « 6L — clôture bornée de la Priorité 6 » en fin de document.
+Les inventaires et checkpoints antérieurs ci-dessous sont conservés comme historique.
+
 Audit du code au 15 septembre 2026, après le Bloc 2 de l'interface.
 Cet inventaire porte sur le calcul réellement orchestré, pas seulement sur
 la présence de fichiers ou de boutons. Le logiciel produit une estimation
@@ -4827,3 +4830,91 @@ Contrôle visuel 6K : quatre pages lisibles, détail des douze loyers et limites
 Test GUI renforcé après modification d’un loyer : 4 passed.
 Full prépublication : **6598 passed, 8 warnings**, 177,92 s,
 `python -m pytest --capture=sys -q --ignore=tmp`. Diff sans erreur.
+
+
+### 6L — clôture bornée de la Priorité 6
+
+Audit en lecture seule effectué après publication verte de 6K (`0d311c8`), avant
+les corrections ci-dessous. Recherche ciblée dans la roadmap, les moteurs,
+l'orchestrateur, la GUI, le stockage et les tests. Une mention historique n'a
+pas été assimilée à une absence actuelle. En particulier, les trois modes
+personne aidante de 6G existent réellement; la branche sans cohabitation et
+celle de 70 ans ne sont pas à réimplémenter.
+
+#### A — nécessaires avant clôture, traités par 6L
+
+| Constat réel | Correction et preuve |
+| --- | --- |
+| `tax_volunteers_2025` (5L) ne calcule que 31220/31240 fédéraux; aucune ligne 390 Québec n'était orchestrée | Nouveau profil facultatif 390, explicitement confirmé au Québec; crédit non remboursable 756,56 $ = 5 404 $ × 14 %, appliqué une seule fois avec plancher d'impôt zéro. Tests d'indépendance fédérale et de non-remboursement à impôt nul. |
+| Le Bouclier 460 n'était averti que dans 6I; un utilisateur 6F seul ne voyait pas la limite | Avertissement dans la GUI 6F, résumé, trace et PDF, même lorsque 455 est nul. Aucun montant 460 présumé et aucune modification du calcul 455/441. |
+
+**390, sous-périmètre livré :** au moins 200 heures certifiées de la même activité
+(pompiers OU recherche-sauvetage), activités et organismes déjà documentés en
+5L, aucune rémunération pour ces services, résidence annuelle simple. Les
+confirmations d'admissibilité et de certificats **Québec sont distinctes** de
+l'admissibilité fédérale; le logiciel n'en déduit pas automatiquement le droit.
+Pas d'addition de deux crédits. Le choix 5L doit être un crédit de l'activité
+correspondante, pas l'exonération; c'est une dépendance logicielle de ce premier
+profil, pas une règle d'élection provinciale générale.
+
+Repères 2025 fournis pour l'audit : [RQ, ligne 390](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/350-a-398-1-credits-dimpot-non-remboursables/ligne-390/),
+756,56 $, base 5 404 $, taux 14 %, seuil 200 heures. Aucune nouvelle recherche
+sur ces paramètres déjà fournis. Les dossiers rémunérés nécessitent notamment
+l'inclusion de L-2 lorsqu'applicable : ils sont **refusés**, pas calculés en
+omettant cette inclusion. Une case RL-1 L-2 ou T4 87 positive est refusée.
+Activités mixtes, organismes non admissibles, services similaires rémunérés et
+cas particuliers sont hors de ce sous-profil. Le bloc 5L existant est inchangé.
+
+Intégrations 390 : moteur Decimal, estimation/impôt Québec, rapprochement via
+l'impôt (pas comme crédit remboursable), JSON facultatif/ancien dossier,
+GUI dédiée, reset, trace et PDF. Les heures et activités restent dans 5L;
+le nouveau JSON contient seulement les confirmations et sources Québec.
+L'impôt fédéral, les revenus et l'abattement ne changent pas lors de l'activation
+provinciale. La trace distingue crédit nominal et réduction disponible à
+l'étape d'application. Pas de transfert de crédit inutilisé.
+
+#### B — bornés/documentés, non calculés dans les profils livrés
+
+| Lacune ou limite réelle | Dépendance / traitement explicite |
+| --- | --- |
+| Bouclier fiscal 460 | Nécessite notamment des faits et revenus 2024/2025 qui n'ont pas de profil dédié validé. Examen séparé averti dans 6I et maintenant 6F; pas de montant nul assimilé à absence de droit. |
+| Solidarité | 6H reste préparation annexe D/admissibilité/audit pour juillet 2026–juin 2027, selon la décision explicite de périmètre; aucun montant et aucun effet TP-1 2025. |
+| Annexe B avec conjoint et répartition | 6A est sans conjoint; les validations correspondantes restent en place. Une annexe B familiale exige son propre calcul et les faits des deux déclarations. |
+| Transferts Québec 431, annexe A/367, scolarité transférée 398.1 et reports Québec | Les modules 5G/5H/5K sont fédéraux; « annexe 2 Québec » désigne ici l'annexe fédérale du résident Québec, pas le transfert TP-1. 367 reste nul dans l'orchestrateur; pas de saisie artificielle. `tax_pension_splitting_2025` refuse le transfert 431 hors périmètre. Les confirmations d'absence de reports/transferts Québec des profils concernés restent nécessaires. |
+| Reports de dons Québec | Le moteur de reports 5I est fédéral et exige `aucun_report_quebec`; aucune conversion automatique vers le Québec. |
+| Adoption Québec, autres crédits 462 non livrés | 5M calcule 31300 fédéral seulement. Le volet Québec n'est pas calculé; les dossiers concernés exigent un traitement séparé, pas une transposition du barème fédéral. |
+| Extensions 6I/6J/6K/390 | Couples, supplément de transition, services supplémentaires J, autres habitations, avances 6K, cumul médical 6K et rémunérations 390 restent exclus explicitement. Aucune règle générale d'inadmissibilité fiscale n'est déduite de ces exclusions logicielles. |
+
+Ces limites sont un **reste de couverture connu**, pas des fonctions livrées.
+La clôture est celle des sous-périmètres FAST TRACK; elle ne signifie pas que
+chaque crédit Québec ou chaque déclaration familiale est calculé intégralement.
+Les cas B ne doivent pas être présentés comme une déclaration TP-1 complète.
+Ils pourront faire l'objet de nouvelles missions autorisées avec leurs sources,
+faits et validations propres. Aucun montant fiscal n'a été inventé pour fermer
+une case de roadmap.
+
+#### C — dépendances de la Priorité 7, non ouvertes
+
+Employeurs multiples, travail autonome et cotisations associées, location/DPA,
+pertes et combinaisons avancées de revenus, résidence partielle/interprovinciale,
+décès/faillite, proratisations et cas d'impôt minimum/biens étrangers. Les
+validations existantes sont conservées. Aucun code de Priorité 7 ajouté.
+
+#### Validation et clôture
+
+6I publié `969688a`, full 6 435 tests, CI verte; 6J publié `6d8d134`, full 6 506,
+CI verte; 6K publié `0d311c8`, full 6 598, CI verte. Un seul passage complet local
+prépublication par bloc; pas de full post-commit inutile.
+
+6L ciblés : **332 passed, 5 warnings SWIG/PyMuPDF**, comprenant 390, 5L, 6F,
+391/396, rapprochement, JSON/GUI/trace/PDF. Une attente erronée du nouveau test
+6F (7 000 au lieu de 7 100 pour le taux existant de 71 %) a été corrigée dans le
+test; aucune règle publiée n'a été modifiée. Le contrôle PDF 6L utilise des
+certificats et frais de garde fictifs, sans données client, sous `tmp/pdfs/6l/`.
+Après publication et CI de 6L : arrêt complet; pas d'ouverture automatique de 7.
+
+PDF 6L : trois pages contrôlées visuellement; ligne 390 distincte et avertissement
+Bouclier 6F lisibles. Full prépublication : **6641 passed, 8 warnings**,
+181,23 s, `python -m pytest --capture=sys -q --ignore=tmp`.
+`git diff --check` sans erreur. Clôture des éléments A; éléments B/C conservés
+explicitement comme limites et reste de couverture. Aucun début de Priorité 7.

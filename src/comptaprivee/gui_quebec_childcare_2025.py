@@ -50,6 +50,7 @@ def ouvrir_garde_quebec_2025(parent, profil, appliquer):
     ttk.Label(c, text="Frais de garde Québec 2025 — lignes 455 et 441", font=("Segoe UI", 16, "bold")).grid(row=0, columnspan=2, sticky="w")
     ttk.Label(c, text="Une fiche par enfant du demandeur ou du conjoint. RL-24 et preuves vérifiés par le comptable. "
         "Le plafond est familial; le taux est calculé depuis les revenus nets Québec. La part du conjoint est celle convenue ensemble. "
+        "Bouclier fiscal 460 non calculé : faits 2024 nécessaires et examen séparé requis. "
         "Les avances personnelles RL-19 case C restent à déclarer même si elles dépassent le crédit. "
         "Hors de ce profil : garde partagée, hébergement, aides/remboursements, résidence partielle et changements d'union.",
         wraplength=950, justify="left").grid(row=1, columnspan=2, sticky="w", pady=8)

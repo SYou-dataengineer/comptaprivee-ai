@@ -9,6 +9,7 @@ d'estimation soumise à validation comptable.
 """
 
 from .tax_quebec_senior_support_2025 import (SoutienAinesQuebec2025, ResultatSoutienAinesQuebec2025, calculer_soutien_aines_quebec_2025, lignes_soutien_aines_quebec_2025, valider_soutien_aines_quebec_2025)
+from .tax_quebec_volunteers_2025 import (VolontairesQuebec2025, ResultatVolontairesQuebec2025, calculer_volontaires_quebec_2025, lignes_volontaires_quebec_2025, valider_volontaires_quebec_2025, appliquer_volontaires_quebec_2025)
 from .tax_quebec_home_support_2025 import (MaintienDomicileQuebec2025, ResultatMaintienDomicileQuebec2025, calculer_maintien_domicile_quebec_2025, lignes_maintien_domicile_quebec_2025, valider_maintien_domicile_quebec_2025)
 from .tax_quebec_work_premium_2025 import (PrimeTravailQuebec2025, ResultatPrimeTravailQuebec2025, calculer_prime_travail_quebec_2025, lignes_prime_travail_quebec_2025, valider_prime_travail_quebec_2025)
 from .tax_quebec_solidarity_2025 import (SolidariteQuebec2025, BaseSolidariteQuebec2025, preparer_solidarite_quebec_2025, lignes_solidarite_quebec_2025, valider_solidarite_quebec_2025)
@@ -373,6 +374,8 @@ class EstimationFiscale2025:
     frais_garde_quebec: FraisGardeQuebec2025 = FraisGardeQuebec2025()
     maintien_domicile_quebec: MaintienDomicileQuebec2025 = MaintienDomicileQuebec2025()
     resultat_maintien_domicile_quebec: ResultatMaintienDomicileQuebec2025 = ResultatMaintienDomicileQuebec2025()
+    volontaires_quebec: VolontairesQuebec2025 = VolontairesQuebec2025()
+    resultat_volontaires_quebec: ResultatVolontairesQuebec2025 = ResultatVolontairesQuebec2025()
     soutien_aines_quebec: SoutienAinesQuebec2025 = SoutienAinesQuebec2025()
     resultat_soutien_aines_quebec: ResultatSoutienAinesQuebec2025 = ResultatSoutienAinesQuebec2025()
     prime_travail_quebec: PrimeTravailQuebec2025 = PrimeTravailQuebec2025()
@@ -496,6 +499,7 @@ def calculer_estimation_fiscale_2025(
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
     frais_garde_quebec: FraisGardeQuebec2025 | None = None,
     soutien_aines_quebec: SoutienAinesQuebec2025 | None = None,
+    volontaires_quebec: VolontairesQuebec2025 | None = None,
     maintien_domicile_quebec: MaintienDomicileQuebec2025 | None = None,
     prime_travail_quebec: PrimeTravailQuebec2025 | None = None,
     solidarite_quebec: SolidariteQuebec2025 | None = None,
@@ -1559,6 +1563,10 @@ def calculer_estimation_fiscale_2025(
         credit_391=resultat_carriere_quebec.credit_ligne_391,
         credit_397=credit_quebec_cotisations_2025(cotisations_effectives))
     quebec = appliquer_achat_quebec_2025(quebec, achat_quebec, resultat_achat_quebec)
+    volontaires = volontaires_quebec if volontaires_quebec is not None else VolontairesQuebec2025()
+    resultat_volontaires = calculer_volontaires_quebec_2025(volontaires, benevoles=benevoles_effectifs,
+        dossier=dossier, impot_disponible=quebec.impot_quebec_preliminaire)
+    quebec = appliquer_volontaires_quebec_2025(quebec, resultat_volontaires)
     federal, quebec = appliquer_credits_dividendes_2025(federal, quebec, dividendes)
     federal, quebec = appliquer_credit_impot_etranger_2025(
         federal, quebec, credit_impot_etranger
@@ -1916,6 +1924,7 @@ def calculer_estimation_fiscale_2025(
         resultat_supplement_medical=supplement_medical,
         frais_garde_quebec=garde_quebec, resultat_garde_quebec=resultat_garde_quebec,
         soutien_aines_quebec=soutien, resultat_soutien_aines_quebec=resultat_soutien,
+        volontaires_quebec=volontaires, resultat_volontaires_quebec=resultat_volontaires,
         maintien_domicile_quebec=maintien, resultat_maintien_domicile_quebec=resultat_maintien,
         prime_travail_quebec=prime, resultat_prime_travail_quebec=resultat_prime,
         solidarite_quebec=solidarite, base_solidarite_quebec=base_solidarite,
@@ -2109,6 +2118,7 @@ def formater_estimation_fiscale_2025(
         *lignes_formation_2025(estimation.frais_scolarite.formation),
         *lignes_garde_quebec_2025(estimation.frais_garde_quebec, estimation.resultat_garde_quebec),
         *lignes_soutien_aines_quebec_2025(estimation.soutien_aines_quebec, estimation.resultat_soutien_aines_quebec),
+        *lignes_volontaires_quebec_2025(estimation.volontaires_quebec, estimation.resultat_volontaires_quebec),
         *lignes_maintien_domicile_quebec_2025(estimation.maintien_domicile_quebec, estimation.resultat_maintien_domicile_quebec),
         *lignes_prime_travail_quebec_2025(estimation.prime_travail_quebec, estimation.resultat_prime_travail_quebec),
         *lignes_solidarite_quebec_2025(estimation.solidarite_quebec, estimation.base_solidarite_quebec),

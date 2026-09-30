@@ -236,6 +236,7 @@ def lignes_garde_quebec_2025(p, r):
         f"Crédit familial 94 = 85 × taux : {r.credit_familial_ligne_94:.2f} $; part convenue du conjoint : {p.credit_demande_conjoint:.2f} $",
         f"Ligne 455 = 94 - part du conjoint : {r.credit_ligne_455:.2f} $; remboursable",
         f"Avances personnelles RL-19 C, ligne 441 : {r.avances_ligne_441:.2f} $; sans plafond au crédit",
+        "Bouclier fiscal 460 non calculé : faits et revenus 2024 nécessaires; examen séparé requis, même si le crédit 455 est nul.",
         "Déduction fédérale distincte; aucun crédit de garde Québec ne réduit le revenu net.",
         "Famille stable, enfants propres, emploi, RL-24 sans hébergement; autres situations à intégrer séparément."])
     return lignes

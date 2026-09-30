@@ -38,8 +38,10 @@ from .tax_training_credit_2025 import Formation2025, CONFIRMATIONS_FORMATION
 from .tax_quebec_caregiver_2025 import PersonneAidanteQuebec2025
 from .tax_quebec_solidarity_2025 import SolidariteQuebec2025
 from .tax_quebec_senior_support_2025 import SoutienAinesQuebec2025
+from .tax_quebec_volunteers_2025 import VolontairesQuebec2025
 from .tax_quebec_home_support_2025 import MaintienDomicileQuebec2025
 from .gui_quebec_senior_support_2025 import ouvrir_soutien_aines_quebec_2025
+from .gui_quebec_volunteers_2025 import ouvrir_volontaires_quebec_2025
 from .gui_quebec_home_support_2025 import ouvrir_maintien_domicile_quebec_2025
 from .tax_quebec_work_premium_2025 import PrimeTravailQuebec2025
 from .gui_quebec_work_premium_2025 import ouvrir_prime_travail_quebec_2025
@@ -2561,6 +2563,7 @@ class ApplicationComptaPrivee(tk.Tk):
         solidarite_quebec_courante = SolidariteQuebec2025()
         prime_travail_quebec_courante = PrimeTravailQuebec2025()
         soutien_aines_quebec_courante = SoutienAinesQuebec2025()
+        volontaires_quebec_courante = VolontairesQuebec2025()
         maintien_domicile_quebec_courante = MaintienDomicileQuebec2025()
         personne_aidante_quebec_courante = PersonneAidanteQuebec2025()
         medical_remboursable_quebec_courante = MedicalRemboursableQuebec2025()
@@ -4984,6 +4987,16 @@ class ApplicationComptaPrivee(tk.Tk):
                 self.statut.set("Maintien à domicile enregistré; recalculez l'estimation fiscale.")
             ouvrir_maintien_domicile_quebec_2025(fenetre, maintien_domicile_quebec_courante, enregistrer)
 
+        def ouvrir_volontaires_quebec_390():
+            def enregistrer(p):
+                nonlocal volontaires_quebec_courante, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                volontaires_quebec_courante = p
+                derniere_estimation = None
+                dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+                self.statut.set("Volontaires Québec enregistré; recalculez l'estimation fiscale.")
+            ouvrir_volontaires_quebec_2025(fenetre, volontaires_quebec_courante, enregistrer)
+
         def ouvrir_soutien_aines_quebec_6j():
             def enregistrer(p):
                 nonlocal soutien_aines_quebec_courante, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
@@ -6089,6 +6102,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     solidarite_quebec=solidarite_quebec_courante,
                     prime_travail_quebec=prime_travail_quebec_courante,
                     soutien_aines_quebec=soutien_aines_quebec_courante,
+                    volontaires_quebec=volontaires_quebec_courante,
                     maintien_domicile_quebec=maintien_domicile_quebec_courante,
                     personne_aidante_quebec=personne_aidante_quebec_courante,
                     medical_remboursable_quebec=medical_remboursable_quebec_courante,
@@ -14427,6 +14441,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal personne_aidante_quebec_courante, solidarite_quebec_courante
             nonlocal prime_travail_quebec_courante
             nonlocal soutien_aines_quebec_courante
+            nonlocal volontaires_quebec_courante
             nonlocal maintien_domicile_quebec_courante
             nonlocal medical_remboursable_quebec_courante
             nonlocal prolongation_carriere_quebec_courante
@@ -14496,6 +14511,7 @@ class ApplicationComptaPrivee(tk.Tk):
             solidarite_quebec_courante = SolidariteQuebec2025()
             prime_travail_quebec_courante = PrimeTravailQuebec2025()
             soutien_aines_quebec_courante = SoutienAinesQuebec2025()
+            volontaires_quebec_courante = VolontairesQuebec2025()
             maintien_domicile_quebec_courante = MaintienDomicileQuebec2025()
             personne_aidante_quebec_courante = PersonneAidanteQuebec2025()
             medical_remboursable_quebec_courante = MedicalRemboursableQuebec2025()
@@ -14680,6 +14696,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     solidarite_quebec=solidarite_quebec_courante,
                     prime_travail_quebec=prime_travail_quebec_courante,
                     soutien_aines_quebec=soutien_aines_quebec_courante,
+                    volontaires_quebec=volontaires_quebec_courante,
                     maintien_domicile_quebec=maintien_domicile_quebec_courante,
                     personne_aidante_quebec=personne_aidante_quebec_courante,
                     medical_remboursable_quebec=medical_remboursable_quebec_courante,
@@ -14758,6 +14775,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     solidarite_quebec=solidarite_quebec_courante,
                     prime_travail_quebec=prime_travail_quebec_courante,
                     soutien_aines_quebec=soutien_aines_quebec_courante,
+                    volontaires_quebec=volontaires_quebec_courante,
                     maintien_domicile_quebec=maintien_domicile_quebec_courante,
                     personne_aidante_quebec=personne_aidante_quebec_courante,
                     medical_remboursable_quebec=medical_remboursable_quebec_courante,
@@ -14857,6 +14875,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal personne_aidante_quebec_courante, solidarite_quebec_courante
             nonlocal prime_travail_quebec_courante
             nonlocal soutien_aines_quebec_courante
+            nonlocal volontaires_quebec_courante
             nonlocal maintien_domicile_quebec_courante
             nonlocal medical_remboursable_quebec_courante
             nonlocal prolongation_carriere_quebec_courante
@@ -14956,6 +14975,7 @@ class ApplicationComptaPrivee(tk.Tk):
             solidarite_quebec_courante = enregistrement.solidarite_quebec
             prime_travail_quebec_courante = enregistrement.prime_travail_quebec
             soutien_aines_quebec_courante = enregistrement.soutien_aines_quebec
+            volontaires_quebec_courante = enregistrement.volontaires_quebec
             maintien_domicile_quebec_courante = enregistrement.maintien_domicile_quebec
             personne_aidante_quebec_courante = enregistrement.personne_aidante_quebec
             medical_remboursable_quebec_courante = enregistrement.medical_remboursable_quebec
@@ -15314,6 +15334,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     solidarite_quebec=solidarite_quebec_courante,
                     prime_travail_quebec=prime_travail_quebec_courante,
                     soutien_aines_quebec=soutien_aines_quebec_courante,
+                    volontaires_quebec=volontaires_quebec_courante,
                     maintien_domicile_quebec=maintien_domicile_quebec_courante,
                     personne_aidante_quebec=personne_aidante_quebec_courante,
                     medical_remboursable_quebec=medical_remboursable_quebec_courante,
@@ -15831,6 +15852,8 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_garde_quebec_6f).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Maintien à domicile Québec 2025 (6K)",
                    command=ouvrir_maintien_domicile_quebec_6k).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Volontaires Québec 2025 / 390 (6L)",
+                   command=ouvrir_volontaires_quebec_390).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Soutien aux aînés Québec 2025 (6J)",
                    command=ouvrir_soutien_aines_quebec_6j).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Prime au travail Québec 2025 (6I)",
