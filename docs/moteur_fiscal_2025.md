@@ -4046,3 +4046,137 @@ après commit **6017 passed, 8 warnings**; push réussi, dépôt propre avant 6F
 
 Suite complète 6F avant commit : **6112 passed, 8 warnings** (195,84 s).
 `git diff --check` sans erreur.
+
+### Bloc 6G — personne aidante Québec, annexe H / ligne 462
+
+Sources officielles 2025 : [annexe H](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.H%282025-12%29.pdf),
+[ligne 462, point 2](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/451-a-480-remboursement-ou-solde-a-payer/ligne-462/point-2-1/),
+[partage et attestations](https://www.revenuquebec.ca/fr/citoyens/credits-dimpot/credit-dimpot-pour-personne-aidante/demande-du-credit-dimpot-personne-aidante/).
+
+Le profil contient plusieurs personnes aidées distinctes : référence locale,
+identité, naissance, lien familial, mode d'aide, période, adresse de cohabitation,
+revenu net Québec 275, part convenue des autres aidants et sources. Aucun NAS
+n'est nécessaire au calcul local. L'admissibilité et les attestations médicales
+Québec sont vérifiées par le comptable; elles ne sont pas déduites automatiquement
+d'un diagnostic ou d'un crédit fédéral.
+
+Calcul par personne : déficience avec cohabitation, maximum 2 988 $;
+déficience sans cohabitation, maximum 1 494 $. Réduction du revenu :
+`min(1494, max(revenu 275 - 26520, 0) × 16 %)`, arrondie au cent.
+Le volet 70 ans avec cohabitation conserve 1 494 $ sans réduction de revenu;
+il exclut le conjoint et utilise les liens ascendants prévus par l'annexe.
+Si la personne atteint 18 ans en 2025, le crédit après réduction de revenu
+est diminué de sa fraction correspondant aux mois jusqu'à l'anniversaire inclus
+(`montant × mois / 12`, réduction arrondie au cent). Aucun reliquat pour un
+anniversaire en décembre. Les parts convenues des autres aidants sont ensuite
+retranchées; un dépassement est refusé. Les crédits individuels sont additionnés.
+
+Exemple synthétique : personne aidée avec déficience, cohabitation, revenu
+30 000 $ : réduction 556,80 $, crédit disponible 2 431,20 $. Une part de
+1 000 $ convenue pour un autre aidant laisse 1 431,20 $. Sans cohabitation,
+le crédit avant partage est 937,20 $. À 70 ans dans le volet C, il est 1 494 $.
+
+Périmètre logiciel de ce premier bloc : périodes personnelles continues déjà
+accomplies d'au moins 365 jours, dont 183 en 2025, début retenu en 2024/2025;
+aucun décès, relève spécialisée ou rajustement d'assistance sociale pour enfant
+majeur handicapé aux études secondaires. Le partage monétaire est admis lorsque
+chaque aidant satisfait personnellement la période complète. La règle officielle
+permet aussi des rotations avec 90 jours par aidant et une période collective
+365/183 : cette branche reste à intégrer. Les périodes futures présumées ne sont
+pas prises en charge. Ces limites logicielles ne sont pas des exclusions fiscales.
+
+Les confirmations couvrent la résidence, l'habitation autorisée hors RPA/réseau
+public, les liens, les attestations, les périodes, l'aide sans rémunération,
+l'absence d'exonération et les demandes incompatibles visant le demandeur.
+Une cohabitation est refusée avec le profil actuel 361 personne seule; les
+exceptions particulières de ce cumul nécessitent une extension distincte.
+Le conjoint aidé est rapproché des profils conjugaux et du revenu Québec
+recalculé de l'instantané 32600, s'il existe. Deux dossiers aidants visant
+la même personne doivent avoir des modes/revenus et parts compatibles;
+le demandeur ne peut pas être lui-même une personne aidée réclamée par son conjoint.
+
+La ligne 462 reçoit une fois le crédit remboursable, sans plafond à l'impôt.
+Les avances personnelles RL-19 H sont ajoutées intégralement à 441, même si
+supérieures au crédit ou en l'absence de crédit. Elles s'additionnent aux avances
+de garde RL-19 C. Les revenus, impôts de base et abattement fédéral restent
+inchangés par ces montants. Les autres crédits 462 demeurent distincts.
+
+JSON rétrocompatible, types et clés stricts, Decimal sérialisés en chaînes,
+recalcul et refus des divergences profil/estimation. GUI avec fiches distinctes,
+révocation des confirmations après modification, effacement, réouverture et
+réinitialisation lors d'un nouveau dossier. Trace et PDF indiquent les sources,
+périodes, maximum, réductions, partage, crédit et avances. PDF synthétique
+contrôlé visuellement.
+
+Journal précédent 6F : `c99d5ca`, 12 fichiers, **6112 passed, 8 warnings** avant
+et après commit (195,84 s / 201,08 s); push réussi, dépôt propre avant 6G.
+
+Validation ciblée 6G consignée avant la reprise : **394 passed, 5 warnings**, incluant GUI,
+garde Québec, transfert conjoint, rapprochement, médical Québec et personne seule.
+
+#### Checkpoint de reprise — 29 septembre 2026
+
+Une seule tâche retenue : sécuriser le travail local existant du bloc 6G.
+Au début de cette session, huit fichiers suivis étaient modifiés et quatre
+fichiers 6G étaient non suivis. Aucun de ces travaux n'a été supprimé ou restauré.
+`HEAD`, la référence locale `origin/main` et la branche distante vérifiée
+pointaient sur `1306537`; son exécution GitHub Actions était verte.
+Le dernier bloc fiscal publié reste le 6F (`c99d5ca`), suivi des corrections GUI.
+Le titre « livré » du 6G était donc prématuré.
+
+Les tests 6G existants ont été réexécutés : **107 passed, 5 warnings**.
+La revue a ensuite identifié un `NameError` dans le rapprochement lorsque
+les crédits personne aidante, médical, scolarité et handicap sont tous inclus :
+la branche 6G utilisait `limitations.append` sur une variable inexistante,
+au lieu d'affecter `limitation_credits`. Un test d'intégration synthétique
+a reproduit cet échec avant correction. Il vérifie aussi que les revenus et
+impôts de base restent identiques et que le remboursement augmente du seul
+crédit aidante, avec une seule occurrence du libellé attendu.
+
+Après correction : **487 passed, 5 warnings**, avec `--capture=sys`, pour les
+suites 6G moteur/GUI, rapprochement, garde Québec moteur/GUI, transfert conjoint,
+médical remboursable Québec, personne seule, frais médicaux, scolarité et handicap.
+Les premiers essais dans le bac à sable avaient rencontré des erreurs d'accès
+aux fichiers temporaires pytest et à Tcl/Tk; l'exécution autorisée hors bac
+à sable a résolu ces erreurs sans modifier les tests ni les ignorer.
+Les cinq avertissements restants concernent les types SWIG de PyMuPDF.
+
+Aucune règle fiscale ni format JSON modifié pendant cette session.
+La suite complète et la vérification visuelle du PDF n'ont pas été réexécutées;
+les mentions antérieures de contrôle visuel ci-dessus décrivent le travail
+consigné avant cette reprise. La revue fiscale exhaustive du travail local
+reste à terminer sur les sources officielles 2025 avant publication.
+Aucun commit ni push effectué pendant cette session; aucun nouveau bloc ouvert.
+
+#### Session 2 — validation du seul périmètre 6G
+
+Revue ciblée effectuée sur l'annexe H **2025-12**, pages 1 à 6, et sur la
+ligne 462, point 2, de Revenu Québec citée plus haut (versements reçus en 2025).
+Les trois modes, les liens admis, le revenu de la personne aidée, les réductions,
+le partage et le report intégral des avances RL-19 H correspondent au périmètre
+implémenté. Les règles de résidence, de logement et d'attestation restent
+confirmées sur pièces; le logiciel ne produit pas l'annexe officielle.
+La confirmation médicale précise désormais qu'elle est sans objet pour le
+volet 70 ans et pour un profil sans personne aidée.
+
+Le périmètre reste inchangé : périodes personnelles complètes déjà accomplies,
+sans rotations, décès, relève ni rajustement d'assistance sociale.
+Les revenus négatifs ne sont pas pris en charge par ce profil.
+Aucune nouvelle règle d'un autre bloc et aucune modification du schéma JSON.
+Les profils absents des anciens fichiers continuent à être chargés vides.
+
+Contrôle visuel du PDF fictif : deux pages rendues en PNG avec PyMuPDF et
+inspectées, sans débordement ni texte coupé. Cas combinant les trois modes,
+un partage, un anniversaire de 18 ans et des avances supérieures au crédit :
+crédit total de 3 672,20 $, avances de 5 000 $, remboursement de 4 283,25 $.
+Les fichiers de contrôle restent dans `tmp/`, ignoré par Git.
+
+Tests ciblés et régressions liées : **489 passed, 5 warnings**,
+`--capture=sys`. Deux contrôles supplémentaires couvrent les avances seules
+après rechargement JSON et la sauvegarde/réouverture du profil depuis la GUI.
+
+Suite complète avant commit : **6222 passed, 8 warnings**, en 198,40 s,
+avec `.venv\Scripts\python.exe -m pytest --capture=sys -q`.
+`git diff --check` sans erreur. Publication limitée aux douze fichiers 6G;
+la suite complète post-commit et GitHub Actions sont les derniers contrôles
+de publication, dont le résultat sera fourni dans le checkpoint de session.

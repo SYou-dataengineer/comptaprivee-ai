@@ -8,6 +8,7 @@ from decimal import Decimal
 import json
 
 from .tax_rules_2025 import arrondir_cent
+from .tax_quebec_caregiver_2025 import PersonneAidanteQuebec2025
 from .tax_quebec_childcare_2025 import FraisGardeQuebec2025
 
 ZERO = Decimal("0")
@@ -71,6 +72,7 @@ class ResultatTransfertConjoint2025:
     enfants_30500: tuple[tuple[str, str, str], ...] = ()
     revenu_net_quebec_conjoint: Decimal = ZERO
     garde_quebec_conjoint: FraisGardeQuebec2025 = FraisGardeQuebec2025()
+    aidante_quebec_conjoint: PersonneAidanteQuebec2025 = PersonneAidanteQuebec2025()
     credit_garde_quebec_conjoint: Decimal = ZERO
 
 
@@ -205,6 +207,7 @@ def calculer_transfert_conjoint_2025(p, *, beneficiaire):
     return replace(r, nom_conjoint=conjoint.dossier.client, revenu_net_conjoint=conjoint.revenu.revenu_net_federal,
         revenu_net_quebec_conjoint=conjoint.revenu.revenu_net_quebec,
         garde_quebec_conjoint=conjoint.frais_garde_quebec,
+        aidante_quebec_conjoint=conjoint.personne_aidante_quebec,
         credit_garde_quebec_conjoint=conjoint.resultat_garde_quebec.credit_ligne_455,
         enfants_30500=tuple((e.reference, e.nom, e.naissance) for e in conjoint.aidant_enfant_federal.enfants_detailles),
         revenu_beneficiaire_declare_45200=(max(supp.revenu_net_conjoint, ZERO) if supp.reclamer else None),

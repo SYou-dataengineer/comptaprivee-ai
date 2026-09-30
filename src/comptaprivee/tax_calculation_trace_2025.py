@@ -428,6 +428,8 @@ def construire_trace_calcul_fiscal_2025(
     )
     if final.avances_garde_quebec_ligne_441:
         formule_impot_total += " + avances garde Québec 441 (RL-19 C, sans plafond)"
+    if final.avances_aidante_quebec_ligne_441:
+        formule_impot_total += " + avances personne aidante Québec 441 (RL-19 H, sans plafond)"
     if rqap.present:
         formule_impot_total += " + FSS Québec 446"
     if ae.present:
@@ -1977,6 +1979,25 @@ def construire_trace_calcul_fiscal_2025(
             lignes = lignes + (_ligne(len(lignes) + 1, "FORMATION 2025 — BLOC 5C", libelle,
                 frais_scolarite.formation.source, formule, montant),)
 
+    if estimation.personne_aidante_quebec.reclamer:
+        profil_aidante = estimation.personne_aidante_quebec
+        resultat_aidante = estimation.resultat_aidante_quebec
+        for personne, resultat in zip(profil_aidante.personnes, resultat_aidante.personnes):
+            for libelle, montant, formule_aidante in (
+                ("Maximum", resultat.maximum, personne.mode),
+                ("Réduction revenu", resultat.reduction_revenu, "min(1494, max(275 - 26520, 0) × 16 %); aucune au volet 70 ans"),
+                ("Réduction 18 ans", resultat.reduction_18_ans, "Crédit après réduction revenu × mois précédant les 18 ans, anniversaire inclus / 12"),
+                ("Part propre", resultat.credit, f"Maximum - réductions - part des autres aidants {personne.credit_autres:.2f}"),
+            ):
+                lignes += (_ligne(len(lignes) + 1, "PERSONNE AIDANTE QUÉBEC — BLOC 6G", libelle + " — " + personne.nom,
+                    personne.source + f"; {personne.debut} au {personne.fin}; validation comptable confirmée", formule_aidante, montant),)
+        for libelle, montant, formule_aidante in (
+            ("Crédit personne aidante Québec 462", resultat_aidante.credit_ligne_462, "Somme des parts propres annexe H; remboursable"),
+            ("Avances personne aidante Québec 441", resultat_aidante.avances_ligne_441, "RL-19 H personnel intégral, distinct du RL-19 C"),
+        ):
+            lignes += (_ligne(len(lignes) + 1, "PERSONNE AIDANTE QUÉBEC — BLOC 6G", libelle,
+                profil_aidante.source, formule_aidante, montant),)
+
     if estimation.frais_garde_quebec.reclamer:
         rg = estimation.resultat_garde_quebec
         for libelle, montant, formule in (
@@ -2282,6 +2303,10 @@ def construire_trace_calcul_fiscal_2025(
         formule += (" + crédit garde Québec 455" if final.remboursement_estime else " - crédit garde Québec 455")
     if final.avances_garde_quebec_ligne_441:
         formule += "; impôt total incluant les avances garde Québec 441"
+    if final.credit_aidante_quebec_ligne_462:
+        formule += (" + crédit personne aidante Québec 462" if final.remboursement_estime else " - crédit personne aidante Québec 462")
+    if final.avances_aidante_quebec_ligne_441:
+        formule += "; impôt total incluant les avances personne aidante Québec 441"
 
     lignes += (
         _ligne(

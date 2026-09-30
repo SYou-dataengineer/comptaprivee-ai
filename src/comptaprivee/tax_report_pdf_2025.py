@@ -1,5 +1,6 @@
 """Export PDF local du rapport d'estimation fiscale 2025."""
 
+from .tax_quebec_caregiver_2025 import lignes_aidante_quebec_2025
 from .tax_quebec_schedule_b_2025 import calculer_annexe_b_combinee_2025, lignes_annexe_b_combinee_2025
 from .tax_disability_transfer_2025 import lignes_transferts_handicap_2025
 from .tax_multigenerational_renovation_2025 import lignes_multigenerationnelles_2025
@@ -2026,6 +2027,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical))
     lignes.extend(lignes_formation_2025(estimation.frais_scolarite.formation))
     lignes.extend(lignes_garde_quebec_2025(estimation.frais_garde_quebec, estimation.resultat_garde_quebec))
+    lignes.extend(lignes_aidante_quebec_2025(estimation.personne_aidante_quebec, estimation.resultat_aidante_quebec))
     lignes.extend(lignes_medical_remboursable_quebec_2025(estimation.medical_remboursable_quebec, estimation.resultat_medical_remboursable_quebec))
     lignes.extend(lignes_carriere_quebec_2025(estimation.prolongation_carriere_quebec, estimation.resultat_carriere_quebec))
     lignes.extend(lignes_achat_quebec_2025(estimation.achat_habitation_quebec, estimation.resultat_achat_quebec))

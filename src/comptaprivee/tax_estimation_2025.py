@@ -8,6 +8,7 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_quebec_caregiver_2025 import (PersonneAidanteQuebec2025, ResultatAidanteQuebec2025, calculer_aidante_quebec_2025, lignes_aidante_quebec_2025, identite_aidante, MODES_AIDANTE, verifier_aidante_conjoint_2025)
 from .tax_quebec_childcare_2025 import (FraisGardeQuebec2025, ResultatGardeQuebec2025,
     calculer_garde_quebec_2025, verifier_garde_conjoint_2025, normaliser_garde, lignes_garde_quebec_2025)
 from .tax_quebec_refundable_medical_2025 import (MedicalRemboursableQuebec2025, ResultatMedicalRemboursableQuebec2025,
@@ -366,7 +367,9 @@ class EstimationFiscale2025:
     allocation_travailleurs: AllocationTravailleurs2025 = AllocationTravailleurs2025()
     resultat_allocation_travailleurs: ResultatAllocationTravailleurs2025 = ResultatAllocationTravailleurs2025()
     frais_garde_quebec: FraisGardeQuebec2025 = FraisGardeQuebec2025()
+    personne_aidante_quebec: PersonneAidanteQuebec2025 = PersonneAidanteQuebec2025()
     resultat_garde_quebec: ResultatGardeQuebec2025 = ResultatGardeQuebec2025()
+    resultat_aidante_quebec: ResultatAidanteQuebec2025 = ResultatAidanteQuebec2025()
     medical_remboursable_quebec: MedicalRemboursableQuebec2025 = MedicalRemboursableQuebec2025()
     resultat_medical_remboursable_quebec: ResultatMedicalRemboursableQuebec2025 = ResultatMedicalRemboursableQuebec2025()
     prolongation_carriere_quebec: ProlongationCarriereQuebec2025 = ProlongationCarriereQuebec2025()
@@ -480,6 +483,7 @@ def calculer_estimation_fiscale_2025(
     transferts_scolarite_recus: TransfertsScolariteRecus2025 | None = None,
     allocation_travailleurs: AllocationTravailleurs2025 | None = None,
     frais_garde_quebec: FraisGardeQuebec2025 | None = None,
+    personne_aidante_quebec: PersonneAidanteQuebec2025 | None = None,
     medical_remboursable_quebec: MedicalRemboursableQuebec2025 | None = None,
     prolongation_carriere_quebec: ProlongationCarriereQuebec2025 | None = None,
     achat_habitation_quebec: AchatHabitationQuebec2025 | None = None,
@@ -1651,6 +1655,39 @@ def calculer_estimation_fiscale_2025(
     if conjoint.activer:
         verifier_garde_conjoint_2025(garde_quebec, resultat_garde_quebec,
             demandeur=dossier.client, revenu_net=revenu.revenu_net_quebec, conjoint=resultat_conjoint)
+    aidante_quebec = personne_aidante_quebec if personne_aidante_quebec is not None else PersonneAidanteQuebec2025()
+    resultat_aidante_quebec = calculer_aidante_quebec_2025(aidante_quebec, demandeur=dossier.client)
+    if aidante_quebec.reclamer:
+        if any(p.mode != MODES_AIDANTE[1] for p in aidante_quebec.personnes) and personne_vivant_seule_effective.reclamer_montant:
+            raise ValueError("Cohabitation aidante Québec : combinaison avec le profil 361 personne seule hors périmètre.")
+        for p in aidante_quebec.personnes:
+            if p.lien == "conjoint":
+                if (medical_quebec.reclamer or personne_charge_admissible_federale_effective.reclamer_montant
+                        or personne_vivant_seule_effective.reclamer_montant
+                        or montants_age_retraite_effectifs.reclamer_age or montants_age_retraite_effectifs.reclamer_revenus_retraite
+                        or act.present and not act.famille.activer):
+                    raise ValueError("Conjoint aidé incompatible avec un profil individuel sans conjoint.")
+                if conjoint.activer and (identite_aidante(p.nom) != identite_aidante(resultat_conjoint.nom_conjoint)
+                        or p.revenu_net != resultat_conjoint.revenu_net_quebec_conjoint):
+                    raise ValueError("Conjoint aidé : identité ou revenu Québec divergent du dossier recalculé.")
+                noms = [fonds.conjoint.nom, politiques.nom_conjoint]
+                if garde_quebec.reclamer: noms.append(garde_quebec.conjoint_nom)
+                if act.famille.activer: noms.append(act.famille.conjoint_nom)
+                noms.extend(a.nom for a in medical_familial.personnes if a.lien == "conjoint")
+                supplement = frais_medicaux_effectifs.supplement
+                if supplement.reclamer:
+                    if not supplement.mode_familial or supplement.situation_conjugale != "conjoint":
+                        raise ValueError("Conjoint aidé incompatible avec le supplément médical déclaré sans conjoint.")
+                    noms.append(supplement.nom_conjoint)
+                if any(identite_aidante(n) != identite_aidante(p.nom) for n in noms if n):
+                    raise ValueError("Identité du conjoint aidé divergente des autres profils familiaux.")
+                if ((garde_quebec.reclamer and not garde_quebec.conjoint_nom)
+                        or (act.famille.activer and not act.famille.conjoint_nom)):
+                    raise ValueError("Le conjoint aidé doit figurer dans les profils familiaux actifs.")
+                if garde_quebec.reclamer and p.revenu_net != garde_quebec.revenu_net_conjoint:
+                    raise ValueError("Revenu Québec du conjoint aidé divergent du profil garde Québec.")
+    if conjoint.activer:
+        verifier_aidante_conjoint_2025(aidante_quebec, resultat_aidante_quebec, demandeur=dossier.client, conjoint=resultat_conjoint)
     rapprochement = calculer_rapprochement_fiscal_2025(
         base,
         federal,
@@ -1662,6 +1699,8 @@ def calculer_estimation_fiscale_2025(
         credit_multigenerationnel=resultat_multigenerationnel.ligne_45355,
         credit_garde_quebec=resultat_garde_quebec.credit_ligne_455,
         avances_garde_quebec=resultat_garde_quebec.avances_ligne_441,
+        credit_aidante_quebec=resultat_aidante_quebec.credit_ligne_462,
+        avances_aidante_quebec=resultat_aidante_quebec.avances_ligne_441,
         credit_medical_quebec=resultat_medical_quebec.credit_ligne_462,
         credit_educateur=resultat_educateur.ligne_46900,
         credit_fonds=resultat_fonds.ligne_41400,
@@ -1720,6 +1759,7 @@ def calculer_estimation_fiscale_2025(
         allocation_travailleurs=act, resultat_allocation_travailleurs=resultat_act,
         resultat_supplement_medical=supplement_medical,
         frais_garde_quebec=garde_quebec, resultat_garde_quebec=resultat_garde_quebec,
+        personne_aidante_quebec=aidante_quebec, resultat_aidante_quebec=resultat_aidante_quebec,
         medical_remboursable_quebec=medical_quebec, resultat_medical_remboursable_quebec=resultat_medical_quebec,
         prolongation_carriere_quebec=carriere_quebec, resultat_carriere_quebec=resultat_carriere_quebec,
         achat_habitation_quebec=achat_quebec, resultat_achat_quebec=resultat_achat_quebec,
@@ -1908,6 +1948,7 @@ def formater_estimation_fiscale_2025(
         *lignes_supplement_medical_2025(estimation.frais_medicaux.supplement, estimation.resultat_supplement_medical),
         *lignes_formation_2025(estimation.frais_scolarite.formation),
         *lignes_garde_quebec_2025(estimation.frais_garde_quebec, estimation.resultat_garde_quebec),
+        *lignes_aidante_quebec_2025(estimation.personne_aidante_quebec, estimation.resultat_aidante_quebec),
         *lignes_medical_remboursable_quebec_2025(estimation.medical_remboursable_quebec, estimation.resultat_medical_remboursable_quebec),
         *lignes_carriere_quebec_2025(estimation.prolongation_carriere_quebec, estimation.resultat_carriere_quebec),
         *lignes_achat_quebec_2025(estimation.achat_habitation_quebec, estimation.resultat_achat_quebec),
