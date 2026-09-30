@@ -4,6 +4,7 @@ Cette brique ne modifie aucun résultat fiscal. Elle explique une estimation
 déjà calculée à partir d'un dossier verrouillé et validé par le comptable.
 """
 
+from .tax_quebec_senior_support_2025 import lignes_soutien_aines_quebec_2025
 from .tax_quebec_work_premium_2025 import lignes_prime_travail_quebec_2025
 from .tax_quebec_solidarity_2025 import lignes_solidarite_quebec_2025
 from dataclasses import dataclass, replace
@@ -137,6 +138,7 @@ class TraceCalculFiscal2025:
     avertissements: tuple[str, ...]
     limitations: tuple[str, ...]
     preparation_annexe_d: tuple[str, ...] = ()
+    audit_soutien_aines: tuple[str, ...] = ()
     audit_prime_travail: tuple[str, ...] = ()
 
 
@@ -1985,6 +1987,11 @@ def construire_trace_calcul_fiscal_2025(
             lignes = lignes + (_ligne(len(lignes) + 1, "FORMATION 2025 — BLOC 5C", libelle,
                 frais_scolarite.formation.source, formule, montant),)
 
+    if estimation.soutien_aines_quebec.activer:
+        lignes += (_ligne(len(lignes) + 1, "SOUTIEN AUX AÎNÉS QUÉBEC - 6J", "Soutien aux aînés Québec 463",
+            estimation.soutien_aines_quebec.source, "max(2000 - réduction 5,40 % au-delà de 27835, 0)",
+            estimation.resultat_soutien_aines_quebec.credit_ligne_463),)
+
     if estimation.prime_travail_quebec.activer:
         rp = estimation.resultat_prime_travail_quebec
         for libelle, valeur, formule_prime in (
@@ -2310,6 +2317,8 @@ def construire_trace_calcul_fiscal_2025(
                    if final.remboursement_estime else
                    "Impôt total incluant 41500 - retenues - remboursements cotisations - crédits 45200/45300/45350/45355/46900")
 
+    if final.credit_soutien_aines_quebec_ligne_463:
+        formule += (" + soutien aux aînés Québec 463" if final.remboursement_estime else " - soutien aux aînés Québec 463")
     if final.credit_prime_travail_quebec_ligne_456:
         formule += (" + prime au travail Québec 456" if final.remboursement_estime else " - prime au travail Québec 456")
     if final.avances_prime_travail_quebec_ligne_441:
@@ -2346,6 +2355,7 @@ def construire_trace_calcul_fiscal_2025(
         formule_resultat=formule,
         avertissements=base.avertissements,
         limitations=final.limitations,
+        audit_soutien_aines=tuple(lignes_soutien_aines_quebec_2025(estimation.soutien_aines_quebec, estimation.resultat_soutien_aines_quebec)),
         audit_prime_travail=tuple(lignes_prime_travail_quebec_2025(estimation.prime_travail_quebec, estimation.resultat_prime_travail_quebec)),
         preparation_annexe_d=lignes_solidarite_quebec_2025(estimation.solidarite_quebec, estimation.base_solidarite_quebec),
     )
@@ -2381,6 +2391,9 @@ def formater_trace_calcul_fiscal_2025(
                 f"{formater_montant_estimation(ligne.montant)}",
             ]
         )
+
+    if trace.audit_soutien_aines:
+        lignes.extend(trace.audit_soutien_aines)
 
     if trace.audit_prime_travail:
         lignes.extend(trace.audit_prime_travail)

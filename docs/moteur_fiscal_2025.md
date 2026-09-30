@@ -4724,3 +4724,47 @@ Suite complète prépublication 6I : **6435 passed, 8 warnings**, 176,67 s,
 `python -m pytest --capture=sys -q --ignore=tmp`. `tmp` contient uniquement
 des artifacts locaux ignorés; tous les tests du projet ont été exécutés.
 `git diff --check` sans erreur. Pas de seconde full locale post-commit.
+
+
+### 6J — soutien aux aînés individuel, ligne 463
+
+Barème 2025 fourni et vérifié dans la mission FAST TRACK, sans répéter cette
+recherche : Revenu Québec, crédit d'impôt pour soutien aux aînés,
+[ligne 463](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/451-a-480-remboursement-ou-solde-a-payer/ligne-463/).
+Maximum 2 000 $; réduction de 5,40 % de l'excédent du revenu familial sur
+27 835 $; revenu maximal publié 64 873 $. Crédit = maximum(2 000 - réduction, 0).
+Revenu familial individuel = ligne Québec 275 **recalculée**, jamais un montant
+manuel figé, jamais la ligne fédérale 23600. Les pensions prises en charge par
+le moteur alimentent cette ligne; les déductions, notamment REER, la modifient.
+Produit de réduction conservé exactement en Decimal, puis représentation au
+cent selon `arrondir_cent`, convention monétaire générale du moteur avant
+soustraction. Aucune règle particulière d'arrondi RQ n'est affirmée.
+
+Profil logiciel volontairement plus étroit que toutes les situations légales :
+70 ans ou plus au 31 décembre 2025, citoyen canadien, résident Canada toute
+l'année et Québec fin 2025, aucun conjoint ni personne à charge, décès,
+exonération excluante, détention, faillite ou résidence partielle. La loi vise
+notamment la détention de plus de 183 jours; ce premier profil exclut toute
+détention, sans prétendre que tout détenu est fiscalement inadmissible.
+Admissibilité et sources confirmées par le comptable. Couples/partage et cas
+particuliers ne sont pas simulés. La naissance est rapprochée des profils
+pensions, carrière, médical, ACT, solidarité et prime actifs. Un âge d'au moins
+70 ans est cohérent avec les seuls indicateurs « 65 ans et plus » des crédits
+âge/retraite; leurs calculs et validations existantes restent inchangés.
+
+Intégrations : moteur, estimation, rapprochement 463 une seule fois, JSON
+facultatif rétrocompatible (faits uniquement), GUI dédiée avec confirmations
+révoquées à modification, réinitialisation nouveau dossier, sauvegarde et
+rechargement, trace et PDF. Crédit remboursable distinct des impôts de base,
+de l'abattement et de la prime 456; les combinaisons 6H/6I conservent leurs bases.
+Tests des bornes 70 ans, 27 835 $ ± 0,01, 64 873 $ ± 0,01 et extinction,
+fractions de cent, valeurs invalides, confirmations, REER/275, cumul 6I,
+contradictions d'âge et de famille, ancien JSON et cycle GUI/PDF.
+
+Validation ciblée : **307 passed, 5 warnings SWIG/PyMuPDF**. Contrôle PDF avec
+une pension fictive de 20 000 $, âge 70 ans et crédit 463 de 2 000 $; artifacts
+locaux sous `tmp/pdfs/6j/`, non versionnés. Aucun client réel.
+
+PDF 6J : trois pages contrôlées visuellement, sans débordement.
+Full prépublication : **6506 passed, 8 warnings**, 178,00 s,
+`python -m pytest --capture=sys -q --ignore=tmp`. Diff sans erreur.
