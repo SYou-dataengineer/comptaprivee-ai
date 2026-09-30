@@ -5234,3 +5234,120 @@ existants SWIG/PyMuPDF et openpyxl. La seconde validation complète est confiée
 Dépendances restantes : audit séparé des pertes, combinaisons avec travail
 autonome/crédits et dépenses complexes. Aucune règle ou implémentation 7E n’est
 inférée de ce bloc; son périmètre devra être défini dans une mission distincte.
+
+
+### 7E — Historique de l’audit initial : arrêt sur les additions 2025
+
+État initial vérifié : `d29b76c`, working tree propre, origin/main identique,
+GitHub Actions vert. Aucun code 7E, aucune modification des validations 7D.
+
+Sources examinées pour l’année fiscale 2025 :
+- [T4036 2025, catégorie 1 et colonnes 17/18](https://www.canada.ca/fr/agence-revenu/services/formulaires-publications/publications/t4036/revenus-location.html) : catégorie 1 ordinaire à 4 %; la demi-année n’est pas automatique pour toutes les additions. Les BIIR sont distingués dans les instructions, encore qualifiées de modifications proposées dans cette édition.
+- [T776 F (25), section A, page 3](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t776/t776-25f.pdf) : colonnes distinctes pour acquisitions BIIA/BIIR, rajustement de base et demi-année; un unique montant d’addition ne suffit pas à choisir la branche.
+- [TPW-130.G, sections 1.1 et 1.2](https://www.revenuquebec.ca/fr/services-en-ligne/formulaires-et-publications/tpw-130-g/guide-relatif-a-la-deduction-pour-amortissement/) : édition 2026-02 expressément applicable aux exercices terminés le 31 décembre 2025 ou après. Elle distingue les acquisitions après 2024 admissibles au régime réaccéléré. Le guide précise sa date limite d’intégration des annonces législatives. Sa date d’édition n’en fait pas un barème fiscal 2026.
+
+Point non verrouillé : la mission prévoit une addition 2025 et un test de
+demi-année tout en excluant les mécanismes accélérés complexes. Cela ne définit
+pas encore quelles additions au bâtiment de catégorie 1 sont admises, ni les
+preuves de non-admissibilité aux BIIA/BIIR requises pour appliquer la demi-année.
+Aucune divergence de taux entre juridictions n’est affirmée; leur concordance
+complète pour les additions n’a pas été établie dans cet audit initial.
+Le statut de « modifications proposées » du guide fédéral est rapporté tel
+quel; aucune conclusion sur le droit actuellement en vigueur n’est inventée.
+
+Conséquence : ne pas implémenter une règle universelle
+`base = FNACC ouverture + 50 % des additions 2025`. La nature de l’addition,
+la date d’acquisition, la disponibilité pour utilisation et le régime admissible
+doivent déterminer la branche avant tout calcul. Le taux de 4 % seul ne suffit
+pas à fixer la DPA de première année.
+
+Interaction identifiée : 7D exige déjà un immeuble entièrement locatif toute
+l’année, sans acquisition ni travaux. Il faut distinguer une addition à un
+bâtiment existant d’une acquisition de l’immeuble; aucune confirmation 7D ne
+doit être levée globalement. Revenu net, lignes 12600/136/275 et assiette FSS
+seront à recalculer après DPA, sans modifier le brut 12599/168.
+
+Arrêt conformément à la mission, avant simplification fiscale. Option minimale
+recommandée pour une reprise autorisée : catégorie 1 existante, disponible avant
+2025, FNACC/PNACC d’ouverture documentées séparément, aucune addition 2025.
+Sinon, verrouiller d’abord une matrice officielle d’admissibilité des additions
+et leur traitement fédéral/Québec, puis reprendre le périmètre initial.
+
+Aucun moteur, test, GUI ou PDF 7E créé; aucune full suite, aucun commit/push.
+Seul ce compte rendu documentaire est local. Les garde-fous DPA de 7D restent
+actifs. Aucun travail 7F. Avancement estimé : 10 % (audit initial seulement).
+
+
+### 7E — Périmètre final validé : catégorie 1 existante, sans mouvement 2025
+
+La décision humaine de reprise remplace le périmètre initial ci-dessus : aucune
+acquisition ni addition 2025 n’est traitée. L’audit précédent est conservé pour
+expliquer ce bornage. Le garde-fou ne repose plus sur une recherche à poursuivre.
+Aucun travail 7F commencé.
+
+Catégorie 1 régulière uniquement, taux 4 %, bâtiment résidentiel déjà détenu et
+disponible pour utilisation avant 2025, terrain exclu. Aucun changement d’usage,
+disposition, récupération, perte finale, aide ou autre rajustement de base.
+Aucun taux accéléré, régime RII, passation immédiate ni calcul de demi-année.
+Les faits et confirmations 7D restent intégralement requis.
+
+Sources du taux et du calcul : T4036 2025, section « Catégorie 1 (4 %) »;
+T776 F (25), section A, colonnes de solde initial, base, DPA et solde final;
+TP-128 (2025-10), partie 6; TPW-130.G applicable à l’exercice 2025, sections
+4.2 et 5.1 (bâtiments de catégorie 1, 4 %). La vérification complémentaire à la
+reprise a porté sur le taux régulier Québec, sans rouvrir les acquisitions 2025.
+Les références officielles exactes, la catégorie et le taux sont persistés et
+validés, ainsi que la source comptable des soldes et choix.
+
+#### Calcul indépendant dans chaque juridiction
+
+- Maximum théorique = solde d’ouverture × Decimal('0.04'), quantifié au cent.
+- Maximum admissible = minimum(maximum théorique, revenu locatif avant DPA).
+- Choix du contribuable positif ou nul, au plus égal à ces deux plafonds.
+- Toute demande excessive est refusée, sans écrêtement silencieux.
+- Solde final = solde d’ouverture − DPA choisie.
+- Revenu après DPA = revenu avant DPA − DPA choisie.
+
+FNACC fédérale et PNACC Québec, ainsi que les deux choix de DPA, sont des faits
+distincts. Aucune égalité entre juridictions n’est présumée. Le comptable doit
+confirmer séparément les soldes et documenter les écarts éventuels. Exemple :
+FNACC 100 000 $ => maximum 4 000 $; choix 4 000 $ => FNACC finale 96 000 $.
+Une PNACC de 80 000 $ donne un maximum Québec de 3 200 $; un choix de 3 000 $
+donne une PNACC finale de 77 000 $. Un revenu avant DPA de 100 $ limite chacun
+des choix à 100 $, même si le maximum théorique dépasse ce montant.
+Le traitement des fractions de cent suit la convention monétaire générale du
+moteur, sans attribution d’une règle fiscale particulière de demi-cent.
+
+#### Intégrations et sécurité
+
+La fiche locative immuable reçoit un profil optionnel `amortissement`, absent
+ou nul dans un ancien JSON => DPA inactive. Les montants sont des chaînes
+Decimal en JSON; types, champs inconnus, catégorie/taux/sources non reconnus,
+additions non nulles et dates incompatibles sont refusés. Seuls les faits sont
+ajoutés au profil; tous les résultats sont recalculés et contrôlés au chargement.
+
+La DPA fédérale réduit 12600, la DPA Québec réduit 136, puis les revenus annuels
+et la ligne 275 sont recalculés. Les bruts 12599/168 sont inchangés. L’assiette
+FSS suit le net locatif Québec après DPA. Salaires, RRQ/RQAP et 201 ne sont pas
+modifiés. Les combinaisons non validées et crédits supplémentaires exclus par
+7D restent bloqués. Sans profil DPA, les résultats monétaires 7D sont inchangés.
+
+GUI : section distincte « DPA location 2025 (7E) », plafonds vérifiables avant
+application, confirmations révoquées après changement, désactivation explicite.
+Réappliquer la fiche 7D désactive le profil DPA pour imposer une nouvelle
+validation des soldes/choix; l’écran le signale. L’estimation et le PDF deviennent
+périmés après modification. Sauvegarde/rechargement et nouveau dossier testés.
+Trace structurée et PDF : soldes initiaux/finals, base, taux, maximum théorique,
+plafond selon le revenu, DPA choisie et net après DPA séparés par juridiction.
+Les additions nulles et l’absence de calcul de première année sont explicites.
+
+Validation ciblée : **373 tests réussis**, 5 avertissements SWIG/PyMuPDF,
+comprenant GUI, JSON, non-régression 7D et régressions 7A–7C. Le complément de
+trace structurée a été vérifié par son test ciblé après ajout. Contrôle visuel
+PDF : **deux pages fictives lisibles**, sans débordement, conservées dans
+`tmp/pdfs/7e/` (ignoré par Git). `git diff --check` sans erreur.
+Suite complète locale unique : **6976 passed, 8 warnings**, 191,85 secondes,
+`python -m pytest --capture=sys -q --ignore=tmp --tb=short`. Avertissements
+existants SWIG/PyMuPDF et openpyxl. La seconde validation complète est confiée
+à GitHub Actions, sans full suite locale post-commit. Périmètre réduit 7E terminé;
+acquisitions/additions et autres cas spéciaux restent explicitement exclus.

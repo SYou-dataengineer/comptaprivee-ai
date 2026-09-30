@@ -5,6 +5,10 @@ Les exclusions ci-dessous sont des limites logicielles, non fiscales générales
 """
 from dataclasses import dataclass, fields, is_dataclass, replace
 from decimal import Decimal, InvalidOperation
+from .tax_rental_cca_2025 import (
+    DpaLocation2025, ResultatDpaLocation2025, calculer_dpa_location_2025,
+    dpa_location_vers_json, dpa_location_depuis_json, lignes_dpa_location_2025,
+)
 
 ZERO = Decimal('0')
 DEPENSES_7D = {
@@ -17,7 +21,7 @@ DEPENSES_7D = {
 }
 MONTANTS_7D = ('loyers', 'autres_revenus', *DEPENSES_7D)
 EXCLUSIONS_7D = {
-    'dpa': 'DPA demandée',
+    'dpa': 'DPA hors du profil distinct 7E',
     'capitalisable': 'Dépense capitalisable ou travaux',
     'services_entreprise': 'Services supplémentaires : repas, sécurité, nettoyage; futur profil entreprise requis',
     'copropriete': 'Copropriété ou société de personnes',
@@ -81,6 +85,7 @@ class BienLocatif2025:
     sans_double_compte: bool = False
     profil_annuel: bool = False
     valide_par_comptable: bool = False
+    amortissement: DpaLocation2025 | None = None
 
 
 @dataclass(frozen=True)
@@ -92,6 +97,7 @@ class Location2025:
     ligne_168: Decimal = ZERO
     ligne_136: Decimal = ZERO
     cotisation_fss: Decimal = ZERO
+    amortissement: ResultatDpaLocation2025 | None = None
 
 
 def calculer_location_2025(biens):
@@ -126,7 +132,10 @@ def calculer_location_2025(biens):
     net = brut - depenses
     if net < ZERO:
         raise ValueError('7D : perte locative hors périmètre logiciel; examen des pertes requis, sans présumer leur inadmissibilité fiscale.')
-    return Location2025(b, brut, depenses, net, brut, net, cotisation_fss_prestations_2025(net))
+    dpa = calculer_dpa_location_2025(b.amortissement, net) if b.amortissement is not None else None
+    net_fed = dpa.federal.revenu_apres if dpa is not None else net
+    net_qc = dpa.quebec.revenu_apres if dpa is not None else net
+    return Location2025(b, brut, depenses, net_fed, brut, net_qc, cotisation_fss_prestations_2025(net_qc), dpa)
 
 
 def verifier_dossier_location_2025(dossier, options=None):
@@ -157,15 +166,17 @@ def appliquer_location_2025(revenu, location):
     if location.faits is None:
         return revenu
     return replace(revenu, **{
-        f'revenu_{niveau}_{juridiction}': getattr(revenu, f'revenu_{niveau}_{juridiction}') + location.ligne_12600
+        f'revenu_{niveau}_{juridiction}': getattr(revenu, f'revenu_{niveau}_{juridiction}') + (location.ligne_12600 if juridiction == 'federal' else location.ligne_136)
         for niveau in ('total', 'net', 'imposable') for juridiction in ('federal', 'quebec')},
         profil='Location résidentielle simple Québec 2025 (7D)',
-        limitations=('Revenu de bien sans DPA; location seule ou avec salaire ordinaire.',))
+        limitations=(('Revenu de bien avec DPA 7E bornée; location seule ou salaire ordinaire.' if location.amortissement
+                      else 'Revenu de bien sans DPA; location seule ou avec salaire ordinaire.'),))
 
 
 def locations_vers_json(biens):
     calculer_location_2025(biens)
-    return [{f.name: str(getattr(b, f.name)) if f.name in MONTANTS_7D else getattr(b, f.name)
+    return [{f.name: dpa_location_vers_json(b.amortissement) if f.name == 'amortissement' else
+             str(getattr(b, f.name)) if f.name in MONTANTS_7D else getattr(b, f.name)
              for f in fields(b)} for b in biens]
 
 
@@ -179,6 +190,7 @@ def locations_depuis_json(v):
         if not isinstance(brut, dict) or set(brut) - {f.name for f in fields(BienLocatif2025)}:
             raise ValueError('7D : fiche JSON ou champ non supporté.')
         d = dict(brut)
+        d['amortissement'] = dpa_location_depuis_json(d.get('amortissement'))
         for n in MONTANTS_7D:
             valeur = d.get(n, '0')
             if not isinstance(valeur, str):
@@ -207,8 +219,12 @@ def lignes_location_2025(e):
         '', f'Loyers T776 8141 : {b.loyers:.2f} $; autres revenus de bail 8230 : {b.autres_revenus:.2f} $',
         f'Brut T776 8299 / fédéral 12599 / TP-128 110 / Québec 168 : {r.ligne_12599:.2f} $']
     lignes += [f'{label} : {getattr(b, nom):.2f} $' for nom, label in DEPENSES_7D.items()]
-    lignes += [f'Dépenses totales : {r.depenses:.2f} $', 'DPA / récupération / perte finale / part personnelle : 0.00 $',
-        f'Net = brut - dépenses; T776 9946 / fédéral 12600 : {r.ligne_12600:.2f} $',
+    lignes += [f'Dépenses totales : {r.depenses:.2f} $']
+    if r.amortissement is not None:
+        lignes += lignes_dpa_location_2025(b.amortissement, r.amortissement)
+    else:
+        lignes += ['DPA / récupération / perte finale / part personnelle : 0.00 $']
+    lignes += [f'Net = brut - dépenses - DPA fédérale; T776 9946 / fédéral 12600 : {r.ligne_12600:.2f} $',
         f'TP-128 394 / Québec 136 : {r.ligne_136:.2f} $',
         f'FSS Québec 446 (annexe F, assiette = net locatif) : {r.cotisation_fss:.2f} $',
         'Le brut est informatif; seul le NET est ajouté une fois aux revenus annuels.',
@@ -227,7 +243,7 @@ def lignes_location_2025(e):
         f'Retenues : {x.retenues_totales:.2f} $',
         f'Remboursements cotisations emploi RRQ / AE / RQAP : {x.remboursement_rrq_excedentaire:.2f} $ / {x.remboursement_ae_excedentaire:.2f} $ / {x.remboursement_rqap_excedentaire:.2f} $',
         f'{x.resultat} : {max(x.solde_estime, x.remboursement_estime):.2f} $',
-        'Exclusions logicielles : pertes, DPA, intérêts, travaux, court terme, copropriété, autonome.',
+        'Exclusions logicielles : pertes, DPA hors profil 7E, intérêts, travaux, court terme, copropriété, autonome.',
         'Sources : T776 F (25) p.1-2; T4036 2025 ch.3; TP-128 (2025-10) p.1-2; annexe F 2025.']
     from .tax_employment_qpp_2025 import lignes_employeurs_2025
     lignes.extend(lignes_employeurs_2025(e.base, e.cotisations_excedentaires.source))

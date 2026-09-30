@@ -47,6 +47,7 @@ from .tax_quebec_work_premium_2025 import PrimeTravailQuebec2025
 from .gui_quebec_work_premium_2025 import ouvrir_prime_travail_quebec_2025
 from .gui_self_employment_contributions_2025 import ouvrir_cotisations_autonomes_2025
 from .tax_self_employment_contributions_2025 import ProfilCotisationsAutonomes2025, calculer_cotisations_autonomes_2025
+from .gui_rental_cca_2025 import ouvrir_dpa_location_2025
 from .gui_rental_income_2025 import ouvrir_location_2025
 from .tax_rental_income_2025 import verifier_dossier_location_2025
 from .gui_self_employment_2025 import ouvrir_entreprises_2025, afficher_preparation_autonome_2025
@@ -5027,6 +5028,31 @@ class ApplicationComptaPrivee(tk.Tk):
                 rapport_fiscal_a_reexporter = True
                 self.statut.set("Prime au travail enregistrée; recalculez l'estimation fiscale.")
             ouvrir_prime_travail_quebec_2025(fenetre, prime_travail_quebec_courante, enregistrer)
+
+        def ouvrir_dpa_7e():
+            courant = self.dossier_fiscal_valide_courant
+            if courant is None or len(courant.biens_locatifs) != 1:
+                messagebox.showerror("DPA 7E indisponible", "Validez d'abord l'unique bien locatif 7D.", parent=fenetre)
+                return
+            bien = courant.biens_locatifs[0]
+            brut_sans_dpa = replace(courant, biens_locatifs=(replace(bien, amortissement=None),))
+            try:
+                avant = verifier_dossier_location_2025(brut_sans_dpa).ligne_12600
+            except ValueError as exc:
+                messagebox.showerror("DPA 7E indisponible", str(exc), parent=fenetre)
+                return
+            def enregistrer(profil):
+                nonlocal locations_courantes, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                if self.dossier_fiscal_valide_courant is not courant:
+                    raise ValueError("Le dossier a changé; rouvrez la section DPA.")
+                faits = (replace(bien, amortissement=profil),)
+                nouveau = replace(courant, biens_locatifs=faits)
+                verifier_dossier_location_2025(nouveau)
+                locations_courantes = faits
+                self.dossier_fiscal_valide_courant = nouveau
+                derniere_estimation = dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+            ouvrir_dpa_location_2025(fenetre, bien.amortissement, avant, enregistrer)
 
         def ouvrir_location_7d():
             dossier_ouvert = self.dossier_fiscal_valide_courant
@@ -15951,6 +15977,8 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_soutien_aines_quebec_6j).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Prime au travail Québec 2025 (6I)",
                    command=ouvrir_prime_travail_quebec_6i).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="DPA location 2025 (7E)",
+                   command=ouvrir_dpa_7e).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Location résidentielle 2025 (7D)",
                    command=ouvrir_location_7d).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Cotisations autonomes / annuel 2025 (7C)",

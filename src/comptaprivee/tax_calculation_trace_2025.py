@@ -182,15 +182,28 @@ def construire_trace_calcul_fiscal_2025(
         from .tax_rental_income_2025 import lignes_location_2025
         r=estimation.location; x=estimation.rapprochement; d=estimation.dossier
         valeurs=(('Brut 12599 / 168','Loyers + autres revenus',r.ligne_12599),
-                 ('Net 12600 / 136','Brut - dépenses; DPA nulle',r.ligne_12600),
+                 ('Net fédéral 12600','Brut - dépenses - DPA fédérale',r.ligne_12600),
+                 ('Net Québec 136','Brut - dépenses - DPA Québec',r.ligne_136),
                  ('FSS 446','Annexe F sur net locatif, hors salaire',r.cotisation_fss),
                  ('Québec 275','Revenu salarial net + net locatif',estimation.revenu.revenu_net_quebec),
                  ('Solde annuel','Impôts après crédits + FSS - retenues et remboursements',x.solde_estime-x.remboursement_estime))
+        if r.amortissement is not None:
+            details = []
+            for juridiction, amort in (('Fédéral', r.amortissement.federal), ('Québec', r.amortissement.quebec)):
+                details.extend((
+                    (juridiction+' avant DPA', 'Brut - dépenses admissibles', amort.revenu_avant),
+                    (juridiction+' solde ouverture', 'Solde comptable documenté au 1er janvier 2025, hors terrain', amort.ouverture),
+                    (juridiction+' DPA maximale', 'Solde ouverture x 4 %, au cent', amort.maximum_theorique),
+                    (juridiction+' plafond admissible', 'Minimum(DPA maximale, revenu avant DPA)', amort.maximum_admissible),
+                    (juridiction+' DPA choisie', 'Choix du contribuable, contrôlé sans écrêtement silencieux', amort.choisie),
+                    (juridiction+' solde final', 'Solde ouverture - DPA choisie', amort.fermeture),
+                ))
+            valeurs = (valeurs[0], *details, *valeurs[1:])
         return TraceCalculFiscal2025(client=d.client,annee_fiscale=d.annee_fiscale,province=d.province,
             lignes=tuple(_ligne(i,'LOCATION',lib,'T776/TP-128/annexe F 2025',form,m) for i,(lib,form,m) in enumerate(valeurs,1)),
             resultat=x.resultat,montant_resultat=max(x.solde_estime,x.remboursement_estime),
             formule_resultat='Impôts + FSS - retenues et remboursements de cotisations',avertissements=(),
-            limitations=('Location simple sans DPA, limites 7D confirmées.',),audit_location=lignes_location_2025(estimation))
+            limitations=('Location simple, limites 7D/7E confirmées.',),audit_location=lignes_location_2025(estimation))
     if estimation.cotisations_autonomes is not None:
         from .tax_self_employment_contributions_2025 import lignes_annuelles_autonomes_2025
         c=estimation.cotisations_autonomes

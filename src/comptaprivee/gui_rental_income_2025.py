@@ -17,7 +17,8 @@ def ouvrir_location_2025(parent, biens, appliquer):
     f = FormulaireDefilant(d); c = f.corps; c.columnconfigure(1, weight=1)
     ttk.Label(c, text='Un immeuble résidentiel entièrement locatif, toute l’année 2025.',
               font=('Segoe UI', 14, 'bold')).grid(row=0, columnspan=2, sticky='w')
-    ttk.Label(c, text='Sans DPA, pertes, intérêts ni travaux. Location seule ou avec salaire ordinaire. '
+    ttk.Label(c, text='Sans pertes, intérêts ni travaux. DPA existante : utilisez la section distincte 7E. '
+        'Appliquer cette fiche désactive la DPA 7E : ses soldes et choix devront être validés de nouveau. '
         'Les exclusions sont des limites du logiciel. Aucun calcul ne peut être validé avec un cas exclu.',
         wraplength=930, justify='left').grid(row=1, columnspan=2, sticky='w', pady=7)
     b = biens[0] if biens else BienLocatif2025()
