@@ -3,6 +3,9 @@
 Premier installateur **de test local**, non signé, non publié. Aucun tag ni
 GitHub Release créé. Le tag stable v1.0.0 reste sur 71f7efe.
 
+Suite de l'audit : [validation distribution POST-V1-E](validation_distribution_windows.md).
+Mode d'emploi court : [guide utilisateur Windows](guide_windows.md).
+
 ## Artefact validé le 1er octobre 2026
 
 | Élément | Valeur |
