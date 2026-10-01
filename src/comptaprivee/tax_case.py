@@ -5,7 +5,6 @@ gouvernementale n'est effectuée.
 """
 
 from dataclasses import dataclass, field
-from datetime import date
 from pathlib import Path
 from uuid import UUID, uuid4, uuid5, NAMESPACE_URL
 
@@ -44,25 +43,21 @@ class DossierFiscal:
     statut: str = "Brouillon — aucun document importé"
 
 
-def annee_fiscale_par_defaut(
-    annee_courante: int | None = None,
-) -> int:
-    """Utilise par défaut la dernière année civile terminée."""
-    annee = annee_courante or date.today().year
-    return annee - 1
+ANNEES_FISCALES_SUPPORTEES = (2025,)
+
+
+def annee_fiscale_par_defaut(annee_courante: int | None = None) -> int:
+    """L'horloge ne selectionne jamais un bareme fiscal (argument historique ignore)."""
+    return 2025
 
 
 def annees_fiscales_disponibles(
-    annee_courante: int | None = None,
-    *,
-    profondeur: int = 7,
+    annee_courante: int | None = None, *, profondeur: int = 7,
 ) -> tuple[int, ...]:
-    """Retourne les années proposées dans l'interface."""
+    """Expose uniquement les moteurs livres, independamment de l'horloge."""
     if profondeur < 1:
-        raise ValueError("La profondeur doit être d'au moins 1.")
-
-    annee = annee_courante or date.today().year
-    return tuple(range(annee, annee - profondeur, -1))
+        raise ValueError("La profondeur doit etre d'au moins 1.")
+    return ANNEES_FISCALES_SUPPORTEES[:profondeur]
 
 
 def normaliser_province(province: str) -> str:

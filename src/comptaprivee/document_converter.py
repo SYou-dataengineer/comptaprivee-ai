@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import copy
 import csv
 from .csv_exporter import RedacteurCsvSur
 import sys
@@ -857,7 +858,9 @@ def csv_vers_excel(
     for row in rows:
         ws.append(row)
     for cell in ws[1]:
-        cell.font = cell.font.copy(bold=True)
+        police = copy(cell.font)
+        police.bold = True
+        cell.font = police
     wb.save(destination_path)
 
     return ResultatConversion(

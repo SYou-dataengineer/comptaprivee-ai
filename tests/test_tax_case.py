@@ -15,15 +15,16 @@ def test_phase1_prend_en_charge_quebec() -> None:
     assert PROVINCES_PHASE_1 == ("Québec",)
 
 
-def test_annee_fiscale_par_defaut_est_annee_precedente() -> None:
-    assert annee_fiscale_par_defaut(2026) == 2025
+@pytest.mark.parametrize("annee_systeme", [2025, 2026, 2027, 2035])
+def test_annee_fiscale_par_defaut_independante_horloge(annee_systeme) -> None:
+    assert annee_fiscale_par_defaut(annee_systeme) == 2025
 
 
-def test_annees_fiscales_disponibles_descendantes() -> None:
+def test_annees_fiscales_disponibles_limitees_aux_moteurs_livres() -> None:
     assert annees_fiscales_disponibles(
         2026,
         profondeur=4,
-    ) == (2026, 2025, 2024, 2023)
+    ) == (2025,)
 
 
 def test_normaliser_province_accepte_quebec_sans_accent() -> None:

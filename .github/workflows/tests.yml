@@ -41,3 +41,35 @@ jobs:
 
       - name: Exécuter les tests
         run: xvfb-run -a python -m pytest -v
+
+  windows:
+    name: Windows Python 3.12 - persistance et GUI
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Télécharger le projet
+        uses: actions/checkout@v4
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Installer les dépendances Python
+        run: python -m pip install -r requirements.txt
+      - name: Vérifier les dépendances
+        run: python -m pip check
+      - name: Vérifier Tk Windows
+        run: python -c "import tkinter as tk; r=tk.Tk(); r.withdraw(); r.update(); r.destroy()"
+      - name: Tester Windows - chemins, JSON, CSV, sauvegarde et GUI
+        run: >-
+          python -m pytest --capture=sys -q
+          tests/test_release_platform.py
+          tests/test_tax_case.py
+          tests/test_tax_case_storage.py
+          tests/test_backup_manager.py
+          tests/test_persistence_security.py
+          tests/test_final_b2_inputs.py
+          tests/test_csv_exporter.py
+          tests/test_gui_block2.py
+          tests/test_gui_case_identity.py
+          tests/test_gui_final_b2_inputs.py

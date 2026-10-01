@@ -1,0 +1,11 @@
+[project]
+name = "comptaprivee-ai"
+version = "1.0.0rc1"
+description = "Application locale de preparation comptable et fiscale 2025, federal et Quebec"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+
+# Installation depuis les sources : requirements.txt reste la reference.
+# Aucun changement de backend de construction ni publication de paquet.
+[tool.pytest.ini_options]
+testpaths = ["tests"]

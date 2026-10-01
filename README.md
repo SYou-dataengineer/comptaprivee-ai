@@ -1,234 +1,126 @@
-# ComptaPrivée AI
-[![Tests Python](https://github.com/SYou-dataengineer/comptaprivee-ai/actions/workflows/tests.yml/badge.svg)](https://github.com/SYou-dataengineer/comptaprivee-ai/actions/workflows/tests.yml)
+﻿# ComptaPrivée AI — préparation v1.0
 
-Agent local d’extraction de données depuis des documents comptables.
+ComptaPrivée AI est une application locale de préparation comptable et fiscale.
+Cette version candidate (`1.0.0rc1`) traite les dossiers fiscaux **2025**, fédéral
+et Québec, dans les profils documentés et validés par le moteur.
 
-## Objectif
+## Année fiscale
 
-ComptaPrivée AI aide les comptables à extraire et à valider les données provenant de fichiers PDF, Word et d’images numérisées.
+**Cette version utilise exclusivement les paramètres et règles fiscales 2025.
+Elle ne doit pas être utilisée pour calculer une déclaration 2026.**
 
-## Confidentialité
+2025 reste utilisable pour préparer des dossiers tardifs ou des corrections,
+avec validation comptable. Le moteur 2026 sera développé et validé séparément.
+L'année civile du poste ne choisit jamais automatiquement un barème : l'interface
+propose uniquement 2025. Les moteurs annuels refusent les années non supportées.
 
-- Traitement local des documents
-- Aucune donnée cliente envoyée sur Internet
-- Documents et exportations exclus du dépôt Git
-- Validation humaine avant l’exportation
+## Fonctions disponibles
 
-## État du projet
+- Extraction locale de PDF, documents Word DOCX et images ; OCR avec Tesseract.
+- Validation et correction humaines des champs avant utilisation fiscale.
+- Dossiers fiscaux JSON avec identité UUID stable, sauvegarde et rechargement.
+- Estimations fédérales et Québec 2025 dans les profils supportés, calculs Decimal,
+  détails de calcul et rapports PDF.
+- Exports comptables CSV avec protection des champs textuels contre les formules.
+- Sauvegarde/restauration locale contrôlée des données applicatives et fiscales.
 
-Première phase :
+Un résultat historique rechargé est **non vérifié** : recalculer à partir des faits
+avant de l'utiliser. Réexporter le PDF après recalcul.
 
-- environnement Python 3.12 configuré;
-- structure initiale créée;
-- protection des documents confidentiels configurée;
-- premier test automatique réussi.
-- extraction locale du texte des fichiers PDF;
-- validation du format et des fichiers introuvables;
-- quatre tests automatiques réussis.
-- interface en ligne de commande;
-- facture PDF fictive pour la démonstration;
-- chaîne complète d’extraction validée par cinq tests.
-- extraction structurée des factures;
-- détection du numéro, de la date, du fournisseur et du client;
-- extraction du sous-total, de la TPS, de la TVQ et du total;
-- prise en charge des montants avec un point ou une virgule.
-- export local des données au format CSV;
-- compatibilité avec Excel grâce à l’encodage UTF-8;
-- protection automatique des fichiers exportés;
-- pipeline PDF vers CSV validé par dix tests.
-- lecture locale des documents Microsoft Word DOCX;
-- lecteur Word pur Python, sans DLL externe;
-- prise en charge des documents PDF et Word;
-- pipeline Word vers CSV validé automatiquement;
-- quatorze tests automatiques réussis.
-- OCR local avec Tesseract 5.5.3;
-- reconnaissance en français et en anglais;
-- prise en charge des images PNG, JPG, JPEG, TIFF et BMP;
-- extraction structurée et export CSV depuis une image;
-- dix-sept tests automatiques réussis.
-- détection automatique des pages PDF sans texte;
-- OCR automatique des PDF numérisés;
-- traitement mixte des PDF contenant du texte et des pages scannées;
-- suppression automatique des images OCR temporaires;
-- dix-huit tests automatiques réussis.
-- interface graphique Windows entièrement locale;
-- sélection de documents PDF, Word et images;
-- affichage du texte extrait;
-- champs comptables modifiables avant validation;
-- export CSV contrôlé par l’utilisateur;
-- vingt-six tests automatiques réussis.
-## Lancer le programme
+## Installer et démarrer sous Windows
 
-Sans document :
+Prérequis : Windows, **Python 3.12 64 bits** avec Tk, et Tesseract 5 avec les langues
+`fra` et `eng` pour l'OCR. La procédure détaillée, les vérifications et le dépannage
+figurent dans [Installation Windows](docs/installation_windows.md).
+
+Depuis la racine du dépôt dans PowerShell :
 
 ```powershell
-python -m src.comptaprivee.main
-```
-
-Afficher l’aide :
-
-```powershell
-python -m src.comptaprivee.main --help
-```
-
-## Démonstration avec une facture fictive
-
-Générer la facture :
-
-```powershell
-python scripts\creer_facture_demo.py
-```
-
-Analyser la facture localement :
-
-```powershell
-python -m src.comptaprivee.main data\documents\facture_demo.pdf
-```
-
-Le PDF généré est fictif et demeure exclu du dépôt Git.
-
-Exporter les données vers un CSV local :
-
-```powershell
-python -m src.comptaprivee.main data\documents\facture_demo.pdf --export-csv data\exports\facture_demo.csv
-```
-## Démonstration avec un document Word
-
-Générer une facture Word fictive :
-
-```powershell
-python scripts\creer_word_demo.py
-```
-
-Analyser le document et exporter les données :
-
-```powershell
-python -m src.comptaprivee.main data\documents\facture_word_demo.docx --export-csv data\exports\facture_word_demo.csv
-```
-## Exécuter les tests
-
-```powershell
-python -m pytest -v
-```
-
-## Prérequis OCR
-
-Tesseract OCR doit être installé localement avec les langues suivantes :
-
-```text
-eng
-fra
-```
-
-Vérifier l’installation :
-
-```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip check
 tesseract --version
 tesseract --list-langs
+.\.venv\Scripts\python.exe -m src.comptaprivee.gui
 ```
 
-## Démonstration avec une image
+L'activation du venv n'est pas nécessaire. Toujours démarrer depuis la racine du
+projet pour conserver le même emplacement de données. Aucun chemin personnel du
+développeur n'est requis. Il n'y a pas encore d'installateur ni d'exécutable livré.
 
-Générer une facture PNG fictive :
+La commande d'extraction documentaire reste disponible :
 
 ```powershell
-python scripts\creer_image_demo.py
+.\.venv\Scripts\python.exe -m src.comptaprivee.main --help
 ```
 
-Analyser l’image et exporter les données :
+## Préparer un dossier
+
+1. Ouvrir l'Agent fiscal, saisir le client et initialiser un dossier 2025.
+2. Importer les pièces ; reconnaître les feuillets et extraire leurs champs.
+3. Vérifier chaque valeur avec le document source, corriger puis valider.
+4. Compléter les profils pertinents et les confirmations comptables demandées.
+5. Calculer l'estimation ; examiner le détail et les garde-fous.
+6. Enregistrer le dossier et exporter le rapport PDF après vérification.
+7. Créer une sauvegarde locale via les paramètres et en conserver une copie sûre.
+
+Initialiser un dossier crée une nouvelle identité, même pour un homonyme. Pour
+poursuivre un dossier existant, utiliser **Dossiers enregistrés → Ouvrir le dossier**.
+Ne pas contourner un blocage fiscal par une valeur estimée ou un faux zéro.
+
+## Limites fiscales
+
+Ce logiciel ne reproduit pas tous les cas des déclarations T1/TP-1. La couverture
+exacte et les exclusions par bloc sont décrites dans
+[le référentiel du moteur 2025](docs/moteur_fiscal_2025.md).
+
+Notamment : travail autonome, location et DPA ont des périmètres bornés ; les
+profils complexes doivent être préparés hors moteur. Les blocs interprovincial et
+IMR préparent les faits et bloquent le calcul annuel quand les formulaires exclus
+sont requis. Le décès n'est supporté que dans son profil limité. Les obligations
+sur biens étrangers sont préparées sans production automatique des formulaires.
+Le crédit de solidarité est une préparation d'admissibilité/annexe D, sans montant
+ajouté au remboursement TP-1 2025. La transmission gouvernementale est désactivée.
+
+La validation humaine reste nécessaire : un test vert n'étend pas le périmètre
+fiscal supporté et ne remplace pas la vérification des pièces.
+
+## Données, sauvegardes et confidentialité
+
+Les documents et calculs sont traités localement ; aucun envoi fiscal automatique,
+service d'IA distant ou télémétrie fiscale n'est utilisé par l'application.
+L'installation des dépendances utilise Internet ; elle ne transmet pas les dossiers.
+
+Les JSON fiscaux se trouvent dans `data/dossiers_fiscaux/`, la base comptable dans
+`data/comptaprivee.db`, les paramètres dans `data/parametres.json` et le profil dans
+`data/profil_comptable.json`. Les exports vont habituellement dans `data/exports/`.
+Les pièces peuvent aussi rester à leur emplacement d'import d'origine.
+
+Les archives de sauvegarde comprennent la base, les paramètres, le profil et les
+JSON fiscaux. **Elles n'incluent pas les pièces originales, les exports, le logo
+ni la file de révision OCR.** Conserver séparément les pièces nécessaires à l'audit.
+La restauration valide les destinations, le manifeste et le contenu avant les
+remplacements ; elle dispose d'un rollback en cas d'erreur.
+
+Les fichiers locaux et ZIP ne sont **pas chiffrés par ComptaPrivée AI**. Leur accès
+dépend des protections du poste et des sauvegardes choisies. Les dossiers sensibles
+sont exclus de Git ; ne jamais forcer leur ajout ni envoyer une sauvegarde dans une
+issue. Consulter [les limites de confidentialité](docs/installation_windows.md#confidentialité)
+et [les documents de conformité en cours de validation](docs/legal/README.md).
+
+## Validation et état de release
 
 ```powershell
-python -m src.comptaprivee.main data\documents\facture_image_demo.png --export-csv data\exports\facture_image_demo.csv
+.\.venv\Scripts\python.exe -m pytest --capture=sys -q
 ```
 
-## PDF numérisés
+La configuration limite la collecte à `tests/`. Linux CI exécute la suite complète
+avec OCR et GUI sous Xvfb. Windows CI exécute les parcours ciblés de persistance,
+JSON, CSV, chemins et GUI avec Python 3.12 et `--capture=sys`. Le détail des preuves
+et validations encore nécessaires est dans la [checklist release](docs/release_v1_checklist.md).
 
-Lorsqu’une page PDF contient déjà du texte, ComptaPrivée AI utilise l’extraction directe.
+- [Changelog de préparation](CHANGELOG.md)
+- [Contrat futur multi-années](docs/architecture_multi_annees.md)
+- [Installation et dépendances](docs/installation_windows.md)
 
-Lorsqu’aucun texte n’est détecté, la page est temporairement convertie en image et analysée localement avec Tesseract OCR. Aucun fichier temporaire n’est conservé après le traitement.
-
-## Interface graphique locale
-
-Lancer l’application :
-
-```powershell
-python -m src.comptaprivee.gui
-```
-
-L’interface permet de :
-
-- sélectionner un document comptable;
-- extraire automatiquement son contenu;
-- vérifier et corriger les champs détectés;
-- exporter les données validées en CSV;
-- conserver toutes les informations localement.
-
-## Traitement de plusieurs factures
-
-ComptaPrivée AI peut analyser plusieurs documents dans une seule
-opération et regrouper les données extraites dans un fichier CSV.
-
-Les documents peuvent être de formats différents :
-
-- PDF avec texte sélectionnable;
-- PDF numérisé traité par OCR;
-- document Word DOCX;
-- image PNG, JPG, JPEG, TIFF ou BMP.
-
-Exemple de traitement par lot :
-
-```powershell
-python -m src.comptaprivee.main --lot data\documents\facture_demo.pdf data\documents\facture_word_demo.docx data\documents\facture_image_demo.png --export-csv data\exports\factures_lot_demo.csv
-```
-
-Le traitement demeure entièrement local. Si un document produit une
-erreur, les autres documents continuent d’être analysés et les erreurs
-sont affichées dans le résumé.
-
-### Traitement par lot dans l’interface
-
-L’interface graphique permet également de sélectionner plusieurs
-documents comptables en utilisant le bouton
-`Traiter plusieurs documents`.
-
-Après la sélection des fichiers, l’utilisateur choisit le nom du CSV
-regroupé. Le dossier `data/exports` est proposé automatiquement.
-
-L’interface affiche ensuite :
-
-- le nombre de documents sélectionnés;
-- le nombre de traitements réussis;
-- le nombre de documents en erreur;
-- les numéros et les totaux des factures détectées;
-- le chemin local du fichier CSV créé.
-
-## Validation comptable automatique
-
-Chaque facture extraite est contrôlée localement avant son export.
-
-Le validateur vérifie notamment :
-
-- la présence du numéro, de la date, du fournisseur et du total;
-- l’absence de montants négatifs;
-- la cohérence entre le sous-total, la TPS, la TVQ et le total;
-- que le total n’est pas inférieur au sous-total.
-
-Trois statuts peuvent être produits :
-
-- `VALIDE` : les données sont complètes et cohérentes;
-- `À VÉRIFIER` : certains champs sont manquants, mais l’export reste permis;
-- `ERREUR` : une incohérence importante bloque l’export de la facture.
-
-Lors d’un traitement par lot, une facture en erreur est exclue du CSV,
-mais les autres documents continuent d’être traités.
-
-### Validation dans l’interface graphique
-
-Après l’analyse d’un document, l’interface affiche son statut comptable :
-
-- `VALIDE` en vert;
-- `À VÉRIFIER` en orange;
-- `ERREUR` en rouge.
-
-L’utilisateur peut corriger les champs et relancer la validation.
-Une erreur comptable désactive automatiquement le bouton d’exportation.
+Le tag v1.0 et l'exécutable final ne sont pas créés par cette préparation.
