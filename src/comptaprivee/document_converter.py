@@ -208,10 +208,13 @@ def excel_vers_pdf(
                 # Trouver la vraie zone de contenu.
                 # UsedRange peut être artificiellement énorme à cause
                 # d'anciens formats, ce qui produit un PDF minuscule.
+                # Find commence APRES la cellule indiquée. Partir de la
+                # dernière cellule permet d'inclure A1 dès le premier tour.
+                fin_feuille = feuille.Cells(feuille.Rows.Count, feuille.Columns.Count)
                 premiere_cellule = feuille.Cells.Find(
                     What="*",
-                    After=feuille.Cells(1, 1),
-                    LookIn=-4163,      # xlFormulas
+                    After=fin_feuille,
+                    LookIn=-4163,      # xlValues (comportement conservé)
                     LookAt=2,         # xlPart
                     SearchOrder=1,    # xlByRows
                     SearchDirection=1 # xlNext
@@ -246,7 +249,7 @@ def excel_vers_pdf(
 
                 premiere_colonne_cellule = feuille.Cells.Find(
                     What="*",
-                    After=feuille.Cells(1, 1),
+                    After=fin_feuille,
                     LookIn=-4163,
                     LookAt=2,
                     SearchOrder=2,    # xlByColumns
@@ -270,6 +273,11 @@ def excel_vers_pdf(
                         derniere_colonne_no,
                     ),
                 )
+
+                # Le débordement visuel d'un texte dans des cellules vides
+                # est coupé à la limite de PrintArea. Ajuster les colonnes
+                # du contenu avant de mesurer la zone et de l'imprimer.
+                zone.Columns.AutoFit()
 
                 try:
                     excel.PrintCommunication = False

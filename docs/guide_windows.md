@@ -37,9 +37,11 @@ Son absence n'empêche pas le démarrage et doit produire un message explicite.
 
 Word et Excel sont facultatifs pour lancer l'application. Les conversions
 Office par COM exigent le produit correspondant installé sur Windows.
-Une anomalie Excel → PDF est ouverte : sur un classeur fictif avec un intitulé
-en A1 et un montant en B2, le PDF omet l'intitulé. Cette conversion n'est donc
-pas validée pour diffusion. Vérifiez les documents produits avant utilisation.
+L'installateur de référence ci-dessus contient encore l'anomalie Excel → PDF
+qui omet un intitulé A1 lorsque d'autres cellules sont remplies. La correction
+source est validée en POST-V1-E2, mais n'est pas intégrée à cet installateur.
+Cette conversion du binaire de référence n'est donc pas validée pour diffusion.
+Vérifiez les documents produits avant utilisation.
 
 Les valeurs extraites doivent être vérifiées et validées par une personne.
 Les calculs portent sur 2025 ; les profils avancés restent bornés et certains

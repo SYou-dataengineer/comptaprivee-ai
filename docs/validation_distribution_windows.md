@@ -146,3 +146,53 @@ Excel ouverte. Le GO local D ne constituait pas cette validation indépendante.
 Publisher et icône non finalisés, métadonnées Windows incomplètes, documents
 commerciaux restant à valider. Aucune décision d'acceptation de risque n'est
 prise à la place de l'utilisateur. Aucune nouvelle version ni Release.
+
+## POST-V1-E2 — correction source Excel → PDF
+
+Reproduction réelle via le routeur `convertir_document("Excel → PDF", ...)`,
+sur la source de départ `79bbf41`, avec Excel installé et des fichiers fictifs :
+
+- Feuille unique active `Sheet`, A1 = `TEST EXCEL COMPTAPRIVEE`, B2 = 123.45.
+  UsedRange = `$A$1:$B$2`, PrintArea initialement vide. À l'export, le moteur
+  imposait `$B$2` ; le PDF contenait uniquement `123.45`.
+- `Find` commence après la cellule passée à `After`. Les recherches vers
+  l'avant partaient de A1 et trouvaient B2 avant de revenir à A1. La première
+  ligne et la première colonne étaient donc fausses. Les deux recherches
+  partent désormais de la dernière cellule de la feuille ; les recherches
+  inverses des bornes finales restent inchangées.
+- Après cette seule correction, PrintArea devient `$A$1:$B$2`, mais les
+  largeurs Excel par défaut tronquent encore le texte à `TEST EXCEL COMPTAPR`.
+  `zone.Columns.AutoFit()` corrige cette seconde cause démontrée, avant la
+  mesure de l'orientation. Les largeurs sont ajustées dans la copie ouverte
+  pour export ; les largeurs personnalisées ne sont donc pas garanties dans
+  le PDF. Le fichier source n'est pas sauvegardé ni modifié.
+- Marges, Letter, centrage, Zoom=False et FitToPagesWide/Tall=1 sont conservés.
+  L'export du classeur respecte PrintArea (`IgnorePrintAreas=False`). La zone
+  préexistante reste remplacée par la zone de contenu, comme auparavant.
+
+Validation COM réelle locale : deux conversions successives du classeur
+minimal, puis deux d'un classeur contenant aussi C4 = `AUTRE CELLULE` avec une
+zone préexistante `$B$2`. Chaque PDF contient l'intitulé A1 complet et `123.45` ;
+le second scénario contient aussi C4, avec PrintArea `$A$1:$C$4`. Une page par
+PDF. Chaque appel ferme le classeur sans sauvegarde, appelle Quit et termine
+le processus Excel créé (attente vérifiée sur son handle). Les empreintes des
+XLSX restent identiques. Les preuves fictives restent localement sous
+`tmp/POST-V1-E2`, hors Git.
+
+Les tests `tests/test_excel_pdf.py` simulent le parcours circulaire de Find,
+les cellules A1/B2 et dispersées, une feuille unique, les zones préexistantes,
+l'absence d'Office, la feuille vide et la fermeture après échec d'export.
+Ils s'exécutent sans Office sur Linux et Windows ; ils ne remplacent pas la
+validation COM réelle locale décrite ci-dessus. Le job Windows les inclut
+explicitement avec les régressions des autres conversions.
+
+Validation source locale E2 : 57 tests de conversion, puis 49 tests GUI et
+plateforme réussis ; unique suite complète : **7 542 passed, 5 warnings**
+(286,32 s). Les cinq avertissements sont les dépréciations SWIG existantes.
+Le premier lancement ciblé était bloqué au montage des fixtures temporaires
+par les permissions du sandbox ; sa relance hors sandbox a réussi.
+
+Aucun moteur fiscal, packaging, version ou tag modifié. L'installateur de
+référence conserve son hash et contient toujours l'ancien convertisseur :
+il n'est pas reconstruit pendant E2. La validation d'un futur installateur
+corrigé sur machine indépendante demeure nécessaire avant diffusion.
