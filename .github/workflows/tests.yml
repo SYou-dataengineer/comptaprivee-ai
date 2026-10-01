@@ -71,6 +71,7 @@ jobs:
           tests/test_tax_case_storage.py
           tests/test_backup_manager.py
           tests/test_backup_replace.py
+          tests/test_gui_backup_acceptance.py
           tests/test_persistence_security.py
           tests/test_final_b2_inputs.py
           tests/test_csv_exporter.py

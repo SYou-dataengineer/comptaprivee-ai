@@ -17012,6 +17012,20 @@ class ApplicationComptaPrivee(tk.Tk):
 
             try:
                 destination = creer_sauvegarde(chemin)
+            except PermissionError:
+                self.statut.set("Sauvegarde non confirmée — réessayez ou choisissez un autre nom")
+                messagebox.showerror(
+                    "Sauvegarde impossible",
+                    (
+                        "Windows refuse l'accès à un fichier nécessaire à la sauvegarde.\n\n"
+                        "Si le remplacement a été refusé, la sauvegarde précédente "
+                        "a été conservée.\n\n"
+                        "Fermez tout programme utilisant ce fichier puis réessayez, "
+                        "ou choisissez un autre nom de fichier."
+                    ),
+                    parent=fenetre,
+                )
+                return
             except (OSError, ValueError) as erreur:
                 messagebox.showerror(
                     "Sauvegarde impossible",

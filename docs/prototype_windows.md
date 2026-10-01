@@ -301,3 +301,80 @@ ou confirmer le comportement dans un environnement Windows de test autorisé.
 Ne pas contourner la sécurité, augmenter indéfiniment les délais, ou déclarer
 un responsable sans preuve. Le commit de la reprise bornée et des diagnostics
 n'est pas une validation de distribution du binaire.
+
+## POST-V1-C4 — acceptation fonctionnelle du refus Windows
+
+Cette décision remplace le NO-GO C3 pour la préparation de POST-V1-D : le refus
+environnemental non expliqué est accepté comme **P2**, sous réserve du maintien
+des garanties ci-dessous. Il n'est pas présenté comme un verrou identifié ou
+comme un problème définitivement corrigé.
+
+### Message et comportement GUI
+
+Le bouton réel « Créer une sauvegarde... » intercepte maintenant PermissionError
+avant le gestionnaire générique. Il affiche :
+
+> Windows refuse l'accès à un fichier nécessaire à la sauvegarde.
+>
+> Si le remplacement a été refusé, la sauvegarde précédente a été conservée.
+>
+> Fermez tout programme utilisant ce fichier puis réessayez, ou choisissez un
+> autre nom de fichier.
+
+Le statut devient « Sauvegarde non confirmée — réessayez ou choisissez un autre
+nom ». Aucun traceback, nom de temporaire ou message d'exception brut n'est
+affiché pour ce refus. La formulation conditionnelle couvre aussi un refus
+avant l'étape de remplacement, sans affirmer qu'un verrou a été identifié.
+Le retry reste inchangé : quatre tentatives, attentes cumulées de 350 ms.
+Une sauvegarde normale réussie au premier essai n'attend pas ces délais.
+
+### Acceptation déterministe sur la vraie GUI Tk
+
+`tests/test_gui_backup_acceptance.py` ouvre les paramètres et invoque le vrai
+bouton, avec données exclusivement fictives. Seul os.replace vers prototype.zip
+est configuré pour refuser systématiquement :
+
+- quatre tentatives, puis un seul message d'erreur propre, aucun succès annoncé ;
+- ancienne archive et JSON fiscal identiques octet par octet ;
+- aucun staging .backup-* restant ou présenté comme sauvegarde ;
+- le même bouton crée immédiatement `prototype-2 été.zip`, tandis que le refus
+  reste actif sur l'ancien nom ; ZIP lisible, JSON fiscal identique dans l'archive ;
+- le nom initial peut être réessayé avec succès après libération du refus ;
+- Tk reste actif, sans exception non traitée de callback.
+
+Les tests C3 continuent de couvrir le refus transitoire suivi de succès et
+l'erreur permanente finale. Le test C4 fait partie de la CI Windows.
+
+### Parcours du bundle autorisé existant
+
+Aucune reconstruction en C4. Le bundle C3 a été lancé directement depuis
+C:\Windows, avec LOCALAPPDATA substitué vers `tmp/C4 GUI fictif`, puis piloté
+par ses contrôles GUI Windows. Les premières archives `prototype.zip` et
+`prototype-2.zip` sont lisibles ; ce profil initialement vide ne contient alors
+que le manifeste. Le dialogue confirme une restauration de zéro fichier,
+puis l'application se ferme normalement.
+
+Après préparation d'une base SQLite et d'un dossier fiscal synthétique, le
+même bundle est relancé sur ce profil. La GUI crée `prototype-3.zip` sous un
+nouveau nom. L'archive contient la DB et le JSON fiscal, comparé octet par octet
+au fichier source. Fermeture normale et inventaire SHA-256 du bundle inchangé.
+Les contrôles de refus permanent et du **nouveau message** concernent la GUI
+source testée : C3 conserve son ancien message. Le build préparé pour
+POST-V1-D devra inclure le commit C4 avant toute distribution.
+
+Le pilote Windows de diagnostic a nécessité des adaptations aux dialogues
+natifs (focus et identifiants de boutons) ; ses scripts et captures fictives
+restent dans tmp/, hors Git. Ces limites d'automatisation ne sont pas des
+erreurs du moteur de sauvegarde.
+
+### Résultats et décision
+
+51 tests ciblés réussis, 5 warnings. Une full suite locale : **7 529 passed,
+5 warnings**, 291,34 s, avec `--capture=sys`. `git diff --check` propre.
+Aucun changement fiscal, de sécurité Windows, de tag ou de retry.
+
+**GO pour préparer POST-V1-D**, après CI verte du commit C4. Ce GO accepte le
+refus permanent lorsqu'il est signalé proprement, préserve les données et
+laisse disponible la sauvegarde sous un nouveau nom. Il ne garantit pas
+l'absence de refus Windows et ne valide pas une distribution de l'ancien C3.
+Aucun installateur créé pendant cette session.
