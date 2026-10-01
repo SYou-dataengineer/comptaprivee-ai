@@ -184,13 +184,20 @@ les cellules A1/B2 et dispersées, une feuille unique, les zones préexistantes,
 l'absence d'Office, la feuille vide et la fermeture après échec d'export.
 Ils s'exécutent sans Office sur Linux et Windows ; ils ne remplacent pas la
 validation COM réelle locale décrite ci-dessus. Le job Windows les inclut
-explicitement avec les régressions des autres conversions.
+explicitement. Les autres conversions restent couvertes par la suite Linux
+avec Tesseract et par la validation locale.
 
 Validation source locale E2 : 57 tests de conversion, puis 49 tests GUI et
 plateforme réussis ; unique suite complète : **7 542 passed, 5 warnings**
 (286,32 s). Les cinq avertissements sont les dépréciations SWIG existantes.
 Le premier lancement ciblé était bloqué au montage des fixtures temporaires
 par les permissions du sandbox ; sa relance hors sandbox a réussi.
+
+Premier run CI E2 : les nouveaux tests Excel réussissent sur Windows, mais
+l'ajout du fichier complet des autres conversions déclenche quatre échecs
+OCR faute de Tesseract sur ce runner. Cet ajout trop large est retiré ; les
+13 nouveaux tests Excel restent dans le job Windows. Aucun test existant
+n'est supprimé, et la suite complète Linux conserve la couverture OCR.
 
 Aucun moteur fiscal, packaging, version ou tag modifié. L'installateur de
 référence conserve son hash et contient toujours l'ancien convertisseur :

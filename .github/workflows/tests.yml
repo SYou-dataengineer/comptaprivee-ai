@@ -65,7 +65,6 @@ jobs:
           python -m pytest --capture=sys -q
           tests/test_release_platform.py
           tests/test_excel_pdf.py
-          tests/test_document_converter.py
           tests/test_app_paths.py
           tests/test_windows_launcher.py
           tests/test_sqlite_lifecycle.py
