@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
+from .gui_final_return_2025 import ouvrir_deces_2025
+from .tax_final_return_2025 import verifier_dossier_deces_2025
 from .gui_multiple_jurisdictions_2025 import ouvrir_administrations_2025
 from .tax_multiple_jurisdictions_2025 import preparer_administrations_2025, bloquer_estimation_interprovinciale_2025
 from .tax_loss_ledger_2025 import RegistrePertes2025, valider_registre_pertes_2025
@@ -2573,6 +2575,7 @@ class ApplicationComptaPrivee(tk.Tk):
         frais_garde_quebec_courante = FraisGardeQuebec2025()
         solidarite_quebec_courante = SolidariteQuebec2025()
         locations_courantes = self.dossier_fiscal_valide_courant.biens_locatifs if self.dossier_fiscal_valide_courant else ()
+        deces_courant = self.dossier_fiscal_valide_courant.deces if self.dossier_fiscal_valide_courant else None
         pertes_courantes = self.dossier_fiscal_valide_courant.registre_pertes if self.dossier_fiscal_valide_courant else RegistrePertes2025()
         entreprises_courantes = (
             self.dossier_fiscal_valide_courant.entreprises
@@ -5033,6 +5036,23 @@ class ApplicationComptaPrivee(tk.Tk):
                 rapport_fiscal_a_reexporter = True
                 self.statut.set("Prime au travail enregistrée; recalculez l'estimation fiscale.")
             ouvrir_prime_travail_quebec_2025(fenetre, prime_travail_quebec_courante, enregistrer)
+
+        def ouvrir_deces_7h():
+            courant = self.dossier_fiscal_valide_courant
+            if courant is None:
+                messagebox.showerror("Profil décès indisponible", "Validez d'abord le dossier fiscal.", parent=fenetre)
+                return
+            def enregistrer(profil):
+                nonlocal deces_courant, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                if self.dossier_fiscal_valide_courant is not courant:
+                    raise ValueError("Dossier modifié : rouvrez le profil décès.")
+                nouveau = replace(courant, deces=profil)
+                verifier_dossier_deces_2025(nouveau)
+                deces_courant = profil
+                self.dossier_fiscal_valide_courant = nouveau
+                derniere_estimation = dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+            ouvrir_deces_2025(fenetre, courant, lambda: self.dossier_fiscal_valide_courant, enregistrer)
 
         def ouvrir_administrations_7g():
             courant = self.dossier_fiscal_valide_courant
@@ -14591,7 +14611,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal frais_garde_quebec_courante
-            nonlocal entreprises_courantes, locations_courantes, pertes_courantes
+            nonlocal entreprises_courantes, locations_courantes, pertes_courantes, deces_courant
             nonlocal personne_aidante_quebec_courante, solidarite_quebec_courante
             nonlocal prime_travail_quebec_courante
             nonlocal soutien_aines_quebec_courante
@@ -14665,6 +14685,7 @@ class ApplicationComptaPrivee(tk.Tk):
             solidarite_quebec_courante = SolidariteQuebec2025()
             entreprises_courantes = ()
             locations_courantes = ()
+            deces_courant = None
             pertes_courantes = RegistrePertes2025()
             prime_travail_quebec_courante = PrimeTravailQuebec2025()
             soutien_aines_quebec_courante = SoutienAinesQuebec2025()
@@ -14744,6 +14765,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def preparer_dossier_fiscal_valide() -> None:
+            nonlocal deces_courant
             if self.dossier_fiscal_courant is None:
                 messagebox.showinfo(
                     "Dossier fiscal validé",
@@ -14779,7 +14801,10 @@ class ApplicationComptaPrivee(tk.Tk):
                 mettre_a_jour_etat_dossier_valide()
                 return
 
-            dossier_valide = replace(dossier_valide, entreprises=entreprises_courantes, biens_locatifs=locations_courantes, registre_pertes=pertes_courantes)
+            if deces_courant is not None:
+                # Une nouvelle validation des feuillets exige de reconfirmer leur période.
+                deces_courant = replace(deces_courant, revenus_confirmes=False, valide_par_comptable=False)
+            dossier_valide = replace(dossier_valide, entreprises=entreprises_courantes, biens_locatifs=locations_courantes, registre_pertes=pertes_courantes, deces=deces_courant)
             self.dossier_fiscal_valide_courant = dossier_valide
             statut_dossier.set(
                 "Validé — prêt pour le moteur fiscal"
@@ -15030,7 +15055,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal frais_medicaux_famille_courants, transferts_handicap_courants, renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal frais_garde_quebec_courante
-            nonlocal entreprises_courantes, locations_courantes, pertes_courantes
+            nonlocal entreprises_courantes, locations_courantes, pertes_courantes, deces_courant
             nonlocal personne_aidante_quebec_courante, solidarite_quebec_courante
             nonlocal prime_travail_quebec_courante
             nonlocal soutien_aines_quebec_courante
@@ -15133,6 +15158,7 @@ class ApplicationComptaPrivee(tk.Tk):
             frais_garde_quebec_courante = enregistrement.frais_garde_quebec
             entreprises_courantes = enregistrement.dossier.entreprises
             locations_courantes = enregistrement.dossier.biens_locatifs
+            deces_courant = enregistrement.dossier.deces
             pertes_courantes = enregistrement.dossier.registre_pertes
             solidarite_quebec_courante = enregistrement.solidarite_quebec
             prime_travail_quebec_courante = enregistrement.prime_travail_quebec
@@ -15471,6 +15497,11 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 return
 
+            try:
+                verifier_dossier_deces_2025(dossier_valide, annuel=True)
+            except ValueError as exc:
+                messagebox.showerror("Calcul annuel suspendu - 7H", str(exc), parent=fenetre)
+                return
             try:
                 bloquer_estimation_interprovinciale_2025(dossier_valide)
             except ValueError as exc:
@@ -16032,6 +16063,7 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_prime_travail_quebec_6i).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Administrations multiples 2025 (7G)",
                    command=ouvrir_administrations_7g).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text='Déclaration finale 2025 (7H)', command=ouvrir_deces_7h).pack(side='left', padx=(8, 0))
         ttk.Button(zone_actions, text="Pertes et reports 2025 (7F)",
                    command=ouvrir_pertes_7f).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="DPA location 2025 (7E)",

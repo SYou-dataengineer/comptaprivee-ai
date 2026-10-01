@@ -5513,3 +5513,152 @@ dépendances SWIG/PyMuPDF et des appels `font.copy` existants. Le répertoire
 temporaire ignoré reste exclu de la collecte. La deuxième validation complète
 est confiée à GitHub Actions après publication; aucune suite complète locale
 post-commit n'est nécessaire si elle est verte.
+
+## Bloc 7H — audit initial décès 2025, avant décision de périmètre
+
+Checkpoint initial : `a77c8f0`, working tree propre, `git diff --check`
+sans erreur. Mission : déclaration finale principale Québec/Canada, sans
+succession, déclaration facultative, entreprise, interprovincial ni opération
+complexe au décès. **7H n'est pas livré. Aucun moteur ni schéma JSON modifié.**
+
+### Sources officielles consultées pour 2025
+
+- [ARC, annexe 8 2025, partie 1, page 2](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5005-s8/5005-s8-25e.pdf) :
+  le nombre de mois comprend le mois du décès; les plafonds et l'exemption
+  viennent du tableau mensuel. Les situations combinées doivent aussi être
+  considérées. Les parties 2/2a/2b calculent les montants fédéraux sur cette base.
+- [RQ, annexe U 2025, partie B et renseignements pages 8 et 10](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.U%282025-12%29.pdf) :
+  le tableau 1, situation 4, vise le décès; le tableau 2 fournit les montants
+  mensuels. La déduction Québec doit rester distincte du calcul fédéral.
+- [RQ, IN-117, édition 2026-02 pour les décès de 2025](https://www.revenuquebec.ca/documents/fr/publications/in/IN-117%282026-02%29.pdf) :
+  année visée confirmée à la page 7; déclaration principale et échéances
+  pages 16–19; déduction travailleur page 39; montant personnel de base
+  intégral page 46; âge au décès et personne vivant seule jusqu'au décès
+  page 46; IMR inapplicable l'année du décès, report antérieur distinct
+  page 52; FSS et assurance médicaments page 55. L'assurance médicaments
+  nécessite notamment les mois postérieurs au décès dans l'annexe K.
+- [ARC, crédits et déductions de la déclaration finale](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/evenements-vie/faire-impots-personne-decedee/preparer-declarations/credits-deductions.html) :
+  les droits des différentes lignes ne sont pas interchangeables; les
+  cotisations RRQ et le montant canadien pour emploi figurent parmi les
+  montants rattachés aux revenus concernés. La vérification de tous les
+  crédits facultatifs existants n'est pas terminée.
+- [ARC, échéances de la déclaration finale](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/evenements-vie/faire-impots-personne-decedee/preparer-declarations/dates-limites-produire-declarations.html) :
+  30 avril suivant pour janvier–octobre, six mois pour novembre–décembre;
+  attention également à l'entreprise du conjoint et aux jours non ouvrables.
+  Aucun calcul d'échéance n'a été implémenté.
+- [RQ, ligne 452 pour 2025](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/451-a-480-remboursement-ou-solde-a-payer/ligne-452/) :
+  le seuil annuel RRQ indiqué est 4 735,20 $; RQ indique calculer les
+  excédents possibles en dessous de ce seuil. Cette page ne suffit pas à
+  valider une identité générale entre l'excédent fédéral proratisé au décès
+  et le remboursement québécois.
+
+### Dépendance critique et arrêt de cette session
+
+`tax_employment_qpp_2025.py` annonce explicitement un profil de douze mois et
+utilise des constantes annuelles. `tax_income_2025.py` et
+`tax_federal_2025.py` consomment ces résultats. Dans le parcours 7A,
+`tax_estimation_2025.py` affecte `rrq_7a.excedent` à `rrq_ligne_452`.
+L'ouverture du décès ne peut donc pas se limiter à une date et à une mention
+IMR : elle affecte 30800, 22215, 248 et potentiellement 452.
+
+**Point non verrouillé :** le traitement exact du remboursement RRQ Québec
+lorsque la proratisation décès produit un excédent sous le plafond annuel,
+et son articulation avec les crédits/déductions proratisés. Les tableaux
+mensuels sont vérifiés; l'équivalence automatique du remboursement ne l'est
+pas. Ce constat est une limite de l'audit, pas une affirmation que la règle
+fiscale n'existe pas. Ne pas reporter un résultat fédéral par hypothèse,
+conserver douze mois ni supposer un remboursement nul.
+
+La consigne d'arrêt en cas de règle non verrouillée est appliquée avant toute
+modification du calcul. Prochaine action : verrouiller cette articulation
+sur une source officielle 2025 ou décider explicitement d'un premier profil
+qui refuse les cas de remboursement RRQ non vérifié; puis intégrer le profil
+immuable et ses contrôles JSON/GUI/trace/PDF/reset. Les crédits à conditions
+de fin d'année, les reports IMR et les cas non audités doivent rester refusés.
+L'absence actuelle d'un moteur IMR complet n'est pas une implémentation de
+son exemption au décès.
+
+Validation de session : documentation seule; aucun test moteur/GUI, aucune
+full suite, aucun PDF généré, aucun commit ni push. Aucun travail sur 7I.
+
+## Bloc 7H — décision acceptée et déclaration finale bornée
+
+La décision humaine qui suit l'audit exclut le recalcul RRQ décès et le
+remboursement 452 spécifique. L'audit ci-dessus est conservé comme historique;
+son arrêt ne décrit plus l'état de cette implémentation.
+
+`Deces2025`, immuable et facultatif dans `DossierFiscalValide`, conserve la
+date, la province, une référence du représentant, la source et les
+confirmations. Aucun nom, NAS ou autre renseignement personnel supplémentaire
+sur le représentant n'est demandé. La période va du 1er janvier au décès
+inclusivement. Le JSON conserve les faits; une clé `deces` absente ou nulle
+préserve le comportement des anciens dossiers. Les clés inconnues et les
+indicateurs non booléens sont refusés.
+
+**Profil logiciel effectivement ouvert :** résident Canada/Québec depuis le
+1er janvier jusqu'au décès, sans conjoint ni personne à charge, assurance
+médicaments collective pendant toute cette période, aucune autre demande
+de crédit/déduction ni avance à régulariser. Revenus : intérêts canadiens
+ordinaires T5/RL-3 et/ou emploi ordinaire unique T4/RL-1, avec confirmation
+documentée de l'exhaustivité et de l'attribution à la période. Ni les montants
+annuels des feuillets ni les revenus ne sont proratisés automatiquement.
+Un revenu reçu après le décès reste exclu du profil, même lorsqu'un examen
+fiscal externe pourrait permettre de l'attribuer à la déclaration finale.
+
+**RRQ :** en présence d'un salaire, de gains admissibles ou de cotisations RRQ,
+un décès avant décembre bloque le calcul avant toute estimation fiscale.
+Décembre n'ouvre que le salarié unique RRQ standard confirmé 18–64 ans,
+sans invalidité ni choix, dont les cotisations réelles correspondent
+exactement au calcul annuel attendu. Tout écart, même un cent, bloque 7H.
+Cette condition est volontairement plus restrictive que la tolérance du
+parcours historique. Aucun cas d'excédent n'est ouvert par analogie avec
+l'annexe 8. Sans emploi ni cotisations RRQ (intérêts ordinaires seulement),
+les décès de janvier à décembre sont acceptés. Les profils multi-employeurs
+au décès restent exclus; le parcours 7A sans décès ne change pas.
+
+Message bloquant : « Décès en 2025 — recalcul RRQ / remboursement ligne 452
+requis. ComptaPrivée AI ne calcule pas automatiquement cette proratisation
+dans le périmètre v1.0. » Les faits d'un tel dossier peuvent être conservés,
+avec une préparation PDF non monétaire; aucune estimation annuelle ni ancien
+PDF annuel ne peut leur être associé.
+
+Les crédits personnels de base, le crédit emploi et les déductions ordinaires
+du profil admissible sont conservés; aucun crédit facultatif n'est ouvert
+par défaut. Une option non vide de crédit/déduction non supportée au décès
+est refusée, y compris lors de la restitution d'une estimation et du
+rechargement d'un résumé annuel. L'IMR 2025 n'est pas appliqué dans ce profil
+et la trace le précise; 7H n'ajoute pas de moteur IMR général. Un report IMR
+antérieur est exclu et ne peut pas être saisi comme montant manuel.
+
+L'échéance affichée est **nominale et estimée** : 30 avril 2026 pour
+janvier–octobre, six mois pour novembre–décembre (fin juin pour le 31 décembre).
+L'architecture n'a pas de calendrier fiscal complet : aucun report pour
+jour férié ou fin de semaine n'est inventé, et la vérification est signalée
+dans la GUI, la trace et le PDF. Entreprise du contribuable ou du conjoint :
+refus; aucune échéance professionnelle n'est calculée.
+
+GUI dédiée, sauvegarde/recharge, résumé annuel, trace, PDF annuel et PDF de
+préparation sont intégrés. Un changement des faits révoque les confirmations;
+une nouvelle validation des feuillets révoque celles de leur période. Un
+changement de profil invalide l'ancienne estimation et son export. Le nouveau
+dossier efface le profil; une fenêtre devenue périmée refuse l'application
+et l'export.
+
+Restent exclus : déclarations distinctes, T3/TP-646, fiducie, faillite,
+non-résidence/immigration/émigration, revenus post-décès, dispositions réputées,
+REER/FERR au décès et roulements, location/DPA, pertes/report, entreprise,
+interprovincial, RPC, cotisations facultatives et couverture médicaments
+publique ou mixte. Ces limites logicielles ne sont pas des exclusions fiscales.
+
+Validation : 674 tests ciblés réussis avec régressions 7A–7G et intérêts;
+contrôle visuel réussi des deux pages du PDF annuel fictif de décembre et
+de la page préparatoire fictive de janvier avec blocage RRQ. Les fichiers
+de contrôle sont dans `tmp/pdfs/7h/`, ignoré par Git. Aucun travail sur 7I.
+
+Validation finale : **70 nouveaux tests 7H**, dont 4 GUI. Dernier contrôle
+ciblé avec le socle GUI : **108 passed**. Suite complète locale exécutée
+une seule fois : **7 221 passed, 8 warnings**, en 196,73 secondes, avec
+`--capture=sys -q --ignore=tmp --tb=short`. Les avertissements existants
+proviennent de SWIG/PyMuPDF et de `font.copy` dans le convertisseur de documents.
+`git diff --check` sans erreur. GitHub Actions sert de deuxième validation
+complète après publication; aucune full suite locale post-commit prévue.

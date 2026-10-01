@@ -1,5 +1,6 @@
 """Export PDF local du rapport d'estimation fiscale 2025."""
 
+from .tax_final_return_2025 import verifier_resultat_deces_2025, verifier_options_deces_2025, verifier_dossier_deces_2025, lignes_deces_2025
 from .tax_multiple_jurisdictions_2025 import bloquer_estimation_interprovinciale_2025
 from .tax_loss_ledger_2025 import lignes_resultat_pertes_2025
 from .tax_quebec_senior_support_2025 import lignes_soutien_aines_quebec_2025
@@ -165,6 +166,7 @@ def nom_rapport_fiscal_pdf_2025(estimation: EstimationFiscale2025) -> str:
 
 
 def _lignes(estimation: EstimationFiscale2025) -> list[str]:
+    verifier_resultat_deces_2025(estimation)
     bloquer_estimation_interprovinciale_2025(estimation.dossier)
     if estimation.location.faits is not None:
         from .tax_rental_income_2025 import lignes_location_2025
@@ -2056,7 +2058,7 @@ def _lignes(estimation: EstimationFiscale2025) -> list[str]:
     lignes.extend(lignes_resume_interets_pret_etudiant_2025(
         estimation.interets_pret_etudiant, estimation.resultat_interets_pret_etudiant
     ))
-    return [*lignes, *lignes_resultat_pertes_2025(estimation.pertes_7f)]
+    return [*lignes_deces_2025(estimation.dossier), *lignes, *lignes_resultat_pertes_2025(estimation.pertes_7f)]
 
 
 def exporter_rapport_fiscal_pdf_2025(
@@ -2187,6 +2189,28 @@ def exporter_preparation_administrations_pdf_2025(dossier, destination):
                 page.insert_text((48, y), morceau, fontsize=10, fontname='helv')
                 y += 15
         doc.set_metadata({'title': 'Préparation interprovinciale 2025 - calcul annuel suspendu',
+                          'author': 'ComptaPrivée AI'})
+        doc.save(chemin, garbage=3, deflate=True)
+    return chemin
+
+
+def exporter_preparation_deces_pdf_2025(dossier, destination):
+    """Faits décès et éventuel blocage, sans estimation monétaire."""
+    lignes = lignes_deces_2025(dossier)
+    if not lignes:
+        raise ValueError("7H : profil décès requis.")
+    chemin = Path(destination).with_suffix('.pdf')
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    with fitz.open() as doc:
+        page = doc.new_page()
+        y = 55
+        for ligne in lignes:
+            for morceau in textwrap.wrap(ligne, width=88, break_long_words=True) or ['']:
+                if y > 750:
+                    page = doc.new_page(); y = 55
+                page.insert_text((48, y), morceau, fontsize=10, fontname='helv')
+                y += 15
+        doc.set_metadata({'title': 'Préparation déclaration finale 2025 - sans estimation',
                           'author': 'ComptaPrivée AI'})
         doc.save(chemin, garbage=3, deflate=True)
     return chemin

@@ -1,6 +1,7 @@
 """Persistance locale des dossiers fiscaux validés."""
 
 from __future__ import annotations
+from .tax_final_return_2025 import verifier_resultat_deces_2025, deces_vers_json, deces_depuis_json, verifier_dossier_deces_2025
 from .tax_multiple_jurisdictions_2025 import profil_interprovincial_present, preparer_administrations_2025, MESSAGE_7G
 from .tax_loss_ledger_2025 import registre_pertes_vers_json, registre_pertes_depuis_json
 from .tax_family_medical_2025 import (FraisMedicauxFamilleFederaux2025, calculer_medical_familial_2025, medical_familial_vers_dict, medical_familial_depuis_dict, verifier_combinaison_medicale_famille)
@@ -3668,6 +3669,11 @@ def sauvegarder_dossier_fiscal(
     psv_confirme: bool | None = None,
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    verifier_dossier_deces_2025(dossier, annuel=estimation is not None or rapport_pdf is not None)
+    if estimation is not None:
+        verifier_resultat_deces_2025(estimation)
+    if dossier.deces is not None and estimation is not None and estimation.dossier != dossier:
+        raise ValueError("7H : estimation différente du profil décès.")
     interprovincial = profil_interprovincial_present(dossier)
     if interprovincial:
         preparer_administrations_2025(dossier)
@@ -4242,6 +4248,7 @@ def sauvegarder_dossier_fiscal(
         "province": dossier.province,
         "documents": [_chemin_vers_stockage(x) for x in dossier.documents],
         "biens_locatifs": locations_json,
+        "deces": deces_vers_json(dossier.deces),
         "registre_pertes": pertes_7f_json,
         "entreprises": entreprises_json,
         "profil_cotisations_autonomes": profil_7c_json,
@@ -4475,6 +4482,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         documents=documents,
         donnees_validees=tuple(donnees),
         biens_locatifs=biens_locatifs,
+        deces=deces_depuis_json(contenu.get("deces")),
         registre_pertes=registre_pertes_depuis_json(contenu.get("registre_pertes")),
         entreprises=entreprises,
         profil_cotisations_autonomes=profil_7c_depuis_json(contenu.get("profil_cotisations_autonomes")),
@@ -4483,6 +4491,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
     verifier_dossier_location_2025(dossier)
     estimation = None
     e = contenu.get("derniere_estimation")
+    verifier_dossier_deces_2025(dossier, annuel=e is not None or contenu.get("rapport_pdf") is not None)
     interprovincial = profil_interprovincial_present(dossier)
     if interprovincial:
         preparer_administrations_2025(dossier)
@@ -4755,7 +4764,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         reclame_30400=personne_charge_admissible_federale.reclamer_montant,
         reclame_30450=aidant_autre_personne_charge_federal.reclamer_montant,
         deduction_22000=pension_alimentaire_payee.deduction_federale_22000)
-    return DossierFiscalEnregistre(
+    charge = DossierFiscalEnregistre(
         frais_medicaux_famille=medical_familial,
         transferts_handicap=handicap_transfere,
         profil_reports_pertes=pertes_profil,
@@ -4842,6 +4851,9 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
             aidant_enfant_federal
         ),
     )
+    if dossier.deces is not None and (e is not None or contenu.get("rapport_pdf") is not None):
+        verifier_resultat_deces_2025(charge)
+    return charge
 
 
 def lister_dossiers_fiscaux(dossier: Path | str = DOSSIERS_FISCAUX_DIR):
