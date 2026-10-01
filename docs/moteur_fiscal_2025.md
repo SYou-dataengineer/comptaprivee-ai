@@ -6211,3 +6211,41 @@ v1.0. Recommandation : prochaine session distincte d'audit global v1.0,
 uniquement après autorisation, incluant parcours transversaux entre
 priorités et dette d'affichage intermittente. Cet audit global n'est pas
 commencé dans 7K.
+
+### FINAL-B1 — sécurisation de la persistance
+
+- Chaque dossier porte désormais un `case_id` UUID, indépendant du client et de
+  l'année. L'identité est propagée brouillon → validation → JSON → chargement GUI.
+  Initialiser un nouveau dossier crée une nouvelle identité, même pour un homonyme.
+- Les anciens JSON restent lisibles sans écriture : un UUID dérivé du chemin absolu
+  est attribué en mémoire, puis enregistré au prochain enregistrement. Avant cette
+  première sauvegarde, déplacer l'ancien fichier change cet identifiant provisoire.
+  Dans le répertoire fiscal habituel, la migration conserve le chemin existant.
+- Le nom par défaut utilise uniquement l'UUID. Toute sauvegarde sur un fichier
+  existant exige la même identité ; les fichiers invalides ou d'identité différente
+  ne sont pas remplacés. Le renommage d'affichage par modification du profil conserve
+  l'identité. L'identité ne participe pas à l'égalité des faits fiscaux.
+- Allowlist ZIP : `data/comptaprivee.db`, `data/parametres.json`,
+  `data/profil_comptable.json`, `data/dossiers_fiscaux/*.json` uniquement, sans
+  sous-répertoires fiscaux. Les dossiers proviennent de l'emplacement réel du stockage.
+  Code, exports, secrets hors allowlist et fichiers temporaires sont exclus.
+- Manifeste v1 : application, version, date, liste exacte des chemins/catégories,
+  tailles et SHA-256. Les empreintes détectent une altération, sans authentifier
+  l'auteur. L'ancien format sans version est reconnu uniquement avec sa structure
+  historique complète et les trois destinations historiques.
+- Les chemins sont contrôlés lexicalement et après résolution ; liens et jonctions
+  sont refusés. Entrées ZIP inconnues, dupliquées, chiffrées ou excessives refusées.
+  Limites : 128 Mio/fichier, 512 Mio/archive, 10 000 données, manifeste 2 Mio.
+- JSON et dossiers fiscaux validés avant restauration ; SQLite contrôlée et copiée
+  par son API de sauvegarde. Une base cible avec journal/WAL/SHM est refusée.
+- La restauration valide tout avant remplacement, conserve les anciennes versions
+  sur le même volume et utilise un remplacement atomique par fichier. Une exception
+  déclenche le rollback ; si celui-ci échoue, les copies restent dans `.restore-*`
+  et le message indique leur emplacement. L'ensemble de plusieurs fichiers n'est
+  pas une transaction atomique face à une panne électrique/arrêt forcé : les copies
+  permettent une récupération manuelle. Ne pas exécuter de restauration concurrente.
+- La restauration ne supprime aucun dossier absent de l'archive et ne modifie pas
+  la base restaurée pour y ajouter un événement d'audit : le contenu reste identique
+  à l'archive. Le statut GUI confirme l'opération et demande le redémarrage.
+- Aucune règle ni aucun montant fiscal 2025 modifié. Les autres P1 de FINAL-A sont
+  hors périmètre de FINAL-B1.

@@ -5174,7 +5174,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     if brut.documents or documents_importes:
                         raise ValueError("Validez les feuillets avant d'ajouter le bien.")
                     courant = DossierFiscalValide(client=brut.client, annee_fiscale=brut.annee_fiscale,
-                        province=brut.province, documents=(), donnees_validees=())
+                        province=brut.province, documents=(), donnees_validees=(), case_id=brut.case_id)
                 nouveau = replace(courant, biens_locatifs=faits)
                 verifier_dossier_location_2025(nouveau)
                 locations_courantes = faits
@@ -5210,7 +5210,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     if brut.documents or documents_importes:
                         raise ValueError("Préparez les feuillets validés avant d'ajouter une entreprise.")
                     courant = DossierFiscalValide(client=brut.client, annee_fiscale=brut.annee_fiscale,
-                        province=brut.province, documents=(), donnees_validees=())
+                        province=brut.province, documents=(), donnees_validees=(), case_id=brut.case_id)
                 if courant.annee_fiscale != 2025:
                     raise ValueError("7B : année 2025 requise.")
                 entreprises_courantes = faits
@@ -15168,6 +15168,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 annee_fiscale=dossier.annee_fiscale,
                 province=dossier.province,
                 documents=dossier.documents,
+                case_id=dossier.case_id,
             )
             self.dossier_fiscal_valide_courant = dossier
             client_fiscal.set(dossier.client)
@@ -17060,7 +17061,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     chemin,
                     racine=Path.cwd(),
                 )
-            except (OSError, ValueError, FileNotFoundError) as erreur:
+            except (OSError, ValueError, RuntimeError) as erreur:
                 messagebox.showerror(
                     "Restauration impossible",
                     str(erreur),

@@ -4,7 +4,8 @@ Ce module construit un instantané immuable des valeurs validées.
 Il ne calcule aucun impôt et ne transmet aucune déclaration.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from uuid import uuid4
 from .tax_minimum_preparation_2025 import ProfilImr2025
 from .tax_foreign_property_2025 import InventaireEtranger2025
 from .tax_final_return_2025 import Deces2025
@@ -33,6 +34,7 @@ class DossierFiscalValide:
     province: str
     documents: tuple[Path, ...]
     donnees_validees: tuple[DonneeFiscaleValidee, ...]
+    case_id: str = field(default_factory=lambda: str(uuid4()), compare=False, kw_only=True)
     statut: str = STATUT_DOSSIER_VALIDE
     entreprises: tuple[Entreprise2025, ...] = ()
     profil_cotisations_autonomes: ProfilCotisationsAutonomes2025 = ProfilCotisationsAutonomes2025()
@@ -99,6 +101,7 @@ def construire_dossier_fiscal_valide(
         valeurs_validees.append(validation)
 
     return DossierFiscalValide(
+        case_id=dossier.case_id,
         client=dossier.client,
         annee_fiscale=dossier.annee_fiscale,
         province=dossier.province,

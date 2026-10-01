@@ -1,6 +1,7 @@
 """Tests de sauvegarde et restauration locales."""
 
 import json
+import sqlite3
 import zipfile
 from pathlib import Path
 
@@ -14,10 +15,13 @@ from src.comptaprivee.backup_manager import (
 
 def test_creer_sauvegarde_zip(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
+    from src.comptaprivee import tax_case_storage
+    monkeypatch.setattr(tax_case_storage, "DOSSIERS_FISCAUX_DIR", tmp_path / "data/dossiers_fiscaux")
 
     data = Path("data")
     data.mkdir()
-    (data / "comptaprivee.db").write_bytes(b"sqlite-demo")
+    with sqlite3.connect(data / "comptaprivee.db") as db:
+        db.execute("CREATE TABLE demo (id INTEGER)")
     (data / "parametres.json").write_text(
         '{"devise": "CAD"}',
         encoding="utf-8",
@@ -53,7 +57,7 @@ def test_restaurer_sauvegarde(tmp_path) -> None:
     with zipfile.ZipFile(archive, "w") as fichier:
         fichier.writestr(
             "manifest.json",
-            json.dumps({"application": "ComptaPrivée AI"}),
+            json.dumps({"cree_le": "2025-01-01", "fichiers": ["data/parametres.json"], "application": "ComptaPrivée AI"}),
         )
         fichier.writestr(
             "data/parametres.json",

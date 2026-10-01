@@ -50,7 +50,8 @@ def _dossier():
 
 
 def test_nom_fichier_dossier():
-    assert nom_fichier_dossier_fiscal(_dossier()) == "Dossier_Fiscal_2025_Client_Test.json"
+    d = _dossier()
+    assert nom_fichier_dossier_fiscal(d) == f"Dossier_Fiscal_{d.case_id}.json"
 
 
 def test_nom_fichier_nettoie_caracteres():
@@ -123,8 +124,9 @@ def test_refuse_statut_invalide(tmp_path):
 
 def test_ecrasement_atomique(tmp_path):
     p = tmp_path / "d.json"
-    sauvegarder_dossier_fiscal(_dossier(), destination=p)
-    sauvegarder_dossier_fiscal(replace(_dossier(), client="Client Modifié"), destination=p)
+    d = _dossier()
+    sauvegarder_dossier_fiscal(d, destination=p)
+    sauvegarder_dossier_fiscal(replace(d, client="Client Modifié"), destination=p)
     assert charger_dossier_fiscal(p).dossier.client == "Client Modifié"
     assert not (tmp_path / "d.json.tmp").exists()
 

@@ -1,6 +1,9 @@
 """Persistance locale des dossiers fiscaux validés."""
 
 from __future__ import annotations
+from .tax_case import valider_case_id, case_id_stocke
+import tempfile
+import os
 from .tax_minimum_preparation_2025 import bloquer_estimation_imr_2025, verifier_resultat_imr_2025, lignes_imr_2025, preparer_imr_2025
 from .tax_minimum_preparation_2025 import imr_vers_json, imr_depuis_json
 from .tax_foreign_property_2025 import (valider_inventaire_etranger_2025, inventaire_etranger_vers_json, inventaire_etranger_depuis_json, verifier_annuel_biens_etrangers_2025)
@@ -287,7 +290,7 @@ def _nom_securise(valeur: str) -> str:
 
 
 def nom_fichier_dossier_fiscal(dossier: DossierFiscalValide) -> str:
-    return f"Dossier_Fiscal_{dossier.annee_fiscale}_{_nom_securise(dossier.client)}.json"
+    return f"Dossier_Fiscal_{valider_case_id(dossier.case_id)}.json"
 
 
 def _chemin_vers_stockage(chemin: Path) -> str:
@@ -4220,6 +4223,21 @@ def sauvegarder_dossier_fiscal(
     if destination is None:
         DOSSIERS_FISCAUX_DIR.mkdir(parents=True, exist_ok=True)
         chemin = DOSSIERS_FISCAUX_DIR / nom_fichier_dossier_fiscal(dossier)
+        # Retrouver aussi un ancien fichier migre, sans le dupliquer ni le renommer.
+        correspondances = []
+        for candidat in DOSSIERS_FISCAUX_DIR.glob("*.json"):
+            if candidat.is_symlink():
+                continue
+            try:
+                brut = json.loads(candidat.read_text(encoding="utf-8"))
+                if isinstance(brut, dict) and case_id_stocke(brut, candidat) == dossier.case_id:
+                    correspondances.append(candidat)
+            except (ValueError, OSError):
+                continue
+        if len(correspondances) > 1:
+            raise ValueError("Plusieurs fichiers portent le meme case_id; sauvegarde refusee.")
+        if correspondances:
+            chemin = correspondances[0]
     else:
         chemin = Path(destination)
         if chemin.suffix.lower() != ".json":
@@ -4228,6 +4246,7 @@ def sauvegarder_dossier_fiscal(
 
     contenu = {
         "schema_version": SCHEMA_VERSION,
+        "case_id": valider_case_id(dossier.case_id),
         "rqap_confirme": confirme,
         "ae_confirme": confirme_ae,
         "profil_pensions": asdict(pensions_effectif),
@@ -4403,7 +4422,19 @@ def sauvegarder_dossier_fiscal(
     _verifier_enfant_5v_stocke(contenu)
     _verifier_annexe_b_6a_stockee(contenu)
     _verifier_enfants_conjoints_5ab_stockes(contenu, dossier)
-    temporaire = chemin.with_suffix(chemin.suffix + ".tmp")
+    if chemin.is_symlink():
+        raise ValueError("Destination de dossier liee interdite.")
+    if chemin.exists():
+        try:
+            existant = json.loads(chemin.read_text(encoding="utf-8"))
+            meme_identite = isinstance(existant, dict) and case_id_stocke(existant, chemin) == dossier.case_id
+        except (ValueError, OSError):
+            meme_identite = False
+        if not meme_identite:
+            raise ValueError("Le fichier existant appartient a un autre dossier (case_id).")
+    descripteur, nom_temporaire = tempfile.mkstemp(prefix=chemin.name + ".", suffix=".tmp", dir=chemin.parent)
+    os.close(descripteur)
+    temporaire = Path(nom_temporaire)
     try:
         temporaire.write_text(json.dumps(contenu, ensure_ascii=False, indent=2), encoding="utf-8")
         temporaire.replace(chemin)
@@ -4492,6 +4523,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
         ))
 
     dossier = DossierFiscalValide(
+        case_id=case_id_stocke(contenu, Path(chemin)),
         client=client,
         annee_fiscale=annee,
         province="Québec",

@@ -7,6 +7,28 @@ gouvernementale n'est effectuée.
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
+from uuid import UUID, uuid4, uuid5, NAMESPACE_URL
+
+
+def valider_case_id(valeur: str) -> str:
+    if not isinstance(valeur, str):
+        raise ValueError("Identifiant de dossier invalide.")
+    try:
+        identifiant = str(UUID(valeur))
+    except (ValueError, AttributeError) as exc:
+        raise ValueError("Identifiant de dossier invalide.") from exc
+    if valeur != identifiant:
+        raise ValueError("Identifiant de dossier non canonique.")
+    return identifiant
+
+
+def case_id_stocke(contenu: dict, chemin: Path) -> str:
+    if "case_id" in contenu:
+        return valider_case_id(contenu["case_id"])
+    # Migration sans ecriture : stable pour le meme ancien fichier.
+    if chemin == Path("."):
+        return str(uuid4())
+    return str(uuid5(NAMESPACE_URL, chemin.resolve().as_uri()))
 
 
 PROVINCES_PHASE_1 = ("Québec",)
@@ -18,6 +40,7 @@ class DossierFiscal:
     annee_fiscale: int
     province: str
     documents: tuple[Path, ...] = field(default_factory=tuple)
+    case_id: str = field(default_factory=lambda: str(uuid4()), compare=False, kw_only=True)
     statut: str = "Brouillon — aucun document importé"
 
 
@@ -60,6 +83,7 @@ def creer_dossier_fiscal(
     annee_fiscale: int | str,
     province: str = "Québec",
     documents=(),
+    case_id: str | None = None,
 ) -> DossierFiscal:
     """Crée un dossier fiscal local après validation minimale."""
     client_normalise = " ".join(client.split())
@@ -95,5 +119,6 @@ def creer_dossier_fiscal(
         annee_fiscale=annee,
         province=province_normalisee,
         documents=chemins,
+        case_id=valider_case_id(case_id) if case_id is not None else str(uuid4()),
         statut=statut,
     )

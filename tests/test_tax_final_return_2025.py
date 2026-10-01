@@ -111,6 +111,7 @@ def test_json_ancien_nouveau_et_blocage_conserve(tmp_path):
     ancien.write_text(json.dumps(brut),encoding='utf-8')
     assert charger_dossier_fiscal(ancien).dossier.deces is None
     d=dossier(profil(date_deces='2025-01-15'))
+    d=replace(d,case_id=charger_dossier_fiscal(ancien).dossier.case_id)
     chemin=sauvegarder_dossier_fiscal(d,destination=tmp_path/'dossier.json')
     charge=charger_dossier_fiscal(chemin).dossier
     assert charge.deces==d.deces

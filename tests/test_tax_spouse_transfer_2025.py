@@ -20,6 +20,8 @@ from tests.test_tax_federal_top_up_integration_2025 import verifier_t1
 
 def profil(tmp_path, **kw):
     d = replace(dossier_interets("10000"), client="Conjoint fictif")
+    if (tmp_path / "conjoint.json").exists():
+        d = replace(d, case_id=charger_dossier_fiscal(tmp_path / "conjoint.json").dossier.case_id)
     e = calcul(d, profil_interets=profil_interets(),
         credits_federaux_age_pension=_profil_age_federal(revenu_net_ligne_23600=D(10000)))
     f = sauvegarder_dossier_fiscal(d, estimation=e, destination=tmp_path / "conjoint.json",

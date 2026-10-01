@@ -84,6 +84,8 @@ def donneur(tmp_path, *, act=False, net="19835", travail="20000"):
     from tests.test_tax_spouse_transfer_2025 import profil as transfert
     from tests.test_tax_federal_age_pension_integration_2025 import _profil_age_federal
     d = replace(dossier_20000(), client="Conjoint fictif")
+    if (tmp_path / "donneur.json").exists():
+        d = replace(d, case_id=charger_dossier_fiscal(tmp_path / "donneur.json").dossier.case_id)
     opts = {"credits_federaux_age_pension": _profil_age_federal(revenu_net_ligne_23600=D(19835))}
     if act:
         opts["allocation_travailleurs"] = profil(famille(conjoint_nom="Client Test", conjoint_revenu_travail=D(travail),
