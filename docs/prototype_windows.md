@@ -1,0 +1,210 @@
+# Prototype Windows onedir — POST-V1-C
+
+État POST-V1-C : build réussi, validation runtime **incomplète**.
+La reprise POST-V1-C2 ci-dessous contient les résultats les plus récents.
+Ne pas distribuer ce prototype ni commencer l'installateur sur cette seule preuve.
+Le tag stable v1.0.0 reste inchangé. Aucun moteur fiscal n'est modifié.
+
+## Construire
+
+Depuis la racine du dépôt, Windows x64, Python 3.12 :
+
+```powershell
+py -3.12 -m venv .venv-build
+.\.venv-build\Scripts\python.exe -m pip install -r requirements-build.txt
+.\scripts\build_windows.ps1
+```
+
+Le script refuse d'écraser un bundle existant. Pour une nouvelle tentative :
+
+```powershell
+.\scripts\build_windows.ps1 -Destination 'dist/prototype-suivant'
+.\scripts\check_windows_bundle.ps1 -Bundle 'dist/prototype-suivant/ComptaPriveeAI'
+```
+
+PyInstaller 6.22.3 et hooks-contrib 2026.8 sont épinglés, ainsi que les
+dépendances directes de requirements.txt. Les dépendances transitives ne sont
+pas toutes verrouillées : procédure répétable, pas garantie de build identique
+octet pour octet. Environnement audité : Python 3.12.10, lxml 6.1.3.
+Référence : <https://pyinstaller.org/en/latest/spec-files.html>.
+
+## Configuration
+
+`ComptaPriveeAI.spec` produit un dossier sans console, sans UPX. Le lanceur
+appelle `src.comptaprivee.gui.lancer_interface()` sans dupliquer la GUI.
+Les échecs normaux écrivent uniquement le type d'exception dans
+`%LOCALAPPDATA%\ComptaPriveeAI\logs\startup.log`, puis affichent un dialogue.
+
+Hidden imports : docx, lxml.etree, PIL.ImageTk, win32com.client, pythoncom,
+pywintypes, openpyxl. Collecte explicite des modèles python-docx et des DLL
+PyMuPDF ; hooks standards Tk/Tcl, Pillow, docx/lxml, openpyxl et pywin32.
+Aucun hook personnalisé. Les ressources sont sous `_internal` via RESOURCE_DIR.
+Les DLL comprennent python312, tcl86t, tk86t, sqlite3, mupdfcpp64,
+pythoncom312, pywintypes312, VCRUNTIME140, libcrypto/libssl et libffi.
+Tesseract, Word et Excel restent externes. Aucun téléchargement automatique.
+
+Le diagnostic embarqué `--prototype-check` exige une variable explicite et
+refuse un profil non vide sans marqueur fictif. Le script PowerShell crée un
+profil dédié sous `tmp/`, substitue LOCALAPPDATA, retire Python/Tesseract du
+PATH et lance directement l'exe depuis C:\Windows. Il prévoit trois passages,
+dont un avec Tesseract s'il est accessible, et compare les empreintes du bundle.
+La trace détaillée d'échec est réservée au profil marqué fictif.
+
+## Résultats observés et limites
+
+- Build initial et révisions r2/r3 réussis. Dernier exe :
+  `dist/prototype-r3/ComptaPriveeAI/ComptaPriveeAI.exe`.
+- r3 : 1 016 fichiers, 100 958 109 octets, environ 96,28 Mio.
+- Premiers passages r1/r2 : exe direct, chemin avec espaces et accents,
+  cwd C:\Windows, Python absent du PATH. Ce n'est pas une VM sans Python installé.
+- Parcours fictif initial réussi : Tkinter/agent fiscal, paramètres, SQLite,
+  sauvegarde/rechargement JSON, estimation 2025, PDF lu par PyMuPDF, CSV,
+  modèle DOCX, XLSX, sauvegarde et restauration. Les données sont dans le
+  LOCALAPPDATA substitué ; ressources et modules viennent du bundle.
+- Temps r2 : parcours complet 4,19 s, création GUI 0,587 s. Ce dernier chiffre
+  n'inclut pas le démarrage du bootloader ni tous les imports.
+- Sans Tesseract : message clair, extraction PDF textuel fonctionnelle.
+  Tesseract est installé sur le poste ; OCR fra+eng dans le bundle reste à valider.
+- pywin32 chargé ; absence Office simulée par échec COM, message de prérequis
+  vérifié au premier passage r2. Word/Excel sont présents sur le poste :
+  absence réelle sur machine propre et conversion COM réelle non validées.
+- Deuxième passage r2 : `PermissionError`, code sortie 1. Les exports ont été
+  régénérés, mais la persistance complète après relancement n'est pas validée.
+  Une exécution source sur le même profil réussit ; cela ne prouve pas le
+  fonctionnement frozen. Le fichier en cause n'a pas encore été identifié.
+- r3 ajoute une trace de diagnostic détaillée pour identifier cet échec.
+  Son lancement est bloqué avant Python par Windows :
+  « An Application Control policy has blocked this file. »
+  Aucune protection n'a été désactivée ou contournée. Résoudre ce blocage dans
+  un environnement de test autorisé avant de reprendre le diagnostic.
+- Le contrôle final des empreintes après les trois passages n'est pas atteint.
+  Ne pas considérer l'absence d'écriture dans le bundle comme entièrement validée.
+
+## Inventaire et warnings
+
+Inventaire r3 : aucun fichier JSON/DB/PDF/CSV/XLSX, .env, dépôt Git,
+répertoire tests/fixtures/exports utilisateur détecté ; aucun pytest/tests
+dans la table de modules PYZ. `base_library.zip` et les modèles DOCX distribués
+par python-docx sont des ressources légitimes. Recherche de signatures usuelles
+de jetons GitHub et clés privées dans les ressources texte : zéro candidat.
+Ce contrôle n'est pas une certification exhaustive de secrets dans les binaires.
+Le spec ne collecte aucun dossier utilisateur ni la racine entière du dépôt.
+`dist/`, `build/`, `.venv-build/`, journaux et profils fictifs restent ignorés.
+
+Les warnings PyInstaller concernent notamment les modules POSIX non applicables,
+les imports conditionnels, win32com.gen_py et des options non utilisées ici :
+numpy, pandas, fontTools, olefile, defusedxml, parsers HTML lxml.
+Aucune DLL manquante signalée dans le build ; tous les formats optionnels ne
+sont pas validés. Voir `build/ComptaPriveeAI/warn-ComptaPriveeAI.txt` local.
+
+## Validation source et suite
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest --capture=sys -q tests/test_windows_launcher.py tests/test_document_converter.py tests/test_app_paths.py tests/test_release_platform.py --tb=short
+```
+
+Résultat final : **69 passed, 5 warnings** (dépréciations SWIG/PyMuPDF).
+`git diff --check` propre. Aucun calcul fiscal modifié.
+Full suite et publication différées : validation du bundle bloquée, aucun
+commit/push de ce travail. Les CI précédentes ne valident pas ces changements.
+
+À la fin de POST-V1-C, avant POST-V1-D : diagnostiquer le second passage, réussir les trois passages
+sur un environnement autorisé, vérifier le lancement GUI normal interactif,
+tester une machine propre sans Python/Office et l'OCR présent, puis full suite,
+revue source, commit/push et CI Linux/Windows. Aucun installateur créé.
+
+## Reprise POST-V1-C2 — 1er octobre 2026
+
+### Deux refus de fichiers distincts, sans attribution abusive
+
+Un défaut SQLite est démontré en source : désactiver le GC, appeler
+`initialiser_base()`, créer une sauvegarde puis la restaurer provoque :
+
+```text
+backup_manager.py, restaurer_sauvegarde, os.replace(..., cible)
+PermissionError: [WinError 5] Access is denied:
+.../Diagnostic C2 été SQLite/.restore-0xmwgpvn/nouveau-0
+ -> .../Diagnostic C2 été SQLite/data/comptaprivee.db
+```
+
+La connexion encore ouverte empêche le remplacement du fichier. La restauration
+réussit après libération par GC. Correction bornée : `contextlib.closing` autour
+des connexions utilisées par database.py et audit_log.py, avec conservation du
+contexte transactionnel SQLite (commit/rollback avant fermeture). L'API
+`ouvrir_connexion` reste inchangée. Aucune DB supprimée, aucun retry ajouté.
+Les tests retiennent volontairement les connexions pour exclure une fermeture
+accidentelle par GC et vérifient la restauration ainsi que la fermeture explicite.
+Des processus enfants simulent un arrêt brutal avec transaction non validée en
+modes DELETE et WAL : les données validées restent disponibles après reprise.
+
+**Ce défaut n'est pas une preuve de la cause historique du refus r2.** Le seul
+nouveau build C2, qui inclut la correction, a capturé un autre refus exact :
+
+```text
+scripts/prototype_check.py:10 run -> :121 _run
+src/comptaprivee/backup_manager.py:135 creer_sauvegarde
+PermissionError: [WinError 5] Access is denied:
+C:/projects/comptaprivee-ai/tmp/Prototype été 20261001-094207/Profil fictif/ComptaPriveeAI/.backup-x90fqra5/sauvegarde.zip
+ -> C:/projects/comptaprivee-ai/tmp/Prototype été 20261001-094207/Profil fictif/ComptaPriveeAI/prototype.zip
+```
+
+Il s'agit du remplacement atomique de l'archive existante, **avant** la
+restauration. L'attribut est Archive, pas ReadOnly ; propriétaire utilisateur,
+ACL OWNER RIGHTS FullControl. Aucun processus ComptaPriveeAI résiduel observé.
+Le détenteur d'un éventuel verrou au moment exact du refus n'a pas été capturé.
+Ne pas attribuer ce refus à Defender, SQLite, Tk ou PyMuPDF sans preuve.
+Aucune modification des ACL ni de la sauvegarde pour masquer cette erreur.
+
+### Relancements, fichiers et OCR
+
+- Ancien r2 : trois passages successifs réussis sur un nouveau profil fictif.
+- C2 : passage 1 réussi (sans OCR), passage 2 refus d'archive ci-dessus, puis
+  passages 3, 4 et 5 réussis sur **le même** profil, sans suppression ni réparation.
+  JSON conservé, même case_id, sauvegarde/restauration réussies, OCR fra+eng OK.
+- Chemin avec espaces et accents ; exe direct depuis C:\Windows. Les trois
+  derniers passages utilisent le PATH normal pour rendre Tesseract accessible.
+- Après sortie, ouverture exclusive en lecture des 14 fichiers du profil :
+  zéro refus. Répertoire temp vide, aucun staging .backup/.restore résiduel.
+- Inventaires SHA-256 du bundle original et de la copie exécutée identiques
+  après ces passages : aucune écriture constatée dans le bundle.
+- Journal de démarrage testé trois fois sur profil fictif, trois entrées,
+  ouverture exclusive possible ensuite ; aucun handler persistant.
+- Audit du parcours : PDF/PyMuPDF, CSV, JSON et ZIP fermés par contexte ou
+  finally ; staging/temp nettoyés ; Tk détruit en finally. Office absent simulé,
+  aucune instance COM réelle ouverte pendant le diagnostic. Une vérification
+  COM réelle reste distincte de cette preuve.
+
+### Windows Application Control
+
+Les événements CodeIntegrity du 1er octobre à 09:22:09 (3033, 3077, 3089, 3118)
+visent `tmp/Prototype été 20261001-092205/ComptaPriveeAI/ComptaPriveeAI.exe`
+(r3). Ils indiquent les exigences de signature et Smart App Control ; politique
+`{0283ac0f-fff1-49ae-ada1-8a933130cad6}`. Message au lancement :
+« An Application Control policy has blocked this file. »
+
+r1, r2, r3 et C2 sont NotSigned. r2 et C2 fonctionnent actuellement ; r1 avait
+fonctionné lors de POST-V1-C. r3 n'a pas été déplacé ni relancé pour essayer de
+contourner le blocage. R2/r3 diffèrent par l'exe et base_library.zip ; les autres
+ressources sont identiques. Une décision de confiance/signature propre à
+l'artefact est plausible, mais la dépendance au répertoire n'est pas démontrée.
+Aucune politique ni protection système modifiée.
+
+### Construction et validation
+
+Une seule reconstruction C2 : `dist/prototype-c2/ComptaPriveeAI/ComptaPriveeAI.exe`,
+100 958 633 octets pour le bundle. SHA-256 de l'exe :
+`e79433dd8962bfbe3dbf0828afcb9fc62d70b8c4664fdd9dc83adbe53abfc49f`.
+Le script utilise maintenant un workpath unique sous build/ : analyse neuve,
+aucun cache/staging précédent supprimé, destination existante toujours refusée.
+Il ne remplace donc pas un bundle en cours d'utilisation.
+
+Tests ciblés : 85 passed, 5 warnings. Le test ajouté couvre SQLite et les
+arrêts brutaux ; il est inclus dans le job CI Windows. La publication du code
+de diagnostic ne constitue pas une validation pour distribution du binaire.
+Le refus transitoire de remplacement ZIP demeure ouvert : **NO-GO installateur**.
+
+Suite complète locale unique : **7 521 passed, 5 warnings**, 293,54 s, avec
+`--capture=sys`. `git diff --check` propre. Inventaire du build C2 : aucun
+fichier client ou test détecté, zéro signature de secret dans les ressources
+texte examinées (mêmes limites d'inspection que ci-dessus). Aucun artefact
+généré destiné au commit. La CI doit être évaluée sur le commit publié.

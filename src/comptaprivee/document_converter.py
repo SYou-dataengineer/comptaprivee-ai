@@ -139,7 +139,8 @@ def word_vers_pdf(
 
     except Exception as erreur:
         raise ErreurConversion(
-            f"Impossible de convertir le document Word : {erreur}"
+            f"Impossible de convertir le document Word : {erreur}. "
+            "Cette conversion nécessite Microsoft Word installé et accessible."
         ) from erreur
 
     finally:
@@ -354,7 +355,8 @@ def excel_vers_pdf(
             ) from erreur
 
         raise ErreurConversion(
-            f"Impossible de convertir le classeur Excel : {erreur}"
+            f"Impossible de convertir le classeur Excel : {erreur}. "
+            "Cette conversion nécessite Microsoft Excel installé et accessible."
         ) from erreur
 
     finally:

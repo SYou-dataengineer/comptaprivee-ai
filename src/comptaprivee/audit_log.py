@@ -5,6 +5,7 @@ from . import app_paths
 
 import csv
 from .csv_exporter import RedacteurCsvSur
+from contextlib import closing
 import sqlite3
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -35,7 +36,7 @@ def initialiser_journal_audit(
     chemin = Path(chemin_base) if chemin_base is not None else app_paths.database_path()
     chemin.parent.mkdir(parents=True, exist_ok=True)
 
-    with ouvrir_connexion(chemin) as connexion:
+    with closing(ouvrir_connexion(chemin)) as connexion, connexion:
         connexion.execute(
             """
             CREATE TABLE IF NOT EXISTS journal_audit (
@@ -73,7 +74,7 @@ def enregistrer_evenement(
 
     initialiser_journal_audit(chemin_base)
 
-    with ouvrir_connexion(chemin_base) as connexion:
+    with closing(ouvrir_connexion(chemin_base)) as connexion, connexion:
         curseur = connexion.execute(
             """
             INSERT INTO journal_audit (
@@ -146,7 +147,7 @@ def lister_evenements(
         requete += " LIMIT ?"
         parametres = (limite,)
 
-    with ouvrir_connexion(chemin_base) as connexion:
+    with closing(ouvrir_connexion(chemin_base)) as connexion, connexion:
         lignes = connexion.execute(
             requete,
             parametres,
@@ -167,7 +168,7 @@ def rechercher_evenements(
 
     terme = f"%{recherche.strip()}%"
 
-    with ouvrir_connexion(chemin_base) as connexion:
+    with closing(ouvrir_connexion(chemin_base)) as connexion, connexion:
         lignes = connexion.execute(
             """
             SELECT *

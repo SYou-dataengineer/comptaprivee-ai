@@ -1,6 +1,7 @@
 """Stockage local des factures dans une base de données SQLite."""
 
 from . import app_paths
+from contextlib import closing
 import sqlite3
 from dataclasses import dataclass
 from decimal import Decimal
@@ -64,7 +65,7 @@ def initialiser_base(
     """Crée la base et la table des factures si nécessaire."""
     chemin = Path(chemin_base) if chemin_base is not None else app_paths.database_path()
 
-    with ouvrir_connexion(chemin) as connexion:
+    with closing(ouvrir_connexion(chemin)) as connexion, connexion:
         connexion.execute(
             """
             CREATE TABLE IF NOT EXISTS factures (
@@ -134,7 +135,7 @@ def enregistrer_facture(
     initialiser_base(chemin_base)
 
     try:
-        with ouvrir_connexion(chemin_base) as connexion:
+        with closing(ouvrir_connexion(chemin_base)) as connexion, connexion:
             curseur = connexion.execute(
                 """
                 INSERT INTO factures (
@@ -206,7 +207,7 @@ def lister_factures(
     """Retourne toutes les factures, de la plus récente à l’ancienne."""
     initialiser_base(chemin_base)
 
-    with ouvrir_connexion(chemin_base) as connexion:
+    with closing(ouvrir_connexion(chemin_base)) as connexion, connexion:
         lignes = connexion.execute(
             """
             SELECT *
@@ -227,7 +228,7 @@ def rechercher_factures(
 
     valeur_recherchee = f"%{recherche.strip()}%"
 
-    with ouvrir_connexion(chemin_base) as connexion:
+    with closing(ouvrir_connexion(chemin_base)) as connexion, connexion:
         lignes = connexion.execute(
             """
             SELECT *
@@ -256,7 +257,7 @@ def supprimer_facture(
     """Supprime une facture et indique si elle existait."""
     initialiser_base(chemin_base)
 
-    with ouvrir_connexion(chemin_base) as connexion:
+    with closing(ouvrir_connexion(chemin_base)) as connexion, connexion:
         curseur = connexion.execute(
             """
             DELETE FROM factures
@@ -273,7 +274,7 @@ def initialiser_corbeille(
     """Crée la table locale de corbeille si nécessaire."""
     chemin = initialiser_base(chemin_base)
 
-    with ouvrir_connexion(chemin) as connexion:
+    with closing(ouvrir_connexion(chemin)) as connexion, connexion:
         connexion.execute(
             """
             CREATE TABLE IF NOT EXISTS factures_corbeille (
@@ -321,7 +322,7 @@ def mettre_facture_corbeille(
     """Déplace une facture active vers la corbeille locale."""
     initialiser_corbeille(chemin_base)
 
-    with ouvrir_connexion(chemin_base) as connexion:
+    with closing(ouvrir_connexion(chemin_base)) as connexion, connexion:
         ligne = connexion.execute(
             """
             SELECT *
@@ -381,7 +382,7 @@ def lister_factures_corbeille(
     """Retourne les factures présentes dans la corbeille."""
     initialiser_corbeille(chemin_base)
 
-    with ouvrir_connexion(chemin_base) as connexion:
+    with closing(ouvrir_connexion(chemin_base)) as connexion, connexion:
         lignes = connexion.execute(
             """
             SELECT *
@@ -400,7 +401,7 @@ def restaurer_facture(
     """Restaure une facture depuis la corbeille."""
     initialiser_corbeille(chemin_base)
 
-    with ouvrir_connexion(chemin_base) as connexion:
+    with closing(ouvrir_connexion(chemin_base)) as connexion, connexion:
         ligne = connexion.execute(
             "SELECT * FROM factures_corbeille WHERE id = ?",
             (identifiant,),
@@ -462,7 +463,7 @@ def supprimer_facture_corbeille(
     """Supprime définitivement une facture de la corbeille."""
     initialiser_corbeille(chemin_base)
 
-    with ouvrir_connexion(chemin_base) as connexion:
+    with closing(ouvrir_connexion(chemin_base)) as connexion, connexion:
         curseur = connexion.execute(
             "DELETE FROM factures_corbeille WHERE id = ?",
             (identifiant,),

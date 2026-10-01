@@ -65,3 +65,4 @@ data/dossiers_fiscaux/*
 *.msi
 build/
 dist/
+.venv-build/
