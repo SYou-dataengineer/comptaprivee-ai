@@ -122,7 +122,9 @@ def entreprises_depuis_json(valeur):
         donnees = dict(brut)
         donnees["administrations"] = administrations_depuis_json(donnees.get("administrations"))
         for nom in ("revenu_brut", "frais_bureau", "frais_comptables"):
-            v = donnees.get(nom, "0")
+            if nom not in donnees:
+                raise ValueError("7B : montant JSON obligatoire manquant : " + nom)
+            v = donnees[nom]
             if not isinstance(v, str):
                 raise ValueError("7B : montants JSON exprimés en chaînes décimales requis.")
             try:

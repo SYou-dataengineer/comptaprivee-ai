@@ -136,7 +136,9 @@ def dpa_location_depuis_json(v):
         raise ValueError('7E : profil JSON ou champs non supportés.')
     d = dict(v)
     for n in MONTANTS_7E:
-        valeur = d.get(n, '.04' if n == 'taux' else '0')
+        if n not in d:
+            raise ValueError('7E : montant JSON obligatoire manquant : ' + n)
+        valeur = d[n]
         if not isinstance(valeur,str):
             raise ValueError('7E : montants JSON en chaînes décimales requis.')
         try:

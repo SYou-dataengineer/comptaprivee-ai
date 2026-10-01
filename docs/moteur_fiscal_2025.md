@@ -6087,3 +6087,127 @@ Validation finale 7J : suite complète locale exécutée **une seule fois**,
 SWIG/PyMuPDF et `font.copy`. `git diff --check` sans erreur. Le périmètre
 borné 7J est terminé; GitHub Actions sert de deuxième validation complète
 après publication, sans full suite locale post-commit. Aucun travail 7K.
+
+
+### 7K — audit final de la Priorité 7, périmètre 7A–7J
+
+État initial vérifié : `48bb32f`, arbre propre, référence 7 363 tests.
+Première passe en lecture seule : code, contrats JSON, intégrations GUI,
+trace/PDF, documentation historique et tests existants. Aucun nouveau
+profil ni audit global v1.0 ouvert. Les constatations portent sur les
+parcours bornés publiés; elles ne certifient pas tous les profils fiscaux.
+
+#### Ordre et interactions examinés
+
+| Bloc | Vérification sur le code actuel et les tests | Limite conservée |
+| --- | --- | --- |
+| 7A | Montants réels par T4; agrégats 17/17A/26; 30800 et 22215 distincts; exemple 52 000 / 2 880 : 2 430 et 450. Contributions emploi conservées avec location/pertes. | RRQ standard, RPC/RC381 et cotisations facultatives refusés; appariement confirmé. |
+| 7B | Brut moins dépenses; net par entreprise puis agrégation. Sans 7C, préparation explicitement provisoire et estimation finale bloquée. | Frais simples, propriétaire unique, aucun résultat négatif ouvert. |
+| 7C | U/R/S8/S10; 22200/22300 et Québec 248 avant revenu net/275; 445/439/FSS ajoutés une fois au rapprochement. Pertes ensuite sur imposable seulement. | Autonome pur; emploi + autonome, proratas/choix et crédits supplémentaires refusés. |
+| 7D | Location ajoutée une fois aux totaux/net/imposable après ses dépenses/DPA; lignes 12599/12600 et 168/136 distinctes. | Un immeuble, pas de perte créée ni de cumul avec autonome. |
+| 7E | Choix fédéral et Québec indépendants; DPA avant 12600/136, limitée au revenu, clôture recalculée. | Catégorie 1 régulière pré-2025, aucun mouvement/accélération. |
+| 7F | 25200/25300 et 289/290 réduisent l'imposable, pas le revenu net/275; capacité courante recalculée; doubles emplois avec 3F refusés. | Origines/taux bornés et soldes confirmés; pertes non-capital courantes externes préparées séparément. |
+| 7G | Blocage avant calcul annuel et appel autonome; aucun abattement standard appliqué à un profil interprovincial détecté. | T2203/TP-22 préparés en externe; ventilation commerciale non assimilée à TP-22. |
+| 7H | Contrôle décès en tête du pipeline; restrictions RRQ et des revenus; priorité sur l'IMR courant. | Déclaration principale simple; reports IMR/décès complexe exclus. |
+| 7I | Signaux et soldes distincts; blocage si examen IMR requis; contrôles à l'export/recharge. Décès sans IMR courant, historiques refusés. | Activation explicite et détection conservatrice; aucun T691/TP-776.42 calculé. |
+| 7J | Inventaire sans ajout automatique de revenu/gain/crédit; nouveau test avec le crédit étranger 3G : revenus, impôts, crédit et rapprochement identiques. | Coûts CAD qualifiés, chronologie exhaustive, arrivée : ligne 25 manuelle et estimation annuelle partielle non ouverte. |
+
+Le contrôle ciblé 7A + 7D + 7E + 7F vérifie des choix DPA différents entre
+juridictions, le maintien des déductions RRQ d'emploi et l'absence de double
+réduction. L'intégration existante 7B/7C + 7F conserve les cotisations et le
+revenu net. Les parcours 7G + 7B/7C et décès + IMR conservent leurs refus
+explicites. Les sources et historiques des sections précédentes sont
+comparés au code, pas interprétés comme liste de travaux encore manquants.
+
+#### Sécurité fiscale et sources
+
+Aucune règle, constante ou convention d'arrondi fiscale changée par 7K.
+La mécanique des cotisations est rapprochée des sources 2025 documentées
+plus haut. Relecture directe pendant cet audit :
+[annexe U 2025, parties B/C](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.U%282025-12%29.pdf)
+et [annexe R 2025, partie A](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.R%282025-12%29.pdf).
+Les reports Québec 248/439/445 et les constantes du profil autonome
+concordent avec la documentation et les tests des lignes intermédiaires.
+Les arrondis restent la convention monétaire générale appliquée aux lignes
+réutilisées, sans revendiquer une règle officielle de demi-cent.
+L'accès web aux PDF ARC S8 français/anglais a renvoyé une erreur technique
+pendant cette session; l'audit fédéral s'appuie sur les sources 2025 déjà
+consignées en 7A/7C et leurs tests, sans prétendre avoir relu ces PDF en ligne.
+
+#### Constats classés et corrections
+
+**P0 : aucun défaut démontré dans les calculs sur faits complets validés.**
+
+**P1-01 : garde-fou JSON manquant, trois occurrences corrigées.** Une fiche
+confirmée mais incomplète pouvait remplacer un montant absent par zéro,
+puis produire une estimation trompeuse, sans reconfirmation. Reproductions
+avant correction, sur faits exclusivement fictifs :
+
+- 7B : suppression de `revenu_brut` ; revenu net fédéral 9 480,60 devenu 0.
+- 7D : suppression de `loyers` ; revenu net fédéral 24 000 devenu 0.
+- 7E : suppression de `dpa_federale` ; revenu net fédéral 23 000 devenu 24 000.
+
+Correction limitée aux trois lecteurs JSON : tous les champs monétaires
+d'une fiche présente doivent être explicites (y compris un zéro connu).
+Champ absent => `ValueError` avec le nom du champ, avant tout calcul ou
+chargement du résumé. Aucun fichier original n'est réécrit ni réparé par
+hypothèse. Tous les sérialiseurs publiés écrivent déjà ces montants.
+
+Rétrocompatibilité conservée : dossier antérieur sans `entreprises` ou
+`biens_locatifs`, profil DPA absent, et extensions facultatives absentes
+(`administrations` dans une ancienne entreprise, `amortissement` dans une
+ancienne location) restent acceptés. Une fiche monétaire tronquée n'est
+pas assimilée à un ancien format valide. Les clés inconnues des profils,
+types invalides, Decimal non finis et confirmations manquantes continuent
+d'être refusés par les validations existantes.
+
+**P2 / dette conservée, sans implémentation :** combinaisons et profils
+explicitement exclus ci-dessus; saisie technique de la chronologie 7J;
+activation IMR explicite et non couverture universelle; dates d'échéance
+7H nominales, jours fériés non automatisés; champs historiques de bilan
+et de reports toujours soumis à validation comptable. Aucun nettoyage
+esthétique ni extension de calcul effectué.
+
+Un premier groupe de tests a montré trois échecs de visibilité initiale
+d'un bouton Tk (`winfo_ismapped`) dans les tests GUI IMR, avant les actions
+fiscales. Les quatre tests passent isolément, puis dans le groupe GUI
+après correction. Cause exacte non établie; incident d'affichage intermittent
+à surveiller, sans défaut fonctionnel reproductible justifiant une
+modification GUI. Ne pas le présenter comme une correction livrée.
+
+#### Persistance, GUI et sorties
+
+Nouveaux contrôles : dossiers 7C + 7F + 7J et 7D/7E + 7F + 7J sauvegardés
+puis rechargés à l'identique; recalcul identique; divergence estimation/profil
+refusée. Tests GUI de trois successions : premier dossier avec autonome,
+DPA ou interprovincial, plus pertes/IMR/inventaire, puis dossier salarial
+ordinaire. État du dossier et variables de fenêtre vérifiés : aucune fuite
+de profils du premier client. Reset vérifié après rechargement du premier.
+
+Les tests GUI existants vérifient révocation des confirmations, refus des
+fenêtres et PDF périmés, défilement/affichage et préparation séparée des
+profils bloqués. Aucun widget ni formateur trace/PDF modifié par la correction.
+Les tests PDF existants sont conservés; aucun nouveau contrôle visuel PDF
+nécessaire pour un refus supplémentaire au chargement JSON.
+
+Validation ciblée des corrections et interactions : 269 tests réussis;
+GUI concernées et isolation successive : 14 réussis. Ces groupes peuvent
+se recouper avec le contrôle global ciblé 7A–7J; ne pas additionner leurs
+comptages. Validation complète unique et publication consignées ci-dessous.
+
+Validation finale 7K : **29 nouveaux tests**, dont 3 GUI. Groupe ciblé
+7A–7J après correction : **751 passed, 5 warnings**. Suite complète exécutée
+**une seule fois : 7 392 passed, 8 warnings**, en 201,66 s, avec
+`--capture=sys -q --ignore=tmp --tb=short`. Avertissements existants
+SWIG/PyMuPDF et `font.copy`. Les échecs de visibilité Tk initiaux ne se
+reproduisent pas dans la suite complète. `git diff --check` sans erreur.
+GitHub Actions constitue la validation complète distante après publication;
+aucune seconde full suite locale prévue.
+
+Conclusion : **readiness Priorité 7 : OUI, pour les seuls périmètres bornés
+7A–7J documentés**, sans P0/P1 démontré restant après cette correction.
+Cette conclusion ne vaut pas homologation fiscale ni readiness globale
+v1.0. Recommandation : prochaine session distincte d'audit global v1.0,
+uniquement après autorisation, incluant parcours transversaux entre
+priorités et dette d'affichage intermittente. Cet audit global n'est pas
+commencé dans 7K.

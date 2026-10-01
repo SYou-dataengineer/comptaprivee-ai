@@ -192,7 +192,9 @@ def locations_depuis_json(v):
         d = dict(brut)
         d['amortissement'] = dpa_location_depuis_json(d.get('amortissement'))
         for n in MONTANTS_7D:
-            valeur = d.get(n, '0')
+            if n not in d:
+                raise ValueError('7D : montant JSON obligatoire manquant : ' + n)
+            valeur = d[n]
             if not isinstance(valeur, str):
                 raise ValueError('7D : montants JSON en chaînes décimales requis.')
             try:
