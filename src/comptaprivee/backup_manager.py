@@ -9,6 +9,7 @@ import shutil
 import sqlite3
 import stat
 import tempfile
+import time
 import zipfile
 from datetime import datetime
 from pathlib import Path, PurePosixPath
@@ -100,6 +101,17 @@ def _valider_contenu(chemin: Path, nom: str) -> None:
         raise ValueError(f"Contenu de sauvegarde invalide : {nom}") from exc
 
 
+def _remplacer_archive(source: Path, destination: Path) -> None:
+    """Tolère un refus bref ; conserve l'archive précédente et l'erreur finale."""
+    for delai in (0.05, 0.10, 0.20):
+        try:
+            os.replace(source, destination)
+            return
+        except PermissionError:
+            time.sleep(delai)
+    os.replace(source, destination)
+
+
 def creer_sauvegarde(destination: str | Path) -> Path:
     destination = Path(destination)
     if destination.suffix.lower() != ".zip":
@@ -132,7 +144,7 @@ def creer_sauvegarde(destination: str | Path) -> Path:
                 entrees.append(dict(chemin=nom, categorie=categorie, taille=taille, sha256=hashlib.sha256(contenu).hexdigest()))
                 archive.writestr(nom, contenu)
             archive.writestr("manifest.json", json.dumps(dict(version=VERSION_MANIFESTE, application="ComptaPrivée AI", cree_le=datetime.now().isoformat(timespec="seconds"), fichiers=entrees), ensure_ascii=False))
-        os.replace(archive_temp, destination)
+        _remplacer_archive(archive_temp, destination)
     return destination
 
 

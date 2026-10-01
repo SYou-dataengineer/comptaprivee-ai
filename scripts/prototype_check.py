@@ -118,7 +118,11 @@ def _run():
         finally:
             win32com.client.DispatchEx = dispatch
         original = saved.read_bytes()
-        archive = creer_sauvegarde(root/'prototype.zip')
+        import zipfile
+        for _ in range(3):
+            archive = creer_sauvegarde(root/'prototype.zip')
+            with zipfile.ZipFile(archive) as verification:
+                assert verification.testzip() is None
         restaurer_sauvegarde(archive)
         assert saved.read_bytes() == original
         assert 'DOCUMENT FICTIF' in extraire_texte_pdf(exports/'T4 fictif.pdf')
@@ -144,7 +148,7 @@ def _run():
                       resource_dir=str(paths.RESOURCE_DIR), resource_exists=paths.resource_path('.').is_dir(),
                       user_data_dir=str(root), gui_seconds=round(gui_seconds,3),
                       persisted_from_previous_run=previous_id is not None,
-                      case_id=dossier.case_id, ocr=ocr, office_started=False,
+                      case_id=dossier.case_id, ocr=ocr, zip_writes=3, office_started=False,
                       office_absence_simulated=True,
                       modules={m.__name__:str(m.__file__) for m in (fitz, docx, openpyxl, lxml.etree, Image, pythoncom, pywintypes)})
         paths.logs_dir().mkdir(parents=True,exist_ok=True)

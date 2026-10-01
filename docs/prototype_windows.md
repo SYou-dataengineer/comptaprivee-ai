@@ -208,3 +208,96 @@ Suite complète locale unique : **7 521 passed, 5 warnings**, 293,54 s, avec
 fichier client ou test détecté, zéro signature de secret dans les ressources
 texte examinées (mêmes limites d'inspection que ci-dessus). Aucun artefact
 généré destiné au commit. La CI doit être évaluée sur le commit publié.
+
+## POST-V1-C3 — remplacement de prototype.zip
+
+### Opération exacte et audit
+
+`scripts/prototype_check.py` appelle `creer_sauvegarde(root / 'prototype.zip')`.
+Cette fonction crée un répertoire unique `.backup-*` dans le parent de la
+destination, écrit `sauvegarde.zip` avec `with ZipFile(..., 'w')`, ferme le ZIP,
+puis appelle `os.replace(archive_temp, destination)`. La destination existe
+au second passage. Elle n'est jamais supprimée avant le remplacement.
+Les sources JSON sont lues par read_bytes/copyfile ; les snapshots SQLite
+utilisent closing. La restauration ferme aussi son ZipFile avant remplacement
+des données. Aucun lecteur antivirus simulé n'existe dans ce parcours.
+
+Le test de fermeture retient les objets ZipFile et vérifie `fp is None` au
+moment du remplacement : sa réussite ne dépend pas du ramasse-miettes.
+Le remplacement Windows réel est exercé par ces tests. La stratégie ne promet
+pas une durabilité face à une panne électrique ; aucun fsync supplémentaire
+n'est ajouté pour résoudre un refus de permission sans rapport démontré.
+
+### Reproduction et classification C
+
+Avant correction, 30 créations/remplacements en source ont réussi : 10 par
+chemin (normal, espaces, Unicode), dont création initiale puis même destination.
+Un script local prévoyait timestamp, traceback, chemins, existence, taille,
+lecture immédiate et interrogation Windows Restart Manager sur tout refus.
+Aucun outil tiers n'a été téléchargé ; handle.exe n'était pas disponible.
+
+Le seul build C3 a ensuite reproduit le refus malgré les tentatives bornées :
+
+```text
+2026-10-01T13:59:42.346500+00:00
+prototype_check._run -> creer_sauvegarde -> _remplacer_archive -> os.replace
+PermissionError: [WinError 5] Access is denied:
+.../Prototype été 20261001-095932/Profil fictif/ComptaPriveeAI/.backup-wc5l92ru/sauvegarde.zip
+ -> .../Prototype été 20261001-095932/Profil fictif/ComptaPriveeAI/prototype.zip
+```
+
+L'archive existante fait 8 182 octets et n'est pas ReadOnly. Une deuxième
+séquence surveillée, même build et nouveau profil `tmp/C3 surveillé été`, donne :
+
+| Passage | Heure locale | Résultat | Archive existante | Lecture immédiate | Restart Manager |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 10:01:51.701957 | succès | 8 162 octets | OK | aucun propriétaire observé |
+| 2 | 10:01:54.122253 | WinError 5, replace ZIP | 8 162 octets | OK | aucun propriétaire observé |
+| 3 | 10:01:56.449199 | WinError 5, replace ZIP | 8 162 octets | OK | aucun propriétaire observé |
+
+Restart Manager a été interrogé pendant les processus à intervalles de 100 ms
+et après les refus. Une absence de résultat n'exclut pas un filtre système ou
+un handle trop bref/non exposé. **Classification C : propriétaire non identifié**.
+Ni antivirus, ni indexeur, ni handle applicatif ne sont désignés comme cause.
+
+Sans réparation de fichier, trois relancements suivants avec PATH normal
+réussissent, chacun avec trois écritures et vérification ZIP, restauration et
+OCR fra+eng. Puis PATH réduit → normal → réduit réussit également, sur le même
+profil et même binaire. La causalité du PATH n'est donc pas démontrée.
+Le caractère non permanent du refus est observé ; sa durée et sa cause restent
+inconnues. Ne pas présenter les succès tardifs comme correction de sa cause.
+
+### Reprise bornée et garanties
+
+`_remplacer_archive` limite `os.replace` à quatre appels, avec attentes de
+50, 100 et 200 ms (350 ms cumulés), uniquement sur PermissionError. Aucune
+reconstruction du ZIP entre tentatives, aucun unlink de l'archive précédente,
+aucune modification de droits ou de sécurité. Les autres exceptions remontent
+immédiatement ; le quatrième PermissionError remonte sans être remplacé.
+La reprise améliore la tolérance à un refus bref mais **ne résout pas tous les
+refus observés dans ce poste**. Aucun allongement empirique des délais effectué.
+
+Les tests démontrent la préservation de l'ancienne archive si le refus persiste,
+la lisibilité du nouveau ZIP, l'erreur finale exacte et le nettoyage du staging.
+Le diagnostic embarqué produit maintenant trois ZIP successifs par lancement.
+
+### Validation et décision
+
+- 75 tests ciblés verts, 5 warnings ; nouveaux tests inclus dans la CI Windows.
+- Une full suite locale : **7 528 passed, 5 warnings**, 294,85 s.
+- Une reconstruction : `dist/prototype-c3/ComptaPriveeAI/ComptaPriveeAI.exe`.
+- C3 s'exécute sans blocage Application Control ; le refus ZIP est dans Python,
+  distinct du blocage pré-exécution r3. Aucune politique système modifiée.
+- Neuf écritures ZIP réussies sur trois relancements tardifs, puis neuf autres
+  lors de la comparaison PATH ; profil LOCALAPPDATA fictif conservé.
+- Les deux premières séquences comportent toutefois les échecs indiqués plus
+  haut : le parcours automatisé complet n'est pas déclaré systématiquement vert.
+- Inventaire SHA-256 identique entre le build et la copie exécutée (1 016
+  fichiers), temporaires et staging nettoyés ; aucun artefact binaire suivi.
+
+**POST-V1-D : NO-GO.** Avant installateur, capturer la décision native de refus
+sur une reproduction (outillage système de traçage de fichiers à organiser),
+ou confirmer le comportement dans un environnement Windows de test autorisé.
+Ne pas contourner la sécurité, augmenter indéfiniment les délais, ou déclarer
+un responsable sans preuve. Le commit de la reprise bornée et des diagnostics
+n'est pas une validation de distribution du binaire.
