@@ -4,6 +4,12 @@ Audit du 1er octobre 2026, départ propre sur f9a7fe6. Aucune modification
 applicative, de version, de tag ou de politique Windows. Aucun installateur
 diffusé, aucune GitHub Release créée.
 
+**Mise à jour POST-V1-E3 :** ce rapport conserve les preuves historiques E/E2.
+Le nouvel installateur reconstruit depuis ca6012e intègre maintenant la correction
+Excel, validée via sa GUI installée. La référence actuelle, son hash et les
+contrôles de persistance sont dans [installateur_windows.md](installateur_windows.md#référence-actuelle--post-v1-e3).
+La machine indépendante reste non validée.
+
 ## Référence conservée
 
 `dist/installer-1.0.0/ComptaPriveeAI-Setup-1.0.0.exe`, 35 406 324 octets :

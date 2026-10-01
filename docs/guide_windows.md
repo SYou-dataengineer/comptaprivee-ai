@@ -14,7 +14,9 @@ données fictives pour les essais de cette version.
    ```
 
    Référence attendue :
-   `4F16FD69CA6C29D91366099F3ABE6843352268E5973ED53AF6AA9245A7F94F6D`.
+   `21395771EB35FA6274E7E5160F8DF0E4205C29186815CEB7E7397B85DEFACD33`.
+   Cette référence POST-V1-E3 provient du commit
+   `ca6012e5080bb80083f57d6365bfe113fda96150` et intègre la correction Excel.
    Si elle diffère, arrêtez l'installation et signalez la différence.
 2. Lancez l'installateur. L'installation pour tous les utilisateurs dans
    Program Files demande l'autorisation administrateur Windows.
@@ -37,11 +39,11 @@ Son absence n'empêche pas le démarrage et doit produire un message explicite.
 
 Word et Excel sont facultatifs pour lancer l'application. Les conversions
 Office par COM exigent le produit correspondant installé sur Windows.
-L'installateur de référence ci-dessus contient encore l'anomalie Excel → PDF
-qui omet un intitulé A1 lorsque d'autres cellules sont remplies. La correction
-source est validée en POST-V1-E2, mais n'est pas intégrée à cet installateur.
-Cette conversion du binaire de référence n'est donc pas validée pour diffusion.
-Vérifiez les documents produits avant utilisation.
+L'installateur de référence POST-V1-E3 intègre la correction Excel → PDF :
+l'intitulé A1 et la valeur B2 ont été vérifiés dans un PDF produit par la GUI
+installée avec Excel réel. Les colonnes sont ajustées pour l'export ; vérifiez
+la mise en page des documents produits avant utilisation. Le classeur source
+n'est pas modifié. La validation sur machine indépendante reste à effectuer.
 
 Les valeurs extraites doivent être vérifiées et validées par une personne.
 Les calculs portent sur 2025 ; les profils avancés restent bornés et certains

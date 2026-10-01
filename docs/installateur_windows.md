@@ -6,7 +6,75 @@ GitHub Release créé. Le tag stable v1.0.0 reste sur 71f7efe.
 Suite de l'audit : [validation distribution POST-V1-E](validation_distribution_windows.md).
 Mode d'emploi court : [guide utilisateur Windows](guide_windows.md).
 
-## Artefact validé le 1er octobre 2026
+## Référence actuelle — POST-V1-E3
+
+Reconstruction du 1er octobre 2026 depuis une source propre au commit
+`ca6012e5080bb80083f57d6365bfe113fda96150`, sans changement applicatif,
+de version ou de tag pendant E3. La correction Excel → PDF E2 est intégrée.
+
+| Élément | Valeur |
+| --- | --- |
+| Version | 1.0.0 |
+| Bundle | `dist/post-v1-e3/ComptaPriveeAI` |
+| Installateur de référence | `dist/installer-post-v1-e3/ComptaPriveeAI-Setup-1.0.0.exe` |
+| Taille | 35 403 792 octets |
+| SHA-256 | `21395771EB35FA6274E7E5160F8DF0E4205C29186815CEB7E7397B85DEFACD33` |
+| SHA-256 du programme | `37826825D11754D80D5D1E8EA98FC9C8AADF9EFE9C7E86CE4C35873F747DF534` |
+| Construction UTC | 2026-10-01T16:19:21.3290145Z |
+| Source et état Git au build | ca6012e5080bb80083f57d6365bfe113fda96150, propre |
+
+La différence de SHA-256 est normale : reconstruction depuis le code corrigé,
+avec une nouvelle provenance de compilation. L'ancien installateur D, décrit
+ci-dessous, est conservé **séparément et sans modification**, pour comparaison.
+Ne pas utiliser son hash pour vérifier la nouvelle référence E3.
+
+Commandes exécutées depuis le HEAD ca6012e propre, avec l'environnement
+`.venv-build` existant (Python 3.12.10, PyInstaller 6.22.3, Inno Setup 6.7.3) :
+
+```powershell
+.\scripts\build_windows.ps1 -Destination 'dist/post-v1-e3'
+.\scripts\build_installer.ps1 -Bundle 'dist/post-v1-e3/ComptaPriveeAI' -Destination 'dist/installer-post-v1-e3'
+```
+
+Le `build-info.json` voisin enregistre la provenance, l'état Git vide et les
+empreintes. Ces métadonnées et tous les binaires restent hors Git.
+
+Validation locale E3 :
+
+- Code corrigé vérifié dans le PYZ embarqué : `fin_feuille` et `AutoFit` présents.
+- Installation Program Files et réinstallation : code 0, exécutable installé
+  correspondant au nouveau bundle. Confirmation UAC Windows standard, aucune
+  protection modifiée.
+- GUI normale du programme installé : conversion par le menu Excel → PDF d'un
+  classeur fictif à feuille unique, A1 = `TEST EXCEL COMPTAPRIVEE`, B2 = 123.45.
+  Le PDF `tmp/POST-V1-E3/minimal-installed.pdf` contient les deux valeurs
+  intégrales. Ce test utilise Excel réellement installé, pas le convertisseur
+  importé depuis les sources Python.
+- Diagnostic embarqué dans le profil fictif existant : GUI, PDF fiscal 2025,
+  CSV, trois sauvegardes ZIP, restauration et relancement réussis. Même case_id
+  retrouvé après désinstallation/réinstallation. Il s'agit d'un diagnostic
+  synthétique, pas d'une nouvelle validation manuelle de tout le parcours fiscal.
+- Désinstallation : code 0, programme retiré ; tous les fichiers du profil
+  fictif USER_DATA_DIR restent identiques par SHA-256. Après réinstallation,
+  empreintes encore identiques avant relancement. Le profil utilise LOCALAPPDATA
+  substitué à `tmp/POST-V1-E sans outils` ; aucune donnée client réelle utilisée.
+- Le premier contrôle de conservation était non concluant : un diagnostic de
+  l'ancien programme avait été lancé pendant l'attente UAC. Les contrôles ci-dessus
+  ont ensuite été effectués sans application ouverte entre les prises d'empreintes.
+- Les 1 016 fichiers installés correspondent au bundle après usage ; seuls
+  les deux fichiers du désinstalleur s'ajoutent. Aucun fichier de données client,
+  .env, .git, tests/pytest détecté ; recherche limitée de jetons GitHub et
+  d'en-têtes de clés privées négative dans les ressources texte inspectées.
+  Ce contrôle ne constitue pas une certification exhaustive des binaires tiers.
+- 27 tests ciblés lancement/release/Excel réussis, 5 avertissements SWIG existants.
+  Pas de nouvelle full suite locale : aucun code applicatif modifié depuis E2.
+
+**GO pour tester cette nouvelle référence sur une machine indépendante.**
+Ce test reste à effectuer ; ce GO n'est pas une validation de distribution.
+L'installateur reste non signé, avec les limites de métadonnées et d'éditeur
+déjà documentées. Aucune GitHub Release, aucune modification du tag v1.0.0.
+
+## Ancien artefact POST-V1-D — conservé pour comparaison
 
 | Élément | Valeur |
 | --- | --- |
