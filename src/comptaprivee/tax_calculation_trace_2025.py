@@ -4,6 +4,7 @@ Cette brique ne modifie aucun résultat fiscal. Elle explique une estimation
 déjà calculée à partir d'un dossier verrouillé et validé par le comptable.
 """
 
+from .tax_multiple_jurisdictions_2025 import bloquer_estimation_interprovinciale_2025, preparer_administrations_2025, lignes_preparation_administrations_2025
 from .tax_loss_ledger_2025 import lignes_resultat_pertes_2025
 from .tax_quebec_senior_support_2025 import lignes_soutien_aines_quebec_2025
 from .tax_quebec_volunteers_2025 import lignes_volontaires_quebec_2025
@@ -180,6 +181,7 @@ def _inserer_ligne_avant(lignes, libelle_cible, nouvelle_ligne):
 def construire_trace_calcul_fiscal_2025(
     estimation: EstimationFiscale2025,
 ) -> TraceCalculFiscal2025:
+    bloquer_estimation_interprovinciale_2025(estimation.dossier)
     if estimation.location.faits is not None:
         from .tax_rental_income_2025 import lignes_location_2025
         r=estimation.location; x=estimation.rapprochement; d=estimation.dossier
@@ -2507,3 +2509,8 @@ def formater_trace_calcul_fiscal_2025(
         ]
     )
     return "\n".join([*lignes, *trace.audit_pertes])
+
+
+def construire_trace_administrations_2025(dossier):
+    """Trace séparée des faits et contrôles 7G; aucun impôt annuel calculé."""
+    return lignes_preparation_administrations_2025(preparer_administrations_2025(dossier))

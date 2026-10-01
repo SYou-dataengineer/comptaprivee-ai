@@ -70,7 +70,8 @@ def ouvrir_entreprises_2025(parent, entreprises, appliquer):
             valeurs={nom:v.get().strip() for nom,v in variables.items()}
             for nom in ("revenu_brut","frais_bureau","frais_comptables"):
                 valeurs[nom]=Decimal(valeurs[nom].replace(" ","").replace(",","."))
-            e=Entreprise2025(**valeurs,**{nom:v.get() for nom,v in confirmations.items()})
+            administrations = courantes[selection[0]].administrations if selection[0] is not None else None
+            e=Entreprise2025(**valeurs,**{nom:v.get() for nom,v in confirmations.items()}, administrations=administrations)
             essais=list(courantes)
             if selection[0] is None: essais.append(e)
             else: essais[selection[0]]=e

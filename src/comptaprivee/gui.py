@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
+from .gui_multiple_jurisdictions_2025 import ouvrir_administrations_2025
+from .tax_multiple_jurisdictions_2025 import preparer_administrations_2025, bloquer_estimation_interprovinciale_2025
 from .tax_loss_ledger_2025 import RegistrePertes2025, valider_registre_pertes_2025
 from .gui_loss_ledger_2025 import ouvrir_pertes_2025 as ouvrir_registre_pertes_7f
 from .tax_donation_carryforward_2025 import ReportsDonsFederaux2025, ReportDonFederal2025, CONFIRMATIONS_REPORTS_DONS
@@ -5031,6 +5033,31 @@ class ApplicationComptaPrivee(tk.Tk):
                 rapport_fiscal_a_reexporter = True
                 self.statut.set("Prime au travail enregistrée; recalculez l'estimation fiscale.")
             ouvrir_prime_travail_quebec_2025(fenetre, prime_travail_quebec_courante, enregistrer)
+
+        def ouvrir_administrations_7g():
+            courant = self.dossier_fiscal_valide_courant
+            if courant is None or len(courant.entreprises) != 1:
+                messagebox.showerror("Préparation 7G indisponible", "Validez une seule fiche entreprise 7B.", parent=fenetre)
+                return
+            def enregistrer(profil):
+                nonlocal entreprises_courantes, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                if self.dossier_fiscal_valide_courant is not courant:
+                    raise ValueError("Dossier modifié : rouvrez la préparation 7G.")
+                faits = (replace(courant.entreprises[0], administrations=profil,
+                                 services_quebec=not profil.etablissement_hors_quebec),)
+                precedent = courant.entreprises[0].administrations
+                transition_hors_quebec = profil.etablissement_hors_quebec or (precedent is not None and precedent.etablissement_hors_quebec)
+                cotisations = ProfilCotisationsAutonomes2025() if transition_hors_quebec else courant.profil_cotisations_autonomes
+                nouveau = replace(courant, entreprises=faits, profil_cotisations_autonomes=cotisations)
+                preparer_administrations_2025(nouveau)
+                entreprises_courantes = faits
+                self.dossier_fiscal_valide_courant = nouveau
+                derniere_estimation = dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+            try:
+                ouvrir_administrations_2025(fenetre, courant, lambda: self.dossier_fiscal_valide_courant, enregistrer)
+            except ValueError as exc:
+                messagebox.showerror("Préparation 7G indisponible", str(exc), parent=fenetre)
 
         def ouvrir_pertes_7f():
             dossier_ouvert = self.dossier_fiscal_valide_courant
@@ -15444,6 +15471,11 @@ class ApplicationComptaPrivee(tk.Tk):
                 )
                 return
 
+            try:
+                bloquer_estimation_interprovinciale_2025(dossier_valide)
+            except ValueError as exc:
+                messagebox.showerror("Calcul annuel suspendu - 7G", str(exc), parent=fenetre)
+                return
             if dossier_valide.entreprises and not dossier_valide.profil_cotisations_autonomes.activer:
                 afficher_preparation_autonome_2025(fenetre, dossier_valide,
                     lambda: self.dossier_fiscal_valide_courant)
@@ -15998,6 +16030,8 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_soutien_aines_quebec_6j).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Prime au travail Québec 2025 (6I)",
                    command=ouvrir_prime_travail_quebec_6i).pack(side="left", padx=(8, 0))
+        ttk.Button(zone_actions, text="Administrations multiples 2025 (7G)",
+                   command=ouvrir_administrations_7g).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="Pertes et reports 2025 (7F)",
                    command=ouvrir_pertes_7f).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="DPA location 2025 (7E)",

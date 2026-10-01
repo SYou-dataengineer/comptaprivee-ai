@@ -6,6 +6,9 @@ from dataclasses import dataclass, fields
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
+from .tax_multiple_jurisdictions_2025 import (Administrations2025, valider_administrations_2025,
+    administrations_vers_json, administrations_depuis_json, bloquer_estimation_interprovinciale_2025)
+
 ZERO = Decimal("0")
 CONFIRMATIONS_7B = {
     "proprietaire_unique": "Propriétaire unique, sans associé",
@@ -42,6 +45,7 @@ class Entreprise2025:
     sans_double_compte: bool = False
     sans_deces_faillite: bool = False
     valide_par_comptable: bool = False
+    administrations: Administrations2025 | None = None
 
 
 @dataclass(frozen=True)
@@ -80,20 +84,29 @@ def calculer_entreprises_2025(entreprises: tuple[Entreprise2025, ...]) -> tuple[
             if (not isinstance(v, Decimal) or not v.is_finite() or v < ZERO
                     or v > Decimal("999999999.99") or v != v.quantize(Decimal(".01"))):
                 raise ValueError("7B : montant Decimal fini, positif ou nul, au cent requis : " + nom)
+        valider_administrations_2025(e.administrations)
+        hors_quebec = e.administrations is not None and e.administrations.etablissement_hors_quebec
+        if hors_quebec and len(entreprises) != 1:
+            raise ValueError("7G : plusieurs entreprises/établissements non modélisés.")
         for nom, texte in CONFIRMATIONS_7B.items():
+            if nom == 'services_quebec' and hors_quebec:
+                if e.services_quebec is not False:
+                    raise ValueError("7G : confirmation Québec seulement incompatible avec un établissement hors Québec.")
+                continue
             if getattr(e, nom) is not True:
                 raise ValueError("7B : confirmation obligatoire : " + texte)
         depenses = e.frais_bureau + e.frais_comptables
         net = e.revenu_brut - depenses
         if net < ZERO:
             raise ValueError("7B : perte hors périmètre; traitement des pertes à vérifier dans un sous-bloc ultérieur.")
+        valider_administrations_2025(e.administrations, reference=e.reference, revenu_net=net)
         resultats.append(ResultatEntreprise2025(e, depenses, net))
     return tuple(resultats)
 
 
 def entreprises_vers_json(entreprises):
     calculer_entreprises_2025(entreprises)
-    return [{f.name: str(getattr(e, f.name)) if isinstance(getattr(e, f.name), Decimal)
+    return [{f.name: administrations_vers_json(e.administrations) if f.name == "administrations" else str(getattr(e, f.name)) if isinstance(getattr(e, f.name), Decimal)
              else getattr(e, f.name) for f in fields(e)} for e in entreprises]
 
 
@@ -107,6 +120,7 @@ def entreprises_depuis_json(valeur):
         if not isinstance(brut, dict) or set(brut) - {f.name for f in fields(Entreprise2025)}:
             raise ValueError("7B : fiche JSON invalide ou champs non pris en charge.")
         donnees = dict(brut)
+        donnees["administrations"] = administrations_depuis_json(donnees.get("administrations"))
         for nom in ("revenu_brut", "frais_bureau", "frais_comptables"):
             v = donnees.get(nom, "0")
             if not isinstance(v, str):
@@ -141,6 +155,7 @@ def preparer_revenus_autonomes_2025(dossier, entreprises) -> PreparationAutonome
     """
     from .tax_engine_input_2025 import consolider_base_fiscale_emploi_2025
     from .tax_rules_2025 import deduction_travailleur_quebec_2025
+    bloquer_estimation_interprovinciale_2025(dossier)
     if dossier.biens_locatifs:
         raise ValueError('7B : combinaison avec location 7D hors périmètre.')
     if entreprises != dossier.entreprises:

@@ -5425,3 +5425,91 @@ sans débordement et sans ajout du report au remboursement 2025. Diff check prop
 La validation complète du commit final est confiée à GitHub Actions.
 Périmètre borné 7F terminé; aucun moteur de création de perte courante non-capital,
 aucun historique recalculé, aucun travail 7G.
+
+
+### Bloc 7G — administrations multiples : préparation et garde-fou seulement
+
+Socle vérifié : `a41ac85`, working tree propre. Décision produit validée après
+l’audit : **aucun calcul T2203 ou TP-22 complet dans la v1.0**. Aucune estimation
+interprovinciale approximative. Aucun travail 7H.
+
+#### Sources officielles et limites fiscales
+
+Les sources applicables à 2025 ont été examinées pendant l’audit précédent;
+la décision ne nécessite ni nouvelle recherche de barème ni extrapolation.
+
+- [ARC, T2203 F (25)](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t2203/t2203-25f.pdf) : impôts provinciaux/territoriaux pour administrations multiples. Le profil signale le calcul externe de 42800; il ne calcule aucune annexe provinciale.
+- [ARC, ligne 44000, année 2025](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/sujets/tout-votre-declaration-revenus/declaration-revenus/remplir-declaration-revenus/deductions-credits-depenses/ligne-44000-abattement-quebec-remboursable.html) : un revenu d’entreprise avec établissement stable hors Québec requiert le calcul T2203 pour l’abattement; aucun abattement standard de 16,5 % n’est appliqué dans le profil détecté.
+- [RQ, ligne 401, année 2025, case 403](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/400-a-447-impot-et-cotisations/ligne-401/) : déclaration Québec conservée; TP-22 nécessaire pour le résident Québec exploitant une entreprise au Canada hors Québec. L’incidence dépasse les seules cotisations.
+- [RQ, ligne 446, année 2025, cas particuliers](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/400-a-447-impot-et-cotisations/ligne-446/) : la règle renvoie au montant de l’annexe F, ligne 82, et au pourcentage TP-22, ligne 35. Le rapport commercial Québec/hors Québec n’est **pas** ce pourcentage. Ni FSS ajusté ni pourcentage fiscal TP-22 calculé ou saisi dans 7G.
+
+#### Faits et contrôles
+
+Une fiche `Administrations2025` immuable est rattachée à l’unique entreprise 7B.
+Le contribuable/comptable fournit et confirme la qualification de l’établissement,
+sa juridiction, la ventilation du revenu **net**, sa méthode et ses sources.
+Aucune qualification juridique automatique ni ventilation déduite d’un feuillet.
+
+Périmètre : résident Canada/Québec toute l’année, établissement principal Québec,
+une entreprise/profession 7B, au plus un établissement stable hors Québec dans une
+province/territoire canadien. Les dépenses et exclusions 7B restent identiques.
+Les montants sont des Decimal finis non négatifs au cent. La somme Québec + hors
+Québec doit égaler le net recalculé de l’entreprise, sans tolérance ni écrêtement.
+Les pourcentages sont descriptifs (quatre décimales à l’affichage), jamais utilisés
+pour un impôt. Total nul : pourcentages non définis, aucun 100 % inventé.
+
+Profil absent : comportement historique inchangé. Profil Québec seulement :
+absence hors Québec confirmée, juridiction extérieure vide et part extérieure
+nulle; aucun formulaire interprovincial signalé. Profil hors Québec : l’ancienne
+confirmation 7B `services_quebec` doit être **fausse**, avec les confirmations 7G
+obligatoires. On ne conserve pas deux affirmations géographiques contradictoires.
+
+Les autres validations 7B restent obligatoires. Plusieurs entreprises avec
+présence hors Québec, plusieurs juridictions extérieures, revenus étrangers,
+partenariats, agriculture/pêche et autres cas 7B exclus restent refusés. La
+préparation 7G ne combine pas emploi, autres feuillets ou location. Immigration,
+émigration, résidence partielle/réputée, décès/faillite restent hors périmètre.
+
+#### Blocage annuel et intégrations
+
+Le garde-fou intervient **avant** le pipeline annuel et l’appel direct 7C; il
+bloque également la préparation générale 7B qui afficherait des bases Québec
+provisoires. Message :
+
+> Profil interprovincial détecté — T2203 / TP-22 requis. ComptaPrivée AI prépare les faits et les contrôles, mais ne calcule pas automatiquement l’impôt interprovincial dans ce périmètre.
+
+Trace et PDF 7G sont indépendants de l’estimation annuelle : revenus, contrôle
+de somme, méthode, source, présence confirmée, formulaires requis, 42800/44000,
+impôt Québec et FSS non calculés. Aucun résultat annuel ou remboursement généré.
+Les anciens exports annuels et traces ne peuvent pas être réutilisés avec un
+dossier interprovincial. Aucun champ d’impôt, abattement ou pourcentage TP-22
+manuel accepté dans le JSON du profil.
+
+Persistance rétrocompatible : `entreprises[].administrations` absent ou nul =>
+aucun profil 7G. Seuls les faits sont enregistrés; résultats et pourcentages sont
+recalculés. La sauvegarde/relecture conserve les faits hors Québec mais refuse
+une estimation annuelle ou un PDF annuel associé. Un profil 7C conservé dans un
+JSON n’autorise jamais son calcul lorsque 7G détecte la présence hors Québec.
+
+GUI : section dédiée « Administrations multiples 2025 (7G) », contrôles, trace,
+export préparatoire et application explicite. Toute modification révoque les
+confirmations et l’aperçu. Une transition hors Québec révoque 7C et l’ancien PDF
+annuel; une confirmation Québec seulement conserve le parcours 7C existant.
+Le formulaire 7B conserve le profil 7G lors de l’édition : un changement de net
+rendant la ventilation incohérente est refusé, sans suppression silencieuse du
+profil. Le nouveau dossier vide les fiches et le profil imbriqué. Un export
+préparatoire depuis une fenêtre devenue périmée est refusé.
+
+Validation de développement : **508 tests ciblés réussis**, incluant moteur,
+GUI et régressions 7A–7F; 5 avertissements SWIG/PyMuPDF existants. Un test GUI de
+sélection de fiche a été corrigé pour attendre l’affichage du widget avant son
+événement; aucune règle ni validation assouplie. Contrôle visuel : une page PDF
+fictive Ontario 70/30, lisible sans débordement, dans `tmp/pdfs/7g/` ignoré par Git.
+`git diff --check` sans erreur. Après les derniers contrôles de types :
+**86 tests ciblés 7G réussis**, dont 6 tests GUI. Validation complète locale
+unique : **7 151 passed, 8 warnings**, en 199,46 secondes, avec
+`--capture=sys -q --ignore=tmp --tb=short`. Les avertissements sont ceux des
+dépendances SWIG/PyMuPDF et des appels `font.copy` existants. Le répertoire
+temporaire ignoré reste exclu de la collecte. La deuxième validation complète
+est confiée à GitHub Actions après publication; aucune suite complète locale
+post-commit n'est nécessaire si elle est verte.

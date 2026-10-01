@@ -1,5 +1,6 @@
 """Export PDF local du rapport d'estimation fiscale 2025."""
 
+from .tax_multiple_jurisdictions_2025 import bloquer_estimation_interprovinciale_2025
 from .tax_loss_ledger_2025 import lignes_resultat_pertes_2025
 from .tax_quebec_senior_support_2025 import lignes_soutien_aines_quebec_2025
 from .tax_quebec_volunteers_2025 import lignes_volontaires_quebec_2025
@@ -164,6 +165,7 @@ def nom_rapport_fiscal_pdf_2025(estimation: EstimationFiscale2025) -> str:
 
 
 def _lignes(estimation: EstimationFiscale2025) -> list[str]:
+    bloquer_estimation_interprovinciale_2025(estimation.dossier)
     if estimation.location.faits is not None:
         from .tax_rental_income_2025 import lignes_location_2025
         return [*lignes_location_2025(estimation), *lignes_resultat_pertes_2025(estimation.pertes_7f)]
@@ -2165,5 +2167,26 @@ def exporter_preparation_pertes_pdf_2025(registre, destination):
                 page.insert_text((48,y), morceau, fontsize=10, fontname='helv')
                 y += 15
         doc.set_metadata({'title':'Préparation séparée des reports de pertes 2025', 'author':'ComptaPrivée AI'})
+        doc.save(chemin, garbage=3, deflate=True)
+    return chemin
+
+
+def exporter_preparation_administrations_pdf_2025(dossier, destination):
+    """Rapport 7G indépendant; aucun abattement/impôt/cotisation estimé."""
+    from .tax_calculation_trace_2025 import construire_trace_administrations_2025
+    lignes = construire_trace_administrations_2025(dossier)
+    chemin = Path(destination).with_suffix('.pdf')
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    with fitz.open() as doc:
+        page = doc.new_page()
+        y = 55
+        for ligne in lignes:
+            for morceau in textwrap.wrap(ligne, width=88, break_long_words=True) or ['']:
+                if y > 750:
+                    page = doc.new_page(); y = 55
+                page.insert_text((48, y), morceau, fontsize=10, fontname='helv')
+                y += 15
+        doc.set_metadata({'title': 'Préparation interprovinciale 2025 - calcul annuel suspendu',
+                          'author': 'ComptaPrivée AI'})
         doc.save(chemin, garbage=3, deflate=True)
     return chemin

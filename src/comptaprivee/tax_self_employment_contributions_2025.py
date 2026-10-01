@@ -8,6 +8,7 @@ from dataclasses import dataclass, fields, is_dataclass, replace
 from datetime import date
 from decimal import Decimal
 
+from .tax_multiple_jurisdictions_2025 import bloquer_estimation_interprovinciale_2025
 from .tax_rules_2025 import arrondir_cent, deduction_travailleur_quebec_2025
 from .tax_self_employment_2025 import calculer_entreprises_2025
 
@@ -99,6 +100,7 @@ class CotisationsAutonomes2025:
 
 
 def calculer_cotisations_autonomes_2025(dossier, profil):
+    bloquer_estimation_interprovinciale_2025(dossier)
     if dossier.biens_locatifs:
         raise ValueError('7C : combinaison avec location 7D hors périmètre.')
     valider_profil_7c(profil)

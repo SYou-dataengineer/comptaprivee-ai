@@ -1,6 +1,7 @@
 """Persistance locale des dossiers fiscaux validés."""
 
 from __future__ import annotations
+from .tax_multiple_jurisdictions_2025 import profil_interprovincial_present, preparer_administrations_2025, MESSAGE_7G
 from .tax_loss_ledger_2025 import registre_pertes_vers_json, registre_pertes_depuis_json
 from .tax_family_medical_2025 import (FraisMedicauxFamilleFederaux2025, calculer_medical_familial_2025, medical_familial_vers_dict, medical_familial_depuis_dict, verifier_combinaison_medicale_famille)
 from .tax_family_workers_benefit_2025 import famille_act_vers_dict, famille_act_depuis_dict, verifier_concordance_act_familial_2025
@@ -3667,6 +3668,11 @@ def sauvegarder_dossier_fiscal(
     psv_confirme: bool | None = None,
     rrq_rpc_confirme: bool | None = None,
 ) -> Path:
+    interprovincial = profil_interprovincial_present(dossier)
+    if interprovincial:
+        preparer_administrations_2025(dossier)
+        if estimation is not None or rapport_pdf is not None:
+            raise ValueError(MESSAGE_7G)
     location = verifier_dossier_location_2025(dossier)
     locations_json = locations_vers_json(dossier.biens_locatifs)
     pertes_7f_json = registre_pertes_vers_json(dossier.registre_pertes)
@@ -3674,7 +3680,7 @@ def sauvegarder_dossier_fiscal(
         raise ValueError("7D : estimation différente des faits locatifs.")
     entreprises_json = entreprises_vers_json(dossier.entreprises)
     profil_7c_json = profil_7c_vers_json(dossier.profil_cotisations_autonomes)
-    if dossier.profil_cotisations_autonomes.activer:
+    if dossier.profil_cotisations_autonomes.activer and not interprovincial:
         calc_7c = calculer_cotisations_autonomes_2025(dossier, dossier.profil_cotisations_autonomes)
         if estimation is not None and (estimation.dossier != dossier or estimation.cotisations_autonomes != calc_7c):
             raise ValueError('7C : estimation différente des faits du dossier.')
@@ -4477,7 +4483,12 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
     verifier_dossier_location_2025(dossier)
     estimation = None
     e = contenu.get("derniere_estimation")
-    if dossier.profil_cotisations_autonomes.activer:
+    interprovincial = profil_interprovincial_present(dossier)
+    if interprovincial:
+        preparer_administrations_2025(dossier)
+        if e is not None or contenu.get("rapport_pdf") is not None:
+            raise ValueError(MESSAGE_7G)
+    if dossier.profil_cotisations_autonomes.activer and not interprovincial:
         calculer_cotisations_autonomes_2025(dossier, dossier.profil_cotisations_autonomes)
     if entreprises and not dossier.profil_cotisations_autonomes.activer and (e is not None or contenu.get("rapport_pdf") is not None):
         raise ValueError(MESSAGE_7C)

@@ -8,6 +8,7 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_multiple_jurisdictions_2025 import bloquer_estimation_interprovinciale_2025
 from .tax_quebec_senior_support_2025 import (SoutienAinesQuebec2025, ResultatSoutienAinesQuebec2025, calculer_soutien_aines_quebec_2025, lignes_soutien_aines_quebec_2025, valider_soutien_aines_quebec_2025)
 from .tax_quebec_volunteers_2025 import (VolontairesQuebec2025, ResultatVolontairesQuebec2025, calculer_volontaires_quebec_2025, lignes_volontaires_quebec_2025, valider_volontaires_quebec_2025, appliquer_volontaires_quebec_2025)
 from .tax_employment_qpp_2025 import calculer_rrq_salarie_2025, lignes_employeurs_2025
@@ -520,6 +521,7 @@ def calculer_estimation_fiscale_2025(
 ) -> EstimationFiscale2025:
     """Exécute le pipeline fiscal local 2025 sur un dossier verrouillé."""
     options_7c = locals().copy()
+    bloquer_estimation_interprovinciale_2025(dossier)
     verifier_options_pertes_2025(dossier, options_7c)
     location = verifier_dossier_location_2025(dossier, options_7c)
     valider_profil_7c(dossier.profil_cotisations_autonomes)
@@ -2088,6 +2090,7 @@ def formater_estimation_fiscale_2025(
     estimation: EstimationFiscale2025,
 ) -> str:
     """Construit le résumé lisible destiné à la fenêtre de validation."""
+    bloquer_estimation_interprovinciale_2025(estimation.dossier)
     if estimation.location.faits is not None:
         return "\n".join([*lignes_location_2025(estimation), *lignes_resultat_pertes_2025(estimation.pertes_7f)])
     if estimation.cotisations_autonomes is not None:
