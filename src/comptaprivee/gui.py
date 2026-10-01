@@ -15175,7 +15175,7 @@ class ApplicationComptaPrivee(tk.Tk):
             annee_fiscale.set(str(dossier.annee_fiscale))
             province_fiscale.set(dossier.province)
             derniere_estimation = None
-            dernier_rapport_pdf = enregistrement.rapport_pdf
+            dernier_rapport_pdf = None  # Un PDF historique ne prouve pas un resultat recalcule.
             rapport_fiscal_a_reexporter = dernier_rapport_pdf is None
             ajustement_reer_courant = enregistrement.ajustement_reer
             deduction_celiapp_courante = enregistrement.deduction_celiapp
@@ -15302,7 +15302,7 @@ class ApplicationComptaPrivee(tk.Tk):
             mettre_a_jour_etat_dossier_valide()
             message = f"Dossier rouvert : {dossier.client} — {dossier.annee_fiscale}"
             if enregistrement.estimation:
-                message += f"\n\nDernier résultat : {enregistrement.estimation.resultat} — {formater_montant_estimation(enregistrement.estimation.montant)}"
+                message += f"\n\nResultat historique non verifie / recalcul requis : {enregistrement.estimation.resultat} — {formater_montant_estimation(enregistrement.estimation.montant)}"
             if enregistrement.documents_manquants:
                 message += f"\n\nAttention : {len(enregistrement.documents_manquants)} document(s) source manquant(s)."
             self.statut.set(message.split("\n",1)[0])
@@ -15472,7 +15472,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 "annee": "Année",
                 "province": "Province",
                 "sauvegarde": "Sauvegardé le",
-                "resultat": "Dernier résultat",
+                "resultat": "Historique non verifie",
                 "documents": "Documents",
             }
             for colonne, titre in titres.items():
@@ -15490,7 +15490,7 @@ class ApplicationComptaPrivee(tk.Tk):
                     resultat = "Aucune estimation enregistrée"
                 else:
                     resultat = (
-                        f"{item.estimation.resultat} — "
+                        f"Recalcul requis : {item.estimation.resultat} — "
                         f"{formater_montant_estimation(item.estimation.montant)}"
                     )
 

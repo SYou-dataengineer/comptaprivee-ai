@@ -31,6 +31,7 @@ REGLES_T4 = (
     ("74", "RPA services avant 1990 (cotisant)", (r"\b(?:case|box|code)\s*74\b",)),
     ("75", "RPA services avant 1990 (non cotisant)", (r"\b(?:case|box|code)\s*75\b",)),
     ("14", "Revenu d'emploi", (r"\bcase\s*14\b", r"\bbox\s*14\b")),
+    ("16A", "Deuxiemes cotisations supplementaires RPC", (r"\b(?:case|box)\s*16a\b",)),
     ("16", "Cotisations RPC", (r"\bcase\s*16\b", r"\bbox\s*16\b")),
     ("17", "Cotisations RRQ", (r"\bcase\s*17\b", r"\bbox\s*17\b")),
     (
@@ -207,7 +208,10 @@ def convertir_montant_fiscal(valeur: str) -> Decimal:
             texte = texte.replace(".", "")
 
     try:
-        return Decimal(texte)
+        montant = Decimal(texte)
+        if not montant.is_finite():
+            raise ValueError("Le montant fiscal doit etre fini (NaN et Infinity interdits).")
+        return montant
     except InvalidOperation as erreur:
         raise ValueError(
             f"Montant fiscal invalide : {valeur}"
@@ -300,6 +304,9 @@ def extraire_cases_fiscales(
         return tuple(donnees)
 
     if type_normalise == "T4":
+        occurrences_16a = list(re.finditer(r"\b(?:case|box)\s*16a\b", texte, re.IGNORECASE))
+        if len(occurrences_16a) > 1:
+            raise ValueError("T4 case 16A dupliquee ou ambigue : verification documentaire requise.")
         regles = REGLES_T4
         type_final = "T4"
     elif type_normalise in {"RL-1", "RL1"}:

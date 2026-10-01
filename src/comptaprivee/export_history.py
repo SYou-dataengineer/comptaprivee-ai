@@ -237,6 +237,7 @@ def exporter_historique_csv(
 ) -> Path:
     # Exporte une liste d'exports vers un fichier CSV UTF-8.
     import csv
+    from .csv_exporter import RedacteurCsvSur
 
     destination = Path(chemin)
 
@@ -255,7 +256,7 @@ def exporter_historique_csv(
         newline="",
         encoding="utf-8-sig",
     ) as fichier:
-        writer = csv.writer(fichier)
+        writer = RedacteurCsvSur(fichier)
         writer.writerow(
             [
                 "Fichier",

@@ -6249,3 +6249,36 @@ commencé dans 7K.
   à l'archive. Le statut GUI confirme l'opération et demande le redémarrage.
 - Aucune règle ni aucun montant fiscal 2025 modifié. Les autres P1 de FINAL-A sont
   hors périmètre de FINAL-B1.
+
+### FINAL-B2 — entrées strictes et résultats historiques
+
+- Les montants extraits/corrigés et les valeurs fiscales validées refusent NaN,
+  sNaN et les infinis avant comparaison ou calcul. Le constructeur immuable des
+  valeurs validées protège aussi les appels directs, en dehors de la GUI.
+  Le parseur monétaire JSON conserve sa vérification de finitude et refuse les
+  types composites, booléens et formats non numériques.
+- La case T4 16A est extraite distinctement de 16, 17, 17A et 26. Une présence
+  répétée de son libellé est ambiguë et demande une vérification documentaire.
+  Une case illisible n'emprunte jamais le montant de la case suivante. Le refus
+  RPC existant est inchangé ; aucun calcul fiscal n'est étendu.
+- Tous les résumés rechargés, même plausibles, sont des historiques non vérifiés.
+  `ResumeEstimationSauvegardee.verifie` vaut toujours False ; la GUI demande un
+  recalcul et ne réutilise pas automatiquement le PDF historique. Un résumé
+  sauvegardé ne constitue jamais une preuve de concordance avec les faits.
+  Les montants historiques restent conservés pour compatibilité et audit ;
+  le calcul demandé par l'utilisateur reconstruit le résultat à partir des faits.
+- Les lecteurs historiques de profils de `tax_case_storage` utilisent désormais
+  des helpers stricts : bool JSON pour une confirmation, int JSON pour un entier
+  (bool et flottants refusés, y compris 2025.0). Les écrivains historiques émettent
+  déjà ces types ; aucune migration de chaînes entières ou booléennes n'est requise.
+  Les profils absents conservent leurs valeurs par défaut rétrocompatibles.
+- Les Decimal JSON acceptent les chaînes numériques canoniques (notation
+  exponentielle comprise), nombres entiers et nombres JSON finis. Ils refusent
+  espaces parasites, underscores, objets, listes, booléens et valeurs non finies.
+- Les champs textuels CSV commençant par =, +, - ou @, même après espaces/tabulations,
+  sont préfixés d'une apostrophe. Les données sources ne sont pas modifiées.
+  Les colonnes monétaires des factures/tableaux de bord et les valeurs numériques
+  typées restent numériques. Les autres exports CSV (journal, historique,
+  conversion Excel/PDF) utilisent le même contrôle des cellules textuelles.
+- Les autres validations GUI de montants et validateurs des profils fiscaux restent
+  en place. Aucun barème, taux, ordre fiscal ou calcul 2025 n'est modifié.

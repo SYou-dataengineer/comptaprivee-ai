@@ -8,6 +8,25 @@ from pathlib import Path
 from .facture_parser import DonneesFacture
 
 
+def neutraliser_texte_csv(valeur):
+    """Neutralise les formules textuelles sans changer les types numeriques."""
+    if isinstance(valeur, str) and valeur.lstrip(" \t\r\n\ufeff").startswith(("=", "+", "-", "@")):
+        return "'" + valeur
+    return valeur
+
+
+class RedacteurCsvSur:
+    def __init__(self, fichier, **options):
+        self._writer = csv.writer(fichier, **options)
+
+    def writerow(self, valeurs):
+        return self._writer.writerow([neutraliser_texte_csv(v) for v in valeurs])
+
+    def writerows(self, lignes):
+        for ligne in lignes:
+            self.writerow(ligne)
+
+
 CHAMPS_CSV = [
     "numero",
     "date",
@@ -33,10 +52,10 @@ def facture_vers_dictionnaire(
 ) -> dict[str, str]:
     """Transforme les données d'une facture en ligne CSV."""
     return {
-        "numero": facture.numero or "",
-        "date": facture.date or "",
-        "fournisseur": facture.fournisseur or "",
-        "client": facture.client or "",
+        "numero": neutraliser_texte_csv(facture.numero or ""),
+        "date": neutraliser_texte_csv(facture.date or ""),
+        "fournisseur": neutraliser_texte_csv(facture.fournisseur or ""),
+        "client": neutraliser_texte_csv(facture.client or ""),
         "sous_total": convertir_montant(facture.sous_total),
         "tps": convertir_montant(facture.tps),
         "tvq": convertir_montant(facture.tvq),

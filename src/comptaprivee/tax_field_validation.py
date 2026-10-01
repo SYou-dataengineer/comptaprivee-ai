@@ -29,6 +29,11 @@ class DonneeFiscaleValidee:
     corrigee: bool
     statut: str
 
+    def __post_init__(self):
+        for valeur in (self.valeur_extraite, self.valeur_validee):
+            if not isinstance(valeur, Decimal) or not valeur.is_finite():
+                raise ValueError("Une valeur fiscale doit etre un Decimal fini.")
+
 
 def cle_donnee_fiscale(
     donnee: DonneeFiscaleExtraite,
@@ -67,6 +72,8 @@ def corriger_et_valider_donnee_fiscale(
     else:
         valeur = convertir_montant_fiscal(nouvelle_valeur)
 
+    if not valeur.is_finite() or not donnee.valeur.is_finite():
+        raise ValueError("Le montant fiscal doit etre fini (NaN et Infinity interdits).")
     if valeur < Decimal("0"):
         raise ValueError(
             "Une valeur fiscale validée ne peut pas être négative "

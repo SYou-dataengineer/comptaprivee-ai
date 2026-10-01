@@ -155,7 +155,9 @@ def test_json_annuel_et_credit_perime_refuse(tmp_path):
 
 @pytest.mark.parametrize('montant',['NaN','Infinity','-1'])
 def test_montants_invalides_refuses(montant):
-    d=dossier();v=replace(d.donnees_validees[0],valeur_validee=D(montant))
+    d=dossier();v=replace(d.donnees_validees[0])
+    # Simuler un objet corrompu pour conserver le test du garde-fou interne.
+    object.__setattr__(v,"valeur_validee",D(montant))
     with pytest.raises(ValueError,match='Decimal fini'):
         calcul(replace(d,donnees_validees=(v,*d.donnees_validees[1:])))
 

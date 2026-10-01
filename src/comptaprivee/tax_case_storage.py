@@ -210,6 +210,14 @@ class ResumeEstimationSauvegardee:
     impot_total_preliminaire: Decimal
     retenues_totales: Decimal
 
+    @property
+    def verifie(self) -> bool:
+        return False
+
+    @property
+    def statut_verification(self) -> str:
+        return "Resultat historique non verifie / recalcul requis"
+
 
 @dataclass(frozen=True)
 class DossierFiscalEnregistre:
@@ -375,13 +383,13 @@ def _ajustement_reer_depuis_dict(valeur: Any) -> AjustementReer2025:
             "ajustement_reer.plafond_reer_confirme",
         ),
         source_plafond_reer=str(valeur.get("source_plafond_reer", "")),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
-        inclut_transfert_reer=bool(
+        inclut_transfert_reer=_bool_json(
             valeur.get("inclut_transfert_reer", False)
         ),
-        inclut_remboursement_rap_reep=bool(
+        inclut_remboursement_rap_reep=_bool_json(
             valeur.get("inclut_remboursement_rap_reep", False)
         ),
     )
@@ -440,29 +448,29 @@ def _deduction_celiapp_depuis_dict(
             "deduction_celiapp.droits_deduction_confirmes",
         ),
         source_droits=str(valeur.get("source_droits", "")),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
-        titulaire_confirme=bool(
+        titulaire_confirme=_bool_json(
             valeur.get("titulaire_confirme", False)
         ),
-        residence_canada_quebec_annee_complete=bool(
+        residence_canada_quebec_annee_complete=_bool_json(
             valeur.get(
                 "residence_canada_quebec_annee_complete",
                 False,
             )
         ),
-        inclut_cotisations_inutilisees_anterieures=bool(
+        inclut_cotisations_inutilisees_anterieures=_bool_json(
             valeur.get(
                 "inclut_cotisations_inutilisees_anterieures",
                 False,
             )
         ),
-        inclut_transfert_reer=bool(
+        inclut_transfert_reer=_bool_json(
             valeur.get("inclut_transfert_reer", False)
         ),
-        retrait_2025=bool(valeur.get("retrait_2025", False)),
-        excedent_2025=bool(valeur.get("excedent_2025", False)),
+        retrait_2025=_bool_json(valeur.get("retrait_2025", False)),
+        excedent_2025=_bool_json(valeur.get("excedent_2025", False)),
     )
     return valider_deduction_celiapp_2025(profil)
 
@@ -506,9 +514,9 @@ def _frais_garde_federaux_depuis_dict(valeur: Any) -> FraisGardeFederaux2025:
         raise ValueError("Champs frais de garde fédéraux inconnus : " + ", ".join(sorted(inconnus)))
 
     try:
-        moins_7 = int(valeur.get("nombre_enfants_moins_7_sans_dtc", 0))
-        sept_16 = int(valeur.get("nombre_enfants_7_a_16_ou_infirmes_sans_dtc", 0))
-        dtc = int(valeur.get("nombre_enfants_dtc", 0))
+        moins_7 = _entier_json(valeur.get("nombre_enfants_moins_7_sans_dtc", 0))
+        sept_16 = _entier_json(valeur.get("nombre_enfants_7_a_16_ou_infirmes_sans_dtc", 0))
+        dtc = _entier_json(valeur.get("nombre_enfants_dtc", 0))
     except (TypeError, ValueError) as erreur:
         raise ValueError("Le nombre d'enfants des frais de garde est invalide.") from erreur
 
@@ -525,17 +533,17 @@ def _frais_garde_federaux_depuis_dict(valeur: Any) -> FraisGardeFederaux2025:
         nombre_enfants_7_a_16_ou_infirmes_sans_dtc=sept_16,
         nombre_enfants_dtc=dtc,
         source=str(valeur.get("source", "")),
-        valide_par_comptable=bool(valeur.get("valide_par_comptable", False)),
-        services_fournis_en_2025_confirmes=bool(valeur.get("services_fournis_en_2025_confirmes", False)),
-        frais_pour_gagner_revenu_confirmes=bool(valeur.get("frais_pour_gagner_revenu_confirmes", False)),
-        recus_confirmes=bool(valeur.get("recus_confirmes", False)),
-        demandeur_seul_ou_revenu_inferieur_confirme=bool(valeur.get("demandeur_seul_ou_revenu_inferieur_confirme", False)),
-        partie_c_requise=bool(valeur.get("partie_c_requise", False)),
-        partie_d_requise=bool(valeur.get("partie_d_requise", False)),
-        camp_avec_hebergement=bool(valeur.get("camp_avec_hebergement", False)),
-        garde_partagee=bool(valeur.get("garde_partagee", False)),
-        repartition_entre_contribuables=bool(valeur.get("repartition_entre_contribuables", False)),
-        demandeur_revenu_superieur=bool(valeur.get("demandeur_revenu_superieur", False)),
+        valide_par_comptable=_bool_json(valeur.get("valide_par_comptable", False)),
+        services_fournis_en_2025_confirmes=_bool_json(valeur.get("services_fournis_en_2025_confirmes", False)),
+        frais_pour_gagner_revenu_confirmes=_bool_json(valeur.get("frais_pour_gagner_revenu_confirmes", False)),
+        recus_confirmes=_bool_json(valeur.get("recus_confirmes", False)),
+        demandeur_seul_ou_revenu_inferieur_confirme=_bool_json(valeur.get("demandeur_seul_ou_revenu_inferieur_confirme", False)),
+        partie_c_requise=_bool_json(valeur.get("partie_c_requise", False)),
+        partie_d_requise=_bool_json(valeur.get("partie_d_requise", False)),
+        camp_avec_hebergement=_bool_json(valeur.get("camp_avec_hebergement", False)),
+        garde_partagee=_bool_json(valeur.get("garde_partagee", False)),
+        repartition_entre_contribuables=_bool_json(valeur.get("repartition_entre_contribuables", False)),
+        demandeur_revenu_superieur=_bool_json(valeur.get("demandeur_revenu_superieur", False)),
     )
     return valider_frais_garde_federaux_2025(profil)
 
@@ -605,33 +613,33 @@ def _depenses_emploi_depuis_dict(valeur: Any) -> DepensesEmploi2025:
         ),
         source_federale=str(valeur.get("source_federale", "")),
         source_quebec=str(valeur.get("source_quebec", "")),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
-        salarie_ordinaire_confirme=bool(
+        salarie_ordinaire_confirme=_bool_json(
             valeur.get("salarie_ordinaire_confirme", False)
         ),
-        contrat_exige_depenses_confirme=bool(
+        contrat_exige_depenses_confirme=_bool_json(
             valeur.get("contrat_exige_depenses_confirme", False)
         ),
-        non_remboursees_confirme=bool(
+        non_remboursees_confirme=_bool_json(
             valeur.get("non_remboursees_confirme", False)
         ),
-        t2200_confirme=bool(valeur.get("t2200_confirme", False)),
-        t777_confirme=bool(valeur.get("t777_confirme", False)),
-        tp_64_3_confirme=bool(valeur.get("tp_64_3_confirme", False)),
-        tp_59_confirme=bool(valeur.get("tp_59_confirme", False)),
-        employe_a_commission=bool(
+        t2200_confirme=_bool_json(valeur.get("t2200_confirme", False)),
+        t777_confirme=_bool_json(valeur.get("t777_confirme", False)),
+        tp_64_3_confirme=_bool_json(valeur.get("tp_64_3_confirme", False)),
+        tp_59_confirme=_bool_json(valeur.get("tp_59_confirme", False)),
+        employe_a_commission=_bool_json(
             valeur.get("employe_a_commission", False)
         ),
-        vehicule_ou_cca=bool(valeur.get("vehicule_ou_cca", False)),
-        voyage_repas_logement=bool(
+        vehicule_ou_cca=_bool_json(valeur.get("vehicule_ou_cca", False)),
+        voyage_repas_logement=_bool_json(
             valeur.get("voyage_repas_logement", False)
         ),
-        bureau_a_domicile=bool(
+        bureau_a_domicile=_bool_json(
             valeur.get("bureau_a_domicile", False)
         ),
-        outils_ou_profil_specialise=bool(
+        outils_ou_profil_specialise=_bool_json(
             valeur.get("outils_ou_profil_specialise", False)
         ),
     )
@@ -715,42 +723,42 @@ def _frais_demenagement_depuis_dict(
         ),
         source_federale=str(valeur.get("source_federale", "")),
         source_quebec=str(valeur.get("source_quebec", "")),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
-        salarie_ordinaire_confirme=bool(
+        salarie_ordinaire_confirme=_bool_json(
             valeur.get("salarie_ordinaire_confirme", False)
         ),
-        demenagement_pour_emploi_confirme=bool(
+        demenagement_pour_emploi_confirme=_bool_json(
             valeur.get("demenagement_pour_emploi_confirme", False)
         ),
-        rapprochement_40km_confirme=bool(
+        rapprochement_40km_confirme=_bool_json(
             valeur.get("rapprochement_40km_confirme", False)
         ),
-        demenagement_interieur_canada_confirme=bool(
+        demenagement_interieur_canada_confirme=_bool_json(
             valeur.get("demenagement_interieur_canada_confirme", False)
         ),
-        remboursements_employeur_pris_en_compte_confirme=bool(
+        remboursements_employeur_pris_en_compte_confirme=_bool_json(
             valeur.get(
                 "remboursements_employeur_pris_en_compte_confirme",
                 False,
             )
         ),
-        t1m_confirme=bool(valeur.get("t1m_confirme", False)),
-        tp348_confirme=bool(valeur.get("tp348_confirme", False)),
-        travailleur_autonome=bool(
+        t1m_confirme=_bool_json(valeur.get("t1m_confirme", False)),
+        tp348_confirme=_bool_json(valeur.get("tp348_confirme", False)),
+        travailleur_autonome=_bool_json(
             valeur.get("travailleur_autonome", False)
         ),
-        etudiant_temps_plein=bool(
+        etudiant_temps_plein=_bool_json(
             valeur.get("etudiant_temps_plein", False)
         ),
-        demenagement_international=bool(
+        demenagement_international=_bool_json(
             valeur.get("demenagement_international", False)
         ),
-        report_annees_anterieures=bool(
+        report_annees_anterieures=_bool_json(
             valeur.get("report_annees_anterieures", False)
         ),
-        plusieurs_demenagements_admissibles=bool(
+        plusieurs_demenagements_admissibles=_bool_json(
             valeur.get("plusieurs_demenagements_admissibles", False)
         ),
     )
@@ -854,56 +862,56 @@ def _pension_alimentaire_payee_depuis_dict(
         ),
         source_federale=str(valeur.get("source_federale", "")),
         source_quebec=str(valeur.get("source_quebec", "")),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
-        ordonnance_ou_entente_ecrite_confirmee=bool(
+        ordonnance_ou_entente_ecrite_confirmee=_bool_json(
             valeur.get("ordonnance_ou_entente_ecrite_confirmee", False)
         ),
-        paiement_periodique_conjoint_ex_conjoint_confirme=bool(
+        paiement_periodique_conjoint_ex_conjoint_confirme=_bool_json(
             valeur.get(
                 "paiement_periodique_conjoint_ex_conjoint_confirme",
                 False,
             )
         ),
-        vie_separee_au_moment_paiement_confirmee=bool(
+        vie_separee_au_moment_paiement_confirmee=_bool_json(
             valeur.get(
                 "vie_separee_au_moment_paiement_confirmee",
                 False,
             )
         ),
-        enregistrement_arc_confirme=bool(
+        enregistrement_arc_confirme=_bool_json(
             valeur.get("enregistrement_arc_confirme", False)
         ),
-        montant_federal_confirme=bool(
+        montant_federal_confirme=_bool_json(
             valeur.get("montant_federal_confirme", False)
         ),
-        montant_quebec_confirme=bool(
+        montant_quebec_confirme=_bool_json(
             valeur.get("montant_quebec_confirme", False)
         ),
-        aucun_credit_personnel_lie_confirme=bool(
+        aucun_credit_personnel_lie_confirme=_bool_json(
             valeur.get("aucun_credit_personnel_lie_confirme", False)
         ),
-        pension_enfant=bool(valeur.get("pension_enfant", False)),
-        regime_avant_mai_1997_ou_t1157=bool(
+        pension_enfant=_bool_json(valeur.get("pension_enfant", False)),
+        regime_avant_mai_1997_ou_t1157=_bool_json(
             valeur.get("regime_avant_mai_1997_ou_t1157", False)
         ),
-        arrerages_ou_retroactif=bool(
+        arrerages_ou_retroactif=_bool_json(
             valeur.get("arrerages_ou_retroactif", False)
         ),
-        paiement_forfaitaire=bool(
+        paiement_forfaitaire=_bool_json(
             valeur.get("paiement_forfaitaire", False)
         ),
-        remboursement_pension=bool(
+        remboursement_pension=_bool_json(
             valeur.get("remboursement_pension", False)
         ),
-        frais_juridiques_ou_comptables=bool(
+        frais_juridiques_ou_comptables=_bool_json(
             valeur.get("frais_juridiques_ou_comptables", False)
         ),
-        plusieurs_beneficiaires=bool(
+        plusieurs_beneficiaires=_bool_json(
             valeur.get("plusieurs_beneficiaires", False)
         ),
-        annee_changement_etat_civil_avec_choix_credit=bool(
+        annee_changement_etat_civil_avec_choix_credit=_bool_json(
             valeur.get(
                 "annee_changement_etat_civil_avec_choix_credit",
                 False,
@@ -1005,61 +1013,61 @@ def _autres_deductions_depuis_dict(
         nature_quebec=str(valeur.get("nature_quebec", "")),
         source_federale=str(valeur.get("source_federale", "")),
         source_quebec=str(valeur.get("source_quebec", "")),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
-        montant_federal_deja_etabli_confirme=bool(
+        montant_federal_deja_etabli_confirme=_bool_json(
             valeur.get(
                 "montant_federal_deja_etabli_confirme",
                 False,
             )
         ),
-        montant_quebec_deja_etabli_confirme=bool(
+        montant_quebec_deja_etabli_confirme=_bool_json(
             valeur.get(
                 "montant_quebec_deja_etabli_confirme",
                 False,
             )
         ),
-        aucune_autre_ligne_ou_bloc_applicable_confirme=bool(
+        aucune_autre_ligne_ou_bloc_applicable_confirme=_bool_json(
             valeur.get(
                 "aucune_autre_ligne_ou_bloc_applicable_confirme",
                 False,
             )
         ),
-        remboursement_ae_ou_rqap=bool(
+        remboursement_ae_ou_rqap=_bool_json(
             valeur.get("remboursement_ae_ou_rqap", False)
         ),
-        recuperation_prestations_sociales_23500=bool(
+        recuperation_prestations_sociales_23500=_bool_json(
             valeur.get(
                 "recuperation_prestations_sociales_23500",
                 False,
             )
         ),
-        retrait_reer_ou_t3012a=bool(
+        retrait_reer_ou_t3012a=_bool_json(
             valeur.get("retrait_reer_ou_t3012a", False)
         ),
-        frais_juridiques=bool(
+        frais_juridiques=_bool_json(
             valeur.get("frais_juridiques", False)
         ),
-        remboursement_pension_alimentaire=bool(
+        remboursement_pension_alimentaire=_bool_json(
             valeur.get("remboursement_pension_alimentaire", False)
         ),
-        transfert_ou_cotisations_inutilisees_regime=bool(
+        transfert_ou_cotisations_inutilisees_regime=_bool_json(
             valeur.get(
                 "transfert_ou_cotisations_inutilisees_regime",
                 False,
             )
         ),
-        soutien_personne_handicapee=bool(
+        soutien_personne_handicapee=_bool_json(
             valeur.get("soutien_personne_handicapee", False)
         ),
-        celiapp_montant_deja_inclus=bool(
+        celiapp_montant_deja_inclus=_bool_json(
             valeur.get("celiapp_montant_deja_inclus", False)
         ),
-        abri_fiscal_ou_revenu_fractionne=bool(
+        abri_fiscal_ou_revenu_fractionne=_bool_json(
             valeur.get("abri_fiscal_ou_revenu_fractionne", False)
         ),
-        autre_traitement_specialise=bool(
+        autre_traitement_specialise=_bool_json(
             valeur.get("autre_traitement_specialise", False)
         ),
     )
@@ -1114,10 +1122,10 @@ def _cotisations_syndicales_depuis_dict(
         ),
         source_federale=str(valeur.get("source_federale", "")),
         source_quebec=str(valeur.get("source_quebec", "")),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
-        sources_dedoublonnees=bool(
+        sources_dedoublonnees=_bool_json(
             valeur.get("sources_dedoublonnees", False)
         ),
     )
@@ -1212,22 +1220,22 @@ def _dons_bienfaisance_depuis_dict(
         ),
         source_federale=str(valeur.get("source_federale", "")),
         source_quebec=str(valeur.get("source_quebec", "")),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
-        donataire_reconnu_confirme=bool(
+        donataire_reconnu_confirme=_bool_json(
             valeur.get("donataire_reconnu_confirme", False)
         ),
-        dons_monetaires_2025_uniquement=bool(
+        dons_monetaires_2025_uniquement=_bool_json(
             valeur.get("dons_monetaires_2025_uniquement", False)
         ),
-        aucun_report_anterieur=bool(
+        aucun_report_anterieur=_bool_json(
             valeur.get("aucun_report_anterieur", False)
         ),
-        inclut_dons_jan_fev_2025=bool(
+        inclut_dons_jan_fev_2025=_bool_json(
             valeur.get("inclut_dons_jan_fev_2025", False)
         ),
-        dons_jan_fev_deja_reclames_2024=bool(
+        dons_jan_fev_deja_reclames_2024=_bool_json(
             valeur.get("dons_jan_fev_deja_reclames_2024", False)
         ),
     )
@@ -1329,25 +1337,25 @@ def _frais_medicaux_depuis_dict(
         ),
         source_federale=str(valeur.get("source_federale", "")),
         source_quebec=str(valeur.get("source_quebec", "")),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
-        recus_confirmes=bool(
+        recus_confirmes=_bool_json(
             valeur.get("recus_confirmes", False)
         ),
-        remboursements_soustraits=bool(
+        remboursements_soustraits=_bool_json(
             valeur.get("remboursements_soustraits", False)
         ),
-        periode_12_mois_fin_2025_confirmee=bool(
+        periode_12_mois_fin_2025_confirmee=_bool_json(
             valeur.get(
                 "periode_12_mois_fin_2025_confirmee",
                 False,
             )
         ),
-        aucune_periode_deja_reclamee=bool(
+        aucune_periode_deja_reclamee=_bool_json(
             valeur.get("aucune_periode_deja_reclamee", False)
         ),
-        profil_individuel_sans_conjoint_dependant=bool(
+        profil_individuel_sans_conjoint_dependant=_bool_json(
             valeur.get(
                 "profil_individuel_sans_conjoint_dependant",
                 False,
@@ -1468,34 +1476,34 @@ def _frais_scolarite_depuis_dict(
         ),
         source_federale=str(valeur.get("source_federale", "")),
         source_quebec=str(valeur.get("source_quebec", "")),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
-        piece_federale_confirmee=bool(
+        piece_federale_confirmee=_bool_json(
             valeur.get("piece_federale_confirmee", False)
         ),
-        recu_officiel_quebec_confirme=bool(
+        recu_officiel_quebec_confirme=_bool_json(
             valeur.get("recu_officiel_quebec_confirme", False)
         ),
-        seuil_100_confirme=bool(
+        seuil_100_confirme=_bool_json(
             valeur.get("seuil_100_confirme", False)
         ),
-        remboursements_soustraits=bool(
+        remboursements_soustraits=_bool_json(
             valeur.get("remboursements_soustraits", False)
         ),
-        frais_2025_uniquement=bool(
+        frais_2025_uniquement=_bool_json(
             valeur.get("frais_2025_uniquement", False)
         ),
-        aucun_report_anterieur=bool(
+        aucun_report_anterieur=_bool_json(
             valeur.get("aucun_report_anterieur", False)
         ),
-        aucun_transfert=bool(
+        aucun_transfert=_bool_json(
             valeur.get("aucun_transfert", False)
         ),
-        credit_canadien_formation_non_reclame=bool(
+        credit_canadien_formation_non_reclame=_bool_json(
             valeur.get("credit_canadien_formation_non_reclame", False)
         ),
-        profil_resident_quebec_simple=bool(
+        profil_resident_quebec_simple=_bool_json(
             valeur.get("profil_resident_quebec_simple", False)
         ),
     )
@@ -1565,10 +1573,10 @@ def _credit_deficience_depuis_dict(
         soins_reclames_federaux=_decimal_depuis_json(soins, "soins_reclames_federaux"),
         source_soins_federaux=valeur.get("source_soins_federaux", ""),
         soins_federaux_valides=valeur.get("soins_federaux_valides", False),
-        reclamer_federal=bool(
+        reclamer_federal=_bool_json(
             valeur.get("reclamer_federal", False)
         ),
-        reclamer_quebec=bool(
+        reclamer_quebec=_bool_json(
             valeur.get("reclamer_quebec", False)
         ),
         source_federale=str(
@@ -1577,31 +1585,31 @@ def _credit_deficience_depuis_dict(
         source_quebec=str(
             valeur.get("source_quebec", "")
         ),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
-        age_18_plus_au_1_janvier_2025=bool(
+        age_18_plus_au_1_janvier_2025=_bool_json(
             valeur.get("age_18_plus_au_1_janvier_2025", False)
         ),
-        deficience_12_mois_confirmee=bool(
+        deficience_12_mois_confirmee=_bool_json(
             valeur.get("deficience_12_mois_confirmee", False)
         ),
-        profil_soi_meme_resident_quebec=bool(
+        profil_soi_meme_resident_quebec=_bool_json(
             valeur.get("profil_soi_meme_resident_quebec", False)
         ),
-        ciph_approuve_arc=bool(
+        ciph_approuve_arc=_bool_json(
             valeur.get("ciph_approuve_arc", False)
         ),
-        attestation_quebec_confirmee=bool(
+        attestation_quebec_confirmee=_bool_json(
             valeur.get("attestation_quebec_confirmee", False)
         ),
-        aucun_conflit_soins_prepose_etablissement=bool(
+        aucun_conflit_soins_prepose_etablissement=_bool_json(
             valeur.get(
                 "aucun_conflit_soins_prepose_etablissement",
                 False,
             )
         ),
-        aucun_transfert_federal=bool(
+        aucun_transfert_federal=_bool_json(
             valeur.get("aucun_transfert_federal", False)
         ),
     )
@@ -1660,10 +1668,10 @@ def _assurance_medicaments_depuis_dict(
         type_couverture=str(
             valeur.get("type_couverture", "")
         ),
-        couverture_toute_annee=bool(
+        couverture_toute_annee=_bool_json(
             valeur.get("couverture_toute_annee", False)
         ),
-        sans_conjoint_31_decembre_2025=bool(
+        sans_conjoint_31_decembre_2025=_bool_json(
             valeur.get(
                 "sans_conjoint_31_decembre_2025",
                 False,
@@ -1677,19 +1685,19 @@ def _assurance_medicaments_depuis_dict(
             valeur.get("revenu_ligne_48_annexe_k", "0"),
             "assurance_medicaments.revenu_ligne_48_annexe_k",
         ),
-        aucun_mois_exempt=bool(
+        aucun_mois_exempt=_bool_json(
             valeur.get("aucun_mois_exempt", False)
         ),
-        carte_ramq_valide_2025=bool(
+        carte_ramq_valide_2025=_bool_json(
             valeur.get("carte_ramq_valide_2025", False)
         ),
-        situation_validee_par_comptable=bool(
+        situation_validee_par_comptable=_bool_json(
             valeur.get(
                 "situation_validee_par_comptable",
                 False,
             )
         ),
-        aucun_cas_particulier=bool(
+        aucun_cas_particulier=_bool_json(
             valeur.get("aucun_cas_particulier", False)
         ),
         source=str(valeur.get("source", "")),
@@ -1797,34 +1805,34 @@ def _cotisations_excedentaires_depuis_dict(
             "cotisations_excedentaires.revenus_assujettis_rqap",
         ),
         source=str(valeur.get("source", "")),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
-        resident_quebec_31_decembre_2025=bool(
+        resident_quebec_31_decembre_2025=_bool_json(
             valeur.get(
                 "resident_quebec_31_decembre_2025",
                 False,
             )
         ),
-        emploi_quebec_uniquement=bool(
+        emploi_quebec_uniquement=_bool_json(
             valeur.get("emploi_quebec_uniquement", False)
         ),
-        rrq_uniquement_sans_rpc=bool(
+        rrq_uniquement_sans_rpc=_bool_json(
             valeur.get("rrq_uniquement_sans_rpc", False)
         ),
-        aucun_travail_autonome=bool(
+        aucun_travail_autonome=_bool_json(
             valeur.get("aucun_travail_autonome", False)
         ),
-        profil_rrq_standard_18_64=bool(
+        profil_rrq_standard_18_64=_bool_json(
             valeur.get("profil_rrq_standard_18_64", False)
         ),
-        aucun_cas_particulier_ae=bool(
+        aucun_cas_particulier_ae=_bool_json(
             valeur.get("aucun_cas_particulier_ae", False)
         ),
-        aucun_cas_particulier_rqap=bool(
+        aucun_cas_particulier_rqap=_bool_json(
             valeur.get("aucun_cas_particulier_rqap", False)
         ),
-        calcul_standard_confirme=bool(
+        calcul_standard_confirme=_bool_json(
             valeur.get("calcul_standard_confirme", False)
         ),
         multi_employeurs_confirme=valeur.get("multi_employeurs_confirme", False),
@@ -1898,7 +1906,7 @@ def _personne_vivant_seule_depuis_dict(
         )
 
     try:
-        mois_allocation = int(
+        mois_allocation = _entier_json(
             valeur.get("mois_allocation_famille_2025", 0)
         )
     except (TypeError, ValueError) as erreur:
@@ -1910,75 +1918,75 @@ def _personne_vivant_seule_depuis_dict(
     _verifier_types_annexe_b_6a(valeur, PersonneVivantSeule2025())
     profil = PersonneVivantSeule2025(
         combinaison_annexe_b_confirmee=valeur.get("combinaison_annexe_b_confirmee", False),
-        reclamer_montant=bool(
+        reclamer_montant=_bool_json(
             valeur.get("reclamer_montant", False)
         ),
         revenu_familial_net=_decimal_depuis_json(
             valeur.get("revenu_familial_net", "0"),
             "personne_vivant_seule.revenu_familial_net",
         ),
-        personne_vivant_seule_toute_annee=bool(
+        personne_vivant_seule_toute_annee=_bool_json(
             valeur.get(
                 "personne_vivant_seule_toute_annee",
                 False,
             )
         ),
-        habitation_maintenue_par_contribuable=bool(
+        habitation_maintenue_par_contribuable=_bool_json(
             valeur.get(
                 "habitation_maintenue_par_contribuable",
                 False,
             )
         ),
-        seulement_personnes_autorisees_dans_habitation=bool(
+        seulement_personnes_autorisees_dans_habitation=_bool_json(
             valeur.get(
                 "seulement_personnes_autorisees_dans_habitation",
                 False,
             )
         ),
-        aucun_conjoint_31_decembre_2025=bool(
+        aucun_conjoint_31_decembre_2025=_bool_json(
             valeur.get(
                 "aucun_conjoint_31_decembre_2025",
                 False,
             )
         ),
-        resident_quebec_canada_toute_annee=bool(
+        resident_quebec_canada_toute_annee=_bool_json(
             valeur.get(
                 "resident_quebec_canada_toute_annee",
                 False,
             )
         ),
-        reclamer_additionnel_monoparental=bool(
+        reclamer_additionnel_monoparental=_bool_json(
             valeur.get(
                 "reclamer_additionnel_monoparental",
                 False,
             )
         ),
-        enfant_majeur_etudes_admissible=bool(
+        enfant_majeur_etudes_admissible=_bool_json(
             valeur.get(
                 "enfant_majeur_etudes_admissible",
                 False,
             )
         ),
-        aucun_droit_allocation_famille_decembre=bool(
+        aucun_droit_allocation_famille_decembre=_bool_json(
             valeur.get(
                 "aucun_droit_allocation_famille_decembre",
                 False,
             )
         ),
         mois_allocation_famille_2025=mois_allocation,
-        aucun_montant_age_ou_retraite=bool(
+        aucun_montant_age_ou_retraite=_bool_json(
             valeur.get(
                 "aucun_montant_age_ou_retraite",
                 False,
             )
         ),
-        documents_justificatifs_confirmes=bool(
+        documents_justificatifs_confirmes=_bool_json(
             valeur.get(
                 "documents_justificatifs_confirmes",
                 False,
             )
         ),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
         source=str(valeur.get("source", "")),
@@ -2045,10 +2053,10 @@ def _credits_federaux_age_pension_depuis_dict(
         )
 
     profil = CreditsFederauxAgePension2025(
-        reclamer_montant_age=bool(
+        reclamer_montant_age=_bool_json(
             valeur.get("reclamer_montant_age", False)
         ),
-        age_65_plus_31_decembre_2025=bool(
+        age_65_plus_31_decembre_2025=_bool_json(
             valeur.get(
                 "age_65_plus_31_decembre_2025",
                 False,
@@ -2061,7 +2069,7 @@ def _credits_federaux_age_pension_depuis_dict(
                 "revenu_net_ligne_23600"
             ),
         ),
-        reclamer_montant_pension=bool(
+        reclamer_montant_pension=_bool_json(
             valeur.get("reclamer_montant_pension", False)
         ),
         revenu_pension_admissible=_decimal_depuis_json(
@@ -2071,31 +2079,31 @@ def _credits_federaux_age_pension_depuis_dict(
                 "revenu_pension_admissible"
             ),
         ),
-        resident_canada_toute_annee=bool(
+        resident_canada_toute_annee=_bool_json(
             valeur.get(
                 "resident_canada_toute_annee",
                 False,
             )
         ),
-        aucune_regle_deces=bool(
+        aucune_regle_deces=_bool_json(
             valeur.get("aucune_regle_deces", False)
         ),
-        aucun_fractionnement_pension=bool(
+        aucun_fractionnement_pension=_bool_json(
             valeur.get(
                 "aucun_fractionnement_pension",
                 False,
             )
         ),
-        aucun_transfert_conjoint=bool(
+        aucun_transfert_conjoint=_bool_json(
             valeur.get("aucun_transfert_conjoint", False)
         ),
-        revenu_pension_admissible_confirme=bool(
+        revenu_pension_admissible_confirme=_bool_json(
             valeur.get(
                 "revenu_pension_admissible_confirme",
                 False,
             )
         ),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
         source_age=str(
@@ -2188,7 +2196,7 @@ def _montant_conjoint_federal_depuis_dict(
         )
 
     profil = MontantConjointFederal2025(
-        reclamer_montant=bool(
+        reclamer_montant=_bool_json(
             valeur.get("reclamer_montant", False)
         ),
         revenu_net_contribuable_ligne_23600=_decimal_depuis_json(
@@ -2205,73 +2213,73 @@ def _montant_conjoint_federal_depuis_dict(
             valeur.get("revenu_net_conjoint_2025", "0"),
             "montant_conjoint_federal.revenu_net_conjoint_2025",
         ),
-        contribuable_resident_canada_toute_annee=bool(
+        contribuable_resident_canada_toute_annee=_bool_json(
             valeur.get(
                 "contribuable_resident_canada_toute_annee",
                 False,
             )
         ),
-        relation_conjoint_confirmee=bool(
+        relation_conjoint_confirmee=_bool_json(
             valeur.get("relation_conjoint_confirmee", False)
         ),
-        conjoint_soutenu_2025=bool(
+        conjoint_soutenu_2025=_bool_json(
             valeur.get("conjoint_soutenu_2025", False)
         ),
-        meme_conjoint_toute_annee_2025=bool(
+        meme_conjoint_toute_annee_2025=_bool_json(
             valeur.get("meme_conjoint_toute_annee_2025", False)
         ),
-        aucune_separation_2025=bool(
+        aucune_separation_2025=_bool_json(
             valeur.get("aucune_separation_2025", False)
         ),
-        conjoint_resident_canada_toute_annee=bool(
+        conjoint_resident_canada_toute_annee=_bool_json(
             valeur.get(
                 "conjoint_resident_canada_toute_annee",
                 False,
             )
         ),
-        aucun_paiement_pension_alimentaire=bool(
+        aucun_paiement_pension_alimentaire=_bool_json(
             valeur.get(
                 "aucun_paiement_pension_alimentaire",
                 False,
             )
         ),
-        aucune_infirmite_conjoint=bool(
+        aucune_infirmite_conjoint=_bool_json(
             valeur.get("aucune_infirmite_conjoint", False)
         ),
-        conjoint_avec_infirmite=bool(
+        conjoint_avec_infirmite=_bool_json(
             valeur.get("conjoint_avec_infirmite", False)
         ),
-        dependance_due_uniquement_a_infirmite=bool(
+        dependance_due_uniquement_a_infirmite=_bool_json(
             valeur.get(
                 "dependance_due_uniquement_a_infirmite",
                 False,
             )
         ),
-        dependance_periode_considerable=bool(
+        dependance_periode_considerable=_bool_json(
             valeur.get(
                 "dependance_periode_considerable",
                 False,
             )
         ),
-        aidant_naturel_base_2687_inclus=bool(
+        aidant_naturel_base_2687_inclus=_bool_json(
             valeur.get("aidant_naturel_base_2687_inclus", False)
         ),
-        preuve_medicale_ou_t2201_confirmee=bool(
+        preuve_medicale_ou_t2201_confirmee=_bool_json(
             valeur.get(
                 "preuve_medicale_ou_t2201_confirmee",
                 False,
             )
         ),
-        un_seul_conjoint_reclame_montant=bool(
+        un_seul_conjoint_reclame_montant=_bool_json(
             valeur.get(
                 "un_seul_conjoint_reclame_montant",
                 False,
             )
         ),
-        revenu_conjoint_confirme=bool(
+        revenu_conjoint_confirme=_bool_json(
             valeur.get("revenu_conjoint_confirme", False)
         ),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
         source_conjoint=str(
@@ -2399,7 +2407,7 @@ def _personne_charge_admissible_federale_depuis_dict(
     profil = MontantPersonneChargeAdmissibleFederal2025(
         enfant_infirmite_ligne30500=valeur.get("enfant_infirmite_ligne30500", False),
         reference_enfant=valeur.get("reference_enfant", ""),
-        reclamer_montant=bool(
+        reclamer_montant=_bool_json(
             valeur.get("reclamer_montant", False)
         ),
         revenu_net_contribuable_ligne_23600=_decimal_depuis_json(
@@ -2422,100 +2430,100 @@ def _personne_charge_admissible_federale_depuis_dict(
                 "revenu_net_personne_charge_2025"
             ),
         ),
-        contribuable_resident_canada_toute_annee=bool(
+        contribuable_resident_canada_toute_annee=_bool_json(
             valeur.get(
                 "contribuable_resident_canada_toute_annee",
                 False,
             )
         ),
-        aucun_epoux_conjoint_2025=bool(
+        aucun_epoux_conjoint_2025=_bool_json(
             valeur.get("aucun_epoux_conjoint_2025", False)
         ),
-        personne_charge_est_enfant=bool(
+        personne_charge_est_enfant=_bool_json(
             valeur.get("personne_charge_est_enfant", False)
         ),
-        enfant_moins_18_fin_2025=bool(
+        enfant_moins_18_fin_2025=_bool_json(
             valeur.get("enfant_moins_18_fin_2025", False)
         ),
-        aucune_infirmite_enfant=bool(
+        aucune_infirmite_enfant=_bool_json(
             valeur.get("aucune_infirmite_enfant", False)
         ),
-        personne_charge_18_ans_ou_plus=bool(
+        personne_charge_18_ans_ou_plus=_bool_json(
             valeur.get("personne_charge_18_ans_ou_plus", False)
         ),
-        personne_charge_avec_infirmite=bool(
+        personne_charge_avec_infirmite=_bool_json(
             valeur.get("personne_charge_avec_infirmite", False)
         ),
-        dependance_due_uniquement_a_infirmite=bool(
+        dependance_due_uniquement_a_infirmite=_bool_json(
             valeur.get(
                 "dependance_due_uniquement_a_infirmite",
                 False,
             )
         ),
-        dependance_periode_considerable=bool(
+        dependance_periode_considerable=_bool_json(
             valeur.get(
                 "dependance_periode_considerable",
                 False,
             )
         ),
-        aidant_naturel_base_2687_inclus=bool(
+        aidant_naturel_base_2687_inclus=_bool_json(
             valeur.get("aidant_naturel_base_2687_inclus", False)
         ),
-        preuve_medicale_ou_t2201_confirmee=bool(
+        preuve_medicale_ou_t2201_confirmee=_bool_json(
             valeur.get(
                 "preuve_medicale_ou_t2201_confirmee",
                 False,
             )
         ),
-        enfant_soutenu_2025=bool(
+        enfant_soutenu_2025=_bool_json(
             valeur.get("enfant_soutenu_2025", False)
         ),
-        enfant_a_vecu_avec_contribuable=bool(
+        enfant_a_vecu_avec_contribuable=_bool_json(
             valeur.get(
                 "enfant_a_vecu_avec_contribuable",
                 False,
             )
         ),
-        habitation_maintenue_par_contribuable=bool(
+        habitation_maintenue_par_contribuable=_bool_json(
             valeur.get(
                 "habitation_maintenue_par_contribuable",
                 False,
             )
         ),
-        enfant_resident_canada_toute_annee=bool(
+        enfant_resident_canada_toute_annee=_bool_json(
             valeur.get(
                 "enfant_resident_canada_toute_annee",
                 False,
             )
         ),
-        aucune_garde_partagee=bool(
+        aucune_garde_partagee=_bool_json(
             valeur.get("aucune_garde_partagee", False)
         ),
-        aucun_paiement_pension_alimentaire=bool(
+        aucun_paiement_pension_alimentaire=_bool_json(
             valeur.get(
                 "aucun_paiement_pension_alimentaire",
                 False,
             )
         ),
-        un_seul_montant_30400_par_menage=bool(
+        un_seul_montant_30400_par_menage=_bool_json(
             valeur.get(
                 "un_seul_montant_30400_par_menage",
                 False,
             )
         ),
-        aucun_autre_reclamant_30400=bool(
+        aucun_autre_reclamant_30400=_bool_json(
             valeur.get(
                 "aucun_autre_reclamant_30400",
                 False,
             )
         ),
-        revenu_personne_charge_confirme=bool(
+        revenu_personne_charge_confirme=_bool_json(
             valeur.get(
                 "revenu_personne_charge_confirme",
                 False,
             )
         ),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
         source_personne_charge=str(
@@ -2615,58 +2623,58 @@ def _accessibilite_domiciliaire_federale_depuis_dict(
         autres_participants_admissibles_confirmes=valeur.get("autres_participants_admissibles_confirmes", False),
         logement_unique_2025_confirme=valeur.get("logement_unique_2025_confirme", False),
         reference_logement=valeur.get("reference_logement", ""), source_partage=valeur.get("source_partage", ""),
-        reclamer_montant=bool(valeur.get("reclamer_montant", False)),
+        reclamer_montant=_bool_json(valeur.get("reclamer_montant", False)),
         depenses_admissibles=_decimal_depuis_json(
             valeur.get("depenses_admissibles", "0"),
             "accessibilite_domiciliaire_federale.depenses_admissibles",
         ),
-        demande_pour_soi_meme=bool(
+        demande_pour_soi_meme=_bool_json(
             valeur.get("demande_pour_soi_meme", False)
         ),
-        age_65_plus_fin_annee=bool(
+        age_65_plus_fin_annee=_bool_json(
             valeur.get("age_65_plus_fin_annee", False)
         ),
-        admissible_ciph=bool(valeur.get("admissible_ciph", False)),
-        logement_situe_au_canada=bool(
+        admissible_ciph=_bool_json(valeur.get("admissible_ciph", False)),
+        logement_situe_au_canada=_bool_json(
             valeur.get("logement_situe_au_canada", False)
         ),
-        logement_propriete_du_contribuable=bool(
+        logement_propriete_du_contribuable=_bool_json(
             valeur.get("logement_propriete_du_contribuable", False)
         ),
-        logement_normalement_habite_par_contribuable=bool(
+        logement_normalement_habite_par_contribuable=_bool_json(
             valeur.get(
                 "logement_normalement_habite_par_contribuable",
                 False,
             )
         ),
-        renovation_durable_et_integrante=bool(
+        renovation_durable_et_integrante=_bool_json(
             valeur.get("renovation_durable_et_integrante", False)
         ),
-        accessibilite_ou_reduction_risque_confirmee=bool(
+        accessibilite_ou_reduction_risque_confirmee=_bool_json(
             valeur.get(
                 "accessibilite_ou_reduction_risque_confirmee",
                 False,
             )
         ),
-        travaux_et_biens_2025_uniquement=bool(
+        travaux_et_biens_2025_uniquement=_bool_json(
             valeur.get("travaux_et_biens_2025_uniquement", False)
         ),
-        aucune_part_entreprise_ou_location=bool(
+        aucune_part_entreprise_ou_location=_bool_json(
             valeur.get("aucune_part_entreprise_ou_location", False)
         ),
-        aucun_partage_de_la_demande=bool(
+        aucun_partage_de_la_demande=_bool_json(
             valeur.get("aucun_partage_de_la_demande", False)
         ),
-        fournisseurs_lies_admissibles_confirme=bool(
+        fournisseurs_lies_admissibles_confirme=_bool_json(
             valeur.get("fournisseurs_lies_admissibles_confirme", False)
         ),
-        depenses_non_admissibles_exclues=bool(
+        depenses_non_admissibles_exclues=_bool_json(
             valeur.get("depenses_non_admissibles_exclues", False)
         ),
-        pieces_justificatives_conservees=bool(
+        pieces_justificatives_conservees=_bool_json(
             valeur.get("pieces_justificatives_conservees", False)
         ),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
         source_renovation=str(valeur.get("source_renovation", "")),
@@ -2760,59 +2768,59 @@ def _achat_habitation_federal_depuis_dict(
         montant_attribue_autres_acquereurs=_decimal_depuis_json(valeur.get("montant_attribue_autres_acquereurs", "0"), "Parts autres acquéreurs 31270"),
         autres_acquereurs_admissibles_confirmes=valeur.get("autres_acquereurs_admissibles_confirmes", False),
         reference_habitation=valeur.get("reference_habitation", ""), source_partage=valeur.get("source_partage", ""),
-        reclamer_montant=bool(
+        reclamer_montant=_bool_json(
             valeur.get("reclamer_montant", False)
         ),
         montant_reclame=_decimal_depuis_json(
             valeur.get("montant_reclame", "0"),
             "achat_habitation_federal.montant_reclame",
         ),
-        acquisition_en_2025=bool(
+        acquisition_en_2025=_bool_json(
             valeur.get("acquisition_en_2025", False)
         ),
-        habitation_admissible=bool(
+        habitation_admissible=_bool_json(
             valeur.get("habitation_admissible", False)
         ),
-        habitation_situee_au_canada=bool(
+        habitation_situee_au_canada=_bool_json(
             valeur.get("habitation_situee_au_canada", False)
         ),
-        habitation_enregistree_nom_contribuable_ou_conjoint=bool(
+        habitation_enregistree_nom_contribuable_ou_conjoint=_bool_json(
             valeur.get(
                 "habitation_enregistree_nom_contribuable_ou_conjoint",
                 False,
             )
         ),
-        premier_acheteur_confirme=bool(
+        premier_acheteur_confirme=_bool_json(
             valeur.get("premier_acheteur_confirme", False)
         ),
-        aucune_habitation_possedee_habitee_annee_achat_ou_4_precedentes=bool(
+        aucune_habitation_possedee_habitee_annee_achat_ou_4_precedentes=_bool_json(
             valeur.get(
                 "aucune_habitation_possedee_habitee_annee_achat_ou_4_precedentes",
                 False,
             )
         ),
-        intention_residence_principale_dans_un_an=bool(
+        intention_residence_principale_dans_un_an=_bool_json(
             valeur.get(
                 "intention_residence_principale_dans_un_an",
                 False,
             )
         ),
-        aucun_partage_du_montant=bool(
+        aucun_partage_du_montant=_bool_json(
             valeur.get("aucun_partage_du_montant", False)
         ),
-        aucune_exception_handicap_utilisee=bool(
+        aucune_exception_handicap_utilisee=_bool_json(
             valeur.get(
                 "aucune_exception_handicap_utilisee",
                 False,
             )
         ),
-        pieces_justificatives_conservees=bool(
+        pieces_justificatives_conservees=_bool_json(
             valeur.get(
                 "pieces_justificatives_conservees",
                 False,
             )
         ),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
         source_habitation=str(
@@ -2928,7 +2936,7 @@ def _aidant_autre_personne_charge_federal_depuis_dict(
             valeur.get("montant_attribue_autres_soutiens", "0"), "partage 30450"),
         reference_personne=valeur.get("reference_personne", ""),
         source_partage=valeur.get("source_partage", ""),
-        reclamer_montant=bool(
+        reclamer_montant=_bool_json(
             valeur.get("reclamer_montant", False)
         ),
         lien_personne=str(
@@ -2941,58 +2949,58 @@ def _aidant_autre_personne_charge_federal_depuis_dict(
                 "revenu_net_personne_ligne_23600"
             ),
         ),
-        age_18_ans_ou_plus=bool(
+        age_18_ans_ou_plus=_bool_json(
             valeur.get("age_18_ans_ou_plus", False)
         ),
-        personne_soutenue_en_2025=bool(
+        personne_soutenue_en_2025=_bool_json(
             valeur.get("personne_soutenue_en_2025", False)
         ),
-        infirmite_physique_ou_mentale=bool(
+        infirmite_physique_ou_mentale=_bool_json(
             valeur.get("infirmite_physique_ou_mentale", False)
         ),
-        dependance_due_uniquement_a_infirmite=bool(
+        dependance_due_uniquement_a_infirmite=_bool_json(
             valeur.get(
                 "dependance_due_uniquement_a_infirmite",
                 False,
             )
         ),
-        dependance_periode_considerable=bool(
+        dependance_periode_considerable=_bool_json(
             valeur.get(
                 "dependance_periode_considerable",
                 False,
             )
         ),
-        resident_canada_au_moins_un_moment_2025=bool(
+        resident_canada_au_moins_un_moment_2025=_bool_json(
             valeur.get(
                 "resident_canada_au_moins_un_moment_2025",
                 False,
             )
         ),
-        aucune_reclamation_ligne_30300_30400_pour_personne=bool(
+        aucune_reclamation_ligne_30300_30400_pour_personne=_bool_json(
             valeur.get(
                 "aucune_reclamation_ligne_30300_30400_pour_personne",
                 False,
             )
         ),
-        aucun_paiement_pension_alimentaire_pour_personne=bool(
+        aucun_paiement_pension_alimentaire_pour_personne=_bool_json(
             valeur.get(
                 "aucun_paiement_pension_alimentaire_pour_personne",
                 False,
             )
         ),
-        aucun_partage_reclamation_30450=bool(
+        aucun_partage_reclamation_30450=_bool_json(
             valeur.get(
                 "aucun_partage_reclamation_30450",
                 False,
             )
         ),
-        preuve_medicale_ou_t2201_confirmee=bool(
+        preuve_medicale_ou_t2201_confirmee=_bool_json(
             valeur.get(
                 "preuve_medicale_ou_t2201_confirmee",
                 False,
             )
         ),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
         source_personne=str(
@@ -3067,7 +3075,7 @@ def _aidant_conjoint_personne_charge_federal_depuis_dict(
         )
 
     profil = AidantNaturelConjointOuPersonneChargeFederal2025(
-        reclamer_montant=bool(
+        reclamer_montant=_bool_json(
             valeur.get("reclamer_montant", False)
         ),
         type_personne=str(
@@ -3090,46 +3098,46 @@ def _aidant_conjoint_personne_charge_federal_depuis_dict(
                 "montant_reclame_ligne_30300_ou_30400"
             ),
         ),
-        personne_soutenue_en_2025=bool(
+        personne_soutenue_en_2025=_bool_json(
             valeur.get("personne_soutenue_en_2025", False)
         ),
-        personne_charge_18_ans_ou_plus_si_applicable=bool(
+        personne_charge_18_ans_ou_plus_si_applicable=_bool_json(
             valeur.get(
                 "personne_charge_18_ans_ou_plus_si_applicable",
                 False,
             )
         ),
-        infirmite_physique_ou_mentale=bool(
+        infirmite_physique_ou_mentale=_bool_json(
             valeur.get("infirmite_physique_ou_mentale", False)
         ),
-        dependance_due_uniquement_a_infirmite=bool(
+        dependance_due_uniquement_a_infirmite=_bool_json(
             valeur.get(
                 "dependance_due_uniquement_a_infirmite",
                 False,
             )
         ),
-        dependance_periode_considerable=bool(
+        dependance_periode_considerable=_bool_json(
             valeur.get(
                 "dependance_periode_considerable",
                 False,
             )
         ),
-        montant_base_2687_inclus=bool(
+        montant_base_2687_inclus=_bool_json(
             valeur.get("montant_base_2687_inclus", False)
         ),
-        un_seul_reclamant_30425=bool(
+        un_seul_reclamant_30425=_bool_json(
             valeur.get("un_seul_reclamant_30425", False)
         ),
-        aucune_reclamation_partagee=bool(
+        aucune_reclamation_partagee=_bool_json(
             valeur.get("aucune_reclamation_partagee", False)
         ),
-        preuve_medicale_ou_t2201_confirmee=bool(
+        preuve_medicale_ou_t2201_confirmee=_bool_json(
             valeur.get(
                 "preuve_medicale_ou_t2201_confirmee",
                 False,
             )
         ),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
         source_personne=str(
@@ -3237,55 +3245,55 @@ def _aidant_enfant_federal_depuis_dict(
         identites_distinctes_confirmees=valeur.get("identites_distinctes_confirmees", False),
         enfant_reclame_30400=valeur.get("enfant_reclame_30400", False),
         reference_enfant=valeur.get("reference_enfant", ""),
-        reclamer_montant=bool(
+        reclamer_montant=_bool_json(
             valeur.get("reclamer_montant", False)
         ),
-        enfant_biologique_ou_adopte=bool(
+        enfant_biologique_ou_adopte=_bool_json(
             valeur.get("enfant_biologique_ou_adopte", False)
         ),
-        enfant_moins_18_fin_2025=bool(
+        enfant_moins_18_fin_2025=_bool_json(
             valeur.get("enfant_moins_18_fin_2025", False)
         ),
-        infirmite_physique_ou_mentale=bool(
+        infirmite_physique_ou_mentale=_bool_json(
             valeur.get("infirmite_physique_ou_mentale", False)
         ),
-        dependance_longue_continue_duree_indeterminee=bool(
+        dependance_longue_continue_duree_indeterminee=_bool_json(
             valeur.get(
                 "dependance_longue_continue_duree_indeterminee",
                 False,
             )
         ),
-        besoin_aide_beaucoup_plus_que_meme_age=bool(
+        besoin_aide_beaucoup_plus_que_meme_age=_bool_json(
             valeur.get(
                 "besoin_aide_beaucoup_plus_que_meme_age",
                 False,
             )
         ),
-        enfant_avec_deux_parents_toute_annee=bool(
+        enfant_avec_deux_parents_toute_annee=_bool_json(
             valeur.get(
                 "enfant_avec_deux_parents_toute_annee",
                 False,
             )
         ),
-        aucune_garde_partagee=bool(
+        aucune_garde_partagee=_bool_json(
             valeur.get("aucune_garde_partagee", False)
         ),
-        aucune_pension_alimentaire=bool(
+        aucune_pension_alimentaire=_bool_json(
             valeur.get("aucune_pension_alimentaire", False)
         ),
-        aucun_autre_reclamant_30500=bool(
+        aucun_autre_reclamant_30500=_bool_json(
             valeur.get("aucun_autre_reclamant_30500", False)
         ),
-        aucun_transfert_conjoint_32600=bool(
+        aucun_transfert_conjoint_32600=_bool_json(
             valeur.get("aucun_transfert_conjoint_32600", False)
         ),
-        preuve_medicale_ou_t2201_confirmee=bool(
+        preuve_medicale_ou_t2201_confirmee=_bool_json(
             valeur.get(
                 "preuve_medicale_ou_t2201_confirmee",
                 False,
             )
         ),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
         source_enfant=str(
@@ -3375,13 +3383,13 @@ def _montants_age_retraite_depuis_dict(
     _verifier_types_annexe_b_6a(valeur, MontantsAgeRetraite2025())
     profil = MontantsAgeRetraite2025(
         combinaison_annexe_b_confirmee=valeur.get("combinaison_annexe_b_confirmee", False),
-        reclamer_age=bool(
+        reclamer_age=_bool_json(
             valeur.get("reclamer_age", False)
         ),
-        ne_avant_1_janvier_1961=bool(
+        ne_avant_1_janvier_1961=_bool_json(
             valeur.get("ne_avant_1_janvier_1961", False)
         ),
-        reclamer_revenus_retraite=bool(
+        reclamer_revenus_retraite=_bool_json(
             valeur.get("reclamer_revenus_retraite", False)
         ),
         revenu_ligne_122=_decimal_depuis_json(
@@ -3422,37 +3430,37 @@ def _montants_age_retraite_depuis_dict(
             valeur.get("revenu_familial_net", "0"),
             "montants_age_retraite.revenu_familial_net",
         ),
-        aucun_conjoint_31_decembre_2025=bool(
+        aucun_conjoint_31_decembre_2025=_bool_json(
             valeur.get(
                 "aucun_conjoint_31_decembre_2025",
                 False,
             )
         ),
-        resident_quebec_canada_toute_annee=bool(
+        resident_quebec_canada_toute_annee=_bool_json(
             valeur.get(
                 "resident_quebec_canada_toute_annee",
                 False,
             )
         ),
-        aucun_montant_personne_vivant_seule=bool(
+        aucun_montant_personne_vivant_seule=_bool_json(
             valeur.get(
                 "aucun_montant_personne_vivant_seule",
                 False,
             )
         ),
-        revenus_retraite_admissibles_confirmes=bool(
+        revenus_retraite_admissibles_confirmes=_bool_json(
             valeur.get(
                 "revenus_retraite_admissibles_confirmes",
                 False,
             )
         ),
-        revenus_non_admissibles_exclus=bool(
+        revenus_non_admissibles_exclus=_bool_json(
             valeur.get(
                 "revenus_non_admissibles_exclus",
                 False,
             )
         ),
-        valide_par_comptable=bool(
+        valide_par_comptable=_bool_json(
             valeur.get("valide_par_comptable", False)
         ),
         source_age=str(
@@ -4446,7 +4454,21 @@ def sauvegarder_dossier_fiscal(
     return chemin
 
 
+def _bool_json(valeur):
+    if type(valeur) is not bool:
+        raise ValueError("Booleen JSON requis, sans conversion implicite.")
+    return valeur
+
+
+def _entier_json(valeur):
+    if type(valeur) is not int:
+        raise ValueError("Entier JSON requis, sans conversion implicite.")
+    return valeur
+
+
 def _decimal_depuis_json(valeur: Any, nom: str) -> Decimal:
+    if type(valeur) not in (str, int, float) or (isinstance(valeur, str) and re.fullmatch(r"[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?", valeur) is None):
+        raise ValueError(f"Format decimal JSON invalide pour {nom}.")
     try:
         resultat = Decimal(str(valeur))
     except (InvalidOperation, ValueError, TypeError) as erreur:
@@ -4467,12 +4489,12 @@ def charger_dossier_fiscal(source: Path | str) -> DossierFiscalEnregistre:
 
 def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documents=True):
     """Même validation que le chargement fichier; mode sans accès aux pièces sources."""
-    if not isinstance(contenu, dict) or contenu.get("schema_version") != SCHEMA_VERSION:
+    if not isinstance(contenu, dict) or (type(contenu.get("schema_version")) is not int or contenu.get("schema_version") != SCHEMA_VERSION):
         raise ValueError("Version de dossier fiscal non prise en charge.")
 
     try:
         client = " ".join(str(contenu["client"]).split())
-        annee = int(contenu["annee_fiscale"])
+        annee = _entier_json(contenu["annee_fiscale"])
         province = str(contenu["province"])
         sauvegarde_le = str(contenu["sauvegarde_le"])
         documents_json = contenu["documents"]
@@ -4500,7 +4522,7 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
             document = Path(str(brut["document"]))
             case = str(brut["case"])
             libelle = str(brut["libelle"])
-            corrigee = bool(brut["corrigee"])
+            corrigee = _bool_json(brut["corrigee"])
         except KeyError as erreur:
             raise ValueError("Une donnée fiscale enregistrée est incomplète.") from erreur
         if statut not in STATUTS_VALIDATION_AUTORISES:

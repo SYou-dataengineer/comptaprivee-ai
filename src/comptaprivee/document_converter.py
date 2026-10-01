@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+from .csv_exporter import RedacteurCsvSur
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -442,7 +443,7 @@ def excel_vers_csv(
             encoding="utf-8-sig",
             newline="",
         ) as fichier_csv:
-            writer = csv.writer(fichier_csv)
+            writer = RedacteurCsvSur(fichier_csv)
 
             for ligne in cellules:
                 valeurs = []
@@ -1005,7 +1006,7 @@ def pdf_vers_csv(
         encoding="utf-8-sig",
         newline="",
     ) as fichier_csv:
-        writer = csv.writer(fichier_csv)
+        writer = RedacteurCsvSur(fichier_csv)
 
         if tableaux:
             plusieurs = len(tableaux) > 1

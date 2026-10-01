@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+from .csv_exporter import RedacteurCsvSur
 import sqlite3
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -456,7 +457,7 @@ def exporter_evenements_audit_csv(
         encoding="utf-8-sig",
         newline="",
     ) as fichier:
-        writer = csv.writer(fichier)
+        writer = RedacteurCsvSur(fichier)
         writer.writerow(
             [
                 "Date / heure",

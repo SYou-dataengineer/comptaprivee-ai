@@ -14,16 +14,23 @@ from src.comptaprivee.tax_validated_case import DossierFiscalValide
 
 def _validee(document, type_document, case, valeur):
     montant = Decimal(valeur)
-    return DonneeFiscaleValidee(
+    donnee = DonneeFiscaleValidee(
         document=Path(document),
         type_document=type_document,
         case=case,
         libelle=f"{type_document} {case}",
-        valeur_extraite=montant,
-        valeur_validee=montant,
+        valeur_extraite=montant if montant.is_finite() else Decimal(0),
+        valeur_validee=montant if montant.is_finite() else Decimal(0),
         corrigee=False,
         statut="Validé par le comptable",
     )
+
+    # Injection volontairement invalide, uniquement pour tester les defenses
+    # internes du moteur apres le nouveau rejet a la frontiere de production.
+    if not montant.is_finite():
+        object.__setattr__(donnee, "valeur_extraite", montant)
+        object.__setattr__(donnee, "valeur_validee", montant)
+    return donnee
 
 
 def _dossier_52000():

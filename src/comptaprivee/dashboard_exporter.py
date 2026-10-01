@@ -1,6 +1,7 @@
 """Export local du tableau de bord comptable en CSV et PDF."""
 
 import csv
+from .csv_exporter import neutraliser_texte_csv
 from pathlib import Path
 
 import fitz
@@ -75,12 +76,12 @@ def exporter_tableau_bord_csv(
             ["Rapport tableau de bord ComptaPrivee AI"]
         )
         writer.writerow(
-            ["Societe comptable", lire_nom_societe() or "Societe comptable"]
+            ["Societe comptable", neutraliser_texte_csv(lire_nom_societe() or "Societe comptable")]
         )
-        writer.writerow(["Date debut", date_debut or "Toutes"])
-        writer.writerow(["Date fin", date_fin or "Toutes"])
+        writer.writerow(["Date debut", neutraliser_texte_csv(date_debut or "Toutes")])
+        writer.writerow(["Date fin", neutraliser_texte_csv(date_fin or "Toutes")])
         writer.writerow(
-            ["Fournisseur", fournisseur or "Tous les fournisseurs"]
+            ["Fournisseur", neutraliser_texte_csv(fournisseur or "Tous les fournisseurs")]
         )
         writer.writerow([])
 
@@ -95,7 +96,7 @@ def exporter_tableau_bord_csv(
         writer.writerow(["Fournisseur", f"Total {devise}"])
 
         for nom, total in resume.total_par_fournisseur:
-            writer.writerow([nom, f"{total:.2f}"])
+            writer.writerow([neutraliser_texte_csv(nom), f"{total:.2f}"])
 
     return chemin
 
