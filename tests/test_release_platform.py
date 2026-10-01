@@ -19,7 +19,10 @@ from src.comptaprivee.tax_estimation_2025 import calculer_estimation_fiscale_202
 def test_metadonnees_et_collecte():
     racine=Path(__file__).resolve().parents[1]
     config=tomllib.loads((racine/'pyproject.toml').read_text(encoding='utf-8'))
-    assert config['project']['version']=='1.0.0rc1'
+    version = config['project']['version']
+    assert version in ('1.0.0rc1', '1.0.0')
+    for document in ('README.md', 'CHANGELOG.md', 'docs/release_v1_checklist.md'):
+        assert version in (racine / document).read_text(encoding='utf-8')
     assert config['project']['requires-python']=='>=3.12,<3.13'
     assert config['tool']['pytest']['ini_options']['testpaths']==['tests']
 

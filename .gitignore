@@ -56,3 +56,12 @@ data/ocr_review_queue.json
 # Dossiers fiscaux locaux confidentiels
 data/dossiers_fiscaux/*
 !data/dossiers_fiscaux/.gitkeep
+
+# Archives utilisateur et produits de distribution locaux
+*.zip
+*.7z
+*.rar
+*.exe
+*.msi
+build/
+dist/

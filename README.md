@@ -1,7 +1,7 @@
-﻿# ComptaPrivée AI — préparation v1.0
+# ComptaPrivée AI — v1.0.0
 
 ComptaPrivée AI est une application locale de préparation comptable et fiscale.
-Cette version candidate (`1.0.0rc1`) traite les dossiers fiscaux **2025**, fédéral
+Cette version (`1.0.0`) traite les dossiers fiscaux **2025**, fédéral
 et Québec, dans les profils documentés et validés par le moteur.
 
 ## Année fiscale
@@ -68,7 +68,7 @@ Initialiser un dossier crée une nouvelle identité, même pour un homonyme. Pou
 poursuivre un dossier existant, utiliser **Dossiers enregistrés → Ouvrir le dossier**.
 Ne pas contourner un blocage fiscal par une valeur estimée ou un faux zéro.
 
-## Limites fiscales
+## Limites connues v1.0
 
 Ce logiciel ne reproduit pas tous les cas des déclarations T1/TP-1. La couverture
 exacte et les exclusions par bloc sont décrites dans
@@ -84,6 +84,20 @@ ajouté au remboursement TP-1 2025. La transmission gouvernementale est désacti
 
 La validation humaine reste nécessaire : un test vert n'étend pas le périmètre
 fiscal supporté et ne remplace pas la vérification des pièces.
+
+- Année fiscale 2025 uniquement ; aucun moteur 2026.
+- Aucun calcul complet T2203/TP-22 ni IMR T691/TP-776.42 ; préparation externe
+  obligatoire lorsque les garde-fous l'indiquent.
+- Aucun décès complexe ni calcul de succession ; déclaration principale bornée seulement.
+- DPA locative limitée aux immeubles déjà détenus avant 2025, catégorie 1 régulière,
+  sans acquisition, addition, disposition, récupération ni perte finale.
+- Travail autonome pur dans le profil publié ; cumul emploi et travail autonome
+  hors périmètre annuel actuel, avec refus explicite.
+- Résidence partielle hors estimation annuelle ; certains inventaires peuvent être
+  préparés sans autoriser pour autant le calcul annuel.
+- Dossiers locaux non chiffrés par l'application ; Tesseract externe requis pour l'OCR.
+- Certains formulaires officiels restent à préparer hors application, sans transmission
+  automatique. Aucun installateur final n'est livré.
 
 ## Données, sauvegardes et confidentialité
 
@@ -119,8 +133,9 @@ avec OCR et GUI sous Xvfb. Windows CI exécute les parcours ciblés de persistan
 JSON, CSV, chemins et GUI avec Python 3.12 et `--capture=sys`. Le détail des preuves
 et validations encore nécessaires est dans la [checklist release](docs/release_v1_checklist.md).
 
-- [Changelog de préparation](CHANGELOG.md)
+- [Changelog](CHANGELOG.md)
+- [Validation finale FINAL-C2](docs/validation_final_c2.md)
 - [Contrat futur multi-années](docs/architecture_multi_annees.md)
 - [Installation et dépendances](docs/installation_windows.md)
 
-Le tag v1.0 et l'exécutable final ne sont pas créés par cette préparation.
+Le tag v1.0.0 attend une autorisation explicite. Aucun exécutable final n'est livré.

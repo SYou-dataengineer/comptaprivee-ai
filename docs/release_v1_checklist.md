@@ -1,8 +1,8 @@
 # Checklist de release technique v1.0
 
-Version de préparation : **1.0.0rc1**, sans tag. Cette checklist doit être revue
-sur le commit exact candidat à la release finale. La réussite de FINAL-C1 ne
-constitue pas une autorisation de taguer ni de commercialiser le produit.
+Version : **1.0.0**, sans tag, après validation locale FINAL-C2 de la candidate
+1.0.0rc1. Les CI doivent être vérifiées sur le commit exact publié. La réussite
+technique ne constitue pas une autorisation de taguer ni de commercialiser le produit.
 
 ## Contrôles acquis
 
@@ -18,17 +18,21 @@ constitue pas une autorisation de taguer ni de commercialiser le produit.
   couverts par les tests Windows ciblés.
 - [x] Confidentialité locale et absence de chiffrement applicatif documentées.
 - [x] Aucun PDF/DOCX/CSV/XLSX/JSON/DB de données suivi détecté lors du contrôle Git ;
-  recherche de secrets usuels sans correspondance dans source/tests/docs.
+  recherche de secrets usuels : correspondances documentaires uniquement, aucun
+  secret réel repéré dans les fichiers suivis.
 - [x] Code fiscal 2025 inchangé ; correction interne openpyxl testée.
 - [x] CI Linux complète conservée ; job Windows ciblé ajouté avec Tk réel.
+- [x] Audit FINAL-C2 des fichiers suivis, fixtures et exclusions Git consigné dans
+  [validation_final_c2.md](validation_final_c2.md).
+- [x] Parcours Windows isolés FINAL-C2 : **227 passed, 5 warnings**, PDF compris.
 
 ## Portes de publication à vérifier sur le commit candidat
 
-- [x] Suite complete locale FINAL-C1 : **7 501 passed, 5 warnings**, Python 3.12.10 Windows.
+- [x] Suite complète locale FINAL-C2 : **7 501 passed, 5 warnings**, Python 3.12.10 Windows.
 - [ ] CI Linux verte sur le commit publié.
 - [ ] CI Windows verte sur le même commit (persistance, chemins, JSON, CSV, GUI).
 - [ ] `git status --short` vide et `git diff --check` sans erreur après publication.
-- [ ] Vérifier une dernière fois les fichiers du commit : aucune donnée client,
+- [x] Vérifier une dernière fois les fichiers du commit : aucune donnée client,
   pièce sensible, sauvegarde, secret ou fichier temporaire.
 - [ ] Autorisation humaine explicite avant création du tag v1.0.
 
