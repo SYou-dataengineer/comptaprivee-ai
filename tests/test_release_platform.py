@@ -1,3 +1,4 @@
+from tests.storage_helpers import restaurer_dans_profil
 """Contrat release : millésime, métadonnées et chemins utilisateur fictifs."""
 import csv
 import json
@@ -42,6 +43,8 @@ def test_chemin_utilisateur_unicode_espaces_json_csv_backup(tmp_path,monkeypatch
     racine=tmp_path/'Utilisateur Élodie fictive'/'Mes dossiers privés'
     racine.mkdir(parents=True)
     monkeypatch.chdir(racine)
+    from src.comptaprivee import app_paths
+    monkeypatch.setattr(app_paths, 'USER_DATA_DIR', racine)
     fiscaux=racine/'data/dossiers_fiscaux'
     monkeypatch.setattr(storage,'DOSSIERS_FISCAUX_DIR',fiscaux)
     monkeypatch.setattr(storage,'PROJECT_ROOT',racine)
@@ -53,7 +56,7 @@ def test_chemin_utilisateur_unicode_espaces_json_csv_backup(tmp_path,monkeypatch
         assert next(csv.DictReader(f,delimiter=';'))['fournisseur']=='Fournisseur été'
     archive=creer_sauvegarde(racine/'Sauvegardes privées'/'copie été.zip')
     cible=tmp_path/'Autre utilisateur fictif'/'Restauration été'
-    restaurer_sauvegarde(archive,racine=cible)
+    restaurer_dans_profil(archive,racine=cible)
     restaure=cible/'data/dossiers_fiscaux'/p.name
     assert restaure.read_bytes()==p.read_bytes()
     assert storage.charger_dossier_fiscal(restaure).dossier.case_id==d.case_id

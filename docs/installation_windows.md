@@ -68,10 +68,12 @@ L'application ne choisit que 2025 pour les calculs livrés. Ne pas utiliser un d
 
 ## Données et sauvegardes
 
-La base, les paramètres et certains exports utilisent des chemins relatifs au
-répertoire de lancement. Les dossiers fiscaux sont ancrés sur la racine du projet.
-Cette asymétrie impose de lancer depuis la racine ; elle est documentée sans
-changer le stockage dans cette préparation de release.
+Les données utilisent désormais `%LOCALAPPDATA%\ComptaPriveeAI`, indépendamment
+du répertoire courant : `data/` pour la base, les paramètres, le profil, la file OCR
+et les dossiers fiscaux ; `exports/` pour les sorties par défaut ; `temp/` pour
+les temporaires OCR/conversion. Les ressources restent dans le programme.
+Depuis les sources, la commande `python -m` suppose toujours le package accessible.
+Voir la [migration explicite des anciennes données](migration_donnees_utilisateur.md).
 
 Utiliser les commandes de sauvegarde/restauration des paramètres. Choisir une
 archive ZIP en dehors du dépôt. Sauvegarder aussi les pièces sources séparément.

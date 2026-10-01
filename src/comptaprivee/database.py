@@ -1,5 +1,6 @@
 """Stockage local des factures dans une base de données SQLite."""
 
+from . import app_paths
 import sqlite3
 from dataclasses import dataclass
 from decimal import Decimal
@@ -8,7 +9,7 @@ from pathlib import Path
 from .facture_parser import DonneesFacture
 
 
-CHEMIN_BASE_PAR_DEFAUT = Path("data") / "comptaprivee.db"
+CHEMIN_BASE_PAR_DEFAUT = app_paths.database_path()
 
 
 @dataclass(frozen=True)
@@ -45,10 +46,10 @@ class FactureCorbeille:
 
 
 def ouvrir_connexion(
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> sqlite3.Connection:
     """Ouvre une connexion vers la base SQLite locale."""
-    chemin = Path(chemin_base)
+    chemin = Path(chemin_base) if chemin_base is not None else app_paths.database_path()
     chemin.parent.mkdir(parents=True, exist_ok=True)
 
     connexion = sqlite3.connect(chemin)
@@ -58,10 +59,10 @@ def ouvrir_connexion(
 
 
 def initialiser_base(
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> Path:
     """Crée la base et la table des factures si nécessaire."""
-    chemin = Path(chemin_base)
+    chemin = Path(chemin_base) if chemin_base is not None else app_paths.database_path()
 
     with ouvrir_connexion(chemin) as connexion:
         connexion.execute(
@@ -127,7 +128,7 @@ def ligne_vers_facture(ligne: sqlite3.Row) -> FactureEnregistree:
 
 def enregistrer_facture(
     facture: DonneesFacture,
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> FactureEnregistree:
     """Enregistre une facture et retourne les données sauvegardées."""
     initialiser_base(chemin_base)
@@ -200,7 +201,7 @@ def enregistrer_facture(
 
 
 def lister_factures(
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> list[FactureEnregistree]:
     """Retourne toutes les factures, de la plus récente à l’ancienne."""
     initialiser_base(chemin_base)
@@ -219,7 +220,7 @@ def lister_factures(
 
 def rechercher_factures(
     recherche: str,
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> list[FactureEnregistree]:
     """Recherche des factures dans les principaux champs textuels."""
     initialiser_base(chemin_base)
@@ -250,7 +251,7 @@ def rechercher_factures(
 
 def supprimer_facture(
     identifiant: int,
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> bool:
     """Supprime une facture et indique si elle existait."""
     initialiser_base(chemin_base)
@@ -267,7 +268,7 @@ def supprimer_facture(
     return curseur.rowcount > 0
 
 def initialiser_corbeille(
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> Path:
     """Crée la table locale de corbeille si nécessaire."""
     chemin = initialiser_base(chemin_base)
@@ -315,7 +316,7 @@ def ligne_vers_facture_corbeille(
 
 def mettre_facture_corbeille(
     identifiant: int,
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> bool:
     """Déplace une facture active vers la corbeille locale."""
     initialiser_corbeille(chemin_base)
@@ -375,7 +376,7 @@ def mettre_facture_corbeille(
 
 
 def lister_factures_corbeille(
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> list[FactureCorbeille]:
     """Retourne les factures présentes dans la corbeille."""
     initialiser_corbeille(chemin_base)
@@ -394,7 +395,7 @@ def lister_factures_corbeille(
 
 def restaurer_facture(
     identifiant: int,
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> bool:
     """Restaure une facture depuis la corbeille."""
     initialiser_corbeille(chemin_base)
@@ -456,7 +457,7 @@ def restaurer_facture(
 
 def supprimer_facture_corbeille(
     identifiant: int,
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> bool:
     """Supprime définitivement une facture de la corbeille."""
     initialiser_corbeille(chemin_base)

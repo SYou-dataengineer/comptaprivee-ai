@@ -14,8 +14,9 @@ from datetime import datetime
 from pathlib import Path, PurePosixPath
 
 from .database import CHEMIN_BASE_PAR_DEFAUT
+from . import app_paths
 
-DOSSIER_DATA = Path("data")
+DOSSIER_DATA = app_paths.user_data_dir() / "data"
 FICHIER_PARAMETRES = DOSSIER_DATA / "parametres.json"
 FICHIER_PROFIL = DOSSIER_DATA / "profil_comptable.json"
 VERSION_MANIFESTE = 1
@@ -66,16 +67,20 @@ def _chemin_est_sur(membre: zipfile.ZipInfo) -> bool:
 def _fichiers_a_sauvegarder() -> list[Path]:
     # Le stockage fiscal est ancré au projet, contrairement aux anciennes données.
     from .tax_case_storage import DOSSIERS_FISCAUX_DIR
-    fichiers = [Path(n) for n in FIXES if Path(n).exists()]
+    root = app_paths.user_data_dir()
+    fichiers = [root / n for n in FIXES if (root / n).exists()]
     if DOSSIERS_FISCAUX_DIR.exists():
         fichiers.extend(sorted(DOSSIERS_FISCAUX_DIR.glob("*.json")))
     return fichiers
 
 
 def _nom_archive(chemin: Path) -> str:
-    if chemin.is_absolute():
-        return "data/dossiers_fiscaux/" + chemin.name
-    return chemin.as_posix()
+    try:
+        nom = chemin.resolve().relative_to(app_paths.user_data_dir()).as_posix()
+    except ValueError as exc:
+        raise ValueError('Source hors des données utilisateur.') from exc
+    _categorie(nom)
+    return nom
 
 
 def _valider_contenu(chemin: Path, nom: str) -> None:
@@ -99,8 +104,7 @@ def creer_sauvegarde(destination: str | Path) -> Path:
     destination = Path(destination)
     if destination.suffix.lower() != ".zip":
         raise ValueError("Le fichier de sauvegarde doit avoir l'extension .zip.")
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=destination.parent, prefix=".backup-") as temporaire:
+    with tempfile.TemporaryDirectory(dir=app_paths.backup_temp_dir(destination), prefix=".backup-") as temporaire:
         temp = Path(temporaire)
         entrees = []
         archive_temp = temp / "sauvegarde.zip"
@@ -183,8 +187,12 @@ def _valider_archive(archive: zipfile.ZipFile) -> list[dict]:
     return entrees
 
 
-def restaurer_sauvegarde(source: str | Path, *, racine: str | Path = ".") -> list[Path]:
-    source, racine = Path(source), Path(racine)
+def restaurer_sauvegarde(source: str | Path, *, racine: str | Path | None = None) -> list[Path]:
+    source = Path(source)
+    root = app_paths.user_data_dir()
+    if racine is not None and Path(racine).resolve() != root:
+        raise ValueError('La restauration doit viser exclusivement USER_DATA_DIR.')
+    racine = root
     if not source.exists():
         raise FileNotFoundError(f"Sauvegarde introuvable : {source}")
     if source.suffix.lower() != ".zip":
@@ -193,8 +201,17 @@ def restaurer_sauvegarde(source: str | Path, *, racine: str | Path = ".") -> lis
         archive_source = zipfile.ZipFile(source)
     except zipfile.BadZipFile as exc:
         raise ValueError("Archive ZIP invalide.") from exc
+    try:
+        for entree in _valider_archive(archive_source):
+            _destination(racine, entree['chemin'])
+            contenu = _lire_archive(archive_source, entree['chemin'])
+            if 'sha256' in entree and hashlib.sha256(contenu).hexdigest() != entree['sha256']:
+                raise ValueError('Empreinte de sauvegarde incorrecte.')
+    except BaseException:
+        archive_source.close()
+        raise
     # Première phase : aucun changement de données avant validation intégrale.
-    with tempfile.TemporaryDirectory(prefix="comptaprivee-validation-") as validation:
+    with tempfile.TemporaryDirectory(dir=app_paths.temp_dir(), prefix="comptaprivee-validation-") as validation:
         with archive_source as archive:
             entrees = _valider_archive(archive)
             cibles = [_destination(racine, e["chemin"]) for e in entrees]

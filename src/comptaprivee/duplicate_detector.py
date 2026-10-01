@@ -1,5 +1,6 @@
 """Détection locale des factures potentiellement en double."""
 
+from . import app_paths
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -39,7 +40,7 @@ def _normaliser_texte(valeur: str | None) -> str:
 
 def detecter_doublon(
     facture: DonneesFacture,
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> ResultatDoublon:
     """Cherche un doublon certain ou probable dans SQLite local."""
     factures = lister_factures(chemin_base)

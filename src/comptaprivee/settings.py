@@ -1,11 +1,12 @@
 """Paramètres locaux de ComptaPrivée AI."""
 
+from . import app_paths
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 
-CHEMIN_PARAMETRES_PAR_DEFAUT = Path("data") / "parametres.json"
+CHEMIN_PARAMETRES_PAR_DEFAUT = app_paths.settings_path()
 
 DEVISES = ("CAD", "USD", "EUR")
 LANGUES_RAPPORTS = ("Français", "English")
@@ -66,10 +67,10 @@ def valider_parametres(
 
 
 def lire_parametres(
-    chemin: str | Path = CHEMIN_PARAMETRES_PAR_DEFAUT,
+    chemin: str | Path = None,
 ) -> ParametresApplication:
     """Charge les paramètres locaux ou retourne les valeurs par défaut."""
-    fichier = Path(chemin)
+    fichier = Path(chemin) if chemin is not None else app_paths.settings_path()
 
     if not fichier.exists():
         return ParametresApplication()
@@ -112,12 +113,12 @@ def lire_parametres(
 
 def enregistrer_parametres(
     parametres: ParametresApplication,
-    chemin: str | Path = CHEMIN_PARAMETRES_PAR_DEFAUT,
+    chemin: str | Path = None,
 ) -> Path:
     """Enregistre les paramètres uniquement sur l'ordinateur local."""
     valides = valider_parametres(parametres)
 
-    fichier = Path(chemin)
+    fichier = Path(chemin) if chemin is not None else app_paths.settings_path()
     fichier.parent.mkdir(
         parents=True,
         exist_ok=True,

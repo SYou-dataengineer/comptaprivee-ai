@@ -1,4 +1,5 @@
 from __future__ import annotations
+from . import app_paths
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -483,6 +484,7 @@ def _pretraiter_image_tableau(
                 pixels[xx, y] = 255
 
     with tempfile.NamedTemporaryFile(
+        dir=app_paths.temp_dir(),
         suffix=".png",
         delete=False,
     ) as fichier_temp:

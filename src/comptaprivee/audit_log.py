@@ -1,6 +1,7 @@
 """Journal d'audit local de ComptaPrivée AI."""
 
 from __future__ import annotations
+from . import app_paths
 
 import csv
 from .csv_exporter import RedacteurCsvSur
@@ -28,10 +29,10 @@ class EvenementAudit:
 
 
 def initialiser_journal_audit(
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> Path:
     """Crée la table du journal d'audit si nécessaire."""
-    chemin = Path(chemin_base)
+    chemin = Path(chemin_base) if chemin_base is not None else app_paths.database_path()
     chemin.parent.mkdir(parents=True, exist_ok=True)
 
     with ouvrir_connexion(chemin) as connexion:
@@ -58,7 +59,7 @@ def enregistrer_evenement(
     *,
     details: str | None = None,
     reference: str | None = None,
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> EvenementAudit:
     """Ajoute une entrée dans le journal d'audit local."""
     action = action.strip()
@@ -124,7 +125,7 @@ def _ligne_vers_evenement(
 
 
 def lister_evenements(
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
     *,
     limite: int | None = None,
 ) -> list[EvenementAudit]:
@@ -159,7 +160,7 @@ def lister_evenements(
 
 def rechercher_evenements(
     recherche: str,
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> list[EvenementAudit]:
     """Recherche dans action, catégorie, détails et référence."""
     initialiser_journal_audit(chemin_base)
@@ -196,7 +197,7 @@ def journaliser_sans_bloquer(
     *,
     details: str | None = None,
     reference: str | None = None,
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
 ) -> None:
     """Journalise une action sans bloquer l'opération principale."""
     try:
@@ -483,7 +484,7 @@ def exporter_evenements_audit_csv(
 
 def exporter_journal_audit_csv(
     destination: str | Path,
-    chemin_base: str | Path = CHEMIN_BASE_PAR_DEFAUT,
+    chemin_base: str | Path = None,
     *,
     recherche: str | None = None,
     categorie: str | None = None,

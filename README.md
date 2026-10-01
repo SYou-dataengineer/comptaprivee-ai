@@ -44,8 +44,8 @@ tesseract --list-langs
 .\.venv\Scripts\python.exe -m src.comptaprivee.gui
 ```
 
-L'activation du venv n'est pas nécessaire. Toujours démarrer depuis la racine du
-projet pour conserver le même emplacement de données. Aucun chemin personnel du
+L'activation du venv n'est pas nécessaire. Depuis les sources, démarrer depuis la
+racine pour résoudre le package Python ; les données sont indépendantes du cwd. Aucun chemin personnel du
 développeur n'est requis. Il n'y a pas encore d'installateur ni d'exécutable livré.
 
 La commande d'extraction documentaire reste disponible :
@@ -105,10 +105,15 @@ Les documents et calculs sont traités localement ; aucun envoi fiscal automatiq
 service d'IA distant ou télémétrie fiscale n'est utilisé par l'application.
 L'installation des dépendances utilise Internet ; elle ne transmet pas les dossiers.
 
-Les JSON fiscaux se trouvent dans `data/dossiers_fiscaux/`, la base comptable dans
+Sous Windows, la racine utilisateur est `%LOCALAPPDATA%\ComptaPriveeAI`.
+Sous cette racine, les JSON fiscaux se trouvent dans `data/dossiers_fiscaux/`, la base comptable dans
 `data/comptaprivee.db`, les paramètres dans `data/parametres.json` et le profil dans
-`data/profil_comptable.json`. Les exports vont habituellement dans `data/exports/`.
+`data/profil_comptable.json`. Les exports vont par défaut dans `exports/`.
 Les pièces peuvent aussi rester à leur emplacement d'import d'origine.
+
+Les anciens dossiers du dépôt ne sont pas déplacés automatiquement. Voir la
+[migration contrôlée](docs/migration_donnees_utilisateur.md) avant de reprendre
+un dossier existant. La restauration vise uniquement la racine utilisateur.
 
 Les archives de sauvegarde comprennent la base, les paramètres, le profil et les
 JSON fiscaux. **Elles n'incluent pas les pièces originales, les exports, le logo

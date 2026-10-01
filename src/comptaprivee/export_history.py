@@ -1,5 +1,6 @@
 """Historique local des fichiers exportés par ComptaPrivée AI."""
 
+from . import app_paths
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -26,9 +27,9 @@ def type_export(chemin: str | Path) -> str:
 
 
 def lister_exports(
-    dossier: str | Path = Path("data") / "exports",
+    dossier: str | Path | None = None,
 ) -> list[ExportEnregistre]:
-    repertoire = Path(dossier)
+    repertoire = Path(dossier) if dossier is not None else app_paths.exports_dir()
     if not repertoire.exists():
         return []
 

@@ -1,6 +1,7 @@
 """Détection locale de tableaux dans les PDF pour ComptaPrivée AI."""
 
 from __future__ import annotations
+from . import app_paths
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,6 +44,7 @@ def _extraire_tableau_ocr_page_pdf(
     )
 
     with tempfile.NamedTemporaryFile(
+        dir=app_paths.temp_dir(),
         suffix=".png",
         delete=False,
     ) as fichier_temp:

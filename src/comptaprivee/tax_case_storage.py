@@ -1,6 +1,7 @@
 """Persistance locale des dossiers fiscaux validés."""
 
 from __future__ import annotations
+from . import app_paths
 from .tax_case import valider_case_id, case_id_stocke
 import tempfile
 import os
@@ -198,7 +199,7 @@ SCHEMA_VERSION = 1
 # Racine stable du projet, indépendante du dossier courant.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DOSSIERS_FISCAUX_DIR = (
-    PROJECT_ROOT / "data" / "dossiers_fiscaux"
+    app_paths.tax_cases_dir()
 )
 STATUTS_VALIDATION_AUTORISES = {STATUT_VALIDE, STATUT_CORRIGE_VALIDE}
 
@@ -4935,8 +4936,8 @@ def dossier_fiscal_depuis_contenu(contenu, *, chemin=Path("."), verifier_documen
     return charge
 
 
-def lister_dossiers_fiscaux(dossier: Path | str = DOSSIERS_FISCAUX_DIR):
-    racine = Path(dossier)
+def lister_dossiers_fiscaux(dossier: Path | str | None = None):
+    racine = Path(dossier) if dossier is not None else DOSSIERS_FISCAUX_DIR
     if not racine.exists():
         return ()
     resultats = []

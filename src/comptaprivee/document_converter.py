@@ -1,6 +1,7 @@
 """Conversions locales de documents pour ComptaPrivée AI."""
 
 from __future__ import annotations
+from . import app_paths
 
 from copy import copy
 import csv
@@ -72,7 +73,7 @@ def _preparer_destination(
     extension: str,
 ) -> Path:
     if destination is None:
-        chemin = source.with_suffix(extension)
+        chemin = app_paths.exports_dir() / source.with_suffix(extension).name
     else:
         chemin = Path(destination)
 
@@ -545,7 +546,7 @@ def images_vers_pdf(
     premiere_source = chemins[0]
 
     if destination is None:
-        destination_path = premiere_source.with_name(
+        destination_path = (app_paths.exports_dir() / premiere_source.name).with_name(
             f"{premiere_source.stem}_images.pdf"
         )
     else:
@@ -625,7 +626,7 @@ def fusionner_pdfs(
     premiere_source = chemins[0]
 
     if destination is None:
-        destination_path = premiere_source.with_name(
+        destination_path = (app_paths.exports_dir() / premiere_source.name).with_name(
             f"{premiere_source.stem}_fusion.pdf"
         )
     else:
@@ -770,7 +771,7 @@ def pdf_vers_images(
         )
 
     if dossier_destination is None:
-        destination_dir = source_path.with_name(
+        destination_dir = (app_paths.exports_dir() / source_path.name).with_name(
             f"{source_path.stem}_images"
         )
     else:
@@ -918,6 +919,7 @@ def _extraire_ocr_pages_pdf(
 
     with fitz.open(source_path) as document:
         with TemporaryDirectory(
+            dir=app_paths.temp_dir(),
             prefix="comptaprivee_conversion_ocr_"
         ) as dossier_temporaire:
             dossier = Path(dossier_temporaire)

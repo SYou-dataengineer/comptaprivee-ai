@@ -1,12 +1,13 @@
 """Profil local du cabinet comptable."""
 
+from . import app_paths
 import json
 import shutil
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 
-CHEMIN_PROFIL_PAR_DEFAUT = Path("data") / "profil_comptable.json"
+CHEMIN_PROFIL_PAR_DEFAUT = app_paths.accounting_profile_path()
 
 
 @dataclass(frozen=True)
@@ -28,10 +29,10 @@ class ProfilSociete:
 
 
 def lire_profil_societe(
-    chemin: str | Path = CHEMIN_PROFIL_PAR_DEFAUT,
+    chemin: str | Path = None,
 ) -> ProfilSociete:
     """Retourne le profil société enregistré localement."""
-    fichier = Path(chemin)
+    fichier = Path(chemin) if chemin is not None else app_paths.accounting_profile_path()
 
     if not fichier.exists():
         return ProfilSociete()
@@ -58,7 +59,7 @@ def lire_profil_societe(
 
 def enregistrer_profil_societe(
     profil: ProfilSociete,
-    chemin: str | Path = CHEMIN_PROFIL_PAR_DEFAUT,
+    chemin: str | Path = None,
 ) -> Path:
     """Enregistre localement le profil complet de la société."""
     if not profil.nom_societe.strip():
@@ -66,7 +67,7 @@ def enregistrer_profil_societe(
             "Le nom de la société ne peut pas être vide."
         )
 
-    fichier = Path(chemin)
+    fichier = Path(chemin) if chemin is not None else app_paths.accounting_profile_path()
     fichier.parent.mkdir(
         parents=True,
         exist_ok=True,
@@ -85,7 +86,7 @@ def enregistrer_profil_societe(
 
 
 def lire_nom_societe(
-    chemin: str | Path = CHEMIN_PROFIL_PAR_DEFAUT,
+    chemin: str | Path = None,
 ) -> str:
     """Retourne seulement le nom de société."""
     return lire_profil_societe(chemin).nom_societe
@@ -93,7 +94,7 @@ def lire_nom_societe(
 
 def enregistrer_nom_societe(
     nom_societe: str,
-    chemin: str | Path = CHEMIN_PROFIL_PAR_DEFAUT,
+    chemin: str | Path = None,
 ) -> Path:
     """Compatibilité : enregistre seulement le nom de société."""
     ancien = lire_profil_societe(chemin)
@@ -176,7 +177,7 @@ FORMATS_LOGO = {".png", ".jpg", ".jpeg"}
 
 def copier_logo_societe(
     chemin_source: str | Path,
-    dossier_destination: str | Path = "data",
+    dossier_destination: str | Path | None = None,
 ) -> Path:
     source = Path(chemin_source)
 
@@ -190,7 +191,7 @@ def copier_logo_societe(
             "Le logo doit être au format PNG, JPG ou JPEG."
         )
 
-    dossier = Path(dossier_destination)
+    dossier = Path(dossier_destination) if dossier_destination is not None else app_paths.user_data_dir() / "data"
     dossier.mkdir(parents=True, exist_ok=True)
     destination = dossier / f"logo_societe{extension}"
 

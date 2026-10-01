@@ -1,4 +1,4 @@
-﻿"""Régressions FINAL-B1, exclusivement données fictives."""
+"""Régressions FINAL-B1, exclusivement données fictives."""
 import hashlib
 import json
 import os
@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 from src.comptaprivee import backup_manager as backup
+from tests.storage_helpers import restaurer_dans_profil
 from src.comptaprivee import tax_case_storage as storage
 from src.comptaprivee.tax_case import creer_dossier_fiscal
 from src.comptaprivee.tax_validated_case import construire_dossier_fiscal_valide
@@ -36,7 +37,7 @@ def archive(tmp_path, fichiers, modifier=None, lien=None):
 def test_destination_interdite(tmp_path, nom):
     p = archive(tmp_path, {nom: b'{}'})
     cible = tmp_path/'cible'
-    with pytest.raises(ValueError): backup.restaurer_sauvegarde(p, racine=cible)
+    with pytest.raises(ValueError): restaurer_dans_profil(p, racine=cible)
     assert not cible.exists()
 
 
@@ -51,27 +52,27 @@ def test_destination_interdite(tmp_path, nom):
 ])
 def test_manifeste_invalide(tmp_path, modifier):
     p = archive(tmp_path, {'data/parametres.json':b'{}'}, modifier)
-    with pytest.raises(ValueError): backup.restaurer_sauvegarde(p, racine=tmp_path/'cible')
+    with pytest.raises(ValueError): restaurer_dans_profil(p, racine=tmp_path/'cible')
     assert not (tmp_path/'cible').exists()
 
 
 def test_refus_symlink_archive(tmp_path):
     p = archive(tmp_path, {'data/parametres.json':b'{}'}, lien='data/parametres.json')
-    with pytest.raises(ValueError): backup.restaurer_sauvegarde(p, racine=tmp_path/'cible')
+    with pytest.raises(ValueError): restaurer_dans_profil(p, racine=tmp_path/'cible')
 
 
 def test_refus_parent_lie(tmp_path, monkeypatch):
     p = archive(tmp_path, {'data/parametres.json':b'{}'})
     original = Path.is_symlink
     monkeypatch.setattr(Path, 'is_symlink', lambda self:self.name == 'data' or original(self))
-    with pytest.raises(ValueError): backup.restaurer_sauvegarde(p, racine=tmp_path/'cible')
+    with pytest.raises(ValueError): restaurer_dans_profil(p, racine=tmp_path/'cible')
 
 
 def test_validation_integrale_avant_ecriture(tmp_path):
     p = archive(tmp_path, {'data/parametres.json':b'{}', 'data/profil_comptable.json':b'invalide'})
     cible = tmp_path/'cible'; (cible/'data').mkdir(parents=True)
     ancien = cible/'data/parametres.json'; ancien.write_bytes(b'{"avant":true}')
-    with pytest.raises(ValueError): backup.restaurer_sauvegarde(p, racine=cible)
+    with pytest.raises(ValueError): restaurer_dans_profil(p, racine=cible)
     assert ancien.read_bytes() == b'{"avant":true}'
 
 
@@ -86,7 +87,7 @@ def test_rollback_apres_premier_remplacement(tmp_path, monkeypatch, existant):
         if Path(src).name == 'nouveau-1': raise OSError('interruption fictive')
         return original(src,dst)
     monkeypatch.setattr(backup.os,'replace',interrompre)
-    with pytest.raises(OSError): backup.restaurer_sauvegarde(p,racine=cible)
+    with pytest.raises(OSError): restaurer_dans_profil(p,racine=cible)
     assert ancien.read_bytes() == b'{"avant":true}' if existant else not ancien.exists()
     assert not (cible/'data/profil_comptable.json').exists()
     assert not list(cible.glob('.restore-*'))
@@ -105,7 +106,7 @@ def test_backup_roundtrip_fiscal(tmp_path, monkeypatch):
         m=json.loads(a.read('manifest.json'))
         assert m['fichiers'][0]['categorie']=='donnees_fiscales'
     destination=tmp_path/'restaure'
-    backup.restaurer_sauvegarde(z,racine=destination)
+    restaurer_dans_profil(z,racine=destination)
     r=destination/'data/dossiers_fiscaux'/p.name
     assert p.read_bytes()==r.read_bytes()
     assert storage.charger_dossier_fiscal(r).dossier.case_id == storage.charger_dossier_fiscal(p).dossier.case_id
@@ -170,19 +171,19 @@ def test_restore_case_id_autre_dossier_refuse(tmp_path,monkeypatch):
     cible=tmp_path/'cible'
     autre=storage.sauvegarder_dossier_fiscal(_dossier(),destination=cible/'data/dossiers_fiscaux'/p.name)
     avant=autre.read_bytes()
-    with pytest.raises(ValueError,match='case_id'):backup.restaurer_sauvegarde(z,racine=cible)
+    with pytest.raises(ValueError,match='case_id'):restaurer_dans_profil(z,racine=cible)
     assert autre.read_bytes()==avant
 
 
 def test_entree_non_declaree(tmp_path):
     z=archive(tmp_path,{'data/parametres.json':b'{}'})
     with zipfile.ZipFile(z,'a') as a:a.writestr('data/profil_comptable.json',b'{}')
-    with pytest.raises(ValueError):backup.restaurer_sauvegarde(z,racine=tmp_path/'cible')
+    with pytest.raises(ValueError):restaurer_dans_profil(z,racine=tmp_path/'cible')
 
 
 def test_zip_invalide(tmp_path):
     p=tmp_path/'faux.zip';p.write_bytes(b'pas un zip')
-    with pytest.raises(ValueError):backup.restaurer_sauvegarde(p,racine=tmp_path/'cible')
+    with pytest.raises(ValueError):restaurer_dans_profil(p,racine=tmp_path/'cible')
 
 
 def test_rollback_impossible_conserve_secours(tmp_path,monkeypatch):
@@ -194,7 +195,7 @@ def test_rollback_impossible_conserve_secours(tmp_path,monkeypatch):
         if Path(src).name in {'nouveau-1','ancien-0'}:raise OSError('panne simulee')
         return original(src,dst)
     monkeypatch.setattr(backup.os,'replace',panne)
-    with pytest.raises(RuntimeError,match='copies de secours'):backup.restaurer_sauvegarde(z,racine=cible)
+    with pytest.raises(RuntimeError,match='copies de secours'):restaurer_dans_profil(z,racine=cible)
     secours=list(cible.glob('.restore-*/ancien-0'))
     assert len(secours)==1 and secours[0].read_bytes()==b'{"ancien":true}'
 
@@ -209,7 +210,7 @@ def test_roundtrip_base_sqlite_et_parametres(tmp_path,monkeypatch):
         db.execute('create table fictif (id integer)');db.execute('insert into fictif values (1)');db.commit()
     Path('data/parametres.json').write_bytes(b'{"langue":"fr"}')
     z=backup.creer_sauvegarde(tmp_path/'backup.zip')
-    cible=tmp_path/'cible';backup.restaurer_sauvegarde(z,racine=cible)
+    cible=tmp_path/'cible';restaurer_dans_profil(z,racine=cible)
     with zipfile.ZipFile(z) as a:
         for nom in ['data/comptaprivee.db','data/parametres.json']:
             assert (cible/nom).read_bytes()==a.read(nom)

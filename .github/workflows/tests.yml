@@ -64,6 +64,7 @@ jobs:
         run: >-
           python -m pytest --capture=sys -q
           tests/test_release_platform.py
+          tests/test_app_paths.py
           tests/test_tax_case.py
           tests/test_tax_case_storage.py
           tests/test_backup_manager.py

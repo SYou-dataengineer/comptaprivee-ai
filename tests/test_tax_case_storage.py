@@ -130,7 +130,8 @@ def test_ecrasement_atomique(tmp_path):
     assert charger_dossier_fiscal(p).dossier.client == "Client Modifié"
     assert not (tmp_path / "d.json.tmp").exists()
 
-def test_stockage_dossiers_est_ancre_sur_racine_projet():
+def test_stockage_dossiers_est_ancre_sur_racine_utilisateur():
+    from src.comptaprivee import app_paths
     from src.comptaprivee.tax_case_storage import (
         DOSSIERS_FISCAUX_DIR,
         PROJECT_ROOT,
@@ -139,7 +140,7 @@ def test_stockage_dossiers_est_ancre_sur_racine_projet():
     assert PROJECT_ROOT.is_absolute()
     assert DOSSIERS_FISCAUX_DIR.is_absolute()
     assert DOSSIERS_FISCAUX_DIR == (
-        PROJECT_ROOT / "data" / "dossiers_fiscaux"
+        app_paths.tax_cases_dir()
     )
 
 

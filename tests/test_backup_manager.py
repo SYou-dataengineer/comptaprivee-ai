@@ -1,3 +1,4 @@
+from tests.storage_helpers import restaurer_dans_profil
 """Tests de sauvegarde et restauration locales."""
 
 import json
@@ -51,7 +52,7 @@ def test_refuser_extension_non_zip(tmp_path) -> None:
         creer_sauvegarde(tmp_path / "sauvegarde.txt")
 
 
-def test_restaurer_sauvegarde(tmp_path) -> None:
+def test_restaurer_dans_profil(tmp_path) -> None:
     archive = tmp_path / "backup.zip"
 
     with zipfile.ZipFile(archive, "w") as fichier:
@@ -65,7 +66,7 @@ def test_restaurer_sauvegarde(tmp_path) -> None:
         )
 
     cible = tmp_path / "restaure"
-    fichiers = restaurer_sauvegarde(
+    fichiers = restaurer_dans_profil(
         archive,
         racine=cible,
     )
@@ -85,7 +86,7 @@ def test_restaurer_refuse_manifest_absent(tmp_path) -> None:
         )
 
     with pytest.raises(ValueError):
-        restaurer_sauvegarde(archive, racine=tmp_path / "cible")
+        restaurer_dans_profil(archive, racine=tmp_path / "cible")
 
 
 def test_restaurer_refuse_chemin_dangereux(tmp_path) -> None:
@@ -102,4 +103,4 @@ def test_restaurer_refuse_chemin_dangereux(tmp_path) -> None:
         )
 
     with pytest.raises(ValueError):
-        restaurer_sauvegarde(archive, racine=tmp_path / "cible")
+        restaurer_dans_profil(archive, racine=tmp_path / "cible")

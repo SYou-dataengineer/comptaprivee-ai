@@ -5,6 +5,7 @@ elle contient uniquement des anomalies dérivées des exports PDF -> Excel/CSV.
 """
 
 from __future__ import annotations
+from . import app_paths
 
 import csv
 import hashlib
@@ -27,7 +28,7 @@ from .audit_log import journaliser_sans_bloquer
 
 
 CHEMIN_FILE_OCR_PAR_DEFAUT = (
-    Path("data") / "ocr_review_queue.json"
+    app_paths.ocr_queue_path()
 )
 
 
@@ -75,7 +76,7 @@ def _vers_decimal(valeur: object) -> Decimal | None:
 def _charger(
     chemin_file: str | Path,
 ) -> list[dict]:
-    chemin = Path(chemin_file)
+    chemin = Path(chemin_file) if chemin_file is not None else app_paths.ocr_queue_path()
 
     if not chemin.exists():
         return []
@@ -103,7 +104,7 @@ def _enregistrer(
     elements: list[dict],
     chemin_file: str | Path,
 ) -> None:
-    chemin = Path(chemin_file)
+    chemin = Path(chemin_file) if chemin_file is not None else app_paths.ocr_queue_path()
     chemin.parent.mkdir(
         parents=True,
         exist_ok=True,
@@ -467,7 +468,7 @@ def synchroniser_export_ocr_a_verifier(
     source: str | Path,
     destination: str | Path,
     type_conversion: str,
-    chemin_file: str | Path = CHEMIN_FILE_OCR_PAR_DEFAUT,
+    chemin_file: str | Path = None,
 ) -> int:
     """Synchronise un export OCR avec la file locale À vérifier."""
     source_path = Path(source)
@@ -511,7 +512,7 @@ def synchroniser_export_ocr_a_verifier(
 
 
 def lister_alertes_ocr_a_verifier(
-    chemin_file: str | Path = CHEMIN_FILE_OCR_PAR_DEFAUT,
+    chemin_file: str | Path = None,
 ) -> list[ElementAVerifier]:
     """Retourne les anomalies OCR sous la forme attendue par l'interface."""
     resultats: list[ElementAVerifier] = []
@@ -577,7 +578,7 @@ def lister_alertes_ocr_a_verifier(
 
 def marquer_alerte_ocr_resolue(
     identifiant: int,
-    chemin_file: str | Path = CHEMIN_FILE_OCR_PAR_DEFAUT,
+    chemin_file: str | Path = None,
 ) -> bool:
     """Retire une anomalie OCR de la file locale après validation humaine."""
     elements = _charger(chemin_file)
@@ -595,7 +596,7 @@ def marquer_alerte_ocr_resolue(
 
 def resoudre_alerte_ocr_et_journaliser(
     identifiant: int,
-    chemin_file: str | Path = CHEMIN_FILE_OCR_PAR_DEFAUT,
+    chemin_file: str | Path = None,
     *,
     chemin_base_audit: str | Path | None = None,
 ) -> bool:

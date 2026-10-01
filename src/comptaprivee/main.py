@@ -151,6 +151,7 @@ def creer_analyseur_arguments() -> argparse.ArgumentParser:
         dest="chemin_csv",
         help="Chemin du fichier CSV à créer localement.",
     )
+    analyseur.add_argument("--migrate-data", metavar="ANCIENNE_RACINE", help="Copier explicitement un ancien data/ vers les données utilisateur (instances fermées).")
     return analyseur
 
 
@@ -158,6 +159,13 @@ def main() -> None:
     """Lance l'application."""
     analyseur = creer_analyseur_arguments()
     arguments = analyseur.parse_args()
+
+    if arguments.migrate_data:
+        if arguments.document or arguments.documents_lot or arguments.chemin_csv:
+            analyseur.error("La migration doit être exécutée seule.")
+        from .data_migration import migrer_ancien_data
+        print(f"Migration terminée : {migrer_ancien_data(arguments.migrate_data)} fichiers copiés.")
+        return
 
     afficher_bienvenue()
 

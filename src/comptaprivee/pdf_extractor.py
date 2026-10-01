@@ -1,5 +1,6 @@
 """Extraction locale du texte contenu dans les fichiers PDF."""
 
+from . import app_paths
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -28,6 +29,7 @@ def extraire_texte_pdf(chemin_fichier: str | Path) -> str:
 
     with fitz.open(chemin) as document:
         with TemporaryDirectory(
+            dir=app_paths.temp_dir(),
             prefix="comptaprivee_ocr_"
         ) as dossier_temporaire:
             for numero_page, page in enumerate(

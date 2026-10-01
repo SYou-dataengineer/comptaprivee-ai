@@ -1,5 +1,6 @@
 """Interface graphique locale de ComptaPrivée AI."""
 
+from . import app_paths
 from dataclasses import replace
 import tkinter as tk
 from decimal import Decimal, InvalidOperation
@@ -797,7 +798,7 @@ class ApplicationComptaPrivee(tk.Tk):
     @staticmethod
     def dossier_exports() -> Path:
         """Retourne et crée le dossier local des exports."""
-        chemin = Path.cwd() / "data" / "exports"
+        chemin = app_paths.exports_dir()
 
         chemin.mkdir(
             parents=True,
@@ -14970,7 +14971,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 and not rapport_fiscal_a_reexporter
             ):
                 rapport_candidat = (
-                    Path("data/exports")
+                    app_paths.exports_dir()
                     / nom_rapport_fiscal_pdf_2025(
                         estimation_a_sauvegarder
                     )
@@ -15653,7 +15654,7 @@ class ApplicationComptaPrivee(tk.Tk):
                 if estimation is not derniere_estimation:
                     messagebox.showerror("Estimation périmée", "Recalculez l'estimation avant d'exporter le rapport.", parent=fenetre_resultat)
                     return
-                dossier_exports = Path("data/exports")
+                dossier_exports = app_paths.exports_dir()
                 dossier_exports.mkdir(parents=True, exist_ok=True)
                 destination = filedialog.asksaveasfilename(
                     parent=fenetre_resultat,
@@ -16229,7 +16230,7 @@ class ApplicationComptaPrivee(tk.Tk):
             conteneur,
             text=(
                 "Liste calculée directement à partir du dossier "
-                "local data/exports."
+                "utilisateur exports."
             ),
             foreground="#166534",
         ).pack(anchor="w", pady=(3, 14))
@@ -17059,7 +17060,7 @@ class ApplicationComptaPrivee(tk.Tk):
             try:
                 fichiers = restaurer_sauvegarde(
                     chemin,
-                    racine=Path.cwd(),
+                    racine=app_paths.user_data_dir(),
                 )
             except (OSError, ValueError, RuntimeError) as erreur:
                 messagebox.showerror(
