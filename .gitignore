@@ -66,3 +66,4 @@ data/dossiers_fiscaux/*
 build/
 dist/
 .venv-build/
+Output/
