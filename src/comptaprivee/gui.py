@@ -10,6 +10,8 @@ from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, simpledialog, ttk
 from tkinter.scrolledtext import ScrolledText
 from .gui_minimum_preparation_2025 import ouvrir_imr_2025
+from .gui_foreign_property_2025 import ouvrir_biens_etrangers_2025
+from .tax_foreign_property_2025 import preparer_biens_etrangers_2025, verifier_annuel_biens_etrangers_2025
 from .tax_minimum_preparation_2025 import preparer_imr_2025, bloquer_estimation_imr_2025
 from .gui_final_return_2025 import ouvrir_deces_2025
 from .tax_final_return_2025 import verifier_dossier_deces_2025
@@ -2579,6 +2581,7 @@ class ApplicationComptaPrivee(tk.Tk):
         locations_courantes = self.dossier_fiscal_valide_courant.biens_locatifs if self.dossier_fiscal_valide_courant else ()
         deces_courant = self.dossier_fiscal_valide_courant.deces if self.dossier_fiscal_valide_courant else None
         imr_courant = self.dossier_fiscal_valide_courant.imr if self.dossier_fiscal_valide_courant else None
+        biens_etrangers_courants = self.dossier_fiscal_valide_courant.biens_etrangers if self.dossier_fiscal_valide_courant else None
         pertes_courantes = self.dossier_fiscal_valide_courant.registre_pertes if self.dossier_fiscal_valide_courant else RegistrePertes2025()
         entreprises_courantes = (
             self.dossier_fiscal_valide_courant.entreprises
@@ -5056,6 +5059,23 @@ class ApplicationComptaPrivee(tk.Tk):
                 derniere_estimation = dernier_rapport_pdf = None
                 rapport_fiscal_a_reexporter = True
             ouvrir_deces_2025(fenetre, courant, lambda: self.dossier_fiscal_valide_courant, enregistrer)
+
+        def ouvrir_biens_etrangers_7j():
+            courant = self.dossier_fiscal_valide_courant
+            if courant is None:
+                messagebox.showerror("Profil biens étrangers indisponible", "Validez d'abord le dossier fiscal.", parent=fenetre)
+                return
+            def enregistrer(profil):
+                nonlocal biens_etrangers_courants, derniere_estimation, dernier_rapport_pdf, rapport_fiscal_a_reexporter
+                if self.dossier_fiscal_valide_courant is not courant:
+                    raise ValueError("Dossier modifié : rouvrez le profil biens étrangers.")
+                nouveau = replace(courant, biens_etrangers=profil)
+                preparer_biens_etrangers_2025(nouveau)
+                biens_etrangers_courants = profil
+                self.dossier_fiscal_valide_courant = nouveau
+                derniere_estimation = dernier_rapport_pdf = None
+                rapport_fiscal_a_reexporter = True
+            ouvrir_biens_etrangers_2025(fenetre, courant, lambda: self.dossier_fiscal_valide_courant, enregistrer)
 
         def ouvrir_imr_7i():
             courant = self.dossier_fiscal_valide_courant
@@ -14631,7 +14651,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal frais_garde_quebec_courante
-            nonlocal entreprises_courantes, locations_courantes, pertes_courantes, deces_courant, imr_courant
+            nonlocal entreprises_courantes, locations_courantes, pertes_courantes, deces_courant, imr_courant, biens_etrangers_courants
             nonlocal personne_aidante_quebec_courante, solidarite_quebec_courante
             nonlocal prime_travail_quebec_courante
             nonlocal soutien_aines_quebec_courante
@@ -14707,6 +14727,7 @@ class ApplicationComptaPrivee(tk.Tk):
             locations_courantes = ()
             deces_courant = None
             imr_courant = None
+            biens_etrangers_courants = None
             pertes_courantes = RegistrePertes2025()
             prime_travail_quebec_courante = PrimeTravailQuebec2025()
             soutien_aines_quebec_courante = SoutienAinesQuebec2025()
@@ -14786,7 +14807,7 @@ class ApplicationComptaPrivee(tk.Tk):
             )
 
         def preparer_dossier_fiscal_valide() -> None:
-            nonlocal deces_courant, imr_courant
+            nonlocal deces_courant, imr_courant, biens_etrangers_courants
             if self.dossier_fiscal_courant is None:
                 messagebox.showinfo(
                     "Dossier fiscal validé",
@@ -14825,9 +14846,11 @@ class ApplicationComptaPrivee(tk.Tk):
             if deces_courant is not None:
                 # Une nouvelle validation des feuillets exige de reconfirmer leur période.
                 deces_courant = replace(deces_courant, revenus_confirmes=False, valide_par_comptable=False)
+            if biens_etrangers_courants is not None:
+                biens_etrangers_courants = replace(biens_etrangers_courants, confirme=False)
             if imr_courant is not None:
                 imr_courant = replace(imr_courant, confirme=False)
-            dossier_valide = replace(dossier_valide, entreprises=entreprises_courantes, biens_locatifs=locations_courantes, registre_pertes=pertes_courantes, deces=deces_courant, imr=imr_courant)
+            dossier_valide = replace(dossier_valide, entreprises=entreprises_courantes, biens_locatifs=locations_courantes, registre_pertes=pertes_courantes, deces=deces_courant, imr=imr_courant, biens_etrangers=biens_etrangers_courants)
             self.dossier_fiscal_valide_courant = dossier_valide
             statut_dossier.set(
                 "Validé — prêt pour le moteur fiscal"
@@ -15078,7 +15101,7 @@ class ApplicationComptaPrivee(tk.Tk):
             nonlocal frais_medicaux_famille_courants, transferts_handicap_courants, renovations_multigenerationnelles_courantes, fournitures_educateur_courantes, fonds_travailleurs_courants, contributions_politiques_courantes, adoption_courante, benevoles_courants, transfert_conjoint_courant, transferts_scolarite_recus_courants
             nonlocal allocation_travailleurs_courante
             nonlocal frais_garde_quebec_courante
-            nonlocal entreprises_courantes, locations_courantes, pertes_courantes, deces_courant, imr_courant
+            nonlocal entreprises_courantes, locations_courantes, pertes_courantes, deces_courant, imr_courant, biens_etrangers_courants
             nonlocal personne_aidante_quebec_courante, solidarite_quebec_courante
             nonlocal prime_travail_quebec_courante
             nonlocal soutien_aines_quebec_courante
@@ -15183,6 +15206,7 @@ class ApplicationComptaPrivee(tk.Tk):
             locations_courantes = enregistrement.dossier.biens_locatifs
             deces_courant = enregistrement.dossier.deces
             imr_courant = enregistrement.dossier.imr
+            biens_etrangers_courants = enregistrement.dossier.biens_etrangers
             pertes_courantes = enregistrement.dossier.registre_pertes
             solidarite_quebec_courante = enregistrement.solidarite_quebec
             prime_travail_quebec_courante = enregistrement.prime_travail_quebec
@@ -15535,6 +15559,11 @@ class ApplicationComptaPrivee(tk.Tk):
                 bloquer_estimation_imr_2025(dossier_valide)
             except ValueError as exc:
                 messagebox.showerror("Calcul annuel suspendu - 7I", str(exc), parent=fenetre)
+                return
+            try:
+                verifier_annuel_biens_etrangers_2025(dossier_valide)
+            except ValueError as exc:
+                messagebox.showerror("Calcul annuel suspendu - 7J", str(exc), parent=fenetre)
                 return
             if dossier_valide.entreprises and not dossier_valide.profil_cotisations_autonomes.activer:
                 afficher_preparation_autonome_2025(fenetre, dossier_valide,
@@ -16094,6 +16123,7 @@ class ApplicationComptaPrivee(tk.Tk):
                    command=ouvrir_administrations_7g).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text='Déclaration finale 2025 (7H)', command=ouvrir_deces_7h).pack(side='left', padx=(8, 0))
         ttk.Button(zone_actions, text='Préparation IMR 2025 (7I)', command=ouvrir_imr_7i).pack(side='left', padx=(8, 0))
+        ttk.Button(zone_actions, text='Biens étrangers 2025 (7J)', command=ouvrir_biens_etrangers_7j).pack(side='left', padx=(8, 0))
         ttk.Button(zone_actions, text="Pertes et reports 2025 (7F)",
                    command=ouvrir_pertes_7f).pack(side="left", padx=(8, 0))
         ttk.Button(zone_actions, text="DPA location 2025 (7E)",

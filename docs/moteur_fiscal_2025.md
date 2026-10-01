@@ -5930,3 +5930,160 @@ SWIG/PyMuPDF et `font.copy`. `git diff --check` sans erreur. GitHub Actions
 sert de deuxième validation complète après publication, sans full suite
 locale post-commit. Les limites d'activation explicite et de détection
 conservatrice ci-dessus font partie du périmètre livré.
+
+
+### 7J — inventaire étranger et obligations déclaratives 2025
+
+Périmètre préparatoire seulement : T1135 et TP-1079.8.BE / ligne 25.
+Aucun revenu, gain, impôt ou crédit étranger calculé ou ajouté aux revenus
+par ce bloc. Aucun formulaire officiel complet produit ni transmis.
+Cette préparation ne remplace pas la déclaration du revenu étranger ni
+le calcul du crédit pour impôt étranger.
+
+#### Sources officielles applicables à 2025
+
+- [ARC, T1135 E(23), formulaire annuel en vigueur pour 2025](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t1135/t1135-23e.pdf),
+  page 4 : assujettissement, exception première résidence (art. 233.7),
+  types/exclusions et méthode; pages 5–6 : catégories et renseignements.
+  La version n'est pas rebaptisée « édition 2025 ».
+- [ARC, questions/réponses T1135](https://www.canada.ca/en/revenue-agency/services/tax/international-non-residents/information-been-moved/foreign-reporting/questions-answers-about-form-t1135.html) :
+  seuil du coût agrégé au même moment, vente avant la fin de l'année,
+  revenu à déclarer indépendamment du seuil, première année de résidence.
+- [RQ, TP-1079.8.BE (2025-12)](https://www.revenuquebec.ca/documents/fr/formulaires/tp/TP-1079.8.BE%282025-12%29.pdf),
+  page 1 : déclaration et ligne 25; page 2 : méthodes; pages 5–8 :
+  assujettissement, exception immigration, catégories et instructions.
+- [RQ, aide ligne 25 pour 2025](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/1-a-51-renseignements-sur-vous-et-votre-conjoint/ligne-25/) :
+  dispense du formulaire lorsque le particulier devient résident du Canada
+  en 2025.
+- [RQ, TP-1.D (2025-12), page 1, ligne 25](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D%282025-12%29.pdf) :
+  question factuelle portant sur la détention et le coût dépassant le seuil.
+
+Le seuil est **strictement supérieur à 100 000 CAD à un moment quelconque**,
+au coût fiscal et non à la JVM. Pour le T1135, partie A possible seulement
+si ce total reste **strictement inférieur à 250 000 CAD toute l'année**;
+partie B requise dès 250 000 CAD. Une vente avant le 31 décembre ne supprime
+pas un dépassement antérieur. Sans exception, TP-1079.8.BE et ligne 25
+suivent le dépassement de 100 000 CAD dans le profil borné commun aux deux
+juridictions. Les revenus restent déclarables même sous le seuil.
+
+#### Bornage et coûts simultanés
+
+Inventaire immuable, Decimal, références de pièces sans secret bancaire.
+Chaque bien conserve coût début/maximal/fin, revenu brut et gain/perte
+**connus et informatifs**, pays, catégorie, source et qualification humaine.
+Un montant inconnu ne doit pas être remplacé par zéro.
+
+Le maximum de la somme n'est pas la somme des maxima : une chronologie
+exhaustive et confirmée de tous les changements de coût est obligatoire.
+Elle inclut les pics intrajournaliers, un état initial au 1er janvier
+00:00:00 et final au 31 décembre 23:59:59, avec zéro explicite si absent.
+Les états sont rapprochés dans une même référence horaire; tous les
+changements simultanés sont appliqués ensemble avant agrégation. Tout état
+intermédiaire réel doit être représenté. Une séquence intraseconde qui ne
+peut pas être représentée ou une chronologie lacunaire est hors périmètre.
+Aucun ordre ni maximum manquant n'est déduit des relevés.
+
+Les montants sont déjà qualifiés fiscalement en CAD, au cent, par le
+comptable. Aucune conversion de devises ni conversion automatique entre
+les colonnes officielles des formulaires : les instructions relatives au
+maximum des fonds, aux cours moyens et de fin d'année ne sont pas une
+formule de remplacement pour le coût fiscal utilisé ici. Aucun arrondi
+au dollar n'est appliqué avant comparaison des seuils de l'inventaire.
+
+Catégories communes explicitement confirmées : compte étranger (T1135 1),
+actions non affiliées (2), dette de non-résident non affilié (3), intérêt
+acquis contre paiement dans une fiducie non résidente simple admissible (4),
+immeuble sans usage personnel (5), métaux précieux détenus hors Canada (6).
+Le pays est celui de résidence de l'émetteur/débiteur/fiducie pour les
+catégories 2–4, et celui de situation pour les autres. Une liste bornée de
+24 codes ISO alpha-3 est validée; un autre pays nécessite une extension
+explicite, pas une saisie libre inventée.
+
+Exclus : personnel/mixte, entreprise active exclusive, société étrangère
+affiliée, REER/RRIF/TFSA/RPP/PRPP et autres régimes enregistrés, fiducies ou
+sociétés de personnes complexes, crypto, qualification ambiguë, coût inconnu,
+agrégation au courtier fondée sur la JVM (catégorie 7), traitement des
+opérations étrangères, gains et crédits, production T1141/T1142 ou autres
+obligations. L'absence de T1135 ne certifie pas l'absence de ces obligations.
+La confirmation comptable concerne les qualifications dans **les deux**
+juridictions; le moteur ne qualifie pas un bien à partir de son libellé.
+
+#### Nouvel arrivant : décision de périmètre validée
+
+Le profil `premiere_residence_2025=True` conserve tous les coûts et seuils
+pour audit. TP-1079.8.BE est non requis; la ligne 25 prend un état distinct
+`None`, affiché « à valider manuellement », jamais converti en Oui/Non.
+Cette prudence s'applique à tout inventaire de ce profil explicitement
+signalé, même sous le seuil ou vide. Elle ne s'applique pas au résident
+habituel : sous ou égal à 100 000 CAD, ligne 25 non; au-dessus, oui.
+
+Message affiché dans la GUI, la trace et le PDF :
+
+> Nouvel arrivant en 2025 : le formulaire TP-1079.8.BE n’est pas requis pour
+> cette année selon Revenu Québec. La réponse à la ligne 25 n’est pas automatisée
+> par ComptaPrivée AI et doit être validée lors de la préparation de la déclaration.
+
+Il s'agit d'une limite prudente de périmètre logiciel validée par le produit,
+**pas d'une interprétation fiscale définitive** de la réponse à la ligne 25.
+Aucun formulaire officiel TP-1079.8.BE n'est produit automatiquement.
+
+La dispense T1135 de première année de résidence découle indépendamment
+**de la source ARC T1135 E(23), page 4, article 233.7**, déjà vérifiée lors
+de l'audit. Elle ne résulte pas d'une transposition de la règle Québec.
+Les seuils et règles A/B fédérales hors dispense restent inchangés.
+
+La dispense ne bloque pas le dossier : saisie, contrôle, trace, PDF
+préparatoire, sauvegarde et recharge sont disponibles. Le garde-fou distinct
+sur l'estimation annuelle en résidence partielle reste en place (7K non
+commencé). Un inventaire non vide au décès ne rouvre pas le calcul final
+borné 7H; préparation externe requise. Le retour au Canada après résidence
+antérieure est exclu de ce premier profil.
+
+#### Intégrations et validation locale
+
+Clé JSON facultative `biens_etrangers`, absente/null dans les anciens dossiers.
+Aucun champ de revenu imposable, impôt, crédit ou résultat déclaratif forcé
+n'est accepté dans ce sous-objet. Contrôles également à la recharge des
+résumés annuels. GUI de saisie et chronologie, révocation de confirmation
+après édition, invalidation des anciens calculs/PDF, sauvegarde/recharge,
+reset, traces et PDF préparatoire/annuel. Les branches salaire, location et
+travail autonome conservent leur propre calcul et affichent l'audit 7J.
+
+Validation de session : **81 nouveaux tests 7J**, dont 4 GUI. Groupe ciblé
+7J + régressions 7A–7I/rapprochement/placements étrangers : **750 passed,
+5 warnings**. Après le dernier renforcement du rejet d'une estimation
+périmée (y compris retrait de l'inventaire), contrôle ciblé 7J, GUI 7H/7I
+et stockage : **135 passed, 5 warnings**. Ces groupes se recoupent et ne
+s'additionnent pas. Avertissements SWIG/PyMuPDF existants. Tous les tests
+ont utilisé `--capture=sys`; l'accès initial au répertoire temporaire de
+pytest était refusé par le sandbox Windows, puis la relance autorisée a
+réussi. Les tests d'intégration ont détecté deux sorties anticipées du
+formateur de trace qui omettaient l'audit 7J; elles ont été corrigées et
+les régressions passent.
+
+Contrôle visuel sur données exclusivement fictives : préparation d'une
+page et rapport annuel de trois pages, toutes inspectées après rendu.
+Textes lisibles, aucune coupure ni superposition observée. Artefacts dans
+`tmp/pdfs/7j/`, ignoré par Git. `git diff --check` sans erreur.
+
+Reprise après décision : dispense Québec et état manuel ligne 25 implémentés,
+avec conservation de l'audit. Les tests couvrent les deux côtés du seuil,
+l'égalité, 250 000 CAD, l'exemption ARC indépendante, la sauvegarde/recharge,
+la GUI et le PDF du nouvel arrivant. **87 nouveaux tests 7J**, dont 6 GUI.
+Tests ciblés avec régressions 7A–7I : **756 passed, 5 warnings**.
+La suite complète unique et la publication sont consignées après les
+contrôles finaux. Aucun travail sur 7K.
+
+Contrôle visuel de reprise : les deux préparations « nouvel arrivant »,
+à 99 999,99 CAD et 250 000 CAD, tiennent chacune sur une page et affichent
+la dispense, la ligne 25 manuelle, la source ARC distincte et l'avertissement
+complet. Aucun chevauchement ni texte coupé observé. Aucun formulaire
+TP-1079.8.BE officiel produit; seuls les rapports préparatoires fictifs
+sont conservés dans le répertoire ignoré `tmp/pdfs/7j/`.
+
+Validation finale 7J : suite complète locale exécutée **une seule fois**,
+**7 363 passed, 8 warnings**, en 206,19 s, avec
+`--capture=sys -q --ignore=tmp --tb=short`. Avertissements existants
+SWIG/PyMuPDF et `font.copy`. `git diff --check` sans erreur. Le périmètre
+borné 7J est terminé; GitHub Actions sert de deuxième validation complète
+après publication, sans full suite locale post-commit. Aucun travail 7K.
