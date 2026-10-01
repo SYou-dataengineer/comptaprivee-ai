@@ -5662,3 +5662,271 @@ une seule fois : **7 221 passed, 8 warnings**, en 196,73 secondes, avec
 proviennent de SWIG/PyMuPDF et de `font.copy` dans le convertisseur de documents.
 `git diff --check` sans erreur. GitHub Actions sert de deuxième validation
 complète après publication; aucune full suite locale post-commit prévue.
+
+### 7I — audit préalable IMR 2025, non livré
+
+**Historique de l'audit conservé. La décision et l'implémentation bornée
+décrites après cet audit remplacent la proposition de calcul ci-dessous.**
+
+Checkpoint du 30 septembre 2026 : `73a39d5`, arbre initial propre,
+`git diff --check` sans erreur. Cette section est un audit d'architecture,
+pas l'annonce d'un moteur IMR disponible. Aucun calcul, garde-fou, JSON,
+écran, rapprochement ni export existant n'est modifié par cet audit.
+
+#### Sources vérifiées et divergences à conserver dans l'audit
+
+- [T691 E (25), formulaire officiel remplissable, 10 pages](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/t691/t691-fill-25e.pdf).
+  Pages 4–5 : réintégration à 50 %, exemption 177 882 $, taux 20,5 %;
+  crédits 33800 à 50 % et dons 34900 à 80 %. Page 8, partie 6,
+  note 14 : la base de l'abattement Québec peut changer. Page 10,
+  partie 8 : millésimes 2018–2024; reliquat 2018 retranché avant 2026.
+  Les constantes des pages 4–5 ont également été contrôlées visuellement.
+- [ARC, ligne 41700, année 2025](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/sujets/tout-votre-declaration-revenus/declaration-revenus/remplir-declaration-revenus/deductions-credits-depenses/toutes-deductions-tous-credits-toutes-depenses/ligne-41700-impot-minimum.html).
+  Le repère porte sur les éléments B et, lorsque pertinent, la ligne 19700
+  de l'annexe 3. Ce n'est ni le salaire brut seul ni une garantie d'IMR nul.
+  La page française consultée juxtapose 177 882 $ et 173 882 $ dans ses
+  deux branches : incohérence éditoriale à signaler, sans recopier 173 882 $.
+  Le T691 2025 et la mission fixent bien le repère à 177 882 $.
+- [ARC, ligne 40427, année 2025](https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/sujets/tout-votre-declaration-revenus/declaration-revenus/remplir-declaration-revenus/deductions-credits-depenses/ligne-40427-report-impot-minimum.html).
+  La page mentionne 2016–2024 tout en indiquant sept ans : divergence avec
+  le T691 2025. Ne pas ouvrir 2016/2017 sur cette seule mention. Le solde
+  doit provenir du dernier avis de cotisation ou de nouvelle cotisation.
+- [TP-776.42 (2025-10), 9 pages](https://www.revenuquebec.ca/documents/fr/formulaires/tp/TP-776.42%282025-10%29.pdf).
+  Page 1 : exemption 179 990 $, taux 19 %. Page 7 : pondérations 50 %/80 %.
+  Page 2 : reports 2018–2024; reliquat 2018 retranché avant 2026.
+  Pages 5–6 : ajustements historiques distincts des soldes ordinaires.
+- [Annexe E (2025-12), partie B](https://www.revenuquebec.ca/documents/fr/formulaires/tp/2025-12/TP-1.D.E%282025-12%29.pdf) :
+  la ligne 432 reçoit le résultat de la ligne 18. Sans opérations
+  forestières, comparer l'impôt ordinaire après report à l'IMR; ne pas
+  additionner l'IMR intégral à l'impôt ordinaire.
+- [RQ, ligne 432, instructions 2025](https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/comment-remplir-votre-declaration-de-revenus/aide-par-ligne/400-a-447-impot-et-cotisations/ligne-432/) :
+  renvoi au TP-776.42; traitement forestier distinct, exclu du premier profil.
+
+#### Cartographie des entrées vers le dépôt
+
+A signifie « donnée exacte déjà exposée dans son profil existant », B
+« adaptation à écrire et tester à partir de faits disponibles », C
+« donnée absente ou cas non supporté ». B ne signifie pas calcul livré.
+Un zéro n'est acceptable que si l'absence du cas a été vérifiée; une clé
+absente d'un ancien JSON ne prouve pas cette absence fiscale.
+Les lignes de total/report internes héritent des dépendances de leurs entrées.
+
+T691, partie 1 (numéros imprimés, non noms techniques des champs PDF) :
+
+| Entrées | Classe dans le dépôt | Correspondance / limite logicielle |
+|---|---|---|
+| 1 | A/B | `RevenuNetImposable2025.revenu_imposable_federal`; B pour préserver un éventuel montant avant plancher, exclu du premier profil. |
+| 2–3 | C | Aucun profil films. |
+| 5–6 | B | `Location2025` et amortissement 7E; uniquement les catégories actuellement supportées, aucun intérêt locatif ni disposition. |
+| 8–10, 14 | C | Aucun moteur abris, sociétés de personnes ou ressources. |
+| 15, 21 | B/A | `GainsCapital2025.gain_perte` et `ligne_12700`; conversion seulement pour la vente simple 3D. |
+| 16–18, 24–25, 28–29, 31, 35–37 | C | Faits spécialisés absents; un T4 présent ne suffit pas à établir leur absence. |
+| 39–42, 45, 48 | C pour le résultat IMR | 7F expose les déductions ordinaires, pas les bases historiques IMR ni leur ventilation. |
+| 51–52 | A | Cotisations syndicales validées et `FraisGardeFederaux2025` dans leurs profils. |
+| 55 | C | Aucun profil autonome de soutien au handicap pour cette déduction. |
+| 56–59 | A | `FraisDemenagement2025`; revenu : `deduction_autonome_22200`, `deduction_rrq_amelioree_federale`, `deduction_autonome_22300`. |
+| 60–62 | C | Déductions spécialisées non modélisées. |
+| 64, 67 | B | `ProfilFraisPlacement2025.interets/gestion`; qualification précise à vérifier, pas simple recopie de 22100. |
+| 65–66 | C | Ventilations non exposées. |
+| 69 | A | `DepensesEmploi2025.deduction_federale_t777`. |
+| 70–75 | C | Le total T777 ne fournit pas ces ventilations; confirmer les exclusions ou refuser. |
+| 84–85 | B | `Dividendes2025.ligne_12000/ligne_12010`; transformation propre au formulaire. |
+| 87, 89–90 | C | Exonération et transferts spécialisés absents. |
+| 98–99 | A | `CreditsFederauxNonRemboursables2025.credit_ligne_33800/credit_dons_ligne_34900`; ne pas remplacer 33800 par 35000. |
+| 100–101 | C | Aucun module correspondant. |
+
+Autres parties T691 :
+
+| Partie | Classe / dépendances dans le dépôt |
+|---|---|
+| 2 | A pour impôt brut, 35000, 40425; B pour séquence; C pour registre 40427 encore absent. |
+| 3 | A pour crédits 40500/41000/41400 existants dans leurs profils; C pour T2038, impôt forestier et surtaxe étrangère. 7G bloque déjà l'interprovincial. |
+| 4 | B envisageable pour les faits du placement étranger simple; C pour les autres ventilations. Le crédit ordinaire ne remplace pas le crédit spécial. Exclure entièrement du premier profil. |
+| 5 | B pour comparaison; C si T2038 nécessaire. |
+| 6 | B pour 41700 et base d'abattement; C pour T1206/T2203 et non-résidence. |
+| 7 | B pour nouveau solde lorsque toutes les dépendances sont supportées; C pour variantes étrangères/T2038/forestières. |
+| 8 | C pour registre source actuellement absent; B pour utilisation/expiration après création de faits confirmés distincts des pertes 7F. |
+| 9 | C intégralement. |
+
+TP-776.42 :
+
+| Entrées / groupes | Classe / dépendances dans le dépôt |
+|---|---|
+| 1 | A/B : `revenu_imposable_quebec`; même réserve sur le montant avant plancher. |
+| 2–6, 16; grilles 1–2 | C : modules spécialisés absents. |
+| 7; grille 3 | B : faits location/DPA existants, hors variantes non supportées. |
+| 8–8.1 | B/A : `gain_perte` / `ligne_139` pour 3D seulement. |
+| 13, 20; grille 6 | B pour faits courants du profil simple, C pour historique IMR absent. Le `solde_quebec` de 3E n'est pas cet historique. |
+| Grille 4 : 146–155 | C : faits spécialisés et décomposition historique absents. |
+| 157.1–157.3 | B : frais/emploi/déménagement; exclusions et ventilation à contrôler. |
+| 157.4, 157.6, 157.8 | C : profils spécialisés absents. |
+| 157.5, 157.9 | A/B : déductions RRQ/RQAP et travailleur exposées dans le revenu; adapter séparément du fédéral. |
+| 159.1–159.4 | C : bases historiques IMR et opérations spécialisées absentes. |
+| Grille 5 : 163–163.1 | A : `Dividendes2025.ligne_128/ligne_166/ligne_167`. |
+| Grille 5 : autres entrées | C : profils spécialisés absents. |
+| 250–251; grille 7 | B : reconstruire 399 depuis les crédits détaillés, dons séparés. Ne pas utiliser impôt brut moins impôt net plafonné. |
+| 257.1; grille 8 | C pour un traitement général du conjoint; exclure les transferts du premier profil. |
+| 31, 33 | B pour résident Québec seul sans étranger; C pour TP-22/TP-25. |
+| Partie 2 | B pour séquence; C pour registre IMR antérieur absent, T1206/TP-766.3.4 et variantes interprovinciales. |
+
+Cette cartographie regroupe les entrées par dépendance; elle ne constitue
+pas une validation ligne par ligne de toutes les combinaisons ouvertes
+par l'application. Les formules et tests de calcul restent à écrire.
+
+#### Points qui interdisent une activation générale immédiate
+
+1. `RegistrePertes2025` contient des soldes ordinaires confirmés et un taux
+   d'inclusion pour certaines pertes, mais pas l'ensemble des corrections
+   IMR historiques. La confirmation générique `exclusions_absentes` de 7F
+   ne peut pas être réinterprétée rétroactivement comme un audit T691.
+2. `ProfilFraisPlacement2025` conserve un historique ordinaire d'annexe N;
+   il ne conserve pas un historique distinct aux fins IMR. Inventer ce
+   dernier à partir de `solde_quebec` serait incorrect.
+3. `DepensesEmploi2025` conserve des totaux T777/TP-59. Il n'expose pas
+   toutes les ventilations nécessaires au nouveau calcul.
+4. `RapprochementFiscal2025.impot_federal_ligne_41700` est actuellement une
+   propriété de l'impôt ordinaire. Ajouter un montant IMR comme supplément
+   sans revoir sa base, les crédits et l'abattement créerait une incohérence.
+5. Le dépôt n'a pas de registre IMR. Une source documentée est nécessaire,
+   mais ne dispense pas de calculer la capacité courante d'utilisation.
+
+Les garde-fous 3D/3E actuels restent en place. Leur seuil conservateur
+ne doit pas être renommé « test officiel T691 ». Aucun nouveau garde-fou
+7I n'est opérationnel à ce stade; l'audit ne sécurise pas rétroactivement
+tous les profils déjà ouverts.
+
+#### Proposition concrète pour la reprise, avant ouverture monétaire
+
+Premier profil recommandé : particulier vivant, résident Canada/Québec
+toute l'année, sans conjoint ni personne à charge, salaires ordinaires
+RRQ 7A et/ou intérêts canadiens ordinaires, aucune autre demande facultative.
+Les déductions et crédits ordinaires déjà produits restent pris en compte.
+Un registre indépendant pourrait accepter uniquement des soldes IMR
+confirmés ARC/RQ, par année et juridiction, avec demande choisie, source,
+utilisation et reliquat. Il ne reconstruirait aucune déclaration passée.
+
+Exclure de ce premier calcul les pertes/report 7F, frais/report annexe N,
+dépenses d'emploi, gains/dividendes, dons, étranger, transferts conjugaux,
+entreprises/location et avantages spécialisés. Ce sont des limites
+logicielles proposées, pas des exclusions fiscales. Les groupes B
+identifiés ci-dessus pourront être ouverts dans 7I après leurs propres
+tests, sans ouvrir 7J.
+
+La décision à prendre porte sur ce rétrécissement : livrer d'abord ce
+profil calculable et les reports confirmés, ou borner 7I à la préparation
+avec estimation suspendue pour tout dossier IMR potentiel. Ne pas
+présenter cette deuxième option comme équivalente au calcul demandé.
+
+Dans les deux cas, prévoir un profil immuable distinct, des confirmations
+explicites d'exhaustivité, un JSON ancien sans activation implicite,
+l'invalidation des estimations après changement, GUI/reset, trace et PDF.
+Le résultat doit distinguer dépistage, calcul requis, calcul effectué,
+IMR supplémentaire et impôt final; ne jamais afficher IMR = 0 uniquement
+parce que le total de dépistage est inférieur au repère. Priorité à 7H;
+7G conserve son refus avant tout calcul annuel. Aucun montant manuel final.
+
+#### Validation de cette session d'audit
+
+Tests existants ciblés : `test_tax_capital_gains_2025.py`,
+`test_tax_capital_loss_carryovers_2025.py`,
+`test_tax_investment_expenses_2025.py`, `test_tax_loss_ledger_2025.py`,
+`test_tax_multiple_jurisdictions_2025.py`, `test_tax_final_return_2025.py`,
+`test_tax_reconciliation_2025.py`, avec `--capture=sys -q --tb=short`.
+Résultat : **538 passed, 5 warnings** (SWIG), 2,81 s. Ils vérifient le
+socle existant, pas un nouveau calcul IMR. Aucun test 7I ajouté ni GUI
+exécutée. Aucun PDF produit par l'application; seule la source T691 a été
+contrôlée visuellement. Copies de consultation dans `tmp/pdfs/7i/`, ignoré.
+Pas de full suite, commit, push ni nouveau lancement GitHub Actions.
+7I reste non livré; aucun travail sur 7J.
+
+### 7I — décision validée : préparation et garde-fou, sans calcul IMR
+
+Le périmètre final v1.0 est exclusivement la préparation des faits,
+la détection conservatrice et le blocage. Aucun T691 ni TP-776.42 calculé,
+aucune utilisation/expiration de report, aucune écriture IMR automatique
+aux lignes 41700, 40427 ou 432. Le calcul ordinaire de 41700 déjà publié
+reste inchangé : cette ligne ordinaire ne représente pas un calcul IMR.
+La proposition monétaire de l'audit précédent est abandonnée par décision
+explicite de l'utilisateur, sans reconstruction d'historique.
+
+`ProfilImr2025`, `ElementImr2025` et `SoldeImr2025` sont immuables.
+Les registres ARC et RQ sont distincts, par année, montant confirmé et
+source documentaire. La confirmation porte sur l'exhaustivité et les avis.
+Une même année dans les deux juridictions est permise; un doublon dans
+une juridiction est refusé. Les millésimes anciens restent des faits à
+examiner, jamais des droits à déduction supposés disponibles. Aucune
+expiration ou utilisation n'est inventée à partir de la page 40427.
+
+**Activation explicite du contrôle :** le profil facultatif `imr` est ajouté
+au dossier validé. Une clé absente/nulle dans un ancien JSON conserve le
+parcours historique; elle ne certifie pas qu'un contrôle IMR a été effectué.
+Le bouton « Préparation IMR 2025 (7I) » ouvre ce contrôle. Les indicateurs
+« requis » désignent un examen externe conservateur, pas une conclusion
+que de l'impôt minimum est dû. « Non requis » est limité aux faits examinés.
+Le contrôle ne prétend pas classifier automatiquement tous les dossiers
+historiques ni remplacer la vérification comptable de leur exhaustivité.
+
+Lorsque 7I est activé, un élément déclaré positif exige un contrôle externe
+fédéral et Québec, même sous le repère. Un formulaire signalé explicitement
+ou un solde historique positif déclenche le formulaire de sa juridiction.
+Le repère 177 882 $ n'est qu'une comparaison descriptive avec la somme des
+éléments fournis : sous, égal, au-dessus. Ce total est identifié comme non
+exhaustif; il ne constitue pas le calcul officiel ni un test d'exemption.
+
+Détection complémentaire des faits connus : cotisations/avantages T4 et
+RL-1, ventes T5008/RL-18, placements T5/RL-3 autres que les intérêts simples,
+entreprises/location, registre 7F, profils capital, frais de placement,
+reports, dépenses d'emploi, garde, déménagement, autres déductions, dons,
+dividendes, étranger, fonds et transferts identifiés. Les montants bruts
+des cases de cotisations ne sont pas assimilés aux déductions 22200/22215.
+Ces signaux ne sont pas ajoutés au total saisi : ils peuvent représenter
+les mêmes faits et provoquer un double compte. Ils suffisent au blocage
+conservateur sans aucun calcul de leur incidence IMR.
+
+Cette prudence peut bloquer un salarié ordinaire ayant des cotisations RRQ
+lorsque 7I est activé, même si un T691 complet aboutirait à aucun supplément.
+C'est une limite logicielle explicite. Le parcours sans élément connu
+(par exemple intérêts canadiens simples seuls, absence d'autres éléments
+confirmée) conserve exactement ses impôts, son abattement et son solde.
+Aucun IMR monétaire nul n'est présenté comme résultat d'un formulaire.
+
+Le blocage est vérifié avant l'estimation, lors de sa restitution, dans
+la trace, à l'export annuel et lors de la sauvegarde/recharge d'un résultat
+annuel. Un dossier bloqué reste sauvegardable comme préparation sans
+résumé annuel/PDF annuel associé. Le PDF de préparation demeure exportable.
+Il précise les formulaires, sources, soldes, limites, absence de calcul et
+absence d'écriture IMR. Les champs JSON inconnus, montants non finis,
+négatifs, non décimaux ou fractions de cent sont refusés; aucun impôt final
+manuel n'est accepté.
+
+7H garde la priorité : IMR courant non appliqué au décès, sans réactivation
+par les signaux 7I. Tout registre historique au décès bloque l'estimation
+dans ce périmètre. 7G garde son blocage interprovincial. Une résidence
+annuelle non confirmée bloque le parcours 7I hors décès validé.
+
+GUI dédiée : faits, registres séparés, confirmations, trace et PDF de
+préparation. Une modification révoque la confirmation; appliquer un profil
+invalide l'estimation et l'export précédents. Revalider les feuillets
+révoque également la confirmation 7I. Le reset efface le profil, la recharge
+le restaure; une fenêtre périmée refuse application et export.
+
+Les exclusions de calcul de l'audit sont conservées, y compris les profils
+avancés, fiducies, opérations étrangères complexes et historiques non
+modélisés. Aucun calcul IMR, même partiel, n'est ouvert. Aucun travail 7J.
+
+Validation ciblée initiale : 194 tests moteur/intégration/décès/estimation;
+46 tests GUI avec reset, recharge, export et invalidation; 577 tests ciblés
+7I et régressions 7B–7H/rapprochement. Ces groupes se recoupent et ne doivent
+pas être additionnés comme tests distincts. Contrôle visuel : préparation
+fictive d'une page, rapport annuel fictif sans déclencheur de deux pages,
+dans `tmp/pdfs/7i/` ignoré par Git; aucune donnée client. Suite complète
+unique et résultat de publication consignés après validation.
+
+Validation finale locale 7I : **55 nouveaux tests**, dont 4 GUI; contrôle
+7A moteur/GUI : **39 passed**. Suite complète exécutée une seule fois :
+**7 276 passed, 8 warnings**, en 197,94 s, avec
+`--capture=sys -q --ignore=tmp --tb=short`. Avertissements existants
+SWIG/PyMuPDF et `font.copy`. `git diff --check` sans erreur. GitHub Actions
+sert de deuxième validation complète après publication, sans full suite
+locale post-commit. Les limites d'activation explicite et de détection
+conservatrice ci-dessus font partie du périmètre livré.

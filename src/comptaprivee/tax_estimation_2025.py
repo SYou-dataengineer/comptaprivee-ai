@@ -8,6 +8,7 @@ Il ne transmet aucune déclaration et conserve explicitement le statut
 d'estimation soumise à validation comptable.
 """
 
+from .tax_minimum_preparation_2025 import bloquer_estimation_imr_2025, verifier_resultat_imr_2025, lignes_imr_2025, preparer_imr_2025
 from .tax_final_return_2025 import verifier_resultat_deces_2025, verifier_options_deces_2025, verifier_dossier_deces_2025, lignes_deces_2025
 from .tax_multiple_jurisdictions_2025 import bloquer_estimation_interprovinciale_2025
 from .tax_quebec_senior_support_2025 import (SoutienAinesQuebec2025, ResultatSoutienAinesQuebec2025, calculer_soutien_aines_quebec_2025, lignes_soutien_aines_quebec_2025, valider_soutien_aines_quebec_2025)
@@ -524,6 +525,7 @@ def calculer_estimation_fiscale_2025(
     options_7c = locals().copy()
     verifier_options_deces_2025(dossier, options_7c)
     bloquer_estimation_interprovinciale_2025(dossier)
+    bloquer_estimation_imr_2025(dossier, options_7c)
     verifier_options_pertes_2025(dossier, options_7c)
     location = verifier_dossier_location_2025(dossier, options_7c)
     valider_profil_7c(dossier.profil_cotisations_autonomes)
@@ -2093,6 +2095,7 @@ def formater_estimation_fiscale_2025(
 ) -> str:
     """Construit le résumé lisible destiné à la fenêtre de validation."""
     verifier_resultat_deces_2025(estimation)
+    verifier_resultat_imr_2025(estimation)
     bloquer_estimation_interprovinciale_2025(estimation.dossier)
     if estimation.location.faits is not None:
         return "\n".join([*lignes_location_2025(estimation), *lignes_resultat_pertes_2025(estimation.pertes_7f)])
@@ -2872,4 +2875,4 @@ def formater_estimation_fiscale_2025(
         ]
     )
 
-    return "\n".join([*lignes_deces_2025(estimation.dossier), *lignes, *lignes_resultat_pertes_2025(estimation.pertes_7f)])
+    return "\n".join([*lignes_deces_2025(estimation.dossier), *lignes_imr_2025(estimation.dossier, vars(estimation)), *lignes, *lignes_resultat_pertes_2025(estimation.pertes_7f)])

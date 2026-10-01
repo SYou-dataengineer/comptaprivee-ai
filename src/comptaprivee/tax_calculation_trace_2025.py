@@ -4,6 +4,7 @@ Cette brique ne modifie aucun résultat fiscal. Elle explique une estimation
 déjà calculée à partir d'un dossier verrouillé et validé par le comptable.
 """
 
+from .tax_minimum_preparation_2025 import bloquer_estimation_imr_2025, verifier_resultat_imr_2025, lignes_imr_2025, preparer_imr_2025
 from .tax_final_return_2025 import verifier_resultat_deces_2025, verifier_options_deces_2025, verifier_dossier_deces_2025, lignes_deces_2025
 from .tax_multiple_jurisdictions_2025 import bloquer_estimation_interprovinciale_2025, preparer_administrations_2025, lignes_preparation_administrations_2025
 from .tax_loss_ledger_2025 import lignes_resultat_pertes_2025
@@ -153,6 +154,7 @@ class TraceCalculFiscal2025:
     audit_autonome: tuple[str, ...] = ()
     audit_pertes: tuple[str, ...] = ()
     audit_deces: tuple[str, ...] = ()
+    audit_imr: tuple[str, ...] = ()
 
 
 def _ligne(ordre, section, libelle, source, formule, montant):
@@ -184,6 +186,7 @@ def construire_trace_calcul_fiscal_2025(
     estimation: EstimationFiscale2025,
 ) -> TraceCalculFiscal2025:
     verifier_resultat_deces_2025(estimation)
+    verifier_resultat_imr_2025(estimation)
     bloquer_estimation_interprovinciale_2025(estimation.dossier)
     if estimation.location.faits is not None:
         from .tax_rental_income_2025 import lignes_location_2025
@@ -206,7 +209,7 @@ def construire_trace_calcul_fiscal_2025(
                     (juridiction+' solde final', 'Solde ouverture - DPA choisie', amort.fermeture),
                 ))
             valeurs = (valeurs[0], *details, *valeurs[1:])
-        return TraceCalculFiscal2025(audit_deces=lignes_deces_2025(estimation.dossier), audit_pertes=tuple(lignes_resultat_pertes_2025(estimation.pertes_7f)),client=d.client,annee_fiscale=d.annee_fiscale,province=d.province,
+        return TraceCalculFiscal2025(audit_imr=lignes_imr_2025(estimation.dossier, vars(estimation)), audit_deces=lignes_deces_2025(estimation.dossier), audit_pertes=tuple(lignes_resultat_pertes_2025(estimation.pertes_7f)),client=d.client,annee_fiscale=d.annee_fiscale,province=d.province,
             lignes=tuple(_ligne(i,'LOCATION',lib,'T776/TP-128/annexe F 2025',form,m) for i,(lib,form,m) in enumerate(valeurs,1)),
             resultat=x.resultat,montant_resultat=max(x.solde_estime,x.remboursement_estime),
             formule_resultat='Impôts + FSS - retenues et remboursements de cotisations',avertissements=(),
@@ -227,7 +230,7 @@ def construire_trace_calcul_fiscal_2025(
             ('Solde annuel','Fédéral après abattement + impôt Québec + 445 + 439 + 446',x.solde_estime),
         ):
             lignes.append(_ligne(len(lignes)+1,'ANNUEL',libelle,'Pipeline annuel 7C',formule,montant))
-        return TraceCalculFiscal2025(audit_deces=lignes_deces_2025(estimation.dossier), audit_pertes=tuple(lignes_resultat_pertes_2025(estimation.pertes_7f)),client=d.client,annee_fiscale=d.annee_fiscale,province=d.province,
+        return TraceCalculFiscal2025(audit_imr=lignes_imr_2025(estimation.dossier, vars(estimation)), audit_deces=lignes_deces_2025(estimation.dossier), audit_pertes=tuple(lignes_resultat_pertes_2025(estimation.pertes_7f)),client=d.client,annee_fiscale=d.annee_fiscale,province=d.province,
             lignes=tuple(lignes),resultat=x.resultat,montant_resultat=max(x.solde_estime,x.remboursement_estime),
             formule_resultat='Impôts après crédits et abattement + cotisations Québec, chacune une fois',
             avertissements=(),limitations=('Autonome pur borné; emploi et autres crédits exclus.',),
@@ -2424,7 +2427,7 @@ def construire_trace_calcul_fiscal_2025(
         ),
     )
 
-    return TraceCalculFiscal2025(audit_deces=lignes_deces_2025(estimation.dossier), audit_pertes=tuple(lignes_resultat_pertes_2025(estimation.pertes_7f)),
+    return TraceCalculFiscal2025(audit_imr=lignes_imr_2025(estimation.dossier, vars(estimation)), audit_deces=lignes_deces_2025(estimation.dossier), audit_pertes=tuple(lignes_resultat_pertes_2025(estimation.pertes_7f)),
         client=dossier.client,
         annee_fiscale=dossier.annee_fiscale,
         province=dossier.province,
@@ -2511,9 +2514,13 @@ def formater_trace_calcul_fiscal_2025(
             "ou à Revenu Québec.",
         ]
     )
-    return "\n".join([*trace.audit_deces, *lignes, *trace.audit_pertes])
+    return "\n".join([*trace.audit_deces, *trace.audit_imr, *lignes, *trace.audit_pertes])
 
 
 def construire_trace_administrations_2025(dossier):
     """Trace séparée des faits et contrôles 7G; aucun impôt annuel calculé."""
     return lignes_preparation_administrations_2025(preparer_administrations_2025(dossier))
+
+
+def construire_trace_imr_2025(dossier):
+    return lignes_imr_2025(dossier)

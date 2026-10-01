@@ -5,6 +5,7 @@ Il ne calcule aucun impôt et ne transmet aucune déclaration.
 """
 
 from dataclasses import dataclass
+from .tax_minimum_preparation_2025 import ProfilImr2025
 from .tax_final_return_2025 import Deces2025
 from pathlib import Path
 
@@ -37,6 +38,7 @@ class DossierFiscalValide:
     biens_locatifs: tuple[BienLocatif2025, ...] = ()
     registre_pertes: RegistrePertes2025 = RegistrePertes2025()
     deces: Deces2025 | None = None
+    imr: ProfilImr2025 | None = None
 
 
 def construire_dossier_fiscal_valide(
